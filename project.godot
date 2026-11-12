@@ -11,13 +11,32 @@ config_version=5
 [application]
 
 config/name="Harvest Afterdark"
-config/features=PackedStringArray("4.7", "Forward Plus")
+config/description="A homestead at the end of the world."
+run/main_scene="res://HarvestAfterdark.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+Balance="*res://scripts/autoload/balance.gd"
+Data="*res://scripts/autoload/data.gd"
+Art="*res://scripts/autoload/art.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+Game="*res://scripts/autoload/game.gd"
 
 [display]
 
+window/size/viewport_width=480
+window/size/viewport_height=270
+window/size/window_width_override=1440
+window/size/window_height_override=810
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/stretch/scale_mode="integer"
+
+[gui]
+
+common/drop_mouse_on_gui_input_disabled=true
 
 [physics]
 
@@ -25,4 +44,9 @@ window/stretch/aspect="expand"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+2d/snap/snap_2d_transforms_to_pixel=true
+environment/defaults/default_clear_color=Color(0.05, 0.04, 0.04, 1)
 rendering_device/driver.windows="d3d12"
