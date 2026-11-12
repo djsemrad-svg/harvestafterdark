@@ -20,6 +20,7 @@ func _ready() -> void:
 		DirAccess.make_dir_recursive_absolute(d)
 		for f in DirAccess.get_files_at(d):
 			DirAccess.remove_absolute(d + f)
+	Balance.raids.grace_days = 99999   # raids are switched on only in the raid tests
 	main = preload("res://scripts/main.gd").new()
 	add_child(main)
 	await get_tree().process_frame
@@ -30,13 +31,13 @@ func _ready() -> void:
 	run_all()
 	var passed := 0
 	for r in results:
-		print(("PASS " if r.pass else "FAIL ") + r.name + ("  [" + r.detail + "]" if r.detail != "" else ""))
 		if r.pass: passed += 1
 	print("\n%d / %d passed" % [passed, results.size()])
 	get_tree().quit(0 if passed == results.size() else 1)
 
 # ---------------------------------------------------------------- helpers
 func check(name: String, pass_: bool, detail := "") -> void:
+	print(("PASS " if pass_ else "FAIL ") + name + "  [" + detail + "]")
 	results.append({"name": name, "pass": pass_, "detail": detail})
 
 func tick(ms: float) -> void:
@@ -795,6 +796,204 @@ func run_all() -> void:
 
 	var valid := ["sun", "rain", "wind", "storm", "fog", "snow"]
 	check("Weather: today and tomorrow are valid", valid.has(G.state.weather) and valid.has(G.state.weather_tomorrow), G.state.weather + " / " + G.state.weather_tomorrow)
+
+	# ---------- crafting expansion
+	start("adventure", 2)
+	hm = G.maps.homestead
+	var bad_icons := []
+	for id in Data.items:
+		var ic: Image = Art.get_icon(id).get_image()
+		if ic.get_used_rect().size.x <= 0: bad_icons.append(id)
+	for t in Data.obj_defs:
+		Art.get_obj({"type": t, "x": 3, "y": 3, "v": 0}, "spring", 0, 3)
+	var all_out := true
+	for rr in Data.recipes:
+		if not Data.items.has(rr.out): all_out = false
+		for pair in rr.inputs:
+			if not pair[0].begins_with("cat:") and not Data.items.has(pair[0]): all_out = false
+	check("Crafting expansion: every recipe, item icon and object sprite is valid", bad_icons.is_empty() and all_out and Data.recipes.size() >= 40, "recipes=%d bad=%s" % [Data.recipes.size(), bad_icons])
+
+	G.add_item("wood", 60, {"silent": true}); G.add_item("scrap", 40, {"silent": true}); G.add_item("stone", 30, {"silent": true}); G.add_item("copper_bar", 3, {"silent": true})
+	var rbench: Dictionary = {}
+	for x in Data.recipes:
+		if x.out == "ammo_bench": rbench = x
+	U.open("craft", {"station": "hand"}); U._craft(rbench); close_all()
+	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30)
+	select("ammo_bench"); W.use_selected(0, false)
+	var bench = hm.get_obj(21, 30)
+	if bench != null: W.interact_object(bench)
+	var bench_ui: bool = ov() == "craft" and U.overlay.station == "ammo_bench"
+	for x in Data.recipes:
+		if x.out == "nail_rounds": U._craft(x)
+	close_all()
+	check("Ammo Bench: crafted, placed, opens its own station and makes Nail Rounds", bench != null and bench_ui and G.count_item("nail_rounds") == 20, "bench=%s ui=%s nails=%d" % [bench != null, bench_ui, G.count_item("nail_rounds")])
+
+	G.state.skills.survival.xp = 100
+	var rt_: Dictionary = {}
+	for x in Data.recipes:
+		if x.out == "nail_turret": rt_ = x
+	U.open("craft", {"station": "hand"}); U._craft(rt_); close_all()
+	G.enemies.clear()
+	at("homestead", 30, 24, "down"); clear_tile(hm, 30, 25)
+	select("nail_turret"); W.use_selected(0, false)
+	var tur = hm.get_obj(30, 25)
+	var lerr2: String = G.turret_load(tur) if tur != null else "no turret"
+	var loaded: int = int(tur.get("ammo_n", 0)) if tur != null else 0
+	G.player.pos = Vector2(30 * 16 + 8, 20 * 16 + 14)
+	e = W.spawn_enemy("shambler", 33, 26)
+	e.state = "stun"; e.t = 99.0; e.vel = Vector2.ZERO
+	tick(8000)
+	check("Nail Turret: crafted at Survival 1, loaded with ammo, shoots and kills an infected", tur != null and lerr2 == "" and loaded == 20 and G.enemies.is_empty() and int(tur.ammo_n) < 20, "err='%s' left=%d ammo=%s" % [lerr2, G.enemies.size(), tur.get("ammo_n") if tur != null else "-"])
+
+	# barriers: damage, break, repair, gate
+	clear_tile(hm, 24, 30)
+	var fobj: Dictionary = hm.add_obj(24, 30, "fence")
+	var solid0: bool = hm.is_solid(24, 30)
+	G.barrier_hit(fobj, 40)
+	var broken_passable: bool = fobj.get("broken", false) and not hm.is_solid(24, 30)
+	var w_before: int = G.count_item("wood")
+	at("homestead", 23, 30, "right")
+	W.interact_object(fobj)
+	check("Barriers: break when damaged, become passable, and repair with materials", solid0 and broken_passable and not fobj.broken and int(fobj.hp) == 30 and G.count_item("wood") == w_before - 1, "solid=%s passable=%s wood %d>%d" % [solid0, broken_passable, w_before, G.count_item("wood")])
+	clear_tile(hm, 25, 32)
+	var gate: Dictionary = hm.add_obj(25, 32, "wood_gate")
+	at("homestead", 24, 32, "right")
+	W.interact_object(gate)
+	var open_ok: bool = gate.get("open", false) and not hm.is_solid(25, 32)
+	W.interact_object(gate)
+	check("Gates open and close", open_ok and hm.is_solid(25, 32))
+
+	# machines
+	clear_tile(hm, 26, 34)
+	var kiln: Dictionary = hm.add_obj(26, 34, "charcoal_kiln")
+	G.add_item("wood", 20, {"silent": true})
+	var kerr: String = G.machine_load(kiln, "wood")
+	var c0: int = G.count_item("coal")
+	var not_yet: bool = not G.machine_ready(kiln)
+	G.state.time = int(G.state.time) + 240
+	var got_coal: int = G.machine_collect(kiln)
+	check("Machines: Charcoal Kiln turns 10 wood into coal after 4 hours", kerr == "" and not_yet and got_coal == 1 and G.count_item("coal") == c0 + 1, "err='%s'" % kerr)
+	clear_tile(hm, 28, 34)
+	var jar: Dictionary = hm.add_obj(28, 34, "preserves_jar")
+	G.add_item("radish", 1, {"silent": true})
+	var jerr: String = G.machine_load(jar, "radish")
+	sleep()
+	var mid: bool = G.machine_ready(jar)
+	sleep()
+	check("Machines: Preserves Jar takes two days and survives saving", jerr == "" and not mid and G.machine_ready(jar) and G.machine_collect(jar) == 1 and G.count_item("preserves") == 1, "err='%s' mid=%s" % [jerr, mid])
+
+	# sprinklers and fertilizer
+	clear_tile(hm, 32, 32); clear_tile(hm, 33, 32); clear_tile(hm, 32, 33)
+	hm.add_obj(32, 32, "bucket_sprinkler")
+	hm.soil["33,32"] = {"w": 0, "crop": {"id": "radish", "g": 0}}
+	hm.soil["32,33"] = {"w": 0, "crop": {"id": "radish", "g": 0}, "fert": "mulch"}
+	G.state.weather_tomorrow = "sun"
+	sleep()
+	check("Sprinklers water nearby soil every morning", int(hm.soil["33,32"].w) == 1 and int(hm.soil["32,33"].w) == 1)
+	clear_tile(hm, 35, 32)
+	hm.soil["35,32"] = {"w": 0, "crop": null}
+	G.add_item("growth_tonic", 1, {"silent": true})
+	at("homestead", 34, 32, "right")
+	select("growth_tonic"); W.use_selected(0, false)
+	check("Fertilizer: Growth Tonic is spread on tilled soil", hm.soil["35,32"].get("fert", "") == "tonic" and G.count_item("growth_tonic") == 0)
+
+	# power
+	clear_tile(hm, 36, 26); clear_tile(hm, 38, 26)
+	var sentry: Dictionary = hm.add_obj(36, 26, "sentry_turret")
+	G.compute_power(hm)
+	var unpowered: bool = not sentry.get("powered", false)
+	var gen: Dictionary = hm.add_obj(38, 26, "generator", {"fuel": 3})
+	G.compute_power(hm)
+	check("Power: a fuelled generator powers a Salvaged Sentry within range", unpowered and sentry.get("powered", false))
+	hm.remove_obj(36, 26); hm.remove_obj(38, 26)
+
+	# crossbow and bombs
+	G.change_map("mine", 0, 0, "down", {"floor": 1})
+	G.enemies.clear(); clear_around()
+	G.state.inventory[10] = {"id": "scrap_crossbow", "qty": 1}
+	G.add_item("bolts", 5, {"silent": true})
+	e = W.spawn_enemy("shambler", 0, 0)
+	e.pos = G.player.pos + Vector2(40, 0); e.state = "stun"; e.t = 99.0; e.vel = Vector2.ZERO
+	G.player.dir = "right"
+	G.state.selected = 10; W.use_selected(0, false)
+	tick(600)
+	check("Scrap Crossbow fires bolts that hit the infected", G.count_item("bolts") == 4 and (G.enemies.is_empty() or int(e.hp) < int(Data.enemies.shambler.hp)), "hp=%s" % e.get("hp"))
+	G.enemies.clear()
+	var pt2: Vector2i = W.player_tile()
+	for dx in [2, 3]:
+		G.map.remove_obj(pt2.x + dx, pt2.y); G.map.set_tile(pt2.x + dx, pt2.y, "mfloor")
+	G.map.add_obj(pt2.x + 3, pt2.y, "rock")
+	G.player.dir = "right"
+	G.add_item("pipe_charge", 1, {"silent": true})
+	var pc_t := Vector2i(pt2.x + 1, pt2.y)
+	G.map.remove_obj(pc_t.x, pc_t.y); G.map.set_tile(pc_t.x, pc_t.y, "mfloor")
+	W.place_bomb(pc_t, "pipe_charge")
+	G.player.pos += Vector2(-48, 0)
+	G.map.remove_obj(pt2.x - 3, pt2.y); G.map.set_tile(pt2.x - 3, pt2.y, "mfloor")
+	tick(2500)
+	check("Pipe Charge explodes and breaks nearby rocks", G.map.get_obj(pt2.x + 3, pt2.y) == null and G.map.get_obj(pc_t.x, pc_t.y) == null)
+
+	# ---------- cooking expansion
+	start("adventure", 2)
+	var pie: Dictionary = {}
+	for x in Data.recipes:
+		if x.out == "pumpkin_pie": pie = x
+	var locked_pie: bool = not U.recipe_unlocked(pie)
+	G.state.npcs.ruth.points = 300
+	G.add_item("pumpkin", 1, {"silent": true}); G.add_item("bread_loaf", 1, {"silent": true})
+	at("house", 9, 3, "up")
+	W.interact_object(G.map.get_obj(9, 2))
+	U._craft(pie)
+	close_all()
+	var cooking_n: int = Data.recipes.filter(func(x): return x.station == "stove").size()
+	check("Cooking: %d stove recipes; friendship unlocks a neighbour's recipe" % cooking_n, cooking_n >= 20 and locked_pie and G.count_item("pumpkin_pie") == 1, "locked first=%s" % locked_pie)
+
+	# ---------- night raids
+	Balance.raids.grace_days = 4
+	start("survivor", 3)
+	hm = G.maps.homestead
+	G.state.day = 20
+	G.roll_raid(20)
+	var tries2 := 0
+	while not G.raid_tonight() and tries2 < 200:
+		G.roll_raid(20); tries2 += 1
+	var size0: int = int(G.state.raid.size)
+	check("Night raids: rolled for a night after the grace period, sized by the calendar", G.raid_tonight() and size0 >= 2, "size=%d" % size0)
+	var plot := []
+	for xx in range(30, 33):
+		for yy in range(30, 33):
+			clear_tile(hm, xx, yy)
+			hm.soil[GameMap.k(xx, yy)] = {"w": 1, "crop": {"id": "radish", "g": 1}}
+			plot.append(GameMap.k(xx, yy))
+	G.state.raid.size = 3
+	var lines: Array = G.resolve_raid(hm)
+	var trampled_n: int = plot.filter(func(k): return hm.soil[k].crop == null).size()
+	check("Night raids: an unprotected field gets trampled overnight", trampled_n > 0, "%d trampled | %s" % [trampled_n, " ".join(lines)])
+	for k in plot: hm.soil[k].crop = {"id": "radish", "g": 1}
+	var ring := []
+	for xx in range(29, 34):
+		for yy in range(29, 34):
+			if xx in [29, 33] or yy in [29, 33]:
+				clear_tile(hm, xx, yy)
+				ring.append(hm.add_obj(xx, yy, "stone_wall"))
+	G.state.raid = {"day": G.state.day, "size": 4, "spawned": false, "killed": 0, "warned": true}
+	lines = G.resolve_raid(hm)
+	var safe: bool = plot.all(func(k): return hm.soil[k].crop != null)
+	var hurt: int = ring.filter(func(o): return int(o.hp) < 90).size()
+	check("Night raids: a walled field stays safe and the walls take the damage", safe and hurt > 0, "hurt=%d | %s" % [hurt, " ".join(lines)])
+	clear_tile(hm, 27, 31)
+	var tur2: Dictionary = hm.add_obj(27, 31, "nail_turret", {"ammo_n": 80})
+	G.state.raid = {"day": G.state.day, "size": 2, "spawned": false, "killed": 0, "warned": true}
+	lines = G.resolve_raid(hm)
+	check("Night raids: loaded turrets stop raiders overnight and use ammo", int(tur2.ammo_n) == 70 and " ".join(lines).contains("turrets stopped 2"), " ".join(lines))
+	G.state.raid = {"day": G.state.day, "size": 3, "spawned": false, "killed": 0, "warned": false}
+	at("homestead", 20, 20, "down")
+	G.state.time = 1300
+	tick(7000 * 3)
+	var warned2: bool = G.state.raid.get("warned", false)
+	var raiders: int = G.enemies.filter(func(x): return x.get("raider", false)).size()
+	check("Night raids: a warning at dusk, then infected arrive at 10 pm if you're home", warned2 and raiders == 3, "raiders=%d" % raiders)
+	Balance.raids.grace_days = 99999
 
 	# ---------- title screens render
 	G.quit_to_title()

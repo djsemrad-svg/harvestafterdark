@@ -286,8 +286,8 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 	if t == "ore_rock": k += "|" + str(o.get("ore", ""))
 	if t in ["rock", "ore_rock", "geode_rock"]: k += "|" + str(o.get("palette", "field"))
 	if t in ["torch_post", "furnace", "crystal"]: k += "|%d" % (frame % 4)
-	if t == "fence": k += "|%d" % nb
 	if t == "window": k += "|%d" % (1 if frame > 0 else 0)
+	k += obj_state_key(o, nb, frame)
 	if not _obj.has(k):
 		var r := _draw_obj(o, season, frame, nb)
 		_obj[k] = {"tex": to_tex(r[0]), "ox": r[1], "oy": r[2]}
@@ -300,6 +300,9 @@ func rock_pal(p) -> Array:
 
 func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	var t: String = o.type
+	var dd: Dictionary = Data.obj_defs.get(t, {})
+	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "oil_lantern"]:
+		return _draw_defense(o, season, frame, nb)
 	var v: int = int(o.get("v", 0))
 	var pal: Dictionary = PAL.get(season, PAL.spring)
 	var x := img(16, 16)
@@ -404,14 +407,6 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 2, 4, 12, 10, "#8a5a2e"); R(x, 2, 4, 12, 4, "#a06a36"); R(x, 2, 8, 12, 1, "#5e3c1e")
 			R(x, 4, 4, 1, 10, "#4a4a52"); R(x, 11, 4, 1, 10, "#4a4a52"); R(x, 7, 7, 2, 3, "#d8b040")
 			return [outline(x, "#1e1410"), 0, -2]
-		"fence":
-			if nb & 1:
-				R(x, 0, 5, 7, 2, "#8a6a40"); R(x, 0, 10, 7, 2, "#8a6a40")
-			if nb & 2:
-				R(x, 9, 5, 7, 2, "#8a6a40"); R(x, 9, 10, 7, 2, "#8a6a40")
-			R(x, 6, 2, 4, 13, "#9a7a50"); R(x, 6, 2, 4, 1, "#b8946a"); R(x, 9, 3, 1, 12, "#6e5232")
-			if season == "winter": R(x, 6, 1, 4, 1, "#f4f8fc")
-			return [x, 0, -2]
 		"torch_post":
 			x = img(16, 24)
 			R(x, 7, 8, 2, 16, "#6a4a2e"); R(x, 5, 7, 6, 2, "#4a4a52")
@@ -921,6 +916,8 @@ func get_icon(id: String, tier: int = 0) -> ImageTexture:
 func icon_image(id: String, tier: int) -> Image:
 	var x := img(16, 16)
 	var it: Dictionary = Data.items.get(id, {})
+	if it.has("icon") and it.icon.s == "obj":
+		return outline(obj_icon(it.icon.obj), "#1a1414")
 	if it.has("icon"):
 		_draw_icon(x, it.icon, tier)
 	else:
@@ -1009,11 +1006,313 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			for i in range(4, 13, 3): P(x, i, 6, "#a8703a")
 		"dish": R(x, 1, 10, 14, 3, "#e8e8e0"); R(x, 2, 12, 12, 1, "#b8b8b0"); R(x, 3, 6, 10, 5, c); P(x, 5, 7, shade(c, 0.4)); R(x, 9, 5, 3, 2, "#62b04a")
 		"bowl": R(x, 2, 8, 12, 5, "#a8825a"); R(x, 4, 13, 8, 1, "#8a6a40"); R(x, 3, 6, 10, 3, c); P(x, 5, 6, shade(c, 0.4)); P(x, 9, 7, "#62b04a"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
+		"cup": R(x, 3, 6, 9, 8, "#e8e0d0"); R(x, 4, 7, 7, 3, c); R(x, 12, 8, 2, 4, "#e8e0d0"); R(x, 3, 14, 9, 1, "#b8b0a0"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
+		"pie": R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c); for i in 3: R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
+		"bar_snack": R(x, 2, 6, 12, 6, c); R(x, 2, 6, 12, 1, shade(c, 0.3)); P(x, 4, 8, "#e8d8a0"); P(x, 8, 9, "#8a2a4a"); P(x, 11, 8, "#e8d8a0"); R(x, 2, 12, 12, 1, shade(c, -0.3))
+		"nails": R(x, 2, 6, 12, 8, "#5a6a3e"); R(x, 2, 6, 12, 2, "#7a8a56"); for i in 5: R(x, 3 + i * 2, 2, 1, 5, "#a8a8b0"); P(x, 3 + i * 2, 2, "#d8d8e0")
+		"shells":
+			for i in 3: R(x, 2 + i * 4, 4, 3, 8, "#c83a2a"); R(x, 2 + i * 4, 4, 3, 1, "#e85a4a"); R(x, 2 + i * 4, 12, 3, 2, "#d8b040")
+		"bolts":
+			for i in 3: _diag(x, 2 + i * 3, 14, 10, 1, "#8a6a40"); P(x, 12 + i * 1, 4 - i, "#a8a8b0"); P(x, 2 + i * 3, 14, "#e8e0d0")
+		"crossbow": _diag(x, 2, 14, 11, 2, "#8a6a40"); R(x, 6, 3, 9, 2, "#6a6a74"); R(x, 3, 5, 2, 7, "#6a6a74"); _diag(x, 4, 11, 8, 1, "#e8e0d0")
+		"bandage": R(x, 3, 4, 10, 9, "#f0ece0"); R(x, 3, 7, 10, 3, "#d8d0c0"); R(x, 7, 5, 2, 7, "#c83a3a"); R(x, 5, 7, 6, 2, "#c83a3a")
+		"medkit": R(x, 2, 4, 12, 10, "#e8e0d0"); R(x, 2, 4, 12, 2, "#c8c0b0"); R(x, 6, 2, 4, 2, "#5a5a62"); R(x, 7, 6, 2, 6, "#c83a3a"); R(x, 5, 8, 6, 2, "#c83a3a")
+		"pipebomb": R(x, 3, 6, 10, 5, "#7a7a84"); R(x, 3, 6, 10, 1, "#9a9aa4"); R(x, 2, 5, 2, 7, "#5a5a62"); R(x, 12, 5, 2, 7, "#5a5a62"); R(x, 7, 2, 1, 4, "#c8b080")
+		"canister": R(x, 4, 4, 8, 11, "#c83a2a"); R(x, 4, 4, 8, 1, "#e85a4a"); R(x, 4, 8, 8, 2, "#e8c030"); R(x, 6, 2, 4, 2, "#5a5a62")
+		"sack": R(x, 3, 5, 10, 10, c); R(x, 4, 4, 8, 1, c); R(x, 5, 2, 6, 2, shade(c, -0.2)); R(x, 4, 8, 8, 1, shade(c, 0.2)); P(x, 6, 10, "#3f8a2f"); P(x, 9, 11, "#3f8a2f")
+		"tonic": R(x, 5, 6, 6, 9, "#8ad86a"); R(x, 6, 3, 4, 3, "#c8e8c0"); R(x, 6, 2, 4, 1, "#8a6a40"); P(x, 6, 7, "#e8ffe0")
+		"bait": R(x, 3, 6, 10, 8, "#8a6a40"); R(x, 3, 6, 10, 2, "#a8865a"); for i in 3: P(x, 5 + i * 3, 10, "#d87a8a"); P(x, 6 + i * 3, 11, "#d87a8a")
+		"jar": R(x, 4, 4, 8, 11, "#c8e0e8"); R(x, 4, 7, 8, 8, c); R(x, 4, 2, 8, 2, "#8a6a40"); P(x, 5, 5, "#ffffff")
 		"chest": R(x, 2, 5, 12, 9, "#8a5a2e"); R(x, 2, 5, 12, 3, "#a06a36"); R(x, 4, 5, 1, 9, "#4a4a52"); R(x, 11, 5, 1, 9, "#4a4a52"); R(x, 7, 8, 2, 2, "#d8b040")
 		"fence": R(x, 2, 3, 3, 11, "#9a7a50"); R(x, 11, 3, 3, 11, "#9a7a50"); R(x, 1, 6, 14, 2, "#8a6a40"); R(x, 1, 10, 14, 2, "#8a6a40")
 		"torch": R(x, 7, 6, 2, 9, "#6a4a2e"); R(x, 6, 4, 4, 3, "#f08a2a"); R(x, 7, 2, 2, 3, "#f8e070")
 		"path": R(x, 2, 2, 5, 5, "#8a8a90"); R(x, 9, 3, 5, 4, "#7e7e86"); R(x, 3, 9, 4, 5, "#7e7e86"); R(x, 9, 9, 5, 5, "#8a8a90")
 		_: R(x, 4, 4, 8, 8, c)
+
+# ---------------------------------------------------------------- defenses, machines and survival gear
+## Extra cache key for objects whose look depends on their state.
+func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
+	var d: Dictionary = Data.obj_defs.get(o.type, {})
+	var k := ""
+	if d.get("barrier", false):
+		k += "|%d|%d|%s" % [nb, damage_level(o), o.get("open", false)]
+	if d.has("power") or d.has("power_source"):
+		var live: bool = o.get("powered", false) or (d.has("power_source") and (int(o.get("fuel", 0)) > 0 or d.get("solar", false)))
+		k += "|p%s|%d" % [live, frame % 4 if live else 0]
+	if d.get("machine", false):
+		var j = o.get("job")
+		k += "|j%d|%d" % [0 if j == null else 1, frame % 4 if j != null else 0]
+		if o.type == "rain_collector": k += "|w%d" % int(o.get("water", 0))
+	if d.has("bomb"): k += "|%d" % (frame % 4)
+	return k
+
+func damage_level(o: Dictionary) -> int:
+	if o.get("broken", false): return 3
+	var mx: int = Data.obj_defs.get(o.type, {}).get("max_hp", 1)
+	var f: float = float(o.get("hp", mx)) / mx
+	return 0 if f > 0.66 else (1 if f > 0.33 else 2)
+
+func _crack(x: Image, level: int, seed_v: int, y0: int, y1: int) -> void:
+	for i in level * 4:
+		var px := 2 + int(hash2(i, seed_v, 61) * 12)
+		var py := y0 + int(hash2(i, seed_v, 62) * (y1 - y0))
+		x.set_pixel(px, py, Color(0, 0, 0, 0) if i % 3 == 0 else Color("#2a2018"))
+		if level >= 2: P(x, px + 1, py + 1, "#2a2018")
+
+func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
+	var t: String = o.type
+	var x := img(16, 16)
+	var dmg := damage_level(o) if Data.obj_defs.get(t, {}).get("barrier", false) else 0
+	var sd := int(o.get("x", 0)) * 7 + int(o.get("y", 0)) * 13
+	var snow := season == "winter"
+	var weed: Array = PAL.get(season, PAL.spring).weed
+	var powered: bool = o.get("powered", false)
+	var f := frame % 4
+	if dmg == 3:
+		# broken: a low heap of whatever it was made of
+		var heap = {"fence": "#8a6a40", "wood_gate": "#8a6a40", "sandbag_wall": "#c8b484", "stone_wall": "#8a8a90", "barbed_fence": "#7a5a3a", "electric_fence": "#7a7a84", "reinforced_wall": "#a8a8a0"}.get(t, "#8a6a40")
+		R(x, 2, 11, 12, 4, heap); R(x, 4, 10, 6, 1, shade(heap, 0.15)); R(x, 2, 14, 12, 1, shade(heap, -0.3))
+		R(x, 1, 12, 3, 1, shade(heap, -0.15)); R(x, 11, 9, 2, 3, shade(heap, -0.1))
+		if t in ["barbed_fence", "electric_fence"]:
+			for i in 6: P(x, 3 + i * 2, 9 + i % 2, "#a8a8b0")
+		return [outline(x, "#1a1410"), 0, 0]
+	match t:
+		"fence":
+			var rail := "#8a6a40"
+			if nb & 1: R(x, 0, 5, 7, 2, rail); R(x, 0, 10, 7, 2, rail)
+			if nb & 2: R(x, 9, 5, 7, 2, rail); R(x, 9, 10, 7, 2, rail)
+			if nb & 4: R(x, 7, 0, 2, 3, rail)
+			if nb & 8: R(x, 7, 14, 2, 2, rail)
+			R(x, 6, 2, 4, 13, "#9a7a50"); R(x, 6, 2, 4, 1, "#b8946a"); R(x, 9, 3, 1, 12, "#6e5232")
+			if snow: R(x, 6, 1, 4, 1, "#f4f8fc")
+			_crack(x, dmg, sd, 3, 14)
+			return [x, 0, -2]
+		"wood_gate":
+			R(x, 0, 2, 3, 13, "#9a7a50"); R(x, 13, 2, 3, 13, "#9a7a50"); R(x, 0, 2, 3, 1, "#b8946a"); R(x, 13, 2, 3, 1, "#b8946a")
+			if o.get("open", false):
+				R(x, 3, 4, 2, 10, "#a8865a"); R(x, 3, 4, 2, 1, "#c8a47a")
+			else:
+				for py in [4, 7, 10]: R(x, 3, py, 10, 2, "#a8865a"); R(x, 3, py, 10, 1, "#c8a47a")
+				for i in 8: P(x, 4 + i, 11 - i, "#7a5a3a")
+				P(x, 11, 8, "#4a4a52")
+			_crack(x, dmg, sd, 4, 13)
+			return [outline(x, "#1e1410"), 0, -2]
+		"sandbag_wall":
+			x = img(16, 18)
+			for row in 3:
+				var off := 0 if row % 2 == 0 else -4
+				for j in 3:
+					var bx := off + j * 8 + (0 if nb & 1 or row % 2 == 0 else 0)
+					R(x, bx, 13 - row * 5, 9, 5, "#c8b484"); R(x, bx, 13 - row * 5, 9, 1, "#ddc99a"); R(x, bx, 17 - row * 5, 9, 1, "#9a8a64"); P(x, bx + 2, 15 - row * 5, "#9a8a64")
+			if not (nb & 1): R(x, 0, 0, 2, 18, Color(0, 0, 0, 0))
+			if not (nb & 2): R(x, 14, 0, 2, 18, Color(0, 0, 0, 0))
+			for yy in 18:
+				for xx in 16:
+					if x.get_pixel(xx, yy).a > 0 and x.get_pixel(xx, yy).a < 0.5: x.set_pixel(xx, yy, Color(0, 0, 0, 0))
+			_crack(x, dmg, sd, 4, 16)
+			return [outline(x, "#2a2214"), 0, -2]
+		"stone_wall":
+			x = img(16, 20)
+			R(x, 0, 2, 16, 18, "#8a8a92")
+			for row in 5:
+				var py := 2 + row * 4
+				R(x, 0, py, 16, 1, "#6a6a72")
+				var off := 0 if row % 2 == 0 else 4
+				for bx in range(off, 16, 8): R(x, bx, py, 1, 4, "#6a6a72")
+				for bx in range(off + 1, 16, 8): R(x, bx, py + 1, 5, 1, "#a2a2aa")
+			R(x, 0, 0, 16, 3, "#9a9aa2"); R(x, 0, 0, 16, 1, "#b2b2ba")
+			if not (nb & 1): R(x, 0, 0, 1, 20, Color(0, 0, 0, 0))
+			if not (nb & 2): R(x, 15, 0, 1, 20, Color(0, 0, 0, 0))
+			if season in ["spring", "summer"]: P(x, 3 + int(hash2(1, sd, 3) * 10), 17, weed[0]); P(x, 4 + int(hash2(2, sd, 3) * 10), 16, weed[1])
+			if snow: R(x, 0, 0, 16, 2, "#f4f8fc")
+			_crack(x, dmg, sd, 4, 18)
+			return [outline(x, "#1a1a1e"), 0, -4]
+		"barbed_fence":
+			R(x, 6, 2, 3, 13, "#7a5a3a"); R(x, 6, 2, 3, 1, "#9a7a50")
+			for py in [5, 8, 11]:
+				var x0 := 0 if nb & 1 else 6
+				var x1 := 16 if nb & 2 else 9
+				R(x, x0, py, x1 - x0, 1, "#8a8a92")
+				for bx in range(x0 + 1, x1, 3): P(x, bx, py - 1, "#b8b8c0"); P(x, bx, py + 1, "#6a6a72")
+			if nb & 4: R(x, 7, 0, 1, 3, "#8a8a92")
+			if nb & 8: R(x, 7, 14, 1, 2, "#8a8a92")
+			_crack(x, dmg, sd, 3, 14)
+			return [x, 0, -2]
+		"electric_fence":
+			R(x, 7, 1, 2, 14, "#6a6a74"); R(x, 7, 1, 2, 1, "#9a9aa4")
+			for py in [4, 7, 10]:
+				var x0 := 0 if nb & 1 else 6
+				var x1 := 16 if nb & 2 else 10
+				R(x, x0, py, x1 - x0, 1, "#c89a3a")
+				P(x, 6, py, "#f0f0f0"); P(x, 9, py, "#f0f0f0")
+			if int(o.get("v", 0)) == 0:
+				R(x, 9, 11, 5, 4, "#e8c030"); P(x, 11, 12, "#1a1a1a"); P(x, 11, 13, "#1a1a1a")
+			if powered:
+				var sx := 2 + f * 3
+				P(x, sx, 4 + f % 3 * 3, "#a8e8ff"); P(x, sx + 1, 3 + f % 3 * 3, "#ffffff")
+			_crack(x, dmg, sd, 3, 14)
+			return [x, 0, -2]
+		"reinforced_wall":
+			x = img(16, 18)
+			for yy in 16:
+				var inset := int(yy * 0.15)
+				R(x, 3 - inset, 2 + yy, 10 + inset * 2, 1, "#b0aea4" if yy < 12 else "#9a988e")
+			R(x, 1, 13, 14, 2, "#e8c030")
+			for i in 4: R(x, 2 + i * 4, 13, 2, 2, "#2a2a2a")
+			R(x, 5, 4, 6, 5, "#6a7060"); P(x, 6, 5, "#9aa090"); P(x, 9, 7, "#3a3e34")
+			if nb & 1: R(x, 0, 6, 3, 10, "#a2a096")
+			if nb & 2: R(x, 13, 6, 3, 10, "#a2a096")
+			if snow: R(x, 3, 1, 10, 2, "#f4f8fc")
+			_crack(x, dmg, sd, 3, 15)
+			return [outline(x, "#1a1a1a"), 0, -2]
+		# ---- turrets: homemade low tiers, restored military high tiers
+		"nail_turret":
+			x = img(16, 22)
+			R(x, 3, 14, 2, 8, "#8a6a40"); R(x, 11, 14, 2, 8, "#8a6a40"); R(x, 7, 15, 2, 7, "#7a5a36")
+			R(x, 4, 8, 9, 7, "#c06a2a"); R(x, 4, 8, 9, 1, "#d8823a"); R(x, 5, 10, 7, 1, "#8a8a92")
+			R(x, 12, 9, 4, 2, "#7a7a84"); R(x, 15, 9, 1, 2, "#3a3a40")
+			R(x, 6, 12, 5, 2, "#a8a8b0")                                  # tape
+			R(x, 2, 15, 4, 4, "#5a6a3a"); P(x, 3, 16, "#d8c040")          # ammo tin
+			return [outline(x, "#1a1410"), 0, -6]
+		"shotgun_turret":
+			x = img(16, 22)
+			R(x, 1, 17, 14, 5, "#2a2a2c"); R(x, 1, 17, 14, 1, "#4a4a4e"); R(x, 5, 18, 6, 3, "#151516")
+			R(x, 6, 12, 4, 6, "#5a5a62")
+			R(x, 2, 6, 12, 8, "#9a6a48"); R(x, 2, 6, 12, 1, "#b8865a")
+			for p in [[3, 7], [12, 7], [3, 12], [12, 12]]: P(x, p[0], p[1], "#e0c8a0")
+			R(x, 10, 3, 6, 2, "#4a4a52"); R(x, 10, 5, 6, 1, "#3a3a40"); R(x, 6, 4, 5, 3, "#6a4a2a")
+			return [outline(x, "#121212"), 0, -6]
+		"sentry_turret":
+			x = img(16, 22)
+			R(x, 2, 17, 2, 5, "#3e4a2e"); R(x, 12, 17, 2, 5, "#3e4a2e"); R(x, 7, 16, 2, 6, "#3e4a2e")
+			R(x, 3, 8, 10, 9, "#5a6a3e"); R(x, 3, 8, 10, 1, "#7a8a56"); R(x, 3, 16, 10, 1, "#3e4a2e")
+			R(x, 5, 11, 4, 1, "#e8e8d8"); R(x, 5, 13, 2, 1, "#e8e8d8")   # stencil marks
+			R(x, 12, 9, 4, 3, "#3a3a40"); R(x, 15, 10, 1, 1, "#1a1a1a")
+			R(x, 4, 4, 8, 4, "#4a5a34"); R(x, 6, 5, 3, 2, "#202820")
+			P(x, 11, 5, "#50e050" if powered else "#a03030")
+			return [outline(x, "#121410"), 0, -6]
+		"arc_pylon":
+			x = img(16, 30)
+			R(x, 3, 26, 10, 4, "#4a4a50"); for i in 5: R(x, 3 + i * 2, 26, 1, 4, "#e8c030")
+			R(x, 7, 8, 2, 18, "#7a7a84"); R(x, 7, 8, 1, 18, "#9a9aa4")
+			for ry in [12, 16, 20]: R(x, 4, ry, 8, 2, "#c87a3a"); R(x, 4, ry, 8, 1, "#e09a5a")
+			var orb := "#7ae0ff" if powered else "#6a7078"
+			R(x, 4, 2, 8, 7, orb); R(x, 5, 1, 6, 9, orb); P(x, 6, 3, "#e8fcff" if powered else "#9aa0a8")
+			if powered: P(x, 2 + f * 3, 4 + f % 2 * 3, "#c8f8ff")
+			return [outline(x, "#121418"), 0, -14]
+		# ---- power
+		"generator":
+			R(x, 1, 5, 14, 9, "#c8a030"); R(x, 1, 5, 14, 1, "#e0b848"); R(x, 2, 7, 6, 5, "#3a3a40"); R(x, 3, 8, 4, 1, "#6a6a74"); R(x, 3, 10, 4, 1, "#6a6a74")
+			R(x, 10, 7, 3, 3, "#5a5a62"); R(x, 12, 1, 2, 5, "#4a4a52")
+			R(x, 2, 14, 3, 2, "#202020"); R(x, 11, 14, 3, 2, "#202020")
+			var on: bool = int(o.get("fuel", 0)) > 0
+			P(x, 11, 8, "#50e050" if on else "#a03030")
+			if on and f % 2 == 0: P(x, 12, 0, "#8a8a8a"); P(x, 13, 0, "#aaaaaa")
+			return [outline(x, "#1a1608"), 0, -2]
+		"solar_panel":
+			R(x, 7, 9, 2, 6, "#5a5a62"); R(x, 4, 14, 8, 2, "#4a4a52")
+			for yy in 8:
+				R(x, 1 + yy / 2, 2 + yy, 14 - yy / 2, 1, "#2f5a9a" if yy % 3 else "#8ab0d8")
+			for xx in range(3, 15, 4): R(x, xx, 2, 1, 8, "#8ab0d8")
+			P(x, 3, 3, "#e8f4ff")
+			return [outline(x, "#121620"), 0, -2]
+		"floodlight":
+			x = img(16, 28)
+			R(x, 7, 8, 2, 18, "#4a4a52"); R(x, 4, 25, 8, 3, "#3a3a40")
+			R(x, 3, 2, 10, 7, "#3a3a40"); R(x, 4, 3, 8, 5, "#f8f0c0" if powered else "#8a8a80")
+			if powered: P(x, 5, 4, "#ffffff")
+			return [outline(x, "#121214"), 0, -12]
+		"oil_lantern":
+			x = img(16, 26)
+			R(x, 7, 6, 2, 20, "#5a3e26"); R(x, 7, 6, 7, 2, "#5a3e26"); R(x, 4, 24, 8, 2, "#4a3a2a")
+			R(x, 11, 8, 4, 6, "#3a3a40"); R(x, 12, 9, 2, 4, "#f8c040" if f % 2 == 0 else "#f8d860"); R(x, 11, 14, 4, 1, "#2a2a30")
+			return [outline(x, "#1a1410"), 0, -10]
+		# ---- sprinklers
+		"bucket_sprinkler":
+			R(x, 4, 7, 8, 7, "#c87a3a"); R(x, 4, 7, 8, 1, "#e09a5a"); R(x, 5, 9, 6, 1, "#8a4a22"); R(x, 7, 3, 2, 4, "#7a7a84"); R(x, 5, 3, 6, 1, "#9a9aa4")
+			return [outline(x, "#1a1410"), 0, -1]
+		"pressure_sprinkler":
+			R(x, 4, 7, 8, 7, "#a8a8b4"); R(x, 4, 7, 8, 1, "#c8c8d0"); R(x, 6, 9, 4, 3, "#f0f0f0"); P(x, 8, 10, "#c83a3a"); R(x, 7, 3, 2, 4, "#7a7a84"); R(x, 4, 3, 8, 1, "#9a9aa4")
+			return [outline(x, "#121214"), 0, -1]
+		"drip_array":
+			R(x, 1, 7, 14, 2, "#6a6a74"); R(x, 7, 1, 2, 14, "#6a6a74"); R(x, 5, 5, 6, 6, "#8a8a94"); R(x, 6, 6, 4, 4, "#b070e0"); P(x, 7, 7, "#e0c8f8")
+			for p in [[1, 9], [14, 9], [7, 0], [8, 15]]: P(x, p[0], p[1], "#8ac8e8")
+			return [outline(x, "#121214"), 0, 0]
+		# ---- stations and machines
+		"ammo_bench":
+			R(x, 0, 6, 16, 3, "#9a7a50"); R(x, 0, 6, 16, 1, "#b8946a"); R(x, 1, 9, 2, 7, "#6e5232"); R(x, 13, 9, 2, 7, "#6e5232"); R(x, 3, 11, 10, 1, "#6e5232")
+			R(x, 2, 3, 4, 3, "#4a4a52"); R(x, 3, 2, 2, 1, "#6a6a74")             # vise
+			R(x, 8, 4, 2, 2, "#c83a3a"); R(x, 10, 4, 2, 2, "#c83a3a"); R(x, 8, 4, 4, 1, "#d8b040")   # shells
+			R(x, 4, 12, 6, 3, "#5a6a3e"); P(x, 5, 13, "#d8c040")
+			return [outline(x, "#1a1410"), 0, -1]
+		"recycler":
+			R(x, 3, 3, 10, 12, "#4a7a5a"); R(x, 3, 3, 10, 2, "#5a9a6a"); R(x, 2, 2, 12, 2, "#3a5a44")
+			R(x, 6, 7, 4, 4, "#e8e8d8"); R(x, 7, 8, 2, 2, "#4a7a5a")
+			R(x, 13, 6, 2, 1, "#7a7a84"); R(x, 14, 6, 1, 4, "#7a7a84")
+			if o.get("job") != null: P(x, 5 + f, 13, "#e8e8d8")
+			return [outline(x, "#121a14"), 0, -1]
+		"charcoal_kiln":
+			x = img(16, 18)
+			for yy in 14:
+				var w: int = int(14 - abs(yy - 9) * 0.6) if yy < 9 else 14
+				R(x, 8 - w / 2, 4 + yy, w, 1, "#9a5a3a" if yy % 3 else "#7a4a2e")
+			R(x, 6, 12, 5, 6, "#2a1a12")
+			if o.get("job") != null: R(x, 7, 14, 3, 3, "#e86a2a" if f % 2 else "#f8a040"); P(x, 8, 2 - f % 2, "#8a8a8a")
+			R(x, 7, 1, 3, 3, "#6a4a2e")
+			return [outline(x, "#1a1008"), 0, -2]
+		"brick_furnace":
+			x = img(16, 22)
+			R(x, 2, 6, 12, 16, "#a85a3a")
+			for row in 8:
+				R(x, 2, 6 + row * 2, 12, 1, "#8a4a2e")
+			R(x, 5, 0, 6, 7, "#9a5236"); R(x, 4, 0, 8, 2, "#7a4228")
+			R(x, 5, 13, 6, 6, "#2a1a12")
+			if o.get("job") != null: R(x, 6, 15, 4, 4, "#f8c040" if f % 2 else "#e86a2a")
+			return [outline(x, "#1a1008"), 0, -6]
+		"rain_collector":
+			x = img(16, 20)
+			R(x, 3, 7, 10, 13, "#6a5236"); R(x, 3, 9, 10, 1, "#4a4a52"); R(x, 3, 16, 10, 1, "#4a4a52"); R(x, 4, 7, 2, 13, "#7a6246")
+			R(x, 0, 3, 16, 3, "#3f6a8a"); R(x, 0, 3, 16, 1, "#5a88a8"); R(x, 6, 6, 4, 2, "#3f6a8a")
+			var w := int(o.get("water", 0))
+			for i in w: P(x, 12, 18 - i * 2, "#8ac8e8")
+			return [outline(x, "#121418"), 0, -4]
+		"smoker":
+			x = img(16, 20)
+			R(x, 2, 8, 12, 11, "#4a4a52"); R(x, 2, 8, 12, 1, "#6a6a74"); R(x, 4, 11, 8, 5, "#2a2a30"); R(x, 4, 13, 8, 1, "#5a5a62")
+			R(x, 10, 2, 2, 6, "#3a3a40")
+			if o.get("job") != null: P(x, 10 + f % 2, 1, "#9a9a9a"); P(x, 11, 0, "#bababa"); R(x, 5, 14, 6, 2, "#a8602a")
+			R(x, 3, 19, 2, 1, "#2a2a30"); R(x, 11, 19, 2, 1, "#2a2a30")
+			return [outline(x, "#121214"), 0, -4]
+		"preserves_jar":
+			x = img(16, 18)
+			R(x, 2, 15, 12, 3, "#8a6a40"); R(x, 3, 4, 10, 11, "#c8e0e8"); R(x, 4, 3, 8, 1, "#c8e0e8"); R(x, 4, 2, 8, 2, "#8a6a40")
+			if o.get("job") != null: R(x, 4, 8, 8, 7, "#c8402a"); R(x, 4, 8, 8, 1, "#e06a4a")
+			P(x, 4, 5, "#ffffff"); R(x, 4, 6, 1, 3, "#e8f4fc")
+			return [outline(x, "#1a1410"), 0, -2]
+		"pipe_charge_lit":
+			R(x, 4, 8, 8, 5, "#7a7a84"); R(x, 4, 8, 8, 1, "#9a9aa4"); R(x, 3, 7, 2, 7, "#5a5a62"); R(x, 11, 7, 2, 7, "#5a5a62")
+			R(x, 7, 5, 1, 3, "#c8b080"); P(x, 7, 4 - f % 2, "#f8e070"); P(x, 6 + f % 3, 3, "#f08a2a")
+			return [outline(x, "#121214"), 0, 0]
+		"blast_canister_lit":
+			R(x, 4, 5, 8, 10, "#c83a2a"); R(x, 4, 5, 8, 1, "#e85a4a"); R(x, 4, 9, 8, 2, "#e8c030"); R(x, 6, 3, 4, 2, "#5a5a62")
+			R(x, 8, 1, 1, 2, "#c8b080"); P(x, 8, 0, "#f8e070" if f % 2 else "#f08a2a")
+			return [outline(x, "#121214"), 0, 0]
+	return [x, 0, 0]
+
+## Icon from an object's art: cropped and fitted into 16x16.
+func obj_icon(type: String) -> Image:
+	var r := _draw_obj({"type": type, "x": 0, "y": 0, "v": 0, "powered": true, "fuel": 1, "hp": Data.obj_defs.get(type, {}).get("max_hp", 1)}, "spring", 0, 3)
+	var src: Image = r[0]
+	var used := src.get_used_rect()
+	if used.size.x <= 0:
+		return img(16, 16)
+	var part := src.get_region(used)
+	var sc: float = min(1.0, 16.0 / max(used.size.x, used.size.y))
+	if sc < 1.0:
+		part.resize(max(1, int(used.size.x * sc)), max(1, int(used.size.y * sc)), Image.INTERPOLATE_NEAREST)
+	var out := img(16, 16)
+	out.blit_rect(part, Rect2i(Vector2i.ZERO, part.get_size()), Vector2i((16 - part.get_width()) / 2, (16 - part.get_height()) / 2))
+	return out
 
 # ---------------------------------------------------------------- buildings
 # Every structure has a condition from 0 to 4 (see Data.CONDITIONS):

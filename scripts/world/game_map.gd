@@ -84,6 +84,8 @@ func add_obj(x: int, y: int, type: String, extra := {}) -> Dictionary:
 	var def: Dictionary = Data.obj_defs.get(type, {})
 	if not o.has("hp") and def.has("hp"):
 		o.hp = def.hp
+	if not o.has("hp") and def.has("max_hp"):
+		o.hp = def.max_hp
 	objects[k(x, y)] = o
 	var ow: int = o.get("w", 1)
 	var oh: int = o.get("h", 1)
@@ -137,6 +139,8 @@ func is_solid(x: int, y: int) -> bool:
 	if o != null:
 		if o.type == "part":
 			return true
+		if o.get("broken", false) or o.get("open", false):
+			return false
 		if Data.obj_defs.get(o.type, {}).get("solid", false):
 			return true
 	return false

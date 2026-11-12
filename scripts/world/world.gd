@@ -99,6 +99,9 @@ func step(dt: float) -> void:
 		update_enemies(dt)
 	if Game.overlay_open():
 		return
+	update_defenses(dt)
+	update_projectiles(dt)
+	update_bombs(dt)
 	update_drops(dt)
 	update_particles(dt)
 
@@ -160,12 +163,16 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	var it: Dictionary = Data.items[s.id]
 	var t := target_tile(from_mouse)
 	if it.has("tool"): use_tool(it.tool, level, t)
-	elif it.has("weapon"): swing_weapon(it)
+	elif it.has("weapon"):
+		if it.weapon.has("ranged"): fire_ranged(it)
+		else: swing_weapon(it)
 	elif it.cat == "seed": plant_at(t, s.id)
+	elif it.has("fert"): apply_fert(t, s.id)
+	elif it.has("bomb"): place_bomb(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
 	elif it.has("edible"):
 		var id: String = s.id
-		Game.ui.confirm(("Drink " if it.get("drink", false) else "Eat ") + it.name + "?", func(): Game.eat_item(id))
+		Game.ui.confirm(it.get("use_word", "Drink" if it.get("drink", false) else "Eat") + " " + it.name + "?", func(): Game.eat_item(id))
 	elif it.cat == "geode":
 		Game.toast("Ines at Varga Forge can crack geodes open.", s.id)
 
@@ -280,8 +287,15 @@ func hit_object(o: Dictionary, tool: String, power: int, tier: int) -> void:
 		if def.has("storage") and o.get("items", []).any(func(x): return x != null):
 			Game.toast("Empty the chest before moving it.", "", "warn")
 			return
+		if o.get("job") != null:
+			Game.toast("Wait until it finishes, then collect what's inside.", "", "warn")
+			return
+		var at := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 8)
 		Game.map.remove_obj(int(o.x), int(o.y))
-		spawn_drop(def.returns, 1, Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 8))
+		spawn_drop(def.returns, 1, at)
+		if int(o.get("ammo_n", 0)) > 0: spawn_drop(def.ammo, int(o.ammo_n), at)
+		if int(o.get("fuel", 0)) > 0: spawn_drop("coal", int(o.fuel), at)
+		if int(o.get("water", 0)) > 0: spawn_drop("water_bottle", int(o.water), at)
 		Sfx.play("pick")
 		return
 	if def.get("tool", "") != tool and def.get("tool", "") != "any":
@@ -407,8 +421,8 @@ func place_at(t: Vector2i, id: String) -> void:
 	if not m.placeable:
 		Game.toast("You can only place that on your own property.", id, "warn")
 		return
-	if m.id == "house" and it.place != "chest":
-		Game.toast("Only storage chests fit indoors for now.", id, "warn")
+	if m.id == "house" and not it.place in ["chest", "ammo_bench", "recycler", "smoker", "preserves_jar"]:
+		Game.toast("That belongs outside.", id, "warn")
 		return
 	if not m.tile_free(t.x, t.y):
 		Game.toast("Something is in the way.", id, "warn")
@@ -606,6 +620,8 @@ func kill_enemy(e: Dictionary) -> void:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
+	if e.get("raider", false) and Game.raid_tonight():
+		Game.state.raid.killed = int(Game.state.raid.killed) + 1
 
 func spawn_enemy(type: String, tx: int, ty: int) -> Dictionary:
 	var e := {"type": type, "pos": Vector2(tx * 16 + 8, ty * 16 + 14), "hp": Data.enemies[type].hp, "state": "wander", "t": 0.0, "dir": "down",
@@ -646,7 +662,25 @@ func update_enemies(dt: float) -> void:
 		var to: Vector2 = p.pos - e.pos
 		var dist = max(to.length(), 0.001)
 		e.flash = max(0.0, e.flash - dt)
+		e.zap = max(0.0, e.get("zap", 0.0) - dt)
 		var mv := Vector2.ZERO
+		if e.get("raider", false) and dist > d.sight and e.state in ["wander", "chase"]:
+			# raiders head for the farmhouse and break through whatever is in the way
+			e.state = "wander"
+			var goal: Vector2 = e.goal
+			var tg: Vector2 = goal - e.pos
+			mv = tg.normalized() * d.wander_speed * 1.3 if tg.length() > 6 else Vector2.ZERO
+			var before: Vector2 = e.pos
+			if mv != Vector2.ZERO:
+				move_entity(e, mv * dt, 4, 5)
+			if before.distance_to(e.pos) < mv.length() * dt * 0.3:
+				raider_push(e, mv, dt)
+			_touch_fences(e, dt)
+			e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
+			e.walk_t += dt
+			e.frame = int(e.walk_t / 0.2) % 4 if mv != Vector2.ZERO else 0
+			if dist < d.sight: e.state = "chase"
+			continue
 		match e.state:
 			"wander":
 				e.wt -= dt
@@ -689,7 +723,11 @@ func update_enemies(dt: float) -> void:
 				e.vel *= 0.88
 				if e.t <= 0: e.state = "chase"
 		if mv != Vector2.ZERO:
+			var before2: Vector2 = e.pos
 			move_entity(e, mv * dt, 4, 5)
+			if e.get("raider", false) and e.state == "chase" and before2.distance_to(e.pos) < mv.length() * dt * 0.3:
+				raider_push(e, mv, dt)
+			_touch_fences(e, dt)
 			e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
 			e.walk_t += dt
 			e.frame = int(e.walk_t / 0.2) % 4
@@ -703,6 +741,289 @@ func bite(e: Dictionary) -> void:
 		Game.player_bitten()
 	else:
 		Game.damage_player(Data.enemies[e.type].damage, e.pos, "infected")
+
+
+# ================================================================ defenses, raids, projectiles and bombs
+var _def_t := 0.0
+var _turrets := []
+var _fences := []
+
+func update_defenses(dt: float) -> void:
+	var m: GameMap = Game.map
+	_def_t -= dt
+	if _def_t <= 0:
+		_def_t = 0.5
+		Game.compute_power(m)
+		_turrets.clear()
+		_fences.clear()
+		for kk in m.objects:
+			var o: Dictionary = m.objects[kk]
+			if o.type == "part": continue
+			var d: Dictionary = Data.obj_defs.get(o.type, {})
+			if d.get("turret", false): _turrets.append(o)
+			elif d.has("electric") or d.has("barbed"): _fences.append(o)
+	for i in range(Game.arcs.size() - 1, -1, -1):
+		Game.arcs[i].t -= dt
+		if Game.arcs[i].t <= 0: Game.arcs.remove_at(i)
+	if Game.enemies.is_empty():
+		return
+	for o in _turrets:
+		var d: Dictionary = Data.obj_defs[o.type]
+		o.cd = float(o.get("cd", 0.0)) - dt
+		o.flash = max(0.0, float(o.get("flash", 0.0)) - dt)
+		if o.cd > 0: continue
+		var has_ammo: bool = int(o.get("ammo_n", 0)) > 0 if d.has("ammo") else o.get("powered", false)
+		if not has_ammo: continue
+		var muzzle := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 2)
+		var best = null
+		var bd: float = d.range * 16.0
+		for e in Game.enemies:
+			var dd: float = (e.pos - Vector2(0, 10)).distance_to(muzzle)
+			if dd < bd:
+				bd = dd
+				best = e
+		if best == null: continue
+		o.cd = d.rate
+		o.flash = 0.08
+		o.aim = (best.pos - Vector2(0, 10) - muzzle).angle()
+		if d.has("ammo"): o.ammo_n = int(o.ammo_n) - 1
+		if d.has("chain"):
+			var hit := [best]
+			var last: Vector2 = muzzle
+			for i in int(d.chain):
+				var tgt = hit[i] if i < hit.size() else null
+				if tgt == null: break
+				Game.arcs.append({"a": last, "b": tgt.pos - Vector2(0, 10), "t": 0.15})
+				last = tgt.pos - Vector2(0, 10)
+				damage_enemy(tgt, int(d.damage), Vector2.ZERO)
+				var nxt = null
+				var nd := 56.0
+				for e2 in Game.enemies:
+					if hit.has(e2): continue
+					var dd2: float = e2.pos.distance_to(tgt.pos)
+					if dd2 < nd:
+						nd = dd2
+						nxt = e2
+				if nxt != null: hit.append(nxt)
+			Sfx.play("hit")
+		else:
+			var dir: Vector2 = Vector2.from_angle(o.aim)
+			var n: int = d.get("pellets", 1)
+			for i in n:
+				var spread := (i - (n - 1) / 2.0) * 0.16
+				Game.projectiles.append({"pos": muzzle, "vel": dir.rotated(spread) * 320.0, "dmg": max(1, int(d.damage / float(n) + 0.5)) if n > 1 else int(d.damage), "life": d.range * 16.0 / 320.0 + 0.05, "kind": "round"})
+			Sfx.play("swing")
+
+## Raiders that bump into a barrier claw at it until it breaks.
+func raider_push(e: Dictionary, mv: Vector2, dt: float) -> void:
+	var ahead: Vector2 = e.pos + mv.normalized() * 10 + Vector2(0, -3)
+	var o = Game.map.get_obj(int(floor(ahead.x / 16)), int(floor(ahead.y / 16)))
+	if o == null or not Data.obj_defs.get(o.type, {}).get("barrier", false) or o.get("broken", false):
+		# slide around natural obstacles
+		e.wander = mv.rotated(PI / 2 if Game.rng.randf() < 0.5 else -PI / 2)
+		move_entity(e, e.wander * dt, 4, 5)
+		return
+	e.claw = float(e.get("claw", 0.0)) - dt
+	if e.claw > 0:
+		return
+	e.claw = Balance.raids.live_attack_sec
+	o.shake = 0.2
+	Sfx.play("chop")
+	var d: Dictionary = Data.obj_defs[o.type]
+	if d.has("barbed"):
+		damage_enemy(e, int(d.barbed), -mv.normalized() * 20)
+	if Game.barrier_hit(o, Balance.raids.live_barrier_damage):
+		Game.toast("The infected broke through your %s!" % d.name, "", "bad")
+		burst(Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 8), Color("#8a6040"), 10)
+
+## Electric fences shock anything that touches them while powered.
+func _touch_fences(e: Dictionary, _dt: float) -> void:
+	if e.get("zap", 0.0) > 0: return
+	for o in _fences:
+		if not Data.obj_defs[o.type].has("electric") or not o.get("powered", false) or o.get("broken", false): continue
+		var c := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 10)
+		if e.pos.distance_to(c) < 15:
+			e.zap = 1.0
+			Game.arcs.append({"a": c + Vector2(0, -6), "b": e.pos - Vector2(0, 10), "t": 0.12})
+			damage_enemy(e, int(Data.obj_defs[o.type].electric), (e.pos - c).normalized() * 40)
+			return
+
+func damage_enemy(e: Dictionary, dmg: int, push: Vector2) -> void:
+	if not Game.enemies.has(e): return
+	e.hp -= dmg
+	e.flash = 0.15
+	if push != Vector2.ZERO:
+		e.vel = push
+		e.state = "stun"
+		e.t = 0.3
+	Game.floaters.append({"text": "-%d" % dmg, "pos": e.pos + Vector2(0, -30), "t": 0.7, "color": Color("#ffd060")})
+	if e.hp <= 0:
+		kill_enemy(e)
+
+func update_projectiles(dt: float) -> void:
+	for i in range(Game.projectiles.size() - 1, -1, -1):
+		var pr: Dictionary = Game.projectiles[i]
+		pr.pos += pr.vel * dt
+		pr.life -= dt
+		var hit = null
+		for e in Game.enemies:
+			if (e.pos - Vector2(0, 10)).distance_to(pr.pos) < 9:
+				hit = e
+				break
+		if hit != null:
+			damage_enemy(hit, int(pr.dmg), pr.vel.normalized() * (50.0 if pr.kind == "bolt" else 25.0))
+			Game.projectiles.remove_at(i)
+			continue
+		var tx := int(floor(pr.pos.x / 16))
+		var ty := int(floor(pr.pos.y / 16))
+		var blocked: bool = not Game.map.in_bounds(tx, ty) or Art.tile_solid(Game.map.tile_at(tx, ty)) or Game.map.solid_mask[ty * Game.map.w + tx] == 1
+		if pr.life <= 0 or blocked:
+			Game.projectiles.remove_at(i)
+
+func fire_ranged(it: Dictionary) -> void:
+	var r: Dictionary = it.weapon.ranged
+	if Game.count_item(r.ammo) <= 0:
+		Game.toast("You're out of %s. Make more at an Ammo Bench." % Data.items[r.ammo].name, "", "warn")
+		Sfx.play("error")
+		return
+	Game.remove_item(r.ammo, 1)
+	var d: Vector2 = Vector2(DIRS[Game.player.dir])
+	Game.projectiles.append({"pos": Game.player.pos + Vector2(0, -12) + d * 6, "vel": d * r.speed, "dmg": it.weapon.damage, "life": r.range / r.speed, "kind": "bolt"})
+	Game.player.swing = {"t": 0.0, "dur": 0.3, "weapon": it.id, "tool": "club", "tier": 0, "applied": true, "apply": func(): pass}
+	Sfx.play("swing")
+
+func apply_fert(t: Vector2i, id: String) -> void:
+	var sl = Game.map.soil.get(GameMap.k(t.x, t.y))
+	if sl == null:
+		Game.toast("Spread it on tilled soil.", id, "warn")
+		return
+	if sl.get("fert", "") != "":
+		Game.toast("This soil is already treated.", id, "warn")
+		return
+	sl.fert = Data.items[id].fert
+	Game.remove_item(id, 1)
+	burst(Vector2(t.x * 16 + 8, t.y * 16 + 10), Color("#8a6a3a"), 6)
+	Sfx.play("hoe")
+
+func place_bomb(t: Vector2i, id: String) -> void:
+	var m: GameMap = Game.map
+	if not m.tile_free(t.x, t.y) or player_tile() == t:
+		Game.toast("Find a clear spot in front of you.", id, "warn")
+		return
+	Game.remove_item(id, 1)
+	var type: String = Data.items[id].place
+	m.add_obj(t.x, t.y, type)
+	Game.bombs.append({"x": t.x, "y": t.y, "t": Balance.bombs.fuse_sec, "r": int(Data.obj_defs[type].bomb)})
+	Sfx.play("pick")
+
+func update_bombs(dt: float) -> void:
+	for i in range(Game.bombs.size() - 1, -1, -1):
+		var b: Dictionary = Game.bombs[i]
+		b.t -= dt
+		if b.t > 0: continue
+		Game.bombs.remove_at(i)
+		explode(b)
+
+func explode(b: Dictionary) -> void:
+	var m: GameMap = Game.map
+	m.remove_obj(int(b.x), int(b.y))
+	var c := Vector2(int(b.x) * 16 + 8, int(b.y) * 16 + 8)
+	var r: int = b.r
+	for dy in range(-r, r + 1):
+		for dx in range(-r, r + 1):
+			if dx * dx + dy * dy > r * r + 1: continue
+			var o = m.get_obj(int(b.x) + dx, int(b.y) + dy)
+			if o != null and o.type in ["rock", "ore_rock", "geode_rock", "weeds", "twig", "stump", "boulder"]:
+				break_object(o)
+	for e in Game.enemies.duplicate():
+		if e.pos.distance_to(c) < r * 16 + 8:
+			damage_enemy(e, 6, (e.pos - c).normalized() * 90)
+	if Game.player.pos.distance_to(c) < r * 16 + 4:
+		Game.damage_player(Balance.bombs.player_damage, c, "blast")
+	for i in 3:
+		burst(c + Vector2(Game.rng.randf_range(-12, 12), Game.rng.randf_range(-12, 12)), Color("#f0a030") if i == 0 else Color("#5a5048"), 12)
+	Game.shake = 0.35
+	Sfx.play("break")
+
+func spawn_raid(n: int) -> void:
+	var m: GameMap = Game.map
+	var house := Vector2(14 * 16, 9 * 16)
+	for st in m.structures:
+		if st.kind == "farmhouse":
+			house = Vector2(st.door_x * 16 + 8, (st.door_y + 1) * 16 + 12)
+	var spots := []
+	for x in range(1, m.w - 1):
+		for y in [1, 2, m.h - 2, m.h - 3]:
+			spots.append(Vector2i(x, y))
+	for y in range(1, m.h - 1):
+		for x in [1, 2, m.w - 2]:
+			spots.append(Vector2i(x, y))
+	spots.shuffle()
+	var made := 0
+	for t in spots:
+		if made >= n: break
+		if m.is_solid(t.x, t.y) or m.tile_at(t.x, t.y) == "water": continue
+		if Vector2(t * 16).distance_to(Game.player.pos) < 120: continue
+		var e: Dictionary = spawn_enemy("shambler" if Game.rng.randf() < 0.75 else "lurcher", t.x, t.y)
+		e.raider = true
+		e.goal = house
+		made += 1
+
+
+func interact_barrier(o: Dictionary) -> void:
+	var d: Dictionary = Data.obj_defs[o.type]
+	if Game.barrier_damaged(o):
+		var err := Game.barrier_repair(o)
+		if err == "":
+			Game.toast("Repaired the %s." % d.name, o.type)
+		else:
+			Game.toast(err, o.type, "warn")
+		return
+	if d.get("gate", false):
+		var pt := player_tile()
+		if pt == Vector2i(int(o.x), int(o.y)):
+			return
+		o.open = not o.get("open", false)
+		Sfx.play("door")
+		return
+	Game.toast("%s: %d/%d. Press E on damaged sections to repair them." % [d.name, int(o.hp), int(d.max_hp)], o.type)
+
+func interact_turret(o: Dictionary) -> void:
+	var d: Dictionary = Data.obj_defs[o.type]
+	if not d.has("ammo"):
+		Game.ui.say("", "%s: %s Range %d tiles." % [d.name, "powered and watching the treeline." if o.get("powered", false) else "no power. Put a generator or solar panel within %d tiles." % Balance.power.radius_tiles, int(d.range)])
+		return
+	var ammo: String = d.ammo
+	var info := "%s: %d of %d %s loaded. Range %d tiles." % [d.name, int(o.get("ammo_n", 0)), int(d.ammo_cap), Data.items[ammo].name, int(d.range)]
+	if Game.count_item(ammo) > 0 and int(o.get("ammo_n", 0)) < int(d.ammo_cap):
+		Game.ui.choice(d.name, info, [{"label": "Load %s (you have %d)" % [Data.items[ammo].name, Game.count_item(ammo)], "fn": func():
+			var err := Game.turret_load(o)
+			Game.toast(err if err != "" else "%s loaded: %d rounds." % [d.name, int(o.ammo_n)], ammo, "warn" if err != "" else "")}, {"label": "Close", "fn": func(): pass}])
+	else:
+		Game.ui.say("", info + ("" if Game.count_item(ammo) > 0 else " Make %s at an Ammo Bench." % Data.items[ammo].name))
+
+func interact_machine(o: Dictionary) -> void:
+	var d: Dictionary = Data.obj_defs[o.type]
+	if Game.machine_ready(o):
+		var j: Dictionary = o.job
+		var n := Game.machine_collect(o)
+		if n > 0:
+			Game.toast("Collected %d %s." % [n, Data.items[j.out].name], j.out, "gold")
+			Sfx.play("pickup")
+		return
+	if o.get("job") != null:
+		Game.toast("%s: working. Ready in %s." % [d.name, Game.machine_time_left(o)], o.type)
+		return
+	var sel = Game.selected_stack()
+	if sel != null and not Game.machine_recipe_for(o.type, sel.id).is_empty():
+		var err := Game.machine_load(o, sel.id)
+		if err != "":
+			Game.toast(err, sel.id, "warn")
+		else:
+			Sfx.play("pick")
+			Game.toast("%s started. Ready in %s." % [d.name, Game.machine_time_left(o)], o.type)
+		return
+	Game.toast("Hold %s in your hand and press E to load the %s." % [Data.machines[o.type].hint, d.name], o.type)
 
 # ================================================================ fishing
 func start_fishing_charge() -> void:
@@ -718,6 +1039,9 @@ func release_cast() -> void:
 	if f == null or f.phase != "charge":
 		return
 	Game.state.energy = max(0.0, Game.state.energy - 3)
+	if Game.count_item("bait") > 0:
+		Game.remove_item("bait", 1)
+		f.bait = true
 	var d: Vector2i = DIRS[Game.player.dir]
 	var pt := player_tile()
 	var dist := 1 + int(round(f.power * 4))
@@ -747,7 +1071,7 @@ func update_fishing(dt: float) -> void:
 					return
 				Sfx.play("splash")
 				f.phase = "wait"
-				f.t = F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)
+				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0)
 		"wait":
 			f.t -= dt
 			if f.t <= 0:
@@ -946,8 +1270,49 @@ func interact_object(o: Dictionary) -> void:
 			Game.change_map("mine", 0, 0, "down", {"floor": Game.map.floor_n + 1})
 		"mine_lift":
 			Game.ui.open("lift")
-		"car_wreck", "rubble":
+		"car_wreck", "rubble", "sandbags", "barricade", "suitcase", "toppled_sign":
 			Game.ui.say("", def.get("text", ""))
+		"ammo_bench":
+			Game.ui.open("craft", {"station": "ammo_bench"})
+		"generator":
+			var have := Game.count_item("coal")
+			var cap: int = Balance.power.generator_fuel_cap
+			var fuel := int(o.get("fuel", 0))
+			var info := "Fuel: %d of %d coal. It burns 1 coal on nights when something is plugged in nearby (within %d tiles)." % [fuel, cap, Balance.power.radius_tiles]
+			if have > 0 and fuel < cap:
+				Game.ui.choice("Generator", info, [{"label": "Add coal (you have %d)" % have, "fn": func():
+					var n: int = min(have, cap - fuel)
+					Game.remove_item("coal", n)
+					o.fuel = fuel + n
+					Game.compute_power(Game.map)
+					Game.toast("Added %d coal to the generator." % n, "coal")}, {"label": "Close", "fn": func(): pass}])
+			else:
+				Game.ui.say("", info + ("" if have > 0 else " You have no coal."))
+		"solar_panel":
+			Game.ui.say("", "Solar Panel. %s It powers devices within %d tiles." % ["Charged from today's sun." if Game.source_supply(o) > 0 else "Too cloudy today to charge.", Balance.power.radius_tiles])
+		"rain_collector":
+			var w := int(o.get("water", 0))
+			if w <= 0:
+				Game.ui.say("", "The rain collector is empty. It fills a bottle each day, two when it rains.")
+			elif Game.can_fit("water_bottle", w):
+				o.water = 0
+				Game.add_item("water_bottle", w)
+				Sfx.play("water")
 		_:
+			if def.get("barrier", false):
+				interact_barrier(o)
+				return
+			if def.get("turret", false):
+				interact_turret(o)
+				return
+			if def.get("machine", false):
+				interact_machine(o)
+				return
+			if def.has("sprinkler"):
+				Game.ui.say("", Data.items[o.type].desc)
+				return
+			if def.has("power"):
+				Game.ui.say("", "%s: %s" % [Data.items[o.type].name, "powered." if o.get("powered", false) else "no power. Place a generator or solar panel nearby."])
+				return
 			if def.has("storage"):
 				Game.ui.open("chest", {"obj": o, "title": "Storage"})

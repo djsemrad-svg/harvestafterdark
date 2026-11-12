@@ -5,13 +5,26 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 12, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 63 / 63 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 81 / 81 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
 farming, general store, forge (geodes, refining, upgrades), trade crate, fishing minigame, mine floors 1-10,
 infected with telegraphed lunges, four NPCs with schedules, gifts and quests, journal with nine tabs,
 crafting and cooking, chests, backups.
+
+### Crafting, defenses and raids (added Nov 12)
+
+- 45+ crafting recipes in groups: Storage, Barriers, Turrets & Power, Ammunition, Survival, Explosives, Lighting, Farming, Equipment.
+- Barriers: wood fence, wood gate, sandbag wall, stone wall, barbed wire (hurts attackers), electric fence (needs power), reinforced barrier. They take damage, break (become passable) and are repaired with E plus materials. Damage shows as cracks; broken pieces become a heap.
+- Turrets: Nail Turret and Scrap Shotgun Turret (homemade, use crafted ammo), Salvaged Sentry and Arc Pylon (military, need power).
+- Power: generator (burns 1 coal per night when something is plugged in within 10 tiles) and solar panel (no power on rainy days).
+- Ammo Bench station: Nail Rounds, Buckshot, Bolts and the Scrap Crossbow (ranged weapon).
+- Machines: Recycler, Charcoal Kiln, Brick Furnace, Rain Collector, Smoker, Preserves Jar. Hold the input, press E to load; press E to collect.
+- Farming: three sprinkler tiers, Moisture Mulch, Growth Tonic, Bait.
+- Explosives: Pipe Charge and Blast Canister break rocks and hurt the infected.
+- Night raids start after day 4 and grow each season. You get a warning at 6 pm. If you're on the homestead at 10 pm the infected come out of the trees and head for the farmhouse, clawing through barriers. While you sleep the raid is resolved: turrets shoot first, then raiders batter the barriers around your fields; if they get in, they trample crops.
+- Cooking: 24 stove recipes. Four are taught by neighbours at 3 hearts.
 
 ## Code layout
 
@@ -38,7 +51,7 @@ crafting and cooking, chests, backups.
 ## Next steps
 
 1. Polish found in screenshots: dialogue portrait crop (top of head cut off); area banner overlaps the clock panel (move it lower); HUD panels could be more compact.
-2. Crafting expansion (decisions agreed):
+2. Done: crafting expansion (decisions agreed):
    - Rework Stardew-style crafting categories (bombs, fences, sprinklers, artisan equipment, fertilizer, storage, lighting, refining, signs) into original, outbreak-flavoured items with new sprites.
    - Survival additions: tiered turrets, tiered fences and barriers (wood, stone, barbed wire, electrified), an ammo bench, and more.
    - Threat: night raids. Small groups of infected wander onto the farm some nights, growing as seasons pass.
@@ -46,4 +59,5 @@ crafting and cooking, chests, backups.
    - Barriers take damage from the infected and are repaired with materials; damaged pieces show cracks and patches.
    - Gear look: mixed by tier. Low tiers homemade from scrap; top tiers restored military hardware.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
-3. Later phases from the master prompt (animals, residents, factions, hostile settlements).
+3. Next: grow crops, fish, friendship events and the shipping collection using the Stardew wiki pages Daniel shared (Crops, Fish, Friendship, Shipping), with original names and art.
+4. Later phases from the master prompt (animals, residents, factions, hostile settlements).

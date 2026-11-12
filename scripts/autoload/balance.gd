@@ -146,3 +146,42 @@ var services := {
 	],
 	"refine_fee_per_bar": {"copper_bar": 15, "iron_bar": 30, "silver_bar": 60, "gold_bar": 100, "aurium_bar": 250},
 }
+
+## Night raids: groups of infected that come out of the treeline onto the homestead.
+var raids := {
+	"grace_days": 4,               # no raids before this day
+	"base_chance": 0.2,            # chance of a raid on a given night
+	"chance_per_season": 0.05,     # grows each season that passes
+	"max_chance": 0.55,
+	"adventure_chance_mult": 0.6,
+	"size_base": 2,
+	"size_per_days": 12,           # +1 raider per this many days
+	"size_random": 2,
+	"max_size": 12,
+	"adventure_size_mult": 0.6,
+	"warn_time": 1080,             # 6:00 pm warning
+	"start_time": 1320,            # 10:00 pm infected arrive (if you are on the homestead)
+	"overnight_barrier_damage": 25,  # damage one raider does to a barrier overnight
+	"live_barrier_damage": 6,        # damage per swipe while you watch
+	"live_attack_sec": 1.2,
+	"trample_per_raider": 2,       # crops a raider can ruin once inside
+	"xp_per_turret_kill": 3,       # survival xp you earn for each infected your turrets stop
+}
+
+## Power for advanced turrets, electric fences and floodlights.
+var power := {
+	"radius_tiles": 10,            # devices within this many tiles of a source can draw from it
+	"coal_per_night": 1,           # a generator burns this much while powering devices overnight
+	"generator_fuel_cap": 10,
+}
+
+var farming_extra := {
+	"tonic_bonus_chance": 0.3,     # Growth Tonic: chance of an extra day of growth
+	"mulch_keep_chance": 0.5,      # Moisture Mulch: chance soil stays watered overnight
+	"rain_collector_cap": 5,
+}
+
+var bombs := {
+	"fuse_sec": 1.8,
+	"player_damage": 15,
+}

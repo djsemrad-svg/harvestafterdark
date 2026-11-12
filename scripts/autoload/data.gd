@@ -19,6 +19,12 @@ var categories := {
 	"food": {"label": "Provisions", "color": "#e8a060"},
 	"cooked": {"label": "Cooked Dish", "color": "#f0c070"},
 	"placeable": {"label": "Placeable", "color": "#a8c0a0"},
+	"defense": {"label": "Defense", "color": "#c87a5a"},
+	"machine": {"label": "Equipment", "color": "#a0a8c0"},
+	"ammo": {"label": "Ammunition", "color": "#c8b070"},
+	"medical": {"label": "Medical", "color": "#e87a8a"},
+	"farm_supply": {"label": "Farm Supply", "color": "#9ac070"},
+	"artisan": {"label": "Artisan Good", "color": "#e0a050"},
 	"junk": {"label": "Junk", "color": "#888888"},
 	"quest": {"label": "Quest Item", "color": "#f0e070", "protected": true},
 }
@@ -139,17 +145,99 @@ var artifacts := {
 
 # ---------------- Recipes ----------------
 # inputs: [item id or "cat:<category>", qty]. station: hand or stove.
+## Crafting and cooking recipes. "group" sorts them in the crafting list.
+## station: "hand" (anywhere), "stove" (house), "ammo_bench" (placeable bench).
+## unlock: {"type": "start"} or {"type": "skill", "skill": id, "level": n}.
 var recipes := [
-	{"id": "r_chest", "out": "chest", "qty": 1, "station": "hand", "inputs": [["wood", 40]], "unlock": {"type": "start"}},
-	{"id": "r_fence", "out": "fence", "qty": 4, "station": "hand", "inputs": [["wood", 4]], "unlock": {"type": "start"}},
-	{"id": "r_torch", "out": "torch_post", "qty": 1, "station": "hand", "inputs": [["wood", 2], ["fiber", 3]], "unlock": {"type": "start"}},
-	{"id": "r_path", "out": "stone_path", "qty": 5, "station": "hand", "inputs": [["stone", 5]], "unlock": {"type": "start"}},
-	{"id": "r_water", "out": "water_bottle", "qty": 1, "station": "hand", "inputs": [["scrap", 2], ["cloth", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 1}, "note": "A crude filter bottle."},
-	{"id": "c_fish", "out": "fried_fish", "qty": 1, "station": "stove", "inputs": [["cat:fish", 1]], "unlock": {"type": "start"}},
-	{"id": "c_stew", "out": "veggie_stew", "qty": 1, "station": "stove", "inputs": [["cat:crop", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
-	{"id": "c_salad", "out": "forager_salad", "qty": 1, "station": "stove", "inputs": [["cat:forage", 2]], "unlock": {"type": "start"}},
-	{"id": "c_potato", "out": "baked_potato", "qty": 1, "station": "stove", "inputs": [["potato", 1], ["wood", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 1}},
+	# storage and basics
+	{"id": "r_chest", "group": "Storage", "out": "chest", "qty": 1, "station": "hand", "inputs": [["wood", 40]], "unlock": {"type": "start"}},
+	{"id": "r_path", "group": "Storage", "out": "stone_path", "qty": 5, "station": "hand", "inputs": [["stone", 5]], "unlock": {"type": "start"}},
+	{"id": "r_bench", "group": "Storage", "out": "ammo_bench", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["scrap", 10], ["stone", 10]], "unlock": {"type": "start"}, "note": "Crafts ammunition and ranged weapons."},
+	# barriers
+	{"id": "r_fence", "group": "Barriers", "out": "fence", "qty": 4, "station": "hand", "inputs": [["wood", 4]], "unlock": {"type": "start"}},
+	{"id": "r_gate", "group": "Barriers", "out": "wood_gate", "qty": 1, "station": "hand", "inputs": [["wood", 10]], "unlock": {"type": "start"}},
+	{"id": "r_sandbag", "group": "Barriers", "out": "sandbag_wall", "qty": 2, "station": "hand", "inputs": [["cloth", 1], ["stone", 6]], "unlock": {"type": "start"}},
+	{"id": "r_barbed", "group": "Barriers", "out": "barbed_fence", "qty": 4, "station": "hand", "inputs": [["wood", 2], ["scrap", 3]], "unlock": {"type": "skill", "skill": "survival", "level": 2}},
+	{"id": "r_stonewall", "group": "Barriers", "out": "stone_wall", "qty": 2, "station": "hand", "inputs": [["stone", 10]], "unlock": {"type": "skill", "skill": "mining", "level": 2}},
+	{"id": "r_electric", "group": "Barriers", "out": "electric_fence", "qty": 4, "station": "hand", "inputs": [["scrap", 4], ["copper_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 4}, "note": "Needs power."},
+	{"id": "r_reinforced", "group": "Barriers", "out": "reinforced_wall", "qty": 2, "station": "hand", "inputs": [["scrap", 8], ["iron_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 5}},
+	# turrets and power
+	{"id": "r_nailturret", "group": "Turrets & Power", "out": "nail_turret", "qty": 1, "station": "hand", "inputs": [["wood", 15], ["scrap", 12], ["copper_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 1}, "note": "Fires Nail Rounds."},
+	{"id": "r_shotturret", "group": "Turrets & Power", "out": "shotgun_turret", "qty": 1, "station": "hand", "inputs": [["scrap", 25], ["copper_bar", 2], ["iron_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 3}, "note": "Fires Buckshot."},
+	{"id": "r_generator", "group": "Turrets & Power", "out": "generator", "qty": 1, "station": "hand", "inputs": [["scrap", 30], ["copper_bar", 3], ["iron_bar", 2]], "unlock": {"type": "skill", "skill": "survival", "level": 4}, "note": "Burns coal."},
+	{"id": "r_sentry", "group": "Turrets & Power", "out": "sentry_turret", "qty": 1, "station": "hand", "inputs": [["scrap", 30], ["copper_bar", 4], ["iron_bar", 4], ["quartz", 2]], "unlock": {"type": "skill", "skill": "survival", "level": 5}, "note": "Needs power."},
+	{"id": "r_solar", "group": "Turrets & Power", "out": "solar_panel", "qty": 1, "station": "hand", "inputs": [["quartz", 5], ["copper_bar", 3], ["iron_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 5}},
+	{"id": "r_arc", "group": "Turrets & Power", "out": "arc_pylon", "qty": 1, "station": "hand", "inputs": [["iron_bar", 6], ["copper_bar", 6], ["quartz", 4], ["glimmerite", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 6}, "note": "Needs power."},
+	# ammunition (ammo bench)
+	{"id": "a_nails", "group": "Ammunition", "out": "nail_rounds", "qty": 20, "station": "ammo_bench", "inputs": [["scrap", 2]], "unlock": {"type": "start"}},
+	{"id": "a_bolts", "group": "Ammunition", "out": "bolts", "qty": 10, "station": "ammo_bench", "inputs": [["wood", 3], ["scrap", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 2}},
+	{"id": "a_crossbow", "group": "Ammunition", "out": "scrap_crossbow", "qty": 1, "station": "ammo_bench", "inputs": [["wood", 20], ["scrap", 15], ["fiber", 10], ["copper_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 2}, "note": "A ranged weapon. Fires Bolts."},
+	{"id": "a_buckshot", "group": "Ammunition", "out": "buckshot", "qty": 10, "station": "ammo_bench", "inputs": [["scrap", 2], ["coal", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 3}},
+	# survival supplies
+	{"id": "r_water", "group": "Survival", "out": "water_bottle", "qty": 1, "station": "hand", "inputs": [["scrap", 2], ["cloth", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 1}, "note": "A crude filter bottle."},
+	{"id": "r_bandage", "group": "Survival", "out": "bandage", "qty": 1, "station": "hand", "inputs": [["cloth", 2], ["fiber", 2]], "unlock": {"type": "start"}},
+	{"id": "r_medkit", "group": "Survival", "out": "med_kit", "qty": 1, "station": "hand", "inputs": [["bandage", 2], ["cat:forage", 2], ["water_bottle", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 3}},
+	{"id": "r_pipecharge", "group": "Explosives", "out": "pipe_charge", "qty": 1, "station": "hand", "inputs": [["copper_ore", 4], ["coal", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 2}},
+	{"id": "r_blast", "group": "Explosives", "out": "blast_canister", "qty": 1, "station": "hand", "inputs": [["iron_ore", 4], ["coal", 1]], "unlock": {"type": "skill", "skill": "mining", "level": 3}},
+	# lighting
+	{"id": "r_torch", "group": "Lighting", "out": "torch_post", "qty": 1, "station": "hand", "inputs": [["wood", 2], ["fiber", 3]], "unlock": {"type": "start"}},
+	{"id": "r_lantern", "group": "Lighting", "out": "oil_lantern", "qty": 1, "station": "hand", "inputs": [["wood", 4], ["scrap", 2], ["coal", 1]], "unlock": {"type": "skill", "skill": "foraging", "level": 3}},
+	{"id": "r_flood", "group": "Lighting", "out": "floodlight", "qty": 1, "station": "hand", "inputs": [["scrap", 10], ["copper_bar", 1], ["quartz", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 4}, "note": "Needs power."},
+	# farming
+	{"id": "r_mulch", "group": "Farming", "out": "moisture_mulch", "qty": 5, "station": "hand", "inputs": [["fiber", 5], ["wood", 2]], "unlock": {"type": "skill", "skill": "farming", "level": 1}},
+	{"id": "r_spr1", "group": "Farming", "out": "bucket_sprinkler", "qty": 1, "station": "hand", "inputs": [["copper_bar", 1], ["scrap", 3]], "unlock": {"type": "skill", "skill": "farming", "level": 2}},
+	{"id": "r_tonic", "group": "Farming", "out": "growth_tonic", "qty": 5, "station": "hand", "inputs": [["cat:forage", 2], ["clay", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 4}},
+	{"id": "r_spr2", "group": "Farming", "out": "pressure_sprinkler", "qty": 1, "station": "hand", "inputs": [["iron_bar", 1], ["copper_bar", 1], ["quartz", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 5}},
+	{"id": "r_spr3", "group": "Farming", "out": "drip_array", "qty": 1, "station": "hand", "inputs": [["iron_bar", 3], ["scrap", 5], ["amethyst", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 7}},
+	{"id": "r_bait", "group": "Farming", "out": "bait", "qty": 10, "station": "hand", "inputs": [["fiber", 3], ["clay", 1]], "unlock": {"type": "skill", "skill": "fishing", "level": 1}},
+	# equipment (machines)
+	{"id": "r_recycler", "group": "Equipment", "out": "recycler", "qty": 1, "station": "hand", "inputs": [["wood", 15], ["scrap", 5]], "unlock": {"type": "start"}, "note": "Turns junk into scrap and fiber."},
+	{"id": "r_kiln", "group": "Equipment", "out": "charcoal_kiln", "qty": 1, "station": "hand", "inputs": [["wood", 20], ["stone", 15], ["copper_bar", 1]], "unlock": {"type": "skill", "skill": "foraging", "level": 1}, "note": "10 wood becomes 1 coal."},
+	{"id": "r_furnace", "group": "Equipment", "out": "brick_furnace", "qty": 1, "station": "hand", "inputs": [["stone", 25], ["copper_ore", 15], ["clay", 4]], "unlock": {"type": "skill", "skill": "mining", "level": 1}, "note": "Smelt your own bars."},
+	{"id": "r_collector", "group": "Equipment", "out": "rain_collector", "qty": 1, "station": "hand", "inputs": [["wood", 25], ["scrap", 6], ["cloth", 2]], "unlock": {"type": "skill", "skill": "foraging", "level": 2}, "note": "Fills a bottle of clean water each day."},
+	{"id": "r_smoker", "group": "Equipment", "out": "smoker", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 10], ["scrap", 5], ["coal", 5]], "unlock": {"type": "skill", "skill": "fishing", "level": 2}},
+	{"id": "r_jar", "group": "Equipment", "out": "preserves_jar", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 20], ["coal", 4]], "unlock": {"type": "skill", "skill": "farming", "level": 3}},
+	# cooking (stove)
+	{"id": "c_fish", "group": "Cooking", "out": "fried_fish", "qty": 1, "station": "stove", "inputs": [["cat:fish", 1]], "unlock": {"type": "start"}},
+	{"id": "c_stew", "group": "Cooking", "out": "veggie_stew", "qty": 1, "station": "stove", "inputs": [["cat:crop", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
+	{"id": "c_salad", "group": "Cooking", "out": "forager_salad", "qty": 1, "station": "stove", "inputs": [["cat:forage", 2]], "unlock": {"type": "start"}},
+	{"id": "c_potato", "group": "Cooking", "out": "baked_potato", "qty": 1, "station": "stove", "inputs": [["potato", 1], ["wood", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 1}},
+	{"id": "c_tea", "group": "Cooking", "out": "dandelion_tea", "qty": 1, "station": "stove", "inputs": [["dandelion", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
+	{"id": "c_mint", "group": "Cooking", "out": "mint_tea", "qty": 1, "station": "stove", "inputs": [["wild_mint", 1], ["water_bottle", 1]], "unlock": {"type": "start"}},
+	{"id": "c_corn", "group": "Cooking", "out": "roast_corn", "qty": 1, "station": "stove", "inputs": [["corn", 1]], "unlock": {"type": "start"}},
+	{"id": "c_slaw", "group": "Cooking", "out": "radish_slaw", "qty": 1, "station": "stove", "inputs": [["radish", 2], ["wild_leek", 1]], "unlock": {"type": "start"}},
+	{"id": "c_hash", "group": "Cooking", "out": "skillet_hash", "qty": 1, "station": "stove", "inputs": [["potato", 2], ["wild_leek", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 1}},
+	{"id": "c_toast", "group": "Cooking", "out": "mushroom_toast", "qty": 1, "station": "stove", "inputs": [["field_mushroom", 2], ["bread_loaf", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 1}},
+	{"id": "c_tomsoup", "group": "Cooking", "out": "tomato_soup", "qty": 1, "station": "stove", "inputs": [["tomato", 2], ["water_bottle", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 2}},
+	{"id": "c_borscht", "group": "Cooking", "out": "beet_borscht", "qty": 1, "station": "stove", "inputs": [["beet", 2], ["water_bottle", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 2}},
+	{"id": "c_bar", "group": "Cooking", "out": "trail_bar", "qty": 2, "station": "stove", "inputs": [["hazelnut", 3], ["sunberry", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 2}},
+	{"id": "c_beanpot", "group": "Cooking", "out": "bean_pot", "qty": 1, "station": "stove", "inputs": [["snapbean", 3], ["water_bottle", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 2}},
+	{"id": "c_melon", "group": "Cooking", "out": "melon_chill", "qty": 2, "station": "stove", "inputs": [["melon", 1], ["wild_mint", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 3}},
+	{"id": "c_rolls", "group": "Cooking", "out": "cabbage_rolls", "qty": 1, "station": "stove", "inputs": [["cabbage", 1], ["emberroot", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 3}},
+	{"id": "c_fishstew", "group": "Cooking", "out": "fishermans_stew", "qty": 1, "station": "stove", "inputs": [["cat:fish", 2], ["potato", 1], ["water_bottle", 1]], "unlock": {"type": "skill", "skill": "fishing", "level": 3}},
+	{"id": "c_squash", "group": "Cooking", "out": "squash_bake", "qty": 1, "station": "stove", "inputs": [["squash", 1], ["hazelnut", 2]], "unlock": {"type": "skill", "skill": "cooking", "level": 4}},
+	{"id": "c_stirfry", "group": "Cooking", "out": "snowpea_stirfry", "qty": 1, "station": "stove", "inputs": [["snowpea", 2], ["wild_leek", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 4}},
+	{"id": "c_plate", "group": "Cooking", "out": "survivor_plate", "qty": 1, "station": "stove", "inputs": [["cat:fish", 1], ["cat:crop", 2], ["cat:forage", 1], ["bread_loaf", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 6}},
+	{"id": "c_pie", "group": "Cooking", "out": "pumpkin_pie", "qty": 1, "station": "stove", "inputs": [["pumpkin", 1], ["bread_loaf", 1]], "unlock": {"type": "friend", "npc": "ruth", "hearts": 3}},
+	{"id": "c_chili", "group": "Cooking", "out": "ember_chili", "qty": 1, "station": "stove", "inputs": [["emberroot", 2], ["canned_beans", 1]], "unlock": {"type": "friend", "npc": "hal", "hearts": 3}},
+	{"id": "c_cobbler", "group": "Cooking", "out": "berry_cobbler", "qty": 1, "station": "stove", "inputs": [["sunberry", 3], ["bread_loaf", 1]], "unlock": {"type": "friend", "npc": "ines", "hearts": 3}},
+	{"id": "c_chowder", "group": "Cooking", "out": "trout_chowder", "qty": 1, "station": "stove", "inputs": [["rainbow_trout", 1], ["potato", 1], ["water_bottle", 1]], "unlock": {"type": "friend", "npc": "wren", "hearts": 3}},
 ]
+
+## Processing equipment. Hold a valid input and press E on the machine to load it.
+## "min" is processing time in game minutes (1440 = one day). "fuel" is an extra input.
+var machines := {
+	"preserves_jar": {"recipes": [{"in": "cat:crop", "qty": 1, "out": "preserves", "out_qty": 1, "min": 2880}], "hint": "a crop"},
+	"smoker": {"recipes": [{"in": "cat:fish", "qty": 1, "out": "smoked_fish", "out_qty": 1, "min": 480}], "hint": "a fish"},
+	"charcoal_kiln": {"recipes": [{"in": "wood", "qty": 10, "out": "coal", "out_qty": 1, "min": 240}], "hint": "10 wood"},
+	"brick_furnace": {"recipes": [
+		{"in": "copper_ore", "qty": 5, "fuel": ["coal", 1], "out": "copper_bar", "out_qty": 1, "min": 480},
+		{"in": "iron_ore", "qty": 5, "fuel": ["coal", 1], "out": "iron_bar", "out_qty": 1, "min": 600}], "hint": "5 ore and 1 coal"},
+	"recycler": {"recipes": [
+		{"in": "old_can", "qty": 1, "out": "scrap", "out_qty": 2, "min": 60},
+		{"in": "soggy_paper", "qty": 1, "out": "fiber", "out_qty": 3, "min": 60}], "hint": "junk"},
+	"rain_collector": {"recipes": [], "passive": "water_bottle", "hint": ""},
+}
 
 var skills := {
 	"farming": {"name": "Farming", "phase": 1, "perk": "Hoe and watering can cost 4% less energy per level.", "gain": "Harvest crops"},
@@ -179,8 +267,40 @@ var obj_defs := {
 	"forage": {"solid": false, "pickup": true},
 	"rubble": {"solid": true, "unbreakable": true, "text": "Collapsed rock. It will take heavy equipment to clear this."},
 	"chest": {"solid": true, "storage": "chest", "tool": "pickaxe", "returns": "chest"},
-	"fence": {"solid": true, "hp": 1, "tool": "axe", "returns": "fence"},
 	"torch_post": {"solid": true, "hp": 1, "tool": "axe", "returns": "torch_post", "light": 70},
+	"oil_lantern": {"solid": true, "returns": "oil_lantern", "light": 110},
+	"floodlight": {"solid": true, "returns": "floodlight", "light": 170, "power": 1.0},
+	# barriers: hp, repair cost per repair, barbed (damage to attackers), electric (needs power)
+	"fence": {"solid": true, "returns": "fence", "barrier": true, "max_hp": 30, "repair": [["wood", 1]], "name": "Wood Fence"},
+	"wood_gate": {"solid": true, "returns": "wood_gate", "barrier": true, "gate": true, "max_hp": 30, "repair": [["wood", 2]], "name": "Wood Gate"},
+	"sandbag_wall": {"solid": true, "returns": "sandbag_wall", "barrier": true, "max_hp": 55, "repair": [["stone", 2]], "name": "Sandbag Wall"},
+	"stone_wall": {"solid": true, "returns": "stone_wall", "barrier": true, "max_hp": 90, "repair": [["stone", 3]], "name": "Stone Wall"},
+	"barbed_fence": {"solid": true, "returns": "barbed_fence", "barrier": true, "max_hp": 60, "barbed": 2, "repair": [["scrap", 1]], "name": "Barbed Wire Fence"},
+	"electric_fence": {"solid": true, "returns": "electric_fence", "barrier": true, "max_hp": 80, "electric": 4, "power": 0.25, "repair": [["scrap", 2]], "name": "Electric Fence"},
+	"reinforced_wall": {"solid": true, "returns": "reinforced_wall", "barrier": true, "max_hp": 200, "repair": [["scrap", 3]], "name": "Reinforced Barrier"},
+	# turrets: range in tiles, rate in seconds between shots
+	"nail_turret": {"solid": true, "returns": "nail_turret", "turret": true, "tier": 1, "name": "Nail Turret", "ammo": "nail_rounds", "ammo_cap": 80, "range": 4.5, "damage": 1, "rate": 0.9, "night_kills": 2, "ammo_per_kill": 5},
+	"shotgun_turret": {"solid": true, "returns": "shotgun_turret", "turret": true, "tier": 2, "name": "Scrap Shotgun Turret", "ammo": "buckshot", "ammo_cap": 30, "range": 3.5, "damage": 3, "rate": 1.3, "pellets": 3, "night_kills": 3, "ammo_per_kill": 2},
+	"sentry_turret": {"solid": true, "returns": "sentry_turret", "turret": true, "tier": 3, "name": "Salvaged Sentry", "power": 2.0, "range": 6.0, "damage": 2, "rate": 0.45, "night_kills": 4},
+	"arc_pylon": {"solid": true, "returns": "arc_pylon", "turret": true, "tier": 4, "name": "Arc Pylon", "power": 3.0, "range": 4.0, "damage": 4, "rate": 1.5, "chain": 3, "night_kills": 6},
+	# power sources
+	"generator": {"solid": true, "returns": "generator", "power_source": 6.0, "fuel": "coal", "name": "Generator"},
+	"solar_panel": {"solid": true, "returns": "solar_panel", "power_source": 2.0, "solar": true, "name": "Solar Panel"},
+	# sprinklers water tiles around them every morning
+	"bucket_sprinkler": {"solid": true, "returns": "bucket_sprinkler", "sprinkler": "plus"},
+	"pressure_sprinkler": {"solid": true, "returns": "pressure_sprinkler", "sprinkler": "ring"},
+	"drip_array": {"solid": true, "returns": "drip_array", "sprinkler": "big"},
+	# stations and processing equipment
+	"ammo_bench": {"solid": true, "returns": "ammo_bench", "station": "ammo_bench", "name": "Ammo Bench"},
+	"recycler": {"solid": true, "returns": "recycler", "machine": true, "name": "Recycler"},
+	"charcoal_kiln": {"solid": true, "returns": "charcoal_kiln", "machine": true, "name": "Charcoal Kiln", "light": 30},
+	"brick_furnace": {"solid": true, "returns": "brick_furnace", "machine": true, "name": "Brick Furnace", "light": 40},
+	"rain_collector": {"solid": true, "returns": "rain_collector", "machine": true, "name": "Rain Collector"},
+	"smoker": {"solid": true, "returns": "smoker", "machine": true, "name": "Smoker"},
+	"preserves_jar": {"solid": true, "returns": "preserves_jar", "machine": true, "name": "Preserves Jar"},
+	# lit explosives (placed from Pipe Charge / Blast Canister)
+	"pipe_charge_lit": {"solid": true, "bomb": 2},
+	"blast_canister_lit": {"solid": true, "bomb": 3},
 	"stone_path": {"solid": false, "floor": true, "hp": 1, "tool": "pickaxe", "returns": "stone_path"},
 	"shipping_box": {"solid": true, "fixture": true},
 	"bed": {"solid": true, "fixture": true},
@@ -503,6 +623,83 @@ func _init() -> void:
 	def_item("fence", {"name": "Wood Fence", "cat": "placeable", "price": 1, "place": "fence", "desc": "Keeps things in, or out.", "icon": {"s": "fence"}})
 	def_item("torch_post", {"name": "Torch Post", "cat": "placeable", "price": 5, "place": "torch_post", "desc": "Lights up the night around it.", "icon": {"s": "torch"}})
 	def_item("stone_path", {"name": "Stone Path", "cat": "placeable", "price": 1, "place": "stone_path", "desc": "A walkable stone tile.", "icon": {"s": "path"}})
+
+	# ---- cooked dishes: [name, price, hunger, thirst, energy, hp, icon shape, colour, description]
+	var dishes := {
+		"dandelion_tea": ["Dandelion Tea", 40, 0, 40, 20, 0, "cup", "#d8c040", "Bitter, bright and surprisingly bracing."],
+		"mint_tea": ["Mint Tea", 45, 0, 45, 25, 5, "cup", "#7ac08a", "Cool even when it's hot."],
+		"roast_corn": ["Roast Corn", 70, 20, 0, 30, 5, "dish", "#f0cf4a", "Charred on the stove, butter optional."],
+		"radish_slaw": ["Crisp Radish Slaw", 80, 18, 8, 30, 8, "bowl", "#d8455a", "Sharp, crunchy and cheerful."],
+		"skillet_hash": ["Skillet Hash", 110, 35, 0, 45, 10, "dish", "#c9a066", "Crispy potatoes and leeks. A farmer's breakfast."],
+		"mushroom_toast": ["Mushroom Toast", 100, 28, 0, 40, 12, "dish", "#a8825a", "Earthy mushrooms on fresh town bread."],
+		"tomato_soup": ["Tomato Soup", 120, 28, 25, 40, 15, "bowl", "#e0452f", "Warm, red and comforting."],
+		"beet_borscht": ["Beet Borscht", 130, 30, 25, 45, 15, "bowl", "#8a2a4a", "Deep purple and hearty."],
+		"trail_bar": ["Trail Bar", 60, 15, -4, 40, 5, "bar_snack", "#a87a4a", "Nuts and berries pressed together. Good in the mine."],
+		"bean_pot": ["Bean Pot", 140, 40, 15, 50, 15, "bowl", "#7cc04a", "Slow-cooked beans. Feeds you for hours."],
+		"melon_chill": ["Melon Chill", 120, 12, 35, 45, 10, "cup", "#8fcf5a", "Melon and mint, cooled in the creek."],
+		"cabbage_rolls": ["Cabbage Rolls", 170, 38, 10, 55, 20, "dish", "#9fd08a", "Frost cabbage wrapped around spiced emberroot."],
+		"fishermans_stew": ["Fisherman's Stew", 200, 45, 25, 60, 30, "bowl", "#6ab0d8", "Whatever bit today, simmered with potatoes."],
+		"squash_bake": ["Squash Bake", 190, 40, 5, 60, 25, "dish", "#d9a83a", "Golden squash with toasted hazelnuts."],
+		"snowpea_stirfry": ["Snowpea Stir-Fry", 160, 30, 10, 55, 20, "dish", "#dff0e0", "Quick, green and crunchy."],
+		"survivor_plate": ["Survivor's Plate", 380, 70, 30, 100, 60, "dish", "#e8a060", "A full meal from field, forest and river. The best thing you'll eat all season."],
+		"pumpkin_pie": ["Ruth's Pumpkin Pie", 260, 40, 0, 70, 25, "pie", "#e8822a", "Ruth's recipe. She says the secret is patience."],
+		"ember_chili": ["Hal's Ember Chili", 240, 45, 0, 65, 30, "bowl", "#e0602a", "Hal swears it keeps the cold out. He's right."],
+		"berry_cobbler": ["Ines's Berry Cobbler", 230, 35, 5, 65, 20, "pie", "#8a3a9a", "Ines bakes it in the forge's spare heat."],
+		"trout_chowder": ["Wren's Trout Chowder", 250, 45, 25, 70, 35, "bowl", "#e8e0c0", "Wren learned it from her grandfather."],
+	}
+	for id in dishes:
+		var dd: Array = dishes[id]
+		def_item(id, {"name": dd[0], "cat": "cooked", "price": dd[1], "edible": {"hunger": dd[2], "thirst": dd[3], "energy": dd[4], "hp": dd[5]}, "drink": dd[6] == "cup", "desc": dd[8], "icon": {"s": dd[6], "c": dd[7]}})
+
+	# ---- crafted placeables (icons are drawn from the object art)
+	var placeables := {
+		"wood_gate": ["Wood Gate", "defense", 6, "Opens and closes. The infected can't work latches."],
+		"sandbag_wall": ["Sandbag Wall", "defense", 10, "Heavy and stubborn. Stops the infected for a while."],
+		"stone_wall": ["Stone Wall", "defense", 12, "Sturdy dry-stone wall."],
+		"barbed_fence": ["Barbed Wire Fence", "defense", 10, "Hurts anything that tries to push through."],
+		"electric_fence": ["Electric Fence", "defense", 30, "Shocks attackers when powered by a generator or solar panel."],
+		"reinforced_wall": ["Reinforced Barrier", "defense", 60, "Concrete and steel plate, salvaged from an old checkpoint."],
+		"nail_turret": ["Nail Turret", "defense", 150, "A homemade turret built from a nail gun and a tripod. Load it with Nail Rounds."],
+		"shotgun_turret": ["Scrap Shotgun Turret", "defense", 300, "Short range, heavy hits. Load it with Buckshot."],
+		"sentry_turret": ["Salvaged Sentry", "defense", 700, "Restored military hardware. Fast and accurate. Needs power."],
+		"arc_pylon": ["Arc Pylon", "defense", 1200, "Experimental military tech that arcs lightning between targets. Needs power."],
+		"generator": ["Generator", "defense", 400, "Burns coal to power nearby turrets, fences and lights at night."],
+		"solar_panel": ["Solar Panel", "defense", 500, "Charges by day and powers nearby devices at night. Weak after rain."],
+		"floodlight": ["Floodlight", "placeable", 80, "A powerful lamp. Needs power."],
+		"oil_lantern": ["Oil Lantern Post", "placeable", 20, "Burns brighter and farther than a torch."],
+		"bucket_sprinkler": ["Bucket Sprinkler", "machine", 80, "Waters the 4 tiles next to it every morning."],
+		"pressure_sprinkler": ["Pressure Sprinkler", "machine", 200, "Waters the 8 tiles around it every morning."],
+		"drip_array": ["Drip Array", "machine", 500, "Waters a 5x5 square around it every morning."],
+		"ammo_bench": ["Ammo Bench", "machine", 60, "A workbench for ammunition and ranged weapons."],
+		"recycler": ["Recycler", "machine", 40, "Turns junk into scrap and fiber."],
+		"charcoal_kiln": ["Charcoal Kiln", "machine", 120, "Turns 10 wood into 1 coal."],
+		"brick_furnace": ["Brick Furnace", "machine", 150, "Smelts 5 ore and 1 coal into a bar."],
+		"rain_collector": ["Rain Collector", "machine", 100, "Fills a bottle of clean water each day, two when it rains."],
+		"smoker": ["Smoker", "machine", 120, "Smokes fish so they keep and sell for more."],
+		"preserves_jar": ["Preserves Jar", "machine", 100, "Turns a crop into preserves over two days."],
+	}
+	for id in placeables:
+		var pd: Array = placeables[id]
+		def_item(id, {"name": pd[0], "cat": pd[1], "price": pd[2], "place": id, "desc": pd[3], "icon": {"s": "obj", "obj": id}})
+	items.fence.cat = "defense"
+	items.fence.desc = "A simple fence. Keeps animals in and slows the infected down."
+	items.fence.icon = {"s": "obj", "obj": "fence"}
+
+	def_item("nail_rounds", {"name": "Nail Rounds", "cat": "ammo", "price": 1, "desc": "Clips of nails for a Nail Turret.", "icon": {"s": "nails"}})
+	def_item("buckshot", {"name": "Buckshot", "cat": "ammo", "price": 4, "desc": "Hand-packed shells for a Scrap Shotgun Turret.", "icon": {"s": "shells"}})
+	def_item("bolts", {"name": "Bolts", "cat": "ammo", "price": 2, "desc": "Crossbow bolts.", "icon": {"s": "bolts"}})
+	def_item("scrap_crossbow", {"name": "Scrap Crossbow", "cat": "weapon", "stack": 1,
+		"weapon": {"damage": 3, "knock": 0.6, "ranged": {"ammo": "bolts", "speed": 230.0, "range": 120.0}},
+		"desc": "Fires Bolts in the direction you face. Damage 3.", "icon": {"s": "crossbow"}})
+	def_item("bandage", {"name": "Bandage", "cat": "medical", "price": 10, "edible": {"hp": 20, "energy": 0, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Clean cloth strips. Restores 20 health.", "icon": {"s": "bandage"}})
+	def_item("med_kit", {"name": "Med Kit", "cat": "medical", "price": 60, "edible": {"hp": 60, "energy": 10, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Herbal salve, bandages and boiled water. Restores 60 health.", "icon": {"s": "medkit"}})
+	def_item("pipe_charge", {"name": "Pipe Charge", "cat": "defense", "price": 25, "place": "pipe_charge_lit", "bomb": true, "desc": "Place it and stand back. Breaks rocks and hurts the infected in a small radius.", "icon": {"s": "pipebomb"}})
+	def_item("blast_canister", {"name": "Blast Canister", "cat": "defense", "price": 50, "place": "blast_canister_lit", "bomb": true, "desc": "A bigger bang. Breaks rocks and hurts the infected in a wide radius.", "icon": {"s": "canister"}})
+	def_item("moisture_mulch", {"name": "Moisture Mulch", "cat": "farm_supply", "price": 4, "fert": "mulch", "desc": "Spread on tilled soil. Half the time, it stays watered overnight.", "icon": {"s": "sack", "c": "#8a6a3a"}})
+	def_item("growth_tonic", {"name": "Growth Tonic", "cat": "farm_supply", "price": 20, "fert": "tonic", "desc": "Spread on tilled soil. Crops sometimes grow an extra day overnight.", "icon": {"s": "tonic"}})
+	def_item("bait", {"name": "Bait", "cat": "farm_supply", "price": 1, "desc": "Fish bite twice as fast. Used up one per cast when it's in your pack.", "icon": {"s": "bait"}})
+	def_item("preserves", {"name": "Jar of Preserves", "cat": "artisan", "price": 150, "edible": {"hunger": 25, "energy": 30, "hp": 5, "thirst": 0}, "desc": "Garden crops, sealed for the lean months.", "icon": {"s": "jar", "c": "#c8402a"}})
+	def_item("smoked_fish", {"name": "Smoked Fish", "cat": "artisan", "price": 180, "edible": {"hunger": 30, "energy": 30, "hp": 15, "thirst": -6}, "desc": "Keeps for weeks. Sells well in town.", "icon": {"s": "fish", "c": "#a8602a"}})
 
 	# general store stock: seasonal seeds plus staples
 	var st: Array = []

@@ -31,6 +31,9 @@ var mine_visit := 0
 var mountain_night_spawned := false
 var last_warp_tile := ""
 var pass_out_lost := 0
+var projectiles := []          # bolts and turret rounds in flight
+var arcs := []                 # arc pylon lightning, drawn briefly
+var bombs := []                # lit charges on the current map
 var shake := 0.0
 var rng := RandomNumberGenerator.new()
 
@@ -480,7 +483,7 @@ func start_session() -> void:
 	npcs = {}
 	for id in Data.npcs:
 		npcs[id] = {"id": id, "map": "", "pos": Vector2.ZERO, "dir": "down", "path": null, "entry": null, "frame": 0, "walk_t": 0.0}
-	enemies = []; particles = []; floaters = []
+	enemies = []; particles = []; floaters = []; projectiles = []; arcs = []; bombs = []
 	fishing = null; charge = null; paused = false; clock_acc = 0.0; mountain_night_spawned = false
 	screen = "game"
 	change_map("house", 2, 4, "down", {"silent": true})
@@ -523,6 +526,9 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	player.swing = null
 	player.kb = Vector2.ZERO
 	enemies = []
+	projectiles = []
+	arcs = []
+	bombs = []
 	fishing = null
 	charge = null
 	last_warp_tile = GameMap.k(tx, ty)
@@ -569,8 +575,342 @@ func tick10() -> void:
 		toast("1:00 am. You can barely keep your eyes open.", "", "warn")
 	if map and map.id == "mountain" and state.time >= 1200 and not mountain_night_spawned and world:
 		world.spawn_night_infected()
+	if state.time == 1200:
+		start_generators(maps.homestead)
+	raid_tick()
 	if state.time >= Balance.time.pass_out:
 		pass_out()
+
+
+# ================================================================ machines, power and defenses
+func abs_min() -> int:
+	return int(state.day) * 1440 + int(state.time)
+
+func obj_def(o: Dictionary) -> Dictionary:
+	return Data.obj_defs.get(o.type, {})
+
+## Finds the machine recipe that accepts the given item, or {}.
+func machine_recipe_for(type: String, item_id: String) -> Dictionary:
+	for r in Data.machines.get(type, {}).get("recipes", []):
+		if matches(r.in, item_id):
+			return r
+	return {}
+
+func machine_ready(o: Dictionary) -> bool:
+	var j = o.get("job")
+	return j != null and abs_min() >= int(j.ready)
+
+func machine_load(o: Dictionary, item_id: String) -> String:
+	if o.get("job") != null:
+		return "It's already working."
+	var r := machine_recipe_for(o.type, item_id)
+	if r.is_empty():
+		return "That won't go in the %s. It takes %s." % [obj_def(o).get("name", "machine"), Data.machines[o.type].hint]
+	if count_item(item_id) < int(r.qty):
+		return "You need %d %s." % [r.qty, Data.items[item_id].name]
+	if r.has("fuel") and count_item(r.fuel[0]) < int(r.fuel[1]):
+		return "It also needs %d %s." % [r.fuel[1], Data.items[r.fuel[0]].name]
+	remove_item(item_id, int(r.qty))
+	if r.has("fuel"):
+		remove_item(r.fuel[0], int(r.fuel[1]))
+	var ready: int = abs_min() + int(r.min)
+	if int(r.min) >= 1440:
+		ready = (int(state.day) + int(r.min) / 1440) * 1440 + Balance.time.day_start   # ready by that morning
+	o.job = {"out": r.out, "qty": r.get("out_qty", 1), "ready": ready}
+	return ""
+
+func machine_collect(o: Dictionary) -> int:
+	if not machine_ready(o):
+		return 0
+	var j: Dictionary = o.job
+	if not can_fit(j.out, int(j.qty)):
+		toast("Your inventory is full.", "", "warn")
+		return 0
+	add_item(j.out, int(j.qty))
+	o.job = null
+	add_xp("foraging" if j.out == "coal" else ("fishing" if j.out == "smoked_fish" else ("mining" if Data.items[j.out].cat == "bar" else "farming")), 4)
+	return int(j.qty)
+
+func machine_time_left(o: Dictionary) -> String:
+	var mins: int = max(0, int(o.job.ready) - abs_min())
+	if mins >= 1440: return "%d day%s" % [ceil(mins / 1440.0), "" if mins <= 1440 else "s"]
+	if mins >= 60: return "%d hour%s" % [ceil(mins / 60.0), "" if mins <= 60 else "s"]
+	return "%d minutes" % mins
+
+## Power: generators (with coal) and solar panels feed nearby turrets, electric fences and floodlights.
+func source_supply(o: Dictionary) -> float:
+	var d := obj_def(o)
+	if d.get("solar", false):
+		return 0.0 if state.weather in ["rain", "storm", "snow"] else float(d.power_source)
+	if d.has("fuel"):
+		return float(d.power_source) if (int(o.get("fuel", 0)) > 0 or int(o.get("running_day", -1)) == int(state.day)) else 0.0
+	return float(d.power_source)
+
+func compute_power(m: GameMap) -> void:
+	var sources := []
+	var users := []
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		if o.type == "part": continue
+		var d := obj_def(o)
+		if d.has("power_source"):
+			sources.append({"o": o, "left": source_supply(o)})
+		elif d.has("power"):
+			o.powered = false
+			users.append(o)
+	var R: float = Balance.power.radius_tiles
+	for u in users:
+		var need: float = obj_def(u).power
+		for src in sources:
+			if src.left + 0.001 >= need and Vector2(int(u.x), int(u.y)).distance_to(Vector2(int(src.o.x), int(src.o.y))) <= R:
+				src.left -= need
+				u.powered = true
+				src.o.in_use = true
+				break
+
+## At 8:00 pm each generator that has something to power burns a coal for the night.
+func start_generators(m: GameMap) -> void:
+	if m == null: return
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		if o.type == "generator" and int(o.get("running_day", -1)) != int(state.day) and int(o.get("fuel", 0)) > 0:
+			o.in_use = false
+			compute_power(m)
+			if o.get("in_use", false):
+				o.fuel = int(o.fuel) - Balance.power.coal_per_night
+				o.running_day = state.day
+	compute_power(m)
+
+func turret_load(o: Dictionary) -> String:
+	var d := obj_def(o)
+	var ammo: String = d.get("ammo", "")
+	if ammo == "":
+		return "This turret runs on power, not ammo."
+	var room: int = int(d.ammo_cap) - int(o.get("ammo_n", 0))
+	var have := count_item(ammo)
+	if room <= 0:
+		return "It's fully loaded."
+	if have <= 0:
+		return "You have no %s. Make some at an Ammo Bench." % Data.items[ammo].name
+	var n: int = min(room, have)
+	remove_item(ammo, n)
+	o.ammo_n = int(o.get("ammo_n", 0)) + n
+	Sfx.play("pick")
+	return ""
+
+func barrier_hp_max(o: Dictionary) -> int:
+	return int(obj_def(o).get("max_hp", 1))
+
+func barrier_damaged(o: Dictionary) -> bool:
+	return int(o.get("hp", barrier_hp_max(o))) < barrier_hp_max(o) or o.get("broken", false)
+
+func barrier_repair(o: Dictionary) -> String:
+	var d := obj_def(o)
+	if not barrier_damaged(o):
+		return "It's in good shape."
+	for c in d.repair:
+		if count_item(c[0]) < int(c[1]):
+			return "Repairing this needs %d %s." % [c[1], Data.items[c[0]].name]
+	for c in d.repair:
+		remove_item(c[0], int(c[1]))
+	o.hp = barrier_hp_max(o)
+	o.broken = false
+	Sfx.play("chop")
+	return ""
+
+func barrier_hit(o: Dictionary, dmg: int) -> bool:
+	o.hp = int(o.get("hp", barrier_hp_max(o))) - dmg
+	if o.hp <= 0:
+		o.hp = 0
+		o.broken = true
+		return true
+	return false
+
+# ---------------------------------------------------------------- night raids
+func raid_tonight() -> bool:
+	var r = state.get("raid")
+	return r is Dictionary and int(r.get("day", -1)) == int(state.day)
+
+func roll_raid(for_day: int) -> void:
+	var R: Dictionary = Balance.raids
+	state.raid = {}
+	if for_day < R.grace_days:
+		return
+	var seasons_passed := int((for_day - 1) / Balance.calendar.days_per_season)
+	var chance: float = min(R.max_chance, R.base_chance + R.chance_per_season * seasons_passed)
+	var size: int = R.size_base + int(for_day / R.size_per_days) + rng.randi_range(0, R.size_random)
+	if not is_survivor():
+		chance *= R.adventure_chance_mult
+		size = max(1, int(round(size * R.adventure_size_mult)))
+	if rng.randf() < chance:
+		state.raid = {"day": for_day, "size": min(size, R.max_size), "spawned": false, "killed": 0, "warned": false}
+
+func raid_tick() -> void:
+	if not raid_tonight():
+		return
+	var r: Dictionary = state.raid
+	if int(state.time) >= Balance.raids.warn_time and not r.warned:
+		r.warned = true
+		toast("The dogs in town won't stop barking. Something is coming out of the trees tonight. Guard your homestead.", "", "bad")
+	if int(state.time) >= Balance.raids.start_time and not r.spawned and map != null and map.id == "homestead" and world:
+		r.spawned = true
+		world.spawn_raid(int(r.size) - int(r.killed))
+		toast("Infected are coming out of the treeline!", "", "bad")
+
+## Tiles the infected can reach from the edge of the map. Trees, rocks and weeds
+## don't stop them (they shamble around), but walls, fences and buildings do.
+func raider_reach(m: GameMap) -> PackedByteArray:
+	var seen := PackedByteArray()
+	seen.resize(m.w * m.h)
+	var q: Array[Vector2i] = []
+	for x in m.w:
+		for y in [0, m.h - 1]:
+			q.append(Vector2i(x, y))
+	for y in m.h:
+		for x in [0, m.w - 1]:
+			q.append(Vector2i(x, y))
+	while not q.is_empty():
+		var t: Vector2i = q.pop_back()
+		if not m.in_bounds(t.x, t.y) or seen[t.y * m.w + t.x]:
+			continue
+		if not raider_passable(m, t.x, t.y):
+			continue
+		seen[t.y * m.w + t.x] = 1
+		q.append(t + Vector2i(1, 0)); q.append(t + Vector2i(-1, 0)); q.append(t + Vector2i(0, 1)); q.append(t + Vector2i(0, -1))
+	return seen
+
+func raider_passable(m: GameMap, x: int, y: int) -> bool:
+	var tt := m.tile_at(x, y)
+	if tt == "water" or Art.tile_solid(tt):
+		return false
+	if m.solid_mask[y * m.w + x]:
+		return false
+	var o = m.get_obj(x, y)
+	if o == null:
+		return true
+	var d := obj_def(o)
+	if d.get("barrier", false):
+		return o.get("broken", false) or o.get("open", false)
+	# anything the player built blocks them; natural clutter does not
+	return not (d.has("returns") or d.get("fixture", false) or d.get("storage", "") != "")
+
+## Resolves tonight's raid while you sleep. Returns report lines.
+func resolve_raid(m: GameMap) -> Array:
+	if not raid_tonight():
+		return []
+	var R: Dictionary = Balance.raids
+	var r: Dictionary = state.raid
+	var left: int = int(r.size) - int(r.killed)
+	state.raid = {}
+	if left <= 0:
+		return ["You fought off last night's raid. The homestead is quiet again."]
+	var lines := []
+	start_generators(m)
+	compute_power(m)
+	# 1. turrets
+	var turret_kills := 0
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		if o.type == "part" or left <= 0: continue
+		var d := obj_def(o)
+		if not d.get("turret", false): continue
+		var cap: int = d.night_kills
+		if d.has("ammo"):
+			cap = min(cap, int(o.get("ammo_n", 0)) / int(d.ammo_per_kill))
+		elif not o.get("powered", false):
+			cap = 0
+		var k: int = min(cap, left)
+		if d.has("ammo"):
+			o.ammo_n = int(o.get("ammo_n", 0)) - k * int(d.ammo_per_kill)
+		turret_kills += k
+		left -= k
+	# 2. the perimeter
+	var damaged := 0
+	var broke := 0
+	var wire_kills := 0
+	var reach := raider_reach(m)
+	var targets := _raid_targets(m, reach)
+	if left > 0 and targets.crops.is_empty():
+		var frontier := _frontier(m, reach)
+		while left > 0 and not frontier.is_empty():
+			var b: Dictionary = frontier[rng.randi() % frontier.size()]
+			var d := obj_def(b)
+			var kill_chance := 0.0
+			if d.has("barbed"): kill_chance = 0.35
+			if d.has("electric") and b.get("powered", false): kill_chance = 0.65
+			if rng.randf() < kill_chance:
+				wire_kills += 1
+				left -= 1
+				continue
+			if int(b.get("hp", barrier_hp_max(b))) == barrier_hp_max(b):
+				damaged += 1
+			if barrier_hit(b, R.overnight_barrier_damage):
+				broke += 1
+				reach = raider_reach(m)
+				targets = _raid_targets(m, reach)
+				if not targets.crops.is_empty():
+					break
+				frontier = _frontier(m, reach)
+			else:
+				left -= 1   # this one gave up for the night
+	# 3. anything left inside
+	var trampled := 0
+	if left > 0:
+		var crops: Array = targets.crops
+		crops.shuffle()
+		for i in min(crops.size(), left * R.trample_per_raider):
+			m.soil[crops[i]].crop = null
+			trampled += 1
+	var head := "Infected came out of the trees last night (%d of them)." % int(r.size)
+	var parts := []
+	if int(r.killed) > 0: parts.append("you put down %d yourself" % int(r.killed))
+	if turret_kills > 0: parts.append("your turrets stopped %d" % turret_kills)
+	if wire_kills > 0: parts.append("your wire fences finished off %d" % wire_kills)
+	if damaged > 0: parts.append("%d barrier section%s took damage" % [damaged, "" if damaged == 1 else "s"])
+	if broke > 0: parts.append("%d broke" % broke)
+	lines.append(head + (" " + ", ".join(parts).capitalize().substr(0, 1) + ", ".join(parts).substr(1) + "." if not parts.is_empty() else ""))
+	if trampled > 0:
+		lines.append("They got into your fields and trampled %d crop%s. Fences and turrets will keep them out." % [trampled, "" if trampled == 1 else "s"])
+	elif left > 0 and targets.door:
+		lines.append("They clawed at your door until dawn, then drifted back into the trees.")
+	elif damaged > 0 or broke > 0:
+		lines.append("Your defenses held. Repair damaged sections by pressing E on them.")
+	var xp: int = (turret_kills + wire_kills) * R.xp_per_turret_kill
+	if xp > 0:
+		add_xp("survival", xp)
+	state.stats.infected_defeated = int(state.stats.infected_defeated) + turret_kills + wire_kills
+	return lines
+
+func _raid_targets(m: GameMap, reach: PackedByteArray) -> Dictionary:
+	var crops := []
+	for kk in m.soil:
+		var sl: Dictionary = m.soil[kk]
+		var c = sl.get("crop")
+		if c == null or c.get("dead", false): continue
+		var t := GameMap.unk(kk)
+		if reach[t.y * m.w + t.x] or _next_to_reach(m, reach, t):
+			crops.append(kk)
+	var door := false
+	for st in m.structures:
+		if st.kind == "farmhouse":
+			door = _next_to_reach(m, reach, Vector2i(st.door_x, st.door_y + 1)) or reach[(st.door_y + 1) * m.w + st.door_x] == 1
+	return {"crops": crops, "door": door}
+
+func _next_to_reach(m: GameMap, reach: PackedByteArray, t: Vector2i) -> bool:
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var n: Vector2i = t + d
+		if m.in_bounds(n.x, n.y) and reach[n.y * m.w + n.x]:
+			return true
+	return false
+
+func _frontier(m: GameMap, reach: PackedByteArray) -> Array:
+	var out := []
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		if o.type == "part" or o.get("broken", false): continue
+		if obj_def(o).get("barrier", false) and _next_to_reach(m, reach, Vector2i(int(o.x), int(o.y))):
+			out.append(o)
+	return out
 
 # ================================================================ survival
 func survival_tick(minutes: int) -> void:
@@ -663,7 +1003,7 @@ func eat_item(id: String) -> bool:
 		if e.get("hunger", 0): parts.append("%+d hunger" % round(e.hunger * mult))
 		if e.get("thirst", 0): parts.append("%+d thirst" % round(e.thirst * mult))
 		add_xp("survival", 3)
-	toast(("Drank " if it.get("drink", false) else "Ate ") + it.name + ": " + ", ".join(parts), id)
+	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + ": " + ", ".join(parts), id)
 	Sfx.play("eat")
 	return true
 
@@ -1026,6 +1366,37 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 	Sfx.play("coin")
 	return ""
 
+func sprinkler_tiles(o: Dictionary) -> Array:
+	var out := []
+	var x := int(o.x)
+	var y := int(o.y)
+	match obj_def(o).get("sprinkler", ""):
+		"plus":
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]: out.append(Vector2i(x, y) + d)
+		"ring":
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if dx or dy: out.append(Vector2i(x + dx, y + dy))
+		"big":
+			for dy in range(-2, 3):
+				for dx in range(-2, 3):
+					if dx or dy: out.append(Vector2i(x + dx, y + dy))
+	return out
+
+func run_sprinklers() -> int:
+	var n := 0
+	for mid in maps:
+		var m: GameMap = maps[mid]
+		for kk in m.objects:
+			var o: Dictionary = m.objects[kk]
+			if o.type == "part" or not obj_def(o).has("sprinkler"): continue
+			for t in sprinkler_tiles(o):
+				var sl = m.soil.get(GameMap.k(t.x, t.y))
+				if sl != null and int(sl.w) == 0:
+					sl.w = 1
+					n += 1
+	return n
+
 func house_condition() -> int:
 	return int(state.flags.get("house_condition", Data.buildings.farmhouse.condition))
 
@@ -1202,6 +1573,8 @@ func end_day(reason: String) -> void:
 	if restore < 1.0:
 		rep.lines.append("You slept poorly and only recovered %d%% of your energy." % round(restore * 100))
 	var prev_season := season()
+	# 0. tonight's raid plays out while you sleep
+	rep.lines.append_array(resolve_raid(maps.homestead))
 	# 1. advance the day
 	state.day = int(state.day) + 1
 	state.time = Balance.time.day_start
@@ -1216,6 +1589,7 @@ func end_day(reason: String) -> void:
 		state.health = float(Balance.player.max_health)
 	state.weather = state.weather_tomorrow
 	state.weather_tomorrow = roll_weather(int(state.day) + 1)
+	roll_raid(int(state.day))
 	var new_season := season()
 	if new_season != prev_season:
 		rep.lines.append("A new season begins: %s!%s" % [new_season.capitalize(), " Happy new year!" if season_index() == 0 else ""])
@@ -1234,11 +1608,21 @@ func end_day(reason: String) -> void:
 					withered += 1
 				elif int(s.w):
 					c.g = int(c.g) + 1
+					if s.get("fert", "") == "tonic" and rng.randf() < Balance.farming_extra.tonic_bonus_chance:
+						c.g = int(c.g) + 1
 					grew += 1
 			elif c == null and not int(s.w) and rng.randf() < Balance.farming.empty_soil_revert_chance:
 				m.soil.erase(kk)
 				continue
-			s.w = 1 if (waters and m.outdoor) else 0
+			var keep: bool = s.get("fert", "") == "mulch" and int(s.w) == 1 and rng.randf() < Balance.farming_extra.mulch_keep_chance
+			s.w = 1 if ((waters and m.outdoor) or keep) else 0
+	var sprinkled := run_sprinklers()
+	if sprinkled: rep.lines.append("Your sprinklers watered %d tiles." % sprinkled)
+	for mid in maps:
+		for kk in maps[mid].objects:
+			var o: Dictionary = maps[mid].objects[kk]
+			if o.type == "rain_collector":
+				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)
 	if waters: rep.lines.append("%s today. Your outdoor crops are already watered." % Data.weather_info[state.weather].name)

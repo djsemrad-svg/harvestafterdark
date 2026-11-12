@@ -205,11 +205,21 @@ func _draw() -> void:
 			6: _draw_player()
 	for q in Game.particles if Game.screen == "game" else []:
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
+	if Game.screen == "game":
+		for pr in Game.projectiles:
+			var tail: Vector2 = pr.pos - pr.vel.normalized() * (5.0 if pr.kind == "bolt" else 3.0)
+			draw_line(tail.round(), pr.pos.round(), Color("#c8a060") if pr.kind == "bolt" else Color("#fff0b0"), 1.0)
+		for a in Game.arcs:
+			var pts := PackedVector2Array()
+			for i in 6:
+				var t := i / 5.0
+				pts.append(a.a.lerp(a.b, t) + (Vector2(randf_range(-3, 3), randf_range(-3, 3)) if i > 0 and i < 5 else Vector2.ZERO))
+			draw_polyline(pts, Color("#c8f4ff"), 1.0)
 	if Game.screen == "game" and Game.settings.show_target and not Game.overlay_open() and Game.player.swing == null and Game.fishing == null:
 		var s = Game.selected_stack()
 		if s != null:
 			var it: Dictionary = Data.items[s.id]
-			if it.has("tool") or it.cat == "seed" or it.has("place"):
+			if it.has("tool") or it.cat == "seed" or it.has("place") or it.has("fert"):
 				var t: Vector2i = world.target_preview()
 				var tiles: Array = world.area_tiles(t, world.charge_level()) if Game.charge != null else [t]
 				for tt in tiles:
@@ -217,11 +227,13 @@ func _draw() -> void:
 
 func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 	var nb := 0
-	if o.type == "fence":
-		var l = m.objects.get(GameMap.k(int(o.x) - 1, int(o.y)))
-		var r = m.objects.get(GameMap.k(int(o.x) + 1, int(o.y)))
-		if l != null and l.type == "fence": nb |= 1
-		if r != null and r.type == "fence": nb |= 2
+	if Data.obj_defs.get(o.type, {}).get("barrier", false):
+		var i := 0
+		for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+			var n = m.objects.get(GameMap.k(int(o.x) + d.x, int(o.y) + d.y))
+			if n != null and Data.obj_defs.get(n.type, {}).get("barrier", false):
+				nb |= 1 << i
+			i += 1
 	var fr := (1 if is_night(e) else 0) if o.type == "window" else int(anim_t / 0.15) % 4
 	var sp = Art.get_obj(o, e.season, fr, nb)
 	var sx := 0.0
@@ -231,6 +243,16 @@ func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 		if o.shake <= 0:
 			o.erase("shake")
 	draw_texture(sp.tex, Vector2(int(o.x) * 16 + sp.ox + sx, int(o.y) * 16 + sp.oy))
+	if o.get("job") != null and Game.screen == "game" and Game.machine_ready(o):
+		# a finished machine shows what's waiting inside
+		var bob := sin(anim_t * 4.0) * 1.5
+		var bx := int(o.x) * 16 + 2
+		var by = int(o.y) * 16 + sp.oy - 14 + bob
+		draw_rect(Rect2(bx - 1, by - 1, 14, 14), Color(0.97, 0.9, 0.72, 0.9))
+		draw_texture_rect(Art.get_icon(o.job.out), Rect2(bx, by, 12, 12), false)
+	if o.get("flash", 0.0) > 0:
+		var mz := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 2) + Vector2.from_angle(o.get("aim", 0.0)) * 8
+		draw_rect(Rect2(mz.round() - Vector2(1, 1), Vector2(3, 3)), Color("#fff0a0"))
 
 func _draw_crop(c: Dictionary, x: int, y: int) -> void:
 	if c.get("dead", false):
@@ -395,7 +417,10 @@ func update_lighting(m: GameMap) -> void:
 				var o = m.objects.get(GameMap.k(x, y))
 				if o == null or o.type == "part":
 					continue
-				var r: int = Data.obj_defs.get(o.type, {}).get("light", 0)
+				var od: Dictionary = Data.obj_defs.get(o.type, {})
+				var r: int = od.get("light", 0)
+				if od.has("power") and not o.get("powered", false):
+					r = 0
 				if r > 0:
 					var oy := -12 if o.type == "lamp_post" else (-4 if o.type == "lamp" else 4)
 					srcs.append([Vector2(x * 16 + 8, y * 16 + oy), r, true])
@@ -418,7 +443,7 @@ func update_lighting(m: GameMap) -> void:
 			var flick := 1.0 + sin(anim_t * 8.0 + s[0].x) * 0.03 if s[2] else 1.0
 			l.texture_scale = s[1] * 2.0 / 128.0 * flick
 			l.color = Color(1.0, 0.78, 0.5) if s[2] else Color(0.85, 0.85, 0.95)
-			l.energy = 0.6 + a * 1.2
+			l.energy = (0.3 + a * 0.75) * (0.8 if s[1] >= 100 else 1.0) if s[2] else 0.55 + a * 1.1
 	for i in range(used, light_pool.size()):
 		light_pool[i].visible = false
 

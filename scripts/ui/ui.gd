@@ -419,24 +419,24 @@ func build_hud() -> void:
 	_clear(hud)
 	_last = {}
 	# clock (top right)
-	var cp := K.panel(92)
+	var cp := K.panel(84)
 	cp.tape = false
 	cp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	cp.position = Vector2(-98, 4)
+	cp.position = Vector2(-88, 3)
 	cp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	clock_lbl = K.rich("", 7)
-	clock_lbl.custom_minimum_size.x = 84
+	clock_lbl.custom_minimum_size.x = 76
 	cp.add_child(clock_lbl)
 	hud.add_child(cp)
 	# bars (top left)
-	var bp := K.panel(104)
+	var bp := K.panel(90)
 	bp.tape = false
-	bp.position = Vector2(4, 4)
+	bp.position = Vector2(3, 3)
 	bars_box = K.vbox(1)
 	bp.add_child(bars_box)
 	hud.add_child(bp)
 	status_box = K.hbox(2)
-	status_box.position = Vector2(114, 6)
+	status_box.position = Vector2(98, 5)
 	hud.add_child(status_box)
 	# toasts (bottom left)
 	toast_box = K.vbox(2)
@@ -483,7 +483,7 @@ func build_hud() -> void:
 	banner_lbl = K.label("", 14, Color("#fff4d0"))
 	banner_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	banner_lbl.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	banner_lbl.position.y = 46
+	banner_lbl.position.y = 76
 	banner_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner_lbl.add_theme_constant_override("outline_size", 5)
 	banner_lbl.add_theme_color_override("font_outline_color", Color("#2a1a0a"))
@@ -500,7 +500,7 @@ func update_hud(dt: float) -> void:
 		return
 	var st: Dictionary = Game.state
 	var late: bool = st.time >= Balance.time.midnight
-	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=12][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s scrip[/color][/b]%s[/right]" % [
+	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s scrip[/color][/b]%s[/right]" % [
 		Game.weekday(), Game.season().capitalize(), Game.day_of_season(), Game.year(), "#b3392e" if late else "#5a2c0e", Game.fmt_time(int(st.time)),
 		Data.weather_info[st.weather].name, Game.location_name(), _num(int(st.money)), "\n[color=#b3392e][b]PAUSED[/b][/color]" if Game.paused else ""]
 	if _last.get("clock") != clock:
@@ -521,7 +521,7 @@ func update_hud(dt: float) -> void:
 			h.add_child(lab)
 			var track := ProgressBar.new()
 			track.show_percentage = false
-			track.custom_minimum_size = Vector2(56, 6)
+			track.custom_minimum_size = Vector2(46, 5)
 			track.max_value = b[2]
 			track.value = b[1]
 			track.add_theme_stylebox_override("background", K.sb(Color("#3a2a1c"), K.OUTLINE, 1, 1, Color(0, 0, 0, 0), 0, 0))
@@ -643,6 +643,18 @@ func hint_text() -> String:
 		return "E: Harvest " + Data.crops[sl.crop.id].name
 	var o = m.get_obj(t.x, t.y)
 	if o != null:
+		var od: Dictionary = Data.obj_defs.get(o.type, {})
+		if od.get("barrier", false):
+			if Game.barrier_damaged(o): return "E: Repair %s (%s)" % [od.name, ", ".join(od.repair.map(func(c): return "%d %s" % [c[1], Data.items[c[0]].name]))]
+			if od.get("gate", false): return "E: " + ("Close gate" if o.get("open", false) else "Open gate")
+		if od.get("turret", false): return "E: Check %s" % od.name + (" (%d rounds)" % int(o.get("ammo_n", 0)) if od.has("ammo") else (" (powered)" if o.get("powered", false) else " (no power)"))
+		if od.get("machine", false):
+			if Game.machine_ready(o): return "E: Collect %s" % Data.items[o.job.out].name
+			if o.get("job") != null: return "%s: working (%s left)" % [od.name, Game.machine_time_left(o)]
+			if o.type == "rain_collector": return "E: Collect water (%d)" % int(o.get("water", 0))
+			return "E: Load %s (%s)" % [od.name, Data.machines[o.type].hint]
+		if o.type == "generator": return "E: Generator (%d coal)" % int(o.get("fuel", 0))
+		if o.type == "ammo_bench": return "E: Use Ammo Bench"
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if names.has(o.type): return "E: " + names[o.type]
@@ -765,10 +777,11 @@ func render_overlay() -> void:
 	overlay_root.add_child(dim)
 	var body: Control = call("_ov_" + overlay.type)
 	if overlay.type == "dialogue":
-		body.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		# pinned to the bottom of the screen, growing upward
+		body.anchor_left = 0.5; body.anchor_right = 0.5; body.anchor_top = 1.0; body.anchor_bottom = 1.0
+		body.offset_left = 0; body.offset_right = 0; body.offset_top = -8; body.offset_bottom = -8
 		body.grow_horizontal = Control.GROW_DIRECTION_BOTH
 		body.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		body.position.y = -34
 		overlay_root.add_child(body)
 	else:
 		_center(body, overlay_root)
@@ -1354,12 +1367,25 @@ func _ov_forge() -> Control:
 func recipe_unlocked(r: Dictionary) -> bool:
 	if r.unlock.type == "start": return true
 	if r.unlock.type == "skill": return Game.skill_level(r.unlock.skill) >= r.unlock.level
+	if r.unlock.type == "friend": return Game.hearts(r.unlock.npc) >= r.unlock.hearts
 	return false
+
+func unlock_text(r: Dictionary) -> String:
+	if r.unlock.type == "skill": return "Locked: reach %s level %d." % [Data.skills[r.unlock.skill].name, r.unlock.level]
+	if r.unlock.type == "friend": return "Locked: become friends with %s (%d hearts)." % [Data.npcs[r.unlock.npc].name.split(" ")[0], r.unlock.hearts]
+	return "Locked."
+
+const STATION_NAMES := {"stove": "Stove (in your house)", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench"}
 
 func _recipes(station: String, show_all: bool) -> VBoxContainer:
 	var v := K.vbox(2)
+	var last_group := ""
 	for r in Data.recipes:
 		if not show_all and r.station != station: continue
+		if show_all and r.station == "stove": continue
+		if r.get("group", "") != last_group:
+			last_group = r.get("group", "")
+			v.add_child(K.label(last_group, 8, K.WOOD_DARK))
 		var un := recipe_unlocked(r)
 		var here: bool = r.station == station
 		var row := K.row_box()
@@ -1372,20 +1398,20 @@ func _recipes(station: String, show_all: bool) -> VBoxContainer:
 			var have := Game.count_match(pair[0])
 			var nm: String = ("any " + Data.categories[pair[0].substr(4)].label) if pair[0].begins_with("cat:") else Data.items[pair[0]].name
 			ins.append("[color=%s]%d %s (%d)[/color]" % ["#3f7a2c" if have >= pair[1] else "#b3392e", pair[1], nm, have])
-		var text := "[b]%s%s[/b]\n%s\n[font_size=5]Station: %s · Time: instant%s[/font_size]" % [Data.items[r.out].name, " x%d" % r.qty if r.qty > 1 else "",
-			", ".join(ins) if un else "Locked: reach %s level %d." % [Data.skills[r.unlock.skill].name, r.unlock.level],
-			"Stove (in your house)" if r.station == "stove" else "By hand, anywhere", (" · " + r.note) if r.has("note") else ""]
+		var text := "[b]%s%s[/b]\n%s\n[font_size=5]%s · %s%s[/font_size]" % [Data.items[r.out].name, " x%d" % r.qty if r.qty > 1 else "",
+			", ".join(ins) if un else unlock_text(r),
+			STATION_NAMES.get(r.station, r.station), Data.items[r.out].desc, (" " + r.note) if r.has("note") else ""]
 		var rl := K.rich(text, 6)
 		rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rh.add_child(rl)
 		if here:
 			var can: bool = un and r.inputs.all(func(p): return Game.count_match(p[0]) >= p[1]) and Game.can_fit(r.out, r.qty)
 			var rec: Dictionary = r
-			var b := K.button("Cook" if station == "stove" else "Craft", func(): _craft(rec), "small")
+			var b := K.button("Cook" if station == "stove" else "Make", func(): _craft(rec), "small")
 			b.disabled = not can
 			rh.add_child(b)
 		else:
-			rh.add_child(K.label("Use the stove", 6, K.INK_SOFT))
+			rh.add_child(K.label("At the " + ("stove" if r.station == "stove" else "ammo bench"), 6, K.INK_SOFT))
 		row.add_child(rh)
 		v.add_child(row)
 	return v
@@ -1405,7 +1431,7 @@ func _craft(r: Dictionary) -> void:
 	render_overlay()
 
 func _ov_craft() -> Control:
-	var pw := _window("Cooking" if overlay.station == "stove" else "Crafting", 360)
+	var pw := _window({"stove": "Cooking", "ammo_bench": "Ammo Bench"}.get(overlay.station, "Crafting"), 380)
 	pw[1].add_child(K.scroll(_recipes(overlay.station, false), 170))
 	if overlay.get("err", "") != "": pw[1].add_child(K.label(overlay.err, 7, K.DANGER))
 	pw[1].add_child(_close_btn())
@@ -1514,7 +1540,7 @@ func _tab_inventory() -> Control:
 		var br := K.hbox()
 		var sidx: int = overlay.sel
 		if fl.edible:
-			br.add_child(K.button("Drink" if it.get("drink", false) else "Eat", func():
+			br.add_child(K.button(it.get("use_word", "Drink" if it.get("drink", false) else "Eat"), func():
 				var s2 = Game.state.inventory[sidx]
 				if s2 != null: Game.eat_item(s2.id)
 				overlay.erase("pick")
@@ -1676,7 +1702,7 @@ func _tab_social() -> Control:
 
 func _tab_crafting() -> Control:
 	var v := K.vbox(2)
-	v.add_child(K.label("Hand recipes can be made anywhere. Cooking happens at the stove in your house.", 6, K.INK_SOFT))
+	v.add_child(K.label("Hand recipes can be made anywhere. Ammunition is made at an Ammo Bench; cooking at the stove in your house. New recipes unlock as your skills grow.", 6, K.INK_SOFT, true))
 	v.add_child(_recipes("hand", true))
 	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
 	return K.scroll(v, 186)

@@ -52,6 +52,34 @@ func _ready() -> void:
 	main.ui.close_all()
 	main.ui.open("journal", {"tab": "map"}); await shot("14_map")
 	main.ui.close_all()
+	# a defended homestead
+	main.ui.close_all()
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(16, 34):
+		for yy in range(12, 24):
+			hm.remove_obj(xx, yy)
+	var row := ["fence", "fence", "wood_gate", "fence", "sandbag_wall", "sandbag_wall", "stone_wall", "stone_wall", "barbed_fence", "barbed_fence", "electric_fence", "electric_fence", "reinforced_wall", "reinforced_wall"]
+	for i in row.size():
+		hm.add_obj(18 + i, 13, row[i])
+	hm.objects[GameMap.k(19, 13)].hp = 12
+	hm.objects[GameMap.k(23, 13)].broken = true
+	var things := [["nail_turret", 18, 16], ["shotgun_turret", 20, 16], ["sentry_turret", 22, 16], ["arc_pylon", 24, 16], ["generator", 26, 16], ["solar_panel", 28, 16], ["floodlight", 30, 16],
+		["ammo_bench", 18, 19], ["recycler", 20, 19], ["charcoal_kiln", 22, 19], ["brick_furnace", 24, 19], ["rain_collector", 26, 19], ["smoker", 28, 19], ["preserves_jar", 30, 19],
+		["bucket_sprinkler", 18, 22], ["pressure_sprinkler", 20, 22], ["drip_array", 22, 22], ["oil_lantern", 24, 22], ["chest", 26, 22], ["torch_post", 28, 22]]
+	for t in things:
+		hm.add_obj(t[1], t[2], t[0], {"fuel": 3} if t[0] == "generator" else {})
+	hm.objects[GameMap.k(24, 19)].job = {"out": "copper_bar", "qty": 1, "ready": 999999}
+	hm.objects[GameMap.k(30, 19)].job = {"out": "preserves", "qty": 1, "ready": 0}
+	Game.state.time = 700
+	Game.change_map("homestead", 24, 18, "down", {"silent": true})
+	await frames(30)
+	await shot("15_defenses")
+	Game.state.time = 1340
+	Game.state.raid = {"day": Game.state.day, "size": 4, "spawned": false, "killed": 0, "warned": true}
+	main.world.spawn_raid(4)
+	await frames(90)
+	await shot("16_raid_night")
+	main.ui.open("craft", {"station": "hand"}); await shot("17_crafting")
 	get_tree().quit()
 
 func frames(n: int) -> void:
