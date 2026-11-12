@@ -129,6 +129,7 @@ var mining := {
 var friendship := {
 	"points_per_heart": 100, "max_hearts": 10,
 	"talk_points": 12, "gift_love": 80, "gift_like": 45, "gift_neutral": 20, "gift_dislike": -25,
+	"gifts_per_week": 2, "birthday_mult": 8, "daily_decay": 2,   # points lost each day you don't talk
 }
 
 var skills := {

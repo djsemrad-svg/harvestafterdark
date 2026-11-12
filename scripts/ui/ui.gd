@@ -634,7 +634,7 @@ func hint_text() -> String:
 	if npc != null:
 		var s = Game.selected_stack()
 		var rel: Dictionary = Game.state.npcs[npc]
-		var gift: bool = s != null and Game.item_flags(s.id).giftable and rel.met and int(rel.gifted_day) != int(Game.state.day)
+		var gift: bool = s != null and Game.item_flags(s.id).giftable and rel.met and Game.can_gift(npc)
 		return "E: " + ("Talk / give %s to " % Data.items[s.id].name if gift else "Talk to ") + Data.npcs[npc].name.split(" ")[0]
 	var t: Vector2i = w.target_preview()
 	var m: GameMap = Game.map
@@ -1730,6 +1730,25 @@ func _tab_collections() -> Control:
 				cell.tooltip_text = "Not discovered yet"
 			flow_c.add_child(cell)
 		v.add_child(flow_c)
+	# shipping log: every crop, forage, fish and artisan good you've sent out in the trade crate
+	var ship_ids := []
+	for id in Data.items:
+		if Data.items[id].cat in ["crop", "forage", "fish", "artisan"]: ship_ids.append(id)
+	var shipped: Dictionary = Game.state.collections.shipped
+	var sn := ship_ids.filter(func(i): return shipped.has(i)).size()
+	v.add_child(K.rich("[b]Shipping Log[/b]  [color=#7a5434]%d/%d shipped (%d%%)[/color]" % [sn, ship_ids.size(), int(100.0 * sn / max(1, ship_ids.size()))], 7))
+	var sf := HFlowContainer.new()
+	for id in ship_ids:
+		var cell := PanelContainer.new()
+		cell.add_theme_stylebox_override("panel", K.sb(Color("#f0c88a") if shipped.has(id) else Color("#8a7a6a"), Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1))
+		cell.custom_minimum_size = Vector2(18, 18)
+		cell.mouse_filter = Control.MOUSE_FILTER_PASS
+		var ic := K.icon(Art.get_icon(id), 16)
+		if not shipped.has(id): ic.modulate = Color(0, 0, 0, 0.45)
+		cell.add_child(ic)
+		cell.tooltip_text = (Data.items[id].name + ": shipped %d" % int(shipped[id])) if shipped.has(id) else "Not shipped yet"
+		sf.add_child(cell)
+	v.add_child(sf)
 	v.add_child(K.label("Museum donations: the Brightwater Community Archive is closed for restoration. Keep your finest finds.", 6, K.INK_SOFT, true))
 	return K.scroll(v, 186)
 

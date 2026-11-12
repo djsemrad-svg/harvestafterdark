@@ -948,6 +948,37 @@ func run_all() -> void:
 	var cooking_n: int = Data.recipes.filter(func(x): return x.station == "stove").size()
 	check("Cooking: %d stove recipes; friendship unlocks a neighbour's recipe" % cooking_n, cooking_n >= 20 and locked_pie and G.count_item("pumpkin_pie") == 1, "locked first=%s" % locked_pie)
 
+	# ---------- crops, fish, friendship, shipping
+	check("Crops: %d crops across four seasons, %d fish (two legendary)" % [Data.crops.size(), Data.fish.size()], Data.crops.size() >= 26 and Data.fish.size() >= 21 and Data.fish.values().filter(func(f): return f.get("legend", false)).size() == 2)
+	start("adventure", 2)
+	G.state.npcs.hal.met = true
+	G.state.npcs.hal.points = 210
+	G.talk_to("hal")
+	var ev_lines: bool = ov() == "dialogue" and U.overlay.lines[0].contains("seed catalog")
+	U.dialogue_next(); U.dialogue_next()
+	var ev_choice: bool = ov() == "choice"
+	var p_before: int = G.state.npcs.hal.points
+	if ev_choice: U.overlay.choices[0].fn.call()
+	close_all()
+	check("Friendship: a heart event plays at 2 hearts and your answer changes friendship", ev_lines and ev_choice and G.state.npcs.hal.points == p_before + 40 and G.state.npcs.hal.events_seen.has(2), "lines=%s choice=%s pts %d>%d" % [ev_lines, ev_choice, p_before, G.state.npcs.hal.points])
+	G.add_item("potato", 5, {"silent": true})
+	var gifts_ok := 0
+	for i in 3:
+		if G.can_gift("ruth"):
+			G.give_gift("ruth", "potato"); close_all(); gifts_ok += 1
+		G.state.npcs.ruth.gifted_day = -1
+	var pts_r: int = G.state.npcs.ruth.points
+	G.state.npcs.ruth.met = true
+	sleep()
+	sleep()
+	check("Friendship: two gifts per week, and points fade on days you don't talk", gifts_ok == 2 and G.state.npcs.ruth.points == pts_r - 2, "gifts=%d pts %d>%d" % [gifts_ok, pts_r, G.state.npcs.ruth.points])
+	U.open("journal", {"tab": "collections"})
+	var has_log := false
+	for n in U.overlay_root.find_children("*", "RichTextLabel", true, false):
+		if n.text.contains("Shipping Log"): has_log = true
+	close_all()
+	check("Collections: a Shipping Log tracks every crop, forage, fish and artisan good shipped", has_log)
+
 	# ---------- night raids
 	Balance.raids.grace_days = 4
 	start("survivor", 3)

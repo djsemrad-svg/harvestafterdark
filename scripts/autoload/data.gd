@@ -82,6 +82,20 @@ var crops := {
 	"cabbage": {"name": "Frost Cabbage", "seasons": ["winter"], "days": 8, "regrow": 0, "seed_price": 40, "sell": 95, "shape": "leafy", "color": "#9fd08a", "hunger": 12, "thirst": 6, "energy": 12, "hp": 3, "uses": "Cooking: Garden Stew", "special": "Thrives in snow."},
 	"emberroot": {"name": "Emberroot", "seasons": ["winter"], "days": 6, "regrow": 0, "seed_price": 35, "sell": 70, "shape": "root", "color": "#e0602a", "hunger": 8, "thirst": 0, "energy": 30, "hp": 4, "uses": "Cooking: Garden Stew", "special": "A warming root. Restores extra energy."},
 	"snowpea": {"name": "Snowpea", "seasons": ["winter"], "days": 9, "regrow": 3, "seed_price": 50, "sell": 35, "shape": "vine", "color": "#dff0e0", "hunger": 5, "thirst": 4, "energy": 8, "hp": 2, "uses": "Cooking: Garden Stew", "special": "Keeps producing every 3 days."},
+	"parsnip": {"name": "Pale Parsnip", "seasons": ["spring"], "days": 4, "regrow": 0, "seed_price": 18, "sell": 38, "shape": "root", "color": "#f0e0a0", "hunger": 9, "thirst": 2, "energy": 10, "hp": 2, "uses": "Cooking: Garden Stew", "special": "Cheap and quick. Good for a first field."},
+	"garlic": {"name": "Garlic", "seasons": ["spring"], "days": 5, "regrow": 0, "seed_price": 35, "sell": 65, "shape": "root", "color": "#f0e8d8", "hunger": 4, "thirst": 0, "energy": 8, "hp": 6, "uses": "Cooking ingredient", "special": "Keeps for months in a cool cellar."},
+	"kale": {"name": "Kale", "seasons": ["spring"], "days": 6, "regrow": 0, "seed_price": 55, "sell": 110, "shape": "leafy", "color": "#3f7a4a", "hunger": 8, "thirst": 4, "energy": 14, "hp": 4, "uses": "Cooking: Garden Stew", "special": "Hardy greens. Sells well in town."},
+	"strawbloom": {"name": "Strawbloom", "seasons": ["spring"], "days": 8, "regrow": 4, "seed_price": 90, "sell": 85, "shape": "bush", "color": "#e8405a", "hunger": 5, "thirst": 8, "energy": 12, "hp": 2, "uses": "A sweet treat", "special": "Plant early: it keeps fruiting every 4 days."},
+	"hot_pepper": {"name": "Hot Pepper", "seasons": ["summer"], "days": 5, "regrow": 3, "seed_price": 40, "sell": 40, "shape": "bush", "color": "#e83a2a", "hunger": 3, "thirst": -6, "energy": 16, "hp": 0, "uses": "Spices up any dish", "special": "Fruits every 3 days. Makes you sweat."},
+	"bluebell_berry": {"name": "Bluebell Berry", "seasons": ["summer"], "days": 12, "regrow": 4, "seed_price": 80, "sell": 55, "shape": "bush", "color": "#4a6ad8", "hunger": 4, "thirst": 6, "energy": 12, "hp": 2, "uses": "Preserves", "special": "Slow to start, then fruits every 4 days."},
+	"wheat": {"name": "Wheat", "seasons": ["summer", "autumn"], "days": 4, "regrow": 0, "seed_price": 10, "sell": 25, "shape": "tall", "color": "#e0c070", "hunger": 0, "thirst": 0, "energy": 2, "hp": 0, "uses": "Milled into flour, someday", "special": "Cheap, quick and grows into autumn."},
+	"sunflower": {"name": "Sunflower", "seasons": ["summer", "autumn"], "days": 8, "regrow": 0, "seed_price": 60, "sell": 90, "shape": "tall", "color": "#f0c040", "hunger": 2, "thirst": 0, "energy": 6, "hp": 0, "uses": "Ruth loves a vase of these", "special": "Brightens the whole field."},
+	"bogberry": {"name": "Bogberry", "seasons": ["autumn"], "days": 7, "regrow": 5, "seed_price": 80, "sell": 75, "shape": "bush", "color": "#c8203a", "hunger": 4, "thirst": 6, "energy": 12, "hp": 2, "uses": "Preserves", "special": "Tart and long-lasting. Fruits every 5 days."},
+	"eggplant": {"name": "Eggplant", "seasons": ["autumn"], "days": 5, "regrow": 5, "seed_price": 30, "sell": 60, "shape": "big", "color": "#6a3a8a", "hunger": 10, "thirst": 2, "energy": 12, "hp": 2, "uses": "Cooking ingredient", "special": "Keeps producing every 5 days."},
+	"amber_yam": {"name": "Amber Yam", "seasons": ["autumn"], "days": 10, "regrow": 0, "seed_price": 60, "sell": 160, "shape": "root", "color": "#c87a3a", "hunger": 20, "thirst": 0, "energy": 18, "hp": 4, "uses": "Cooking ingredient", "special": "Slow but very filling."},
+	"bok_choy": {"name": "Bok Choy", "seasons": ["autumn"], "days": 4, "regrow": 0, "seed_price": 40, "sell": 80, "shape": "leafy", "color": "#8ac86a", "hunger": 6, "thirst": 6, "energy": 12, "hp": 2, "uses": "Cooking ingredient", "special": "A quick autumn earner."},
+	"frost_turnip": {"name": "Frost Turnip", "seasons": ["winter"], "days": 5, "regrow": 0, "seed_price": 30, "sell": 65, "shape": "root", "color": "#e8e0f0", "hunger": 12, "thirst": 2, "energy": 12, "hp": 2, "uses": "Cooking ingredient", "special": "Sweeter after a hard frost."},
+	"frost_leek": {"name": "Frost Leek", "seasons": ["winter"], "days": 7, "regrow": 0, "seed_price": 45, "sell": 95, "shape": "leafy", "color": "#b8d8b0", "hunger": 6, "thirst": 4, "energy": 12, "hp": 3, "uses": "Cooking ingredient", "special": "Bred by Brightwater gardeners for the cold."},
 }
 
 var forage := {
@@ -104,6 +118,19 @@ var fish := {
 	"mirror_carp": {"name": "Mirror Carp", "locs": ["pond", "lake"], "seasons": ["spring", "summer", "autumn", "winter"], "time": [360, 1560], "weather": "any", "w": 25, "diff": 25, "sell": 40, "color": "#a08a50", "move": "sinker"},
 	"lake_perch": {"name": "Lake Perch", "locs": ["lake"], "seasons": ["spring", "autumn", "winter"], "time": [360, 1560], "weather": "any", "w": 25, "diff": 35, "sell": 50, "color": "#7a9a50", "move": "smooth"},
 	"ghost_pike": {"name": "Ghost Pike", "locs": ["lake"], "seasons": ["autumn", "winter"], "time": [1200, 1560], "weather": "any", "w": 6, "diff": 70, "sell": 160, "color": "#cfd8e0", "move": "dart"},
+	"stone_loach": {"name": "Stone Loach", "locs": ["river"], "seasons": ["spring", "summer", "autumn", "winter"], "time": [360, 1560], "weather": "any", "w": 22, "diff": 15, "sell": 22, "color": "#9a8a6a", "move": "sinker"},
+	"sunset_bream": {"name": "Sunset Bream", "locs": ["river"], "seasons": ["summer"], "time": [1080, 1440], "weather": "any", "w": 14, "diff": 40, "sell": 70, "color": "#e88a4a", "move": "smooth"},
+	"river_gar": {"name": "River Gar", "locs": ["river"], "seasons": ["autumn"], "time": [600, 1320], "weather": "any", "w": 8, "diff": 65, "sell": 120, "color": "#7a8a5a", "move": "dart"},
+	"ice_smelt": {"name": "Ice Smelt", "locs": ["river", "lake"], "seasons": ["winter"], "time": [360, 1080], "weather": "any", "w": 20, "diff": 30, "sell": 40, "color": "#d8e8f0", "move": "dart"},
+	"old_whiskers": {"name": "Old Whiskers", "locs": ["river"], "seasons": ["spring", "autumn"], "time": [1200, 1560], "weather": "rain", "w": 1, "diff": 90, "sell": 900, "color": "#5a4a3a", "move": "sinker", "legend": true},
+	"spotted_bullhead": {"name": "Spotted Bullhead", "locs": ["pond"], "seasons": ["spring", "autumn"], "time": [1140, 1560], "weather": "any", "w": 14, "diff": 35, "sell": 60, "color": "#6a5a3a", "move": "sinker"},
+	"gold_shiner": {"name": "Gold Shiner", "locs": ["pond"], "seasons": ["summer"], "time": [600, 1080], "weather": "any", "w": 12, "diff": 45, "sell": 85, "color": "#f0c040", "move": "dart"},
+	"bog_eel": {"name": "Bog Eel", "locs": ["pond"], "seasons": ["autumn", "winter"], "time": [1080, 1560], "weather": "rain", "w": 6, "diff": 70, "sell": 150, "color": "#3a4a3a", "move": "smooth"},
+	"lake_whitefish": {"name": "Lake Whitefish", "locs": ["lake"], "seasons": ["winter", "spring"], "time": [360, 1200], "weather": "any", "w": 16, "diff": 35, "sell": 65, "color": "#e8e8e0", "move": "smooth"},
+	"highland_char": {"name": "Highland Char", "locs": ["lake"], "seasons": ["spring", "summer"], "time": [360, 720], "weather": "any", "w": 10, "diff": 55, "sell": 110, "color": "#e86a5a", "move": "dart"},
+	"bramble_bass": {"name": "Bramble Bass", "locs": ["lake", "pond"], "seasons": ["summer", "autumn"], "time": [720, 1320], "weather": "any", "w": 12, "diff": 50, "sell": 95, "color": "#5a8a3a", "move": "smooth"},
+	"pale_sturgeon": {"name": "Pale Sturgeon", "locs": ["lake"], "seasons": ["summer", "winter"], "time": [360, 1140], "weather": "any", "w": 4, "diff": 78, "sell": 260, "color": "#a8a8b0", "move": "sinker"},
+	"ridge_lurker": {"name": "The Ridge Lurker", "locs": ["lake"], "seasons": ["winter"], "time": [1200, 1560], "weather": "any", "w": 1, "diff": 95, "sell": 1200, "color": "#2a3a5a", "move": "dart", "legend": true},
 }
 
 var metals := {
@@ -361,7 +388,7 @@ var npcs := {
 	"ruth": {
 		"name": "Ruth Adeyemi", "role": "Town coordinator", "birthday": {"season": "autumn", "day": 14},
 		"look": {"skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
-		"loves": ["pumpkin", "amethyst", "veggie_stew"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
+		"loves": ["pumpkin", "amethyst", "veggie_stew", "sunflower"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
 			"rain": [[360, ""], [540, "town", 23, 10, "down"], [720, "store", 8, 6, "up"], [900, "town", 23, 10, "down"], [1200, ""]],
@@ -381,7 +408,7 @@ var npcs := {
 	"hal": {
 		"name": "Hal Brennan", "role": "Owner of Brennan's General", "birthday": {"season": "spring", "day": 21},
 		"look": {"skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
-		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato"], "dislikes": ["stone", "cat:junk", "clay"],
+		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato", "hot_pepper"], "dislikes": ["stone", "cat:junk", "clay"],
 		"schedules": {
 			"default": [[360, ""], [510, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
 			"Sun": [[360, ""], [600, "town", 30, 17, "down"], [840, "mountain", 10, 22, "up"], [1080, "town", 6, 29, "up"], [1200, ""]],
@@ -489,6 +516,43 @@ var weather_info := {
 	"wind": {"name": "Windy", "waters": false}, "fog": {"name": "Fog", "waters": false}, "snow": {"name": "Snow", "waters": true},
 }
 
+## Heart events: a short scene the first time you talk to someone after reaching
+## that many hearts. Options are [answer, friendship points, their reply].
+var heart_events := {
+	"ruth": {
+		2: {"lines": ["Do you know what I write first in the ledger every morning? Not seeds. Names.", "Everyone who's still here. Some days the list was shorter than the day before. Not lately, though."],
+			"q": "Why keep the list?", "options": [["So no one is forgotten.", 40, "Exactly. Someone has to remember them out loud."], ["That sounds heavy.", 20, "It is. It's lighter when someone asks about it."], ["Seems like a waste of ink.", -10, "...Ink is the one thing we have plenty of."]]},
+		4: {"lines": ["I keep this old radio tuned to the emergency band. Nine years of static.", "Last week I heard a voice. Three words, then nothing. \"Coastline holding. Repeat.\""],
+			"q": "What do you think it means?", "options": [["Other survivors. We're not alone.", 40, "That's what I want to believe. Thank you for saying it."], ["It could be a trap.", 10, "Maybe. Ines said the same. We'll be careful."], ["Probably an old recording.", 0, "...Probably. I'll keep listening anyway."]]},
+		6: {"lines": ["When the Archive reopens I want a wall of photographs. Everyone who rebuilt this town.", "Your farm is going on it. You're part of Brightwater now, whether you like it or not."],
+			"q": "", "options": [["I'd be honored.", 50, "Good. Now I just need someone who can still draw."], ["I'm just doing my part.", 30, "That's what everyone on that wall will say."]]},
+	},
+	"hal": {
+		2: {"lines": ["Found this in a box of old stock. A seed catalog from before the Fall.", "Look at these pictures. Forty kinds of tomato. Forty! We've got one."],
+			"q": "Which would you grow?", "options": [["All forty.", 40, "Ha! A dreamer. I like that."], ["Whatever keeps the town fed.", 30, "Sensible. You sound like Ruth."], ["None. Tomatoes are overrated.", -10, "Get out of my store. (He's laughing.)"]]},
+		4: {"lines": ["My daughter Mae would have turned twenty this year.", "She used to sit on that counter and charge customers a smile tax."],
+			"q": "", "options": [["Tell me about her.", 50, "Loud, stubborn and kind. Thanks for asking. Nobody does anymore."], ["I'm sorry, Hal.", 30, "Me too. Every day. But it's a softer sorry now."]]},
+		6: {"lines": ["I've been thinking about fixing up the old greenhouse behind the store.", "Could use a farmer's eye. And a farmer's hands, if you've got time."],
+			"q": "", "options": [["Count me in.", 50, "Then we'll make Brightwater the greenest town left standing."], ["Maybe after harvest.", 20, "Fair. It'll still be broken in a month."]]},
+	},
+	"ines": {
+		2: {"lines": ["Hold this. No, by the handle. ...Good. You didn't flinch.", "Most people flinch at the sparks. You'd make a decent smith."],
+			"q": "", "options": [["Teach me sometime?", 40, "Bring me ore and patience. Mostly patience."], ["I'll stick to farming.", 20, "Smart. Someone has to feed the smiths."]]},
+		4: {"lines": ["I went down past the tenth floor once. Alone. Before the cave-in.", "There were marks on the walls down there. Not from tools. Not from anything I know."],
+			"q": "", "options": [["What made them?", 30, "I don't know. That's what keeps me up."], ["You shouldn't go down there alone.", 45, "...No. I shouldn't. Maybe next time I won't."], ["Sounds like nonsense.", -10, "Go look yourself, then."]]},
+		6: {"lines": ["Here. I made you something. Don't make it weird.", "Two good iron bars. Use them on a tool. Or a turret, if the nights get worse."], "reward": ["iron_bar", 2],
+			"q": "", "options": [["Thank you, Ines.", 40, "...You're welcome. Now go before I get sentimental."]]},
+	},
+	"wren": {
+		2: {"lines": ["Shh. See the ripple by the reeds? That's a chub thinking about lunch.", "My grandfather said fish teach patience. He was wrong. They teach humility."],
+			"q": "", "options": [["What does the river teach?", 40, "That everything keeps moving, even after the world stops."], ["Can I try?", 30, "Here. Don't yank it. ...You yanked it."]]},
+		4: {"lines": ["I come out here at night sometimes. The infected don't like the water.", "It's the only place I feel like I can breathe."],
+			"q": "", "options": [["I'll keep watch with you sometime.", 45, "...I'd like that."], ["Isn't that dangerous?", 15, "Everything is. The river's honest about it."]]},
+		6: {"lines": ["I carved you some bait. Old Whiskers lives in this river: the biggest catfish anyone's seen.", "He only comes up on rainy nights in spring and autumn. Catch him and you're a legend."], "reward": ["bait", 20],
+			"q": "", "options": [["I'll catch him.", 40, "I believe it. Bring me the story."], ["Is he even real?", 20, "As real as you and me."]]},
+	},
+}
+
 var enemies := {
 	"shambler": {"name": "Shambler", "hp": 5, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 88.0, "damage": 15, "xp": 6,
 		"look": {"skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
@@ -582,7 +646,7 @@ func _init() -> void:
 	for f in fish:
 		var d: Dictionary = fish[f]
 		def_item(f, {"name": d.name, "cat": "fish", "price": d.sell,
-			"desc": "Found in %s. Season: %s. Cook it at a stove before eating." % [" and ".join(d.locs.map(func(l): return l + "s")), ", ".join(d.seasons.map(func(s): return s.capitalize()))],
+			"desc": ("Legendary. " if d.get("legend", false) else "") + "Found in %s. Season: %s. Cook it at a stove before eating." % [" and ".join(d.locs.map(func(l): return l + "s")), ", ".join(d.seasons.map(func(s): return s.capitalize()))],
 			"icon": {"s": "fish", "c": d.color}})
 	def_item("soggy_paper", {"name": "Soggy Newspaper", "cat": "junk", "price": 0, "desc": "The headline is unreadable. Probably for the best.", "icon": {"s": "paper"}})
 	def_item("old_can", {"name": "Old Tin Can", "cat": "junk", "price": 2, "desc": "Rusted through. Worth a coin or two as scrap.", "icon": {"s": "can", "c": "#9a8a7a"}})

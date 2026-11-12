@@ -1164,8 +1164,12 @@ func talk_to(id: String) -> void:
 				check_quest_unlocks()
 			quest_event("talk", {"npc": id}))
 		return
+	var ev := due_heart_event(id)
+	if ev > 0:
+		play_heart_event(id, ev)
+		return
 	var s = selected_stack()
-	if s != null and item_flags(s.id).giftable and int(rel.gifted_day) != int(state.day):
+	if s != null and item_flags(s.id).giftable and can_gift(id):
 		var item_id: String = s.id
 		ui.choice(d.name, "Give %s to %s?" % [Data.items[item_id].name, d.name.split(" ")[0]], [
 			{"label": "Give gift", "fn": func(): give_gift(id, item_id)},
@@ -1174,6 +1178,50 @@ func talk_to(id: String) -> void:
 		])
 		return
 	chat(id)
+
+func is_birthday(id: String) -> bool:
+	var b: Dictionary = Data.npcs[id].birthday
+	return b.season == season() and int(b.day) == day_of_season()
+
+func can_gift(id: String) -> bool:
+	var rel: Dictionary = state.npcs[id]
+	if int(rel.gifted_day) == int(state.day):
+		return false
+	if is_birthday(id):
+		return true
+	var week := int((int(state.day) - 1) / 7)
+	return int(rel.get("gift_week", -1)) != week or int(rel.get("gifts_week_n", 0)) < Balance.friendship.gifts_per_week
+
+func due_heart_event(id: String) -> int:
+	var seen: Array = state.npcs[id].get("events_seen", [])
+	if int(state.npcs[id].get("event_day", -1)) == int(state.day):
+		return 0
+	for h in [2, 4, 6]:
+		if hearts(id) >= h and not seen.has(h) and Data.heart_events.get(id, {}).has(h):
+			return h
+	return 0
+
+func play_heart_event(id: String, h: int) -> void:
+	var ev: Dictionary = Data.heart_events[id][h]
+	var rel: Dictionary = state.npcs[id]
+	if not rel.has("events_seen"): rel.events_seen = []
+	rel.events_seen.append(h)
+	rel.event_day = state.day
+	if int(rel.talked_day) != int(state.day):
+		rel.talked_day = state.day
+		rel.points = min(1000, int(rel.points) + Balance.friendship.talk_points)
+	var nm: String = Data.npcs[id].name.split(" ")[0]
+	ui.dialogue(id, ev.lines.duplicate(), func():
+		if ev.has("reward"):
+			add_item(ev.reward[0], int(ev.reward[1]))
+		var opts := []
+		for o in ev.options:
+			var pts: int = o[1]
+			var reply: String = o[2]
+			opts.append({"label": o[0], "fn": func():
+				rel.points = clamp(int(rel.points) + pts, 0, 1000)
+				ui.dialogue(id, [reply])})
+		ui.choice(nm, ev.q if ev.q != "" else "...", opts))
 
 func chat(id: String) -> void:
 	var d: Dictionary = Data.npcs[id]
@@ -1200,8 +1248,14 @@ func give_gift(id: String, item_id: String) -> void:
 		return
 	var taste := gift_taste(id, item_id)
 	var pts: int = {"love": F.gift_love, "like": F.gift_like, "neutral": F.gift_neutral, "dislike": F.gift_dislike}[taste]
-	if d.birthday.season == season() and int(d.birthday.day) == day_of_season() and pts > 0:
-		pts *= 3
+	if is_birthday(id) and pts > 0:
+		pts *= F.birthday_mult
+	else:
+		var week := int((int(state.day) - 1) / 7)
+		if int(rel.get("gift_week", -1)) != week:
+			rel.gift_week = week
+			rel.gifts_week_n = 0
+		rel.gifts_week_n = int(rel.gifts_week_n) + 1
 	rel.points = clamp(int(rel.points) + pts, 0, 1000)
 	rel.gifted_day = state.day
 	if int(rel.talked_day) != int(state.day):
@@ -1573,6 +1627,11 @@ func end_day(reason: String) -> void:
 	if restore < 1.0:
 		rep.lines.append("You slept poorly and only recovered %d%% of your energy." % round(restore * 100))
 	var prev_season := season()
+	# friendships fade a little on days you don't talk
+	for nid in state.npcs:
+		var rel: Dictionary = state.npcs[nid]
+		if rel.met and int(rel.talked_day) != int(state.day):
+			rel.points = max(0, int(rel.points) - Balance.friendship.daily_decay)
 	# 0. tonight's raid plays out while you sleep
 	rep.lines.append_array(resolve_raid(maps.homestead))
 	# 1. advance the day

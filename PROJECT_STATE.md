@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 12, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 81 / 81 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 85 / 85 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -25,6 +25,14 @@ crafting and cooking, chests, backups.
 - Explosives: Pipe Charge and Blast Canister break rocks and hurt the infected.
 - Night raids start after day 4 and grow each season. You get a warning at 6 pm. If you're on the homestead at 10 pm the infected come out of the trees and head for the farmhouse, clawing through barriers. While you sleep the raid is resolved: turrets shoot first, then raiders batter the barriers around your fields; if they get in, they trample crops.
 - Cooking: 24 stove recipes. Four are taught by neighbours at 3 hearts.
+
+### Crops, fish, friendship and shipping (added Nov 12)
+
+- 26 crops (6-7 per season, several regrow). New seeds show up at Brennan's General in their season.
+- 21 fish across river, pond and lake, with season, time and weather windows. Two legendary fish: Old Whiskers (river, rainy nights, spring/autumn) and The Ridge Lurker (lake, winter nights).
+- Heart events: each neighbour has a short scene at 2, 4 and 6 hearts with an answer that changes friendship. Ines and Wren give gifts at 6 hearts.
+- Gifts: two per week (plus birthdays), birthday gifts count 8x, and friendship fades by 2 points on days you don't talk.
+- Collections tab has a Shipping Log of every crop, forage, fish and artisan good shipped.
 
 ## Code layout
 
@@ -59,5 +67,5 @@ crafting and cooking, chests, backups.
    - Barriers take damage from the infected and are repaired with materials; damaged pieces show cracks and patches.
    - Gear look: mixed by tier. Low tiers homemade from scrap; top tiers restored military hardware.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
-3. Next: grow crops, fish, friendship events and the shipping collection using the Stardew wiki pages Daniel shared (Crops, Fish, Friendship, Shipping), with original names and art.
+3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Later phases from the master prompt (animals, residents, factions, hostile settlements).
