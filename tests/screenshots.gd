@@ -4,10 +4,12 @@ extends Node
 
 var main: Node
 var out := "user://shots/"
+var only := ""
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shots="): out = a.substr(8) + "/"
+		if a.begins_with("--only="): only = a.substr(7)
 	DirAccess.make_dir_recursive_absolute(out)
 	Game.SAVE_DIR = "user://test_saves/"
 	main = preload("res://scripts/main.gd").new()
@@ -17,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "districts":
+		main.ui.close_all()
+		await district_shots()
+		get_tree().quit()
+		return
 	await shot("04_intro")
 	main.ui.close_all()
 	Game.state.time = 600
@@ -121,6 +128,7 @@ func _ready() -> void:
 	Game.change_map("greenhouse", 7, 9, "up", {"silent": true}); await frames(20); await shot("26_room_greenhouse")
 	Game.change_map("homestead", 29, 11, "up", {"silent": true}); await frames(20); await shot("27_greenhouse_outside")
 	await arsenal_shots()
+	await district_shots()
 	get_tree().quit()
 
 func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
@@ -228,6 +236,39 @@ func arsenal_shots() -> void:
 	main.ui.open("craft", {"station": "workbench"}); await frames(2); await shot("39_workbench")
 	main.ui.close_all()
 	Game.change_map("clinic", 7, 9, "up", {"silent": true}); Game.sync_npcs(); await frames(20); await shot("40_clinic_coded")
+
+func district_shots() -> void:
+	Game.state.time = 640
+	Game.change_map("town", 3, 30, "left", {"silent": true}); await frames(20); await shot("41_town_maple_gate")
+	Game.change_map("town", 28, 37, "down", {"silent": true}); await frames(20); await shot("41b_town_south_gate")
+	Game.change_map("town", 52, 19, "right", {"silent": true}); await frames(20); await shot("42_town_east_gate")
+	for id in ["residential", "industrial", "riverlands"]:
+		Game.unlock_region(id, true)
+	Game.change_map("town", 3, 30, "left", {"silent": true}); await frames(20); await shot("43_town_gate_open")
+	var views := [["residential", 58, 22], ["residential", 38, 20], ["residential", 10, 21], ["residential", 48, 14], ["residential", 10, 35], ["residential", 50, 32],
+		["industrial", 4, 19], ["industrial", 28, 18], ["industrial", 22, 26], ["industrial", 52, 18], ["industrial", 44, 36], ["industrial", 16, 34],
+		["riverlands", 29, 4], ["riverlands", 14, 18], ["riverlands", 42, 22], ["riverlands", 28, 32], ["riverlands", 10, 33]]
+	var i := 0
+	for v in views:
+		Game.change_map(v[0], v[1], v[2], "down", {"silent": true})
+		Game.enemies.clear()
+		await frames(20)
+		await shot("5%02d_%s_%d_%d" % [i, v[0], v[1], v[2]])
+		i += 1
+	var rooms := []
+	for id in Districts.DISTRICTS:
+		for b in Districts.DISTRICTS[id].buildings:
+			if b.has("room") and not rooms.any(func(r): return r[1] == b.room + str(b.get("swap", {}))):
+				rooms.append([b.id, b.room + str(b.get("swap", {}))])
+	Game.state.mode = "adventure"
+	for r in rooms:
+		Game.change_map(r[0], 6, 9, "up", {"silent": true})
+		Game.state.health = 100.0
+		for e in Game.enemies: e.state = "asleep"
+		await frames(20)
+		await shot("6%02d_room_%s" % [rooms.find(r), r[0]])
+	Game.state.time = 1300
+	Game.change_map("residential", 30, 22, "down", {"silent": true}); await frames(30); await shot("70_residential_night")
 
 func frames(n: int) -> void:
 	for i in n:

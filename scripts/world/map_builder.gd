@@ -197,6 +197,7 @@ static func town(world_seed: int) -> GameMap:
 	m.fill(0, 34, 56, 3, "water")
 	m.fill(27, 33, 3, 4, "bridge")
 	m.fill(27, 37, 3, 3, "dirt")
+	m.fill(0, 30, 27, 2, "road")              # Maple Street, west to the Residential District
 	m.add_structure({"kind": "store", "x": 8, "y": 11, "w": 8, "h": 6, "door_x": 12, "door_y": 16, "warp": {"to": "store", "tx": 6, "ty": 8, "dir": "up", "shop": "general"}})
 	m.add_structure({"kind": "forge", "x": 36, "y": 11, "w": 7, "h": 6, "door_x": 39, "door_y": 16, "warp": {"to": "forge", "tx": 6, "ty": 8, "dir": "up", "shop": "forge"}})
 	m.add_structure({"kind": "townhall", "x": 20, "y": 4, "w": 7, "h": 5, "door_x": 23, "door_y": 8, "text": "Ruth's house. The door is locked. She keeps it tidy, even now."})
@@ -234,15 +235,25 @@ static func town(world_seed: int) -> GameMap:
 	m.add_obj(24, 23, "bench"); m.add_obj(32, 23, "bench")
 	m.add_obj(7, 16, "barrel"); m.add_obj(16, 16, "barrel"); m.add_obj(43, 15, "crate"); m.add_obj(43, 16, "barrel")
 	m.add_obj(46, 18, "car_wreck", {"w": 2}); m.add_obj(4, 20, "car_wreck", {"w": 2})
-	for y in range(16, 23):
+	# the three district gates. "anchor" objects are put back on load if an older save has something else there.
+	for y in [16, 17, 21, 22]:
 		m.add_obj(55, y, "rubble")
-	m.add_obj(53, 16, "sign", {"text": "INDUSTRIAL DISTRICT. The east gate is sealed and the power is out."})
+	for y in [18, 19, 20]:
+		m.add_obj(55, y, "district_gate", {"region": "industrial", "anchor": true})
+	m.add_obj(53, 16, "sign", {"text": "INDUSTRIAL DISTRICT. The east gate is sealed and the power is out. Jo at Mercer Workshop might get it running.", "anchor": true})
 	for x in range(27, 30):
-		m.add_obj(x, 39, "rubble")
-	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Repairs needed."})
+		m.add_obj(x, 39, "district_gate", {"region": "riverlands", "anchor": true})
+	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Jo at Mercer Workshop could rebuild it.", "anchor": true})
+	for y in [30, 31]:
+		m.add_obj(1, y, "district_gate", {"region": "residential", "anchor": true})
+	m.add_obj(2, 29, "sign", {"text": "MAPLE STREET. Residential District. Closed by order of the Combat Guild.", "anchor": true})
+	m.warps.append({"x": 0, "y": 30, "w": 1, "h": 2, "to": "residential", "tx": 58, "ty": 22, "dir": "left", "requires": "open_residential"})
+	m.warps.append({"x": 55, "y": 18, "w": 1, "h": 3, "to": "industrial", "tx": 1, "ty": 19, "dir": "right", "requires": "open_industrial"})
+	m.warps.append({"x": 27, "y": 39, "w": 3, "h": 1, "to": "riverlands", "tx": 29, "ty": 1, "dir": "down", "requires": "open_riverlands"})
+	m.purge.append(Rect2i(0, 29, 27, 4))
 	m.add_obj(31, 32, "sign", {"text": "Brightwater River. Good fishing, says Wren."})
-	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11), Rect2i(4, 2, 9, 8), Rect2i(44, 9, 9, 8), Rect2i(8, 23, 9, 9)])
-	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4)])
+	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11), Rect2i(4, 2, 9, 8), Rect2i(44, 9, 9, 8), Rect2i(8, 23, 9, 9), Rect2i(0, 29, 27, 4)])
+	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4), Rect2i(0, 30, 1, 2)])
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
 			if not _open(m, x, y):

@@ -738,15 +738,22 @@ func build_persistent_maps() -> void:
 	for b in state.get("buildings", []):
 		maps.homestead.add_structure(b)
 		maps[b.kind] = MapBuilder.coop(b)
+	maps.merge(Districts.all_maps(int(state.seed)))
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
+			var anchors := []
+			for kk in m.objects:
+				if m.objects[kk].get("anchor", false):
+					anchors.append(m.objects[kk])
 			m.objects = state.maps_dyn[id].objects
 			if not (state.maps_dyn[id].get("soil") is Dictionary):
 				state.maps_dyn[id].soil = {}
 			m.soil = state.maps_dyn[id].soil
+			_reconcile(m, anchors)
 		else:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
+	sync_gates()
 	# older saves: clear anything sitting where a newer building now stands
 	for id in ["homestead", "town"]:
 		var mm: GameMap = maps[id]
@@ -762,6 +769,38 @@ func build_persistent_maps() -> void:
 				var o = mm.get_obj(t.x, t.y)
 				if o != null and not Data.obj_defs.get(o.type, {}).get("fixture", false):
 					mm.remove_obj(t.x, t.y)
+
+## Older saves: put back fixed things a newer version added (district gates,
+## updated signs) and clear trees and weeds off newly built roads.
+func _reconcile(m: GameMap, anchors: Array) -> void:
+	for a in anchors:
+		var o = m.objects.get(GameMap.k(int(a.x), int(a.y)))
+		if o != null and o.type == a.type and str(o.get("text", "")) == str(a.get("text", "")):
+			continue
+		m.remove_obj(int(a.x), int(a.y))
+		m.objects.erase(GameMap.k(int(a.x), int(a.y)))
+		m.add_obj(int(a.x), int(a.y), a.type, a)
+	for rc in m.purge:
+		for kk in m.objects.keys():
+			var o2 = m.objects.get(kk)
+			if o2 != null and o2.type in ["tree", "pine", "weeds", "twig", "rock", "stump", "boulder", "forage", "dig_spot"] and rc.has_point(Vector2i(int(o2.x), int(o2.y))):
+				m.remove_obj(int(o2.x), int(o2.y))
+
+## District gates in town stand open once that district is unlocked.
+func sync_gates() -> void:
+	if not maps.has("town"):
+		return
+	for kk in maps.town.objects:
+		var o: Dictionary = maps.town.objects[kk]
+		if o.type == "district_gate":
+			o.open = state.unlocked.get(o.region, false)
+
+func unlock_region(id: String, silent := false) -> void:
+	state.unlocked[id] = true
+	state.flags["open_" + id] = true
+	sync_gates()
+	if not silent:
+		toast("%s is open: %s" % [Districts.UNLOCKS[id].gate, Districts.DISTRICTS[id].name], "", "gold")
 
 func start_session() -> void:
 	gear_changed()
@@ -884,7 +923,7 @@ func tick10() -> void:
 		toast("It's midnight. You're getting very tired. Head to bed before 2:00 am.", "", "warn")
 	if state.time == Balance.time.midnight + 60:
 		toast("1:00 am. You can barely keep your eyes open.", "", "warn")
-	if map and map.id == "mountain" and state.time >= 1200 and not mountain_night_spawned and world:
+	if map and (map.id == "mountain" or map.foes.has("night")) and state.time >= 1200 and not mountain_night_spawned and world:
 		world.spawn_night_infected()
 	if state.time == 1200:
 		start_generators(maps.homestead)
@@ -1406,6 +1445,8 @@ func resolve_raid(m: GameMap) -> Array:
 	if xp > 0:
 		add_xp("survival", xp)
 	state.stats.infected_defeated = int(state.stats.infected_defeated) + turret_kills + wire_kills
+	if turret_kills + wire_kills > 0:
+		quest_event("kill", {"n": turret_kills + wire_kills})
 	return lines
 
 func _raid_targets(m: GameMap, reach: PackedByteArray) -> Dictionary:
@@ -1627,7 +1668,7 @@ func spawn_daily_content(first: bool) -> void:
 	var cfg := mode_cfg()
 	var r := RandomNumberGenerator.new()
 	r.seed = int(state.seed) + int(state.day) * 7919
-	for mid in ["homestead", "town", "mountain"]:
+	for mid in ["homestead", "town", "mountain", "residential", "riverlands"]:
 		var m: GameMap = maps[mid]
 		var pool := Data.forage.keys().filter(func(f): return Data.forage[f].seasons.has(s) and Data.forage[f].maps.has(mid))
 		if pool.is_empty():
@@ -1768,7 +1809,7 @@ func talk_to(id: String) -> void:
 				var left := add_item("fishing_rod", 1)
 				if left > 0 and world:
 					world.spawn_drop("fishing_rod", 1, player.pos)
-				check_quest_unlocks()
+			check_quest_unlocks()
 			quest_event("talk", {"npc": id}))
 		return
 	var ev := due_heart_event(id)
@@ -1887,6 +1928,8 @@ func check_quest_unlocks(silent := false) -> void:
 			continue
 		if d.has("requires_flag") and not state.flags.get(d.requires_flag, false):
 			continue
+		if d.has("requires_met") and not state.npcs.get(d.requires_met, {}).get("met", false):
+			continue
 		q.active.append(d.id)
 		if not silent:
 			toast("New task: " + d.title, "", "gold")
@@ -1934,6 +1977,9 @@ func complete_quest(d: Dictionary) -> void:
 		if left > 0 and world:
 			world.spawn_drop(pair[0], left, player.pos)
 		parts.append("%d %s" % [pair[1], Data.items[pair[0]].name])
+	if r.has("unlock"):
+		unlock_region(r.unlock, true)
+		parts.append(Districts.UNLOCKS[r.unlock].gate + " opened")
 	toast("Task complete: " + d.title + (" (" + ", ".join(parts) + ")" if parts.size() else ""), "", "gold")
 	Sfx.play("coin")
 	check_quest_unlocks()
@@ -1990,6 +2036,8 @@ func shop_stock(shop_id: String) -> Array:
 		if e.get("service", "") == "coop" and (has_building("coop") or count_item("coop_kit") > 0):
 			continue
 		if e.get("service", "") == "greenhouse" and (state.flags.get("greenhouse", false) or state.flags.get("greenhouse_pending", false)):
+			continue
+		if e.get("service", "") == "unlock" and (state.unlocked.get(e.region, false) or state.flags.get("pending_unlocks", []).has(e.region)):
 			continue
 		if e.get("service", "") == "bounty":
 			var b = state.get("bounty")
@@ -2071,6 +2119,19 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		state.flags.greenhouse_pending = true
 		Sfx.play("coin")
 		toast("Jo will rebuild your greenhouse tonight.")
+		return ""
+	if e.get("service", "") == "unlock":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Jo needs %d %s for this (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		if not (state.flags.get("pending_unlocks") is Array): state.flags.pending_unlocks = []
+		state.flags.pending_unlocks.append(e.region)
+		Sfx.play("coin")
+		toast("Jo will have it done by morning.")
 		return ""
 	if e.get("service", "") == "bounty":
 		var b = state.get("bounty")
@@ -2470,6 +2531,10 @@ func end_day(reason: String) -> void:
 		state.flags.erase("greenhouse_pending")
 		state.flags.greenhouse = true
 		rep.lines.append("Jo rebuilt your greenhouse overnight. Crops planted inside grow in any season.")
+	for reg in state.flags.get("pending_unlocks", []):
+		unlock_region(reg, true)
+		rep.lines.append({"industrial": "Jo got the east gate running overnight. The Industrial District is open.", "riverlands": "Jo rebuilt the far bridge overnight. The Riverlands are open."}.get(reg, "%s is open." % Districts.DISTRICTS[reg].name))
+	state.flags.erase("pending_unlocks")
 	if state.flags.has("house_repair_to"):
 		state.flags.house_condition = int(state.flags.house_repair_to)
 		state.flags.erase("house_repair_to")

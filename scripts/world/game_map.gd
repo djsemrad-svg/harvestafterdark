@@ -13,6 +13,7 @@ var soil := {}          # "x,y" -> {"w": 0/1, "crop": null or {id, g, regrown, d
 var structures := []    # buildings
 var warps := []         # doors and map edges
 var clear := []         # rectangles kept free of random debris
+var purge := []         # rectangles where natural debris from older saves is removed on load
 var lights := []        # extra light sources [{x, y, r}]
 var drops := []         # items lying on the ground (not saved)
 var outdoor := false
@@ -26,6 +27,10 @@ var mood := "warm"
 ## A room picture drawn instead of tiles (path under res://art/), "" for tiled maps.
 var backdrop := ""
 var mine := false
+## Districts: which district this map belongs to, and who roams it
+## ({"day": [min, max], "night": [...], "table": [...]} outside, {"spots": [...]} in rooms).
+var district := ""
+var foes := {}
 # mine floors only
 var floor_n := 0
 var band := {}

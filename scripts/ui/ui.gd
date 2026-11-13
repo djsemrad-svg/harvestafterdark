@@ -667,8 +667,11 @@ func hint_text() -> String:
 		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
 		if o.type == "armory_bench": return "E: Use Armory Bench"
-		if o.type in ["car_wreck", "suitcase", "supply_crate"]:
-			return ("E: Search" if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
+		if o.type in ["car_wreck", "suitcase", "supply_crate"] or od.get("container", false):
+			var nm: String = od.get("name", "")
+			return ("E: Search" + (" " + nm if nm != "" else "") if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
+		if o.type == "district_gate" and not o.get("open", false):
+			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if names.has(o.type): return "E: " + names[o.type]
@@ -1832,7 +1835,7 @@ func _tab_map() -> Control:
 	wm.custom_minimum_size = Vector2(9 * cell + 4, 6 * cell + 4)
 	wm.add_theme_stylebox_override("panel", K.sb(Color("#6a9a50"), K.WOOD, 2, 3, K.OUTLINE, 1, 0))
 	for r in Data.regions:
-		var unlocked: bool = not r.has("lock") and st.unlocked.get(r.id, false)
+		var unlocked: bool = st.unlocked.get(r.id, false)
 		var name: String = st.property_name if r.id == "homestead" else r.name
 		var rp := PanelContainer.new()
 		var col := Color("#f8e2b0") if unlocked else Color(0.18, 0.14, 0.1, 0.65)
@@ -1844,7 +1847,8 @@ func _tab_map() -> Control:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		rp.add_child(l)
-		rp.tooltip_text = name if unlocked else name + ": " + r.get("lock", "Locked")
+		var why: String = r.get("lock", Districts.UNLOCKS[r.id].locked if Districts.UNLOCKS.has(r.id) else "Locked")
+		rp.tooltip_text = name if unlocked else name + ": " + why
 		rp.mouse_filter = Control.MOUSE_FILTER_PASS
 		wm.add_child(rp)
 	h.add_child(wm)
@@ -1858,6 +1862,11 @@ func _tab_map() -> Control:
 	v.add_child(K.label("Lantern Post tavern: boarded up for now.\nCommunity Archive: closed for restoration.", 6, null, true))
 	v.add_child(K.label("Old Mine", 8, K.WOOD_DARK))
 	v.add_child(K.label("North of town, up the Ridge Path. Deepest floor: %s. Hover a locked area to see why it's closed." % (str(st.mine.deepest) if int(st.mine.deepest) > 0 else "none yet"), 6, K.INK_SOFT, true))
+	v.add_child(K.label("Districts", 8, K.WOOD_DARK))
+	var how := {"residential": "Cole's task opens it", "industrial": "Jo can power the east gate", "riverlands": "Jo can rebuild the bridge"}
+	for id in Districts.DISTRICTS:
+		var open: bool = st.unlocked.get(id, false)
+		v.add_child(K.label("%s: %s" % [Districts.DISTRICTS[id].name, "open" if open else how[id]], 6, K.INK_SOFT, true))
 	v.custom_minimum_size.x = 170
 	h.add_child(v)
 	return h

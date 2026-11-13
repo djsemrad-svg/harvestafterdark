@@ -611,6 +611,8 @@ var shops := {
 		"buys": ["resource", "bar"], "daily_sale": false,
 		"stock": [
 			{"service": "greenhouse", "name": "Restore the greenhouse", "desc": "Jo rebuilds the old greenhouse on your farm overnight. Crops grow inside in any season. Also needs 200 wood, 100 stone and 5 copper bars.", "price": 3000, "mats": [["wood", 200], ["stone", 100], ["copper_bar", 5]]},
+			{"service": "unlock", "region": "industrial", "name": "Power the east gate", "desc": "Jo wires a car battery and new copper into the east gate overnight. Opens the Industrial District. Also needs 1 Car Battery (search car wrecks) and 5 Copper Bars.", "price": 2000, "mats": [["car_battery", 1], ["copper_bar", 5]]},
+			{"service": "unlock", "region": "riverlands", "name": "Rebuild the south bridge", "desc": "Jo rebuilds the washed-out bridge on the Riverlands road overnight. Opens the Riverlands. Also needs 150 Wood and 5 Iron Bars.", "price": 3000, "mats": [["wood", 150], ["iron_bar", 5]]},
 			{"service": "repair", "name": "Repair weapons and gear", "desc": "Jo fixes what you carry and wear. Cost depends on how worn it is.", "price": 0},
 			{"id": "wood", "price": 15}, {"id": "stone", "price": 15}, {"id": "scrap", "price": 35}, {"id": "clay", "price": 25},
 			{"id": "saltpeter", "price": 40}, {"id": "duct_tape", "price": 60}, {"id": "gasoline", "price": 150}, {"id": "rubber_tubing", "price": 50},
@@ -648,6 +650,7 @@ var quests := [
 	{"id": "q_fish", "title": "Something in the Water", "giver": "wren", "type": "catch", "count": 1, "requires_flag": "got_rod", "desc": "Catch a fish anywhere. Try the pond on your homestead or the river in town.", "reward": {"items": [["water_bottle", 3], ["bread_loaf", 2]]}},
 	{"id": "q_mine", "title": "Into the Dark", "giver": "ines", "type": "mine_floor", "count": 3, "desc": "Reach floor 3 of the old mine, north of town past the ridge path.", "reward": {"items": [["copper_ore", 10], ["coal", 3]]}},
 	{"id": "q_geode", "title": "Cracking Stones", "giver": "ines", "type": "geode", "count": 1, "desc": "Find a geode in the mine and have Ines open it at the forge.", "reward": {"money": 100}},
+	{"id": "q_maple", "title": "Maple Street Sweep", "giver": "cole", "type": "kill", "count": 15, "requires_met": "cole", "desc": "Cole keeps the Maple Street barricade west of the Combat Guild locked. Put down 15 infected anywhere and he'll open it to the Residential District.", "reward": {"money": 300, "unlock": "residential"}},
 	{"id": "q_upgrade", "title": "Sharper Tools", "giver": "ines", "type": "upgrade", "count": 1, "requires": "q_mine", "desc": "Refine copper bars and have Ines upgrade any tool.", "reward": {"money": 250}},
 ]
 
@@ -1001,6 +1004,7 @@ func _init() -> void:
 	shops.general.stock = st
 	Arsenal.register(self)
 	Catalog.register(self)
+	Districts.register(self)
 
 
 func item(id: String) -> Dictionary:

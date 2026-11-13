@@ -1221,6 +1221,7 @@ func run_all() -> void:
 
 	run_arsenal()
 	run_items()
+	run_districts()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -1630,6 +1631,174 @@ func run_items() -> void:
 
 	var drops_all: Array = Data.enemy_drops.get("*", []).map(func(x): return x[0])
 	check("Zombie drops from the sheet: any infected can drop Rotten Flesh and Zombie Teeth", drops_all.has("rotten_flesh") and drops_all.has("zombie_tooth"), str(drops_all))
+
+# ---------------------------------------------------------------- districts
+func reach(m: GameMap, from: Vector2i) -> Dictionary:
+	var seen := {from: true}
+	var q := [from]
+	while not q.is_empty():
+		var c: Vector2i = q.pop_back()
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if seen.has(n) or not m.in_bounds(n.x, n.y) or m.is_solid(n.x, n.y): continue
+			seen[n] = true
+			q.append(n)
+	return seen
+
+## Can you stand next to this object (on a side, not a corner)?
+func reachable(seen: Dictionary, o: Dictionary) -> bool:
+	var ox: int = int(o.x); var oy: int = int(o.y); var ow: int = int(o.get("w", 1)); var oh: int = int(o.get("h", 1))
+	for x in range(ox, ox + ow):
+		if seen.has(Vector2i(x, oy - 1)) or seen.has(Vector2i(x, oy + oh)): return true
+	for y in range(oy, oy + oh):
+		if seen.has(Vector2i(ox - 1, y)) or seen.has(Vector2i(ox + ow, y)): return true
+	return false
+
+func run_districts() -> void:
+	var G = Game
+	start("adventure", 2)
+	var town: GameMap = G.maps.town
+	# every district map and room: doors, exits and containers can be reached
+	var bad := []
+	var n_rooms := 0
+	var n_cont := 0
+	for id in Districts.DISTRICTS:
+		var D: Dictionary = Districts.DISTRICTS[id]
+		var m: GameMap = G.maps[id]
+		var seen := reach(m, Vector2i(D.entry[0], D.entry[1]))
+		for wp in m.warps:
+			var ok := false
+			for dd in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+				if seen.has(Vector2i(wp.x, wp.y) + dd): ok = true
+			if not ok: bad.append("%s door to %s" % [id, wp.to])
+		for k in m.objects:
+			var o: Dictionary = m.objects[k]
+			if o.type != "part" and (Data.obj_defs.get(o.type, {}).get("container", false) or o.type in ["car_wreck", "supply_crate"]):
+				n_cont += 1
+				if not reachable(seen, o): bad.append("%s %s at %d,%d" % [id, o.type, o.x, o.y])
+		for b in D.buildings:
+			if not b.has("room"): continue
+			n_rooms += 1
+			var r: GameMap = G.maps[b.id]
+			var rs := reach(r, Vector2i(6, 9))
+			if not rs.has(Vector2i(6, 10)): bad.append(b.id + " exit")
+			for k in r.objects:
+				var o: Dictionary = r.objects[k]
+				if o.type != "part" and Data.obj_defs.get(o.type, {}).get("container", false):
+					n_cont += 1
+					if not reachable(rs, o): bad.append("%s %s at %d,%d" % [b.id, o.type, o.x, o.y])
+			for sp in r.foes.spots:
+				if not rs.has(sp): bad.append("%s infected spot %s" % [b.id, sp])
+	check("Districts: 3 outdoor maps and %d buildings to enter; every door, exit and container (%d) can be reached" % [n_rooms, n_cont], bad.is_empty() and n_rooms >= 25 and n_cont >= 150, str(bad.slice(0, 6)))
+
+	# gates in town start closed
+	var g_res = town.get_obj(1, 30)
+	var g_ind = town.get_obj(55, 19)
+	var g_riv = town.get_obj(28, 39)
+	var closed: bool = g_res != null and g_res.type == "district_gate" and not g_res.get("open", false) and g_ind != null and g_ind.type == "district_gate" and g_riv != null and g_riv.type == "district_gate"
+	at("town", 2, 30, "left")
+	walk(Vector2(-1, 0), 600)
+	var stayed: bool = G.map.id == "town"
+	check("District gates: the Maple Street barricade, east gate and south road start closed", closed and stayed and town.is_solid(1, 30), "map=%s" % G.map.id)
+
+	# Cole's task opens the Residential District
+	var active_before: bool = G.state.quests.active.has("q_maple")
+	G.state.npcs.cole.met = true
+	G.check_quest_unlocks(true)
+	var active_after: bool = G.state.quests.active.has("q_maple")
+	for i in 15:
+		G.quest_event("kill", {"n": 1})
+	var opened: bool = G.state.unlocked.get("residential", false) and g_res.get("open", false) and not town.is_solid(1, 30)
+	at("town", 2, 30, "left")
+	walk(Vector2(-1, 0), 600)
+	check("Cole's task Maple Street Sweep: meet Cole, put down 15 infected, and the barricade opens", not active_before and active_after and G.state.quests.done.has("q_maple") and opened and G.map.id == "residential", "map=%s" % G.map.id)
+
+	# entering a district: infected are out there, none right at the gate
+	var near := 0
+	for e in G.enemies:
+		if e.pos.distance_to(G.player.pos) < 11 * 16: near += 1
+	var day_n: int = G.enemies.size()
+	check("Residential District: infected roam the streets by day, none waiting at the gate", day_n >= 6 and near == 0, "n=%d near=%d" % [day_n, near])
+	G.state.time = 1190
+	G.tick10()
+	var night_n: int = G.enemies.size()
+	check("Districts at night: more infected come out after 8 pm", night_n > day_n, "%d -> %d" % [day_n, night_n])
+	G.state.time = 600
+
+	# a room: infected wait at their spots, containers give loot from the right places
+	at("mh_police", 6, 9, "up")
+	var spots: Array = G.map.foes.spots
+	var on_spots: bool = G.enemies.all(func(e): return spots.has(Vector2i(int(e.pos.x) / 16, int(e.pos.y - 14) / 16)) and e.pos.distance_to(G.player.pos) > 4 * 16)
+	var locker = null
+	for k in G.map.objects:
+		if G.map.objects[k].type == "loot_locker": locker = G.map.objects[k]
+	G.enemies.clear()
+	G.map.drops.clear()
+	W.search(locker, locker.loot, "the locker", float(locker.quality), Districts.CONTAINERS.loot_locker.rolls)
+	var got: Array = G.map.drops.map(func(d): return d.id)
+	var police_ok := true
+	for id in got:
+		var from_police: bool = Data.loot_tags.get("police", []).has(id) or Data.loot_tags.get("uncommon", []).has(id) or Arsenal.LOOT_MATS.police.any(func(x): return x[0] == id) or Data.loot_items.get("police", []).any(func(x): return x[0] == id)
+		if not from_police: police_ok = false
+	G.map.drops.clear()
+	W.search(locker, locker.loot, "the locker", 0.0, [1, 2])
+	var again: bool = G.map.drops.is_empty()
+	check("Precinct 9: infected wait inside; a locker holds police loot and is empty again until next week", on_spots and locker.loot == ["police"] and not got.is_empty() and police_ok and again, "got=%s" % str(got))
+
+	# Jo's jobs open the Industrial District and the Riverlands overnight
+	at("workshop", 6, 8, "up")
+	G.state.money = 10000
+	G.add_item("car_battery", 1, {"silent": true}); G.add_item("copper_bar", 5, {"silent": true})
+	var job = null
+	for e in G.shop_stock("workshop"):
+		if e.get("service", "") == "unlock" and e.region == "industrial": job = e
+	var err: String = G.shop_buy("workshop", job, 1)
+	var hidden: bool = not G.shop_stock("workshop").any(func(e): return e.get("region", "") == "industrial")
+	var rep := sleep()
+	var line: bool = rep.get("lines", []).any(func(l): return str(l).contains("east gate"))
+	at("town", 54, 19, "right")
+	walk(Vector2(1, 0), 600)
+	check("Jo powers the east gate overnight (gold, a car battery, copper bars): the Industrial District opens", job != null and err == "" and hidden and line and G.count_item("car_battery") == 0 and G.map.id == "industrial", "err=%s map=%s" % [err, G.map.id])
+	G.unlock_region("riverlands", true)
+	at("town", 28, 38, "down")
+	walk(Vector2(0, 1), 600)
+	check("Riverlands: once the bridge is rebuilt the south road leads there, with fishing water", G.map.id == "riverlands" and G.map.fish_zone == "river", "map=%s" % G.map.id)
+
+	# older saves: gates replace the rubble and old trees are cleared off the new road
+	var d0: Dictionary = G.state.maps_dyn.town.objects
+	for k in d0.keys():
+		var o: Dictionary = d0[k]
+		if o.type == "district_gate" or o.type == "sign": d0.erase(k)
+	d0["55,19"] = {"type": "rubble", "x": 55, "y": 19}
+	d0["10,30"] = {"type": "tree", "x": 10, "y": 30}
+	G.state.unlocked.erase("industrial")
+	G.write_save()
+	G.quit_to_title()
+	G.load_game("adventure", 2)
+	var t2: GameMap = G.maps.town
+	var fixed: bool = t2.get_obj(55, 19) != null and t2.get_obj(55, 19).type == "district_gate" and t2.get_obj(10, 30) == null and t2.get_obj(28, 39).get("open", false) and not t2.get_obj(55, 19).get("open", false)
+	check("Older saves: district gates and signs are put back, trees on the new road are cleared", fixed, "")
+
+	# pictures for every container, prop and building
+	var bad_art := []
+	for t in Districts.CONTAINERS.keys() + Districts.PROPS.keys():
+		var o := {"type": t, "x": 0, "y": 0, "v": 1}
+		var r: Dictionary = Art.get_obj(o, "spring")
+		if r.tex == null or r.tex.get_image().get_used_rect().size.x < 6: bad_art.append(t)
+		o.searched = int(G.state.day)
+		Art.get_obj(o, "winter")
+	for reg in ["residential", "industrial", "riverlands"]:
+		for op in [false, true]:
+			var r2: Dictionary = Art.get_obj({"type": "district_gate", "x": 0, "y": 0, "region": reg, "open": op}, "spring")
+			if r2.tex == null: bad_art.append("gate " + reg)
+	for k in Districts.LOOKS:
+		var tex: Texture2D = Art.get_building({"kind": k, "x": 1, "y": 1, "w": 7, "h": 5, "door_x": 4, "door_y": 5}, "summer", false)
+		if tex == null or tex.get_width() < 100: bad_art.append(k)
+	check("District art: every container, prop, gate and building front draws", bad_art.is_empty(), str(bad_art))
+	U.open("journal", {"tab": "map"})
+	var map_ok: bool = count_nodes(U.overlay_root) > 20
+	U.close_all()
+	check("Map tab lists the districts and whether they're open", map_ok, "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1

@@ -306,6 +306,8 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	var dd: Dictionary = Data.obj_defs.get(t, {})
 	if dd.get("generic", false) or t == "fruit_tree":
 		return _draw_generic(o, dd, season, frame)
+	if dd.get("district_art", false):
+		return DistrictArt.draw(self, o, season, frame)
 	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "armory_bench", "oil_lantern"]:
 		return _draw_defense(o, season, frame, nb)
 	var v: int = int(o.get("v", 0))
@@ -518,7 +520,7 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 				P(x, 3 + i, 4 + i, "#6e5232"); P(x, 12 - i, 4 + i, "#6e5232")
 			return [outline(x, "#1e1410"), 0, -2]
 		"supply_crate":
-			var opened: bool = int(o.get("searched", -99)) > -99
+			var opened: bool = DistrictArt.searched(o)
 			R(x, 1, 5, 14, 10, "#4a5a3a"); R(x, 1, 5, 14, 1, "#6a7a4a"); R(x, 1, 9, 14, 1, "#3a4a2a")
 			R(x, 6, 7, 4, 4, "#e8e0c8"); R(x, 7, 7, 2, 4, "#c83a2a"); R(x, 6, 8, 4, 2, "#c83a2a")
 			if opened: R(x, 1, 3, 14, 2, "#3a4a2a")
@@ -1478,6 +1480,8 @@ func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 		k += "|j%d|%d" % [0 if j == null else 1, frame % 4 if j != null else 0]
 		if o.type == "rain_collector": k += "|w%d" % int(o.get("water", 0))
 	if d.has("bomb"): k += "|%d" % (frame % 4)
+	if d.get("container", false) or o.type in ["supply_crate", "car_wreck"]: k += "|s%s" % DistrictArt.searched(o)
+	if o.type == "district_gate": k += "|%s|%s" % [o.get("region", ""), o.get("open", false)]
 	return k
 
 func damage_level(o: Dictionary) -> int:

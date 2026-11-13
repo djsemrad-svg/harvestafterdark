@@ -682,14 +682,14 @@ var test_crouch := false
 
 ## Searching a container or wreck: loot depends on what kind of place it is.
 ## Wrecks and suitcases are worth checking again after a week.
-func search(o: Dictionary, tags: Array, what: String, quality := 0.0) -> void:
+func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [1, 3]) -> void:
 	var day := int(Game.state.day)
 	var last := int(o.get("searched", -99))
 	if day - last < Balance.loot.respawn_days:
 		Game.toast("You already searched %s. Maybe in a few days." % what, "", "warn")
 		return
 	o.searched = day
-	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(1, 3), quality)
+	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(int(rolls[0]), int(rolls[1])), quality)
 	var at: Vector2 = Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 12)
 	if got.is_empty():
 		Game.toast("You search %s. Nothing useful." % what)
@@ -896,6 +896,7 @@ func kill_enemy(e: Dictionary) -> void:
 			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
+	Game.quest_event("kill", {"n": 1})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
 
@@ -909,10 +910,69 @@ func spawn_map_enemies() -> void:
 			spawn_enemy(s.type, s.x, s.y)
 	if m.id == "mountain" and int(Game.state.time) >= 1200:
 		spawn_night_infected()
+	if not m.foes.is_empty():
+		spawn_district_foes(m)
+
+## Districts: infected roam outside (more after 8 pm) and wait inside buildings.
+## They come back each time you walk in, like the mine.
+func spawn_district_foes(m: GameMap) -> void:
+	var F: Dictionary = m.foes
+	if F.has("spots"):
+		var pt := player_tile()
+		for sp in F.spots:
+			if Vector2(sp - pt).length() < 4.5:
+				continue   # nothing right inside the door: you get a moment to look around
+			if Game.rng.randf() < float(F.chance):
+				spawn_enemy(pick_foe(F.table), sp.x, sp.y, {"asleep": Game.rng.randf() < float(F.asleep)})
+		return
+	spawn_roamers(m, Game.rng.randi_range(int(F.day[0]), int(F.day[1])), F.table, float(F.asleep))
+	for f in F.get("fixed", []):
+		if Game.rng.randf() < float(f.chance):
+			var t := free_tile_near(m, int(f.x), int(f.y))
+			if t.x >= 0 and Vector2(t - player_tile()).length() >= 13.0:
+				spawn_enemy(f.type, t.x, t.y, {"asleep": Game.rng.randf() < 0.3})
+	if int(Game.state.time) >= 1200:
+		spawn_night_infected()
+
+func pick_foe(table: Array) -> String:
+	var total := 0.0
+	for t in table: total += float(t[1])
+	var v := Game.rng.randf() * total
+	for t in table:
+		v -= float(t[1])
+		if v <= 0: return t[0]
+	return table[table.size() - 1][0]
+
+func free_tile_near(m: GameMap, x: int, y: int) -> Vector2i:
+	for rad in 4:
+		for dy in range(-rad, rad + 1):
+			for dx in range(-rad, rad + 1):
+				if max(abs(dx), abs(dy)) == rad and m.tile_free(x + dx, y + dy):
+					return Vector2i(x + dx, y + dy)
+	return Vector2i(-1, -1)
+
+func spawn_roamers(m: GameMap, n: int, table: Array, asleep: float) -> int:
+	var pt := player_tile()
+	var placed := 0
+	var tries := 0
+	while placed < n and tries < 400:
+		tries += 1
+		var x := Game.rng.randi_range(2, m.w - 3)
+		var y := Game.rng.randi_range(2, m.h - 3)
+		if not m.tile_free(x, y) or Vector2(x - pt.x, y - pt.y).length() < 13.0:
+			continue
+		spawn_enemy(pick_foe(table), x, y, {"asleep": Game.rng.randf() < asleep})
+		placed += 1
+	return placed
 
 func spawn_night_infected() -> void:
 	Game.mountain_night_spawned = true
 	var m: GameMap = Game.map
+	if m.foes.has("night"):
+		var F: Dictionary = m.foes
+		if spawn_roamers(m, Game.rng.randi_range(int(F.night[0]), int(F.night[1])), F.table, 0.0) > 0:
+			Game.toast("It's dark. More of them are moving in the streets.", "", "warn")
+		return
 	var pt := player_tile()
 	var placed := 0
 	var tries := 0
@@ -1509,11 +1569,14 @@ func interact_object(o: Dictionary) -> void:
 		"mine_lift":
 			Game.ui.open("lift")
 		"car_wreck":
-			search(o, ["vehicle", "garage"], "the wreck")
+			search(o, o.get("loot", ["vehicle", "garage"]), "the wreck", float(o.get("quality", 0.0)))
 		"suitcase":
 			search(o, ["clothing", "home"], "the suitcase")
 		"supply_crate":
-			search(o, def.loot, "the supply crate", float(o.get("quality", 0.3)))
+			search(o, o.get("loot", def.loot), "the supply crate", float(o.get("quality", 0.3)))
+		"district_gate":
+			if not o.get("open", false):
+				Game.ui.say("", Districts.UNLOCKS[o.region].locked)
 		"rubble", "sandbags", "barricade", "toppled_sign":
 			Game.ui.say("", def.get("text", ""))
 		"armory_bench":
@@ -1568,6 +1631,12 @@ func interact_object(o: Dictionary) -> void:
 				Game.add_item("water_bottle", w)
 				Sfx.play("water")
 		_:
+			if def.get("container", false):
+				var c: Dictionary = Districts.CONTAINERS[o.type]
+				search(o, o.get("loot", c.tags), c.what, float(o.get("quality", 0.0)), c.rolls)
+				return
+			if def.get("district_art", false):
+				return
 			if def.get("barrier", false):
 				interact_barrier(o)
 				return
