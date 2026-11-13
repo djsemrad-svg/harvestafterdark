@@ -58,6 +58,9 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
 
 ## Visual direction (agreed with Daniel)
 
+- Currency is gold (renamed from scrip on Nov 13).
+- Daniel shared three AI-generated pixel atlases (tiles, buildings, objects, trees, zombies, animals). They are not on a true pixel grid, so each sprite must be cut out, shrunk to the 16 px grid and colour-reduced. A test conversion looked good. Pending Daniel's go-ahead: an art override folder so converted PNGs replace procedural art piece by piece.
+
 - Stardew-like 16-bit look, adapted to a small community in an outbreak.
 - Colour mood: warm and saturated in safe areas, greyer and colder in dangerous ones (mine, ridge, ruins). Done with a per-map grade (`GameMap.mood`).
 - Infected: eerie but stylized. Pale grey-green skin, glowing eyes, torn clothes, hunched. No gore.
