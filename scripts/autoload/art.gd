@@ -564,6 +564,30 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			if season != "winter":
 				R(x, 6, 5, 1, 2, pal.weed[1]); R(x, 7, 4, 1, 3, pal.weed[0]); R(x, 11, 7, 1, 2, pal.weed[1])
 			return [x, 0, 0]
+		"hay_hopper":
+			x = img(16, 24)
+			R(x, 2, 2, 12, 14, "#8a6a40"); R(x, 2, 2, 12, 1, "#a8865a"); R(x, 3, 3, 10, 6, "#e0c070")
+			for i in 5: P(x, 4 + i * 2, 4 + i % 2, "#c8a050")
+			R(x, 4, 16, 8, 6, "#6e5232"); R(x, 5, 17, 6, 3, "#e0c070")
+			return [outline(x, "#1e1410"), 0, -8]
+		"nest_box":
+			R(x, 1, 5, 14, 10, "#8a6a40"); R(x, 1, 5, 14, 1, "#a8865a"); R(x, 3, 8, 10, 5, "#e0c070")
+			for i in 4: P(x, 4 + i * 2, 8, "#c8a050")
+			return [outline(x, "#1e1410"), 0, -2]
+		"water_trough":
+			R(x, 1, 7, 14, 7, "#7a7a84"); R(x, 1, 7, 14, 1, "#9a9aa4"); R(x, 2, 8, 12, 3, "#5aa0d8"); P(x, 4, 8, "#c8e8f8")
+			return [outline(x, "#121214"), 0, 0]
+		"hay_bale":
+			R(x, 1, 4, 14, 11, "#e0c070"); R(x, 1, 4, 14, 2, "#f0d890"); R(x, 1, 13, 14, 2, "#c8a050")
+			R(x, 5, 4, 1, 11, "#a8803a"); R(x, 10, 4, 1, 11, "#a8803a")
+			for i in 6: P(x, 2 + i * 2, 8 + i % 3, "#c8a050")
+			return [outline(x, "#2a1e0a"), 0, -1]
+		"animal_product":
+			var ic := icon_image(o.get("item", "egg"), 0)
+			var small := ic.duplicate()
+			small.resize(12, 12, Image.INTERPOLATE_NEAREST)
+			x.blit_rect(small, Rect2i(0, 0, 12, 12), Vector2i(2, 3))
+			return [x, 0, 0]
 		"ladder_down":
 			R(x, 2, 2, 12, 12, "#0e0a08"); R(x, 4, 2, 2, 12, "#8a6a40"); R(x, 10, 2, 2, 12, "#8a6a40")
 			for r in range(3, 14, 3): R(x, 4, r, 8, 1, "#a8825a")
@@ -1006,6 +1030,16 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			for i in range(4, 13, 3): P(x, i, 6, "#a8703a")
 		"dish": R(x, 1, 10, 14, 3, "#e8e8e0"); R(x, 2, 12, 12, 1, "#b8b8b0"); R(x, 3, 6, 10, 5, c); P(x, 5, 7, shade(c, 0.4)); R(x, 9, 5, 3, 2, "#62b04a")
 		"bowl": R(x, 2, 8, 12, 5, "#a8825a"); R(x, 4, 13, 8, 1, "#8a6a40"); R(x, 3, 6, 10, 3, c); P(x, 5, 6, shade(c, 0.4)); P(x, 9, 7, "#62b04a"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
+		"hay": R(x, 2, 5, 12, 9, "#e0c070"); R(x, 2, 5, 12, 2, "#f0d890"); R(x, 5, 5, 1, 9, "#a8803a"); R(x, 10, 5, 1, 9, "#a8803a"); for i in 4: P(x, 3 + i * 3, 9, "#c8a050")
+		"egg":
+			var big: bool = ic.get("big", false)
+			var ew := 8 if big else 6
+			var eh := 10 if big else 8
+			var ex := 8 - ew / 2
+			var ey := 14 - eh
+			R(x, ex + 1, ey, ew - 2, eh, c); R(x, ex, ey + 2, ew, eh - 3, c); P(x, ex + 2, ey + 2, "#ffffff"); R(x, ex + 1, ey + eh - 1, ew - 2, 1, shade(c, -0.15))
+		"fur": R(x, 3, 5, 10, 8, c); R(x, 2, 7, 12, 4, c); R(x, 4, 4, 8, 1, shade(c, 0.15)); for i in 5: P(x, 3 + i * 2, 12 + i % 2, shade(c, -0.2)); P(x, 6, 7, shade(c, 0.25))
+		"kit": R(x, 2, 6, 12, 8, "#c8a070"); R(x, 2, 6, 12, 1, "#e0c090"); R(x, 2, 9, 12, 1, "#a8804a"); R(x, 5, 3, 6, 3, "#8a3a2a"); R(x, 4, 4, 8, 2, "#8a3a2a"); R(x, 7, 10, 2, 3, "#6a4a2e")
 		"cup": R(x, 3, 6, 9, 8, "#e8e0d0"); R(x, 4, 7, 7, 3, c); R(x, 12, 8, 2, 4, "#e8e0d0"); R(x, 3, 14, 9, 1, "#b8b0a0"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
 		"pie": R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c); for i in 3: R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
 		"bar_snack": R(x, 2, 6, 12, 6, c); R(x, 2, 6, 12, 1, shade(c, 0.3)); P(x, 4, 8, "#e8d8a0"); P(x, 8, 9, "#8a2a4a"); P(x, 11, 8, "#e8d8a0"); R(x, 2, 12, 12, 1, shade(c, -0.3))
@@ -1283,6 +1317,13 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			if o.get("job") != null: P(x, 10 + f % 2, 1, "#9a9a9a"); P(x, 11, 0, "#bababa"); R(x, 5, 14, 6, 2, "#a8602a")
 			R(x, 3, 19, 2, 1, "#2a2a30"); R(x, 11, 19, 2, 1, "#2a2a30")
 			return [outline(x, "#121214"), 0, -4]
+		"tanning_rack":
+			x = img(16, 20)
+			R(x, 1, 2, 2, 18, "#6e5232"); R(x, 13, 2, 2, 18, "#6e5232"); R(x, 1, 2, 14, 2, "#8a6a40"); R(x, 1, 15, 14, 2, "#8a6a40")
+			var hide := "#a8703a" if o.get("job") != null else "#c8b8a0"
+			R(x, 4, 5, 8, 9, hide); R(x, 3, 6, 10, 7, hide); P(x, 5, 7, shade(hide, 0.2))
+			for i in 4: P(x, 3 + i * 3, 4, "#c8b080"); P(x, 3 + i * 3, 14, "#c8b080")
+			return [outline(x, "#1e1410"), 0, -4]
 		"preserves_jar":
 			x = img(16, 18)
 			R(x, 2, 15, 12, 3, "#8a6a40"); R(x, 3, 4, 10, 11, "#c8e0e8"); R(x, 4, 3, 8, 1, "#c8e0e8"); R(x, 4, 2, 8, 2, "#8a6a40")
@@ -1298,6 +1339,58 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 8, 1, 1, 2, "#c8b080"); P(x, 8, 0, "#f8e070" if f % 2 else "#f08a2a")
 			return [outline(x, "#121214"), 0, 0]
 	return [x, 0, 0]
+
+# ---------------------------------------------------------------- farm animals (16x16, feet at row 15)
+func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> ImageTexture:
+	return cached("an|%s|%d|%s|%d|%s" % [type, color_i, dir, frame, adult], func(): return _draw_animal(type, color_i, dir, frame, adult))
+
+func _draw_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	var x := img(16, 16)
+	var cols: Array = Data.animals[type].colors
+	var c = cols[color_i % cols.size()]
+	var cd := shade(c, -0.18)
+	var cl := shade(c, 0.12)
+	var flip := dir == "right"
+	var side := dir == "left" or dir == "right"
+	var hop := frame % 2
+	match type:
+		"chicken":
+			if side:
+				R(x, 4, 7 - hop, 8, 6, c); R(x, 4, 7 - hop, 8, 1, cl); R(x, 10, 6 - hop, 3, 4, cd)        # body and tail
+				R(x, 2, 3 - hop, 4, 5, c); P(x, 3, 4 - hop, "#1a1a1a"); R(x, 0, 5 - hop, 2, 1, "#e8a030")   # head, eye, beak
+				R(x, 3, 2 - hop, 2, 1, "#d83a2a"); P(x, 3, 8 - hop, "#d83a2a")                              # comb, wattle
+				R(x, 6, 13, 1, 2, "#e8a030"); R(x, 9, 13 - hop, 1, 2, "#e8a030")
+				R(x, 6, 9 - hop, 4, 2, cd)
+			else:
+				R(x, 4, 6 - hop, 8, 7, c); R(x, 5, 6 - hop, 6, 1, cl); R(x, 5, 2 - hop, 6, 5, c)
+				R(x, 7, 1 - hop, 2, 1, "#d83a2a")
+				if dir == "down":
+					P(x, 6, 4 - hop, "#1a1a1a"); P(x, 9, 4 - hop, "#1a1a1a"); R(x, 7, 5 - hop, 2, 1, "#e8a030"); P(x, 7, 6 - hop, "#d83a2a")
+				R(x, 3, 8 - hop, 1, 3, cd); R(x, 12, 8 - hop, 1, 3, cd)
+				R(x, 6, 13, 1, 2, "#e8a030"); R(x, 9, 13, 1, 2, "#e8a030")
+		"rabbit":
+			if side:
+				R(x, 4, 8 - hop, 9, 5, c); R(x, 4, 8 - hop, 9, 1, cl); R(x, 12, 9 - hop, 2, 2, "#f4f0ec")    # body, tail
+				R(x, 1, 6 - hop, 5, 5, c); P(x, 2, 7 - hop, "#1a1a1a"); P(x, 0, 9 - hop, "#e88a9a")
+				R(x, 3, 1 - hop, 1, 5, c); R(x, 5, 1 - hop, 1, 5, cd); P(x, 3, 2 - hop, "#e8b0b8")
+				R(x, 5, 13, 2, 2, cd); R(x, 10, 13, 3, 2, cd)
+			else:
+				R(x, 4, 7 - hop, 8, 7, c); R(x, 5, 7 - hop, 6, 1, cl); R(x, 5, 3 - hop, 6, 5, c)
+				R(x, 5, 0 - hop + 1, 2, 4, c); R(x, 9, 0 - hop + 1, 2, 4, c); P(x, 6, 1, "#e8b0b8"); P(x, 9, 1, "#e8b0b8")
+				if dir == "down":
+					P(x, 6, 5 - hop, "#1a1a1a"); P(x, 9, 5 - hop, "#1a1a1a"); P(x, 7, 6 - hop, "#e88a9a"); P(x, 8, 6 - hop, "#e88a9a")
+				else:
+					R(x, 7, 12 - hop, 2, 2, "#f4f0ec")
+				R(x, 5, 13, 2, 2, cd); R(x, 9, 13, 2, 2, cd)
+	if not adult:
+		# babies are smaller: shrink toward the feet
+		var small := x.duplicate()
+		small.resize(11, 11, Image.INTERPOLATE_NEAREST)
+		x = img(16, 16)
+		x.blit_rect(small, Rect2i(0, 0, 11, 11), Vector2i(3, 5))
+	if flip:
+		x.flip_x()
+	return outline(x, "#22161a")
 
 ## Icon from an object's art: cropped and fitted into 16x16.
 func obj_icon(type: String) -> Image:
@@ -1326,7 +1419,7 @@ func building_condition(s: Dictionary) -> int:
 
 func get_building(s: Dictionary, season: String, night: bool) -> ImageTexture:
 	var cond := building_condition(s)
-	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y]
+	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d|%s" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y, s.get("door_open", false)]
 	return cached(k, func(): return _draw_building(s, season, night, cond))
 
 func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Image:
@@ -1520,6 +1613,17 @@ func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Im
 			if abs(gx - (dx + 8)) < 6: continue
 			R(x, gx, H - 4 - int(hash2(i, sd, 41) * 3), 1, 4, vine); P(x, gx + 1, H - 3, vineL)
 
+	# ---- the coop's little animal door (bottom row, second tile)
+	if s.kind == "coop":
+		var ax := 18
+		R(x, ax, H - 11, 10, 9, trim)
+		if s.get("door_open", false):
+			R(x, ax + 1, H - 10, 8, 8, "#1a1210")
+			for i in 4: R(x, ax - 1 + i, H - 2 - i / 2, 1, 2, "#a8865a")
+			R(x, ax - 2, H - 2, 12, 2, "#a8865a")
+		else:
+			R(x, ax + 1, H - 10, 8, 8, "#a8865a"); R(x, ax + 1, H - 7, 8, 1, "#8a6a40"); R(x, ax + 1, H - 4, 8, 1, "#8a6a40")
+			P(x, ax + 7, H - 6, "#4a4a52")
 	# ---- sign
 	if B.has("sign"):
 		var tw := text_px_width(B.sign) + 6

@@ -100,6 +100,31 @@ static func store() -> GameMap:
 	m.lights = [{"x": 6, "y": 5, "r": 90}]
 	return m
 
+static func ranch() -> GameMap:
+	var m := _interior("ranch")
+	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 37, "ty": 9, "dir": "down", "door": true})
+	for i in range(3, 10):
+		m.add_obj(i, 4, "counter", {"shop": "ranch"})
+	m.add_obj(1, 2, "hay_bale"); m.add_obj(2, 2, "hay_bale"); m.add_obj(10, 2, "nest_box"); m.add_obj(9, 2, "nest_box")
+	m.add_obj(1, 7, "water_trough"); m.add_obj(10, 7, "hay_bale"); m.add_obj(10, 8, "barrel")
+	m.add_obj(4, 1, "window"); m.add_obj(7, 1, "window")
+	m.lights = [{"x": 6, "y": 5, "r": 90}]
+	return m
+
+## A coop's inside. One per farm for now; "b" is the building record from the save.
+static func coop(b: Dictionary) -> GameMap:
+	var m := _interior("coop")
+	m.mood = "warm"
+	m.fill(1, 2, 10, 7, "dirt")
+	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "homestead", "tx": int(b.door_x), "ty": int(b.door_y) + 1, "dir": "down", "door": true})
+	m.add_obj(2, 2, "hay_hopper")
+	m.add_obj(4, 2, "water_trough")
+	for x in [7, 8, 9, 10]:
+		m.add_obj(x, 2, "nest_box")
+	m.add_obj(6, 1, "window")
+	m.lights = [{"x": 6, "y": 5, "r": 80}]
+	return m
+
 static func forge() -> GameMap:
 	var m := _interior("forge")
 	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 39, "ty": 17, "dir": "down", "door": true})
@@ -130,6 +155,14 @@ static func town(world_seed: int) -> GameMap:
 	m.add_structure({"kind": "archive", "x": 35, "y": 24, "w": 9, "h": 6, "door_x": 39, "door_y": 29, "text": "Brightwater Community Archive. The doors are chained. Through a gap you can see empty display cases waiting to be filled."})
 	m.add_structure({"kind": "house_a", "x": 3, "y": 24, "w": 6, "h": 5, "door_x": 6, "door_y": 28, "text": "Hal's house. A hand-painted sign reads: \"Out back, or at the store.\""})
 	m.add_structure({"kind": "house_b", "x": 46, "y": 24, "w": 6, "h": 5, "door_x": 49, "door_y": 28, "text": "Ines and Wren share this house. Nobody answers."})
+	m.add_structure({"kind": "ranch", "x": 34, "y": 3, "w": 8, "h": 6, "door_x": 37, "door_y": 8, "warp": {"to": "ranch", "tx": 6, "ty": 8, "dir": "up", "shop": "ranch"}})
+	m.fill(35, 9, 3, 1, "dirt"); m.fill(35, 9, 1, 4, "dirt")
+	# Marisol's little paddock beside the road
+	for xx in range(31, 34):
+		m.add_obj(xx, 3, "fence"); m.add_obj(xx, 8, "fence")
+	for yy in range(4, 8):
+		m.add_obj(31, yy, "fence")
+	m.add_obj(32, 5, "hay_bale"); m.add_obj(32, 7, "water_trough")
 	m.add_structure({"kind": "ruin", "x": 45, "y": 3, "w": 7, "h": 5, "door_x": 48, "door_y": 7, "text": "A collapsed house. Too dangerous to enter."})
 	m.warps.append({"x": 0, "y": 18, "w": 1, "h": 3, "to": "homestead", "tx": 48, "ty": 19, "dir": "left"})
 	m.warps.append({"x": 27, "y": 0, "w": 3, "h": 1, "to": "mountain", "tx": 19, "ty": 30, "dir": "up"})
@@ -156,7 +189,7 @@ static func town(world_seed: int) -> GameMap:
 		m.add_obj(x, 39, "rubble")
 	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Repairs needed."})
 	m.add_obj(31, 32, "sign", {"text": "Brightwater River. Good fishing, says Wren."})
-	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3)])
+	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11)])
 	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4)])
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):

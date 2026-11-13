@@ -367,7 +367,7 @@ func _title_property() -> void:
 		v.add_child(K.label(flow.err, 7, K.DANGER))
 	p.add_child(v)
 	_center(p, screen_root)
-	le.call_deferred("grab_focus")
+	(func(): if is_instance_valid(le) and le.is_inside_tree(): le.grab_focus()).call_deferred()
 
 func _title_import() -> void:
 	var p := K.panel(380)
@@ -636,8 +636,17 @@ func hint_text() -> String:
 		var rel: Dictionary = Game.state.npcs[npc]
 		var gift: bool = s != null and Game.item_flags(s.id).giftable and rel.met and Game.can_gift(npc)
 		return "E: " + ("Talk / give %s to " % Data.items[s.id].name if gift else "Talk to ") + Data.npcs[npc].name.split(" ")[0]
+	var an = w.animal_in_front()
+	if an != null:
+		return ("E: Pet %s" % an.name) if int(an.petted_day) != int(Game.state.day) else "%s looks %s" % [an.name, Game.animal_mood(an)]
 	var t: Vector2i = w.target_preview()
 	var m: GameMap = Game.map
+	var coop = Game.get_building_rec("coop")
+	if coop != null and m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
+		return "E: " + ("Close" if coop.door_open else "Open") + " animal door"
+	var sel_b = Game.selected_stack()
+	if sel_b != null and Data.items[sel_b.id].has("building"):
+		return "Face an open 6 by 4 space and press Space to build (green means it fits)" if m.id == "homestead" else "Take the kit to your farm to build"
 	var sl = m.soil.get(GameMap.k(t.x, t.y))
 	if sl != null and w.crop_ready(sl.get("crop")):
 		return "E: Harvest " + Data.crops[sl.crop.id].name
@@ -654,6 +663,8 @@ func hint_text() -> String:
 			if o.type == "rain_collector": return "E: Collect water (%d)" % int(o.get("water", 0))
 			return "E: Load %s (%s)" % [od.name, Data.machines[o.type].hint]
 		if o.type == "generator": return "E: Generator (%d coal)" % int(o.get("fuel", 0))
+		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
+		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
@@ -1012,6 +1023,37 @@ func _ov_lift() -> Control:
 	v.add_child(_close_btn("Cancel"))
 	return pw[0]
 
+func _ov_name_animal() -> Control:
+	var kind: String = overlay.kind
+	var pw := _window("Name your new %s" % Data.animals[kind].name.to_lower(), 260)
+	var v: VBoxContainer = pw[1]
+	var h := K.hbox(8)
+	var ic := K.icon(Art.get_animal(kind, 0, "down", 0, false), 32)
+	ic.custom_minimum_size = Vector2(32, 32)
+	h.add_child(ic)
+	var le := LineEdit.new()
+	le.text = overlay.name
+	le.max_length = 14
+	le.custom_minimum_size.x = 150
+	le.text_changed.connect(func(t): overlay.name = t)
+	le.text_submitted.connect(func(_t): _adopt())
+	h.add_child(le)
+	v.add_child(h)
+	v.add_child(K.label("It will be waiting in your coop. Babies grow up in a few days.", 7, K.INK_SOFT, true))
+	var row := K.hbox()
+	row.add_child(K.button("Random name", func():
+		overlay.name = Game.random_animal_name()
+		render_overlay(), "small"))
+	row.add_child(K.button("Done", _adopt, "big"))
+	v.add_child(row)
+	(func(): if is_instance_valid(le) and le.is_inside_tree(): le.grab_focus()).call_deferred()
+	return pw[0]
+
+func _adopt() -> void:
+	var a := Game.adopt_animal(overlay.kind, str(overlay.name))
+	close()
+	toast("Welcome home, %s! Find them in your coop." % a.name)
+
 func _ov_appearance() -> Control:
 	if not overlay.has("look"):
 		overlay.look = Game.state.character.look.duplicate(true)
@@ -1160,7 +1202,10 @@ func _shop_box(shop_id: String) -> Control:
 		var row := K.row_box()
 		var rh := K.hbox(3)
 		var owned: bool = e.get("service", "") == "backpack" and st.flags.get("backpack", false)
-		rh.add_child(K.icon(Art.get_icon(e.id), 14) if e.has("id") else K.label("★", 10, K.GOLD))
+		if e.has("id"): rh.add_child(K.icon(Art.get_icon(e.id), 14))
+		elif e.get("service", "") == "animal": rh.add_child(K.icon(Art.get_animal(e.animal, 0, "down", 0, true), 14))
+		elif e.get("service", "") == "coop": rh.add_child(K.icon(Art.get_icon("coop_kit"), 14))
+		else: rh.add_child(K.label("★", 10, K.GOLD))
 		var nm := K.rich("[b]%s[/b]%s\n[font_size=5][color=#7a5434]%s[/color][/font_size]" % [Data.items[e.id].name if e.has("id") else e.name, " [color=#b3392e]SALE[/color]" if e.sale else "", Data.items[e.id].desc if e.has("id") else e.desc], 6)
 		nm.custom_minimum_size.x = 110
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1698,7 +1743,34 @@ func _tab_social() -> Control:
 		h.add_child(t)
 		b.add_child(h)
 		g.add_child(b)
-	return K.scroll(g, 186)
+	var wrap := K.vbox(4)
+	wrap.add_child(g)
+	wrap.add_child(_animals_box())
+	return K.scroll(wrap, 186)
+
+func _animals_box() -> Control:
+	var v := K.vbox(2)
+	var list: Array = Game.state.get("animals", [])
+	v.add_child(K.label("Your animals (%d)" % list.size(), 8, K.WOOD_DARK))
+	if list.is_empty():
+		v.add_child(K.label("No animals yet. Build a coop and visit Marisol at Reyes Ranch, north of the town square.", 6, K.INK_SOFT, true))
+		return v
+	var g := GridContainer.new()
+	g.columns = 2
+	for a in list:
+		var b := K.row_box()
+		b.custom_minimum_size.x = 210
+		var h := K.hbox(4)
+		var ic := K.icon(Art.get_animal(a.type, int(a.color), "down", 0, Game.animal_mature(a)), 16)
+		h.add_child(ic)
+		var hearts := int(a.friendship) / 200
+		var t := K.rich("[b]%s[/b] [font_size=5][color=#7a5434]%s%s[/color][/font_size]\n%s\n[font_size=5]Mood: %s · Petted today: %s[/font_size]" % [a.name, Data.animals[a.type].name, "" if Game.animal_mature(a) else " (baby)", K.hearts(hearts), Game.animal_mood(a), "✔" if int(a.petted_day) == int(Game.state.day) else "–"], 6)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(t)
+		b.add_child(h)
+		g.add_child(b)
+	v.add_child(g)
+	return v
 
 func _tab_crafting() -> Control:
 	var v := K.vbox(2)

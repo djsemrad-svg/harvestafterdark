@@ -126,7 +126,7 @@ func new_game_state(opts: Dictionary) -> Dictionary:
 		"forge": {"orders": [], "geodes_opened": 0},
 		"unlocked": {"homestead": true, "town": true, "mountain": true, "mine": true},
 		"weather": "sun", "weather_tomorrow": "sun",
-		"flags": {}, "stats": {"crops_harvested": 0, "fish_caught": 0, "items_shipped": 0, "earned": 0, "infected_defeated": 0, "collapses": 0},
+		"flags": {}, "buildings": [], "animals": [], "stats": {"crops_harvested": 0, "fish_caught": 0, "items_shipped": 0, "earned": 0, "infected_defeated": 0, "collapses": 0},
 		"factions": {}, "story": {"chapter": 0},
 	}
 	for i in st.inv_size:
@@ -466,7 +466,11 @@ func build_persistent_maps() -> void:
 		"store": MapBuilder.store(),
 		"forge": MapBuilder.forge(),
 		"mountain": MapBuilder.mountain(int(state.seed)),
+		"ranch": MapBuilder.ranch(),
 	}
+	for b in state.get("buildings", []):
+		maps.homestead.add_structure(b)
+		maps[b.kind] = MapBuilder.coop(b)
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
@@ -488,6 +492,7 @@ func start_session() -> void:
 	screen = "game"
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 	if ui:
 		ui.enter_game()
 	Sfx.play_music(season())
@@ -577,10 +582,202 @@ func tick10() -> void:
 		world.spawn_night_infected()
 	if state.time == 1200:
 		start_generators(maps.homestead)
+	if int(state.time) in [Balance.animals.outside_start, Balance.animals.outside_end]:
+		sync_animals()
 	raid_tick()
 	if state.time >= Balance.time.pass_out:
 		pass_out()
 
+
+
+# ================================================================ farm buildings and animals
+const BUILDING_SIZES := {"coop": Vector2i(6, 4)}
+
+func has_building(kind: String) -> bool:
+	return state.get("buildings", []).any(func(b): return b.kind == kind)
+
+func get_building_rec(kind: String):
+	for b in state.get("buildings", []):
+		if b.kind == kind: return b
+	return null
+
+## The footprint a building kit would cover if used now (in front of the player).
+func building_rect(kind: String, t: Vector2i, dir: String) -> Rect2i:
+	var sz: Vector2i = BUILDING_SIZES[kind]
+	match dir:
+		"up": return Rect2i(t.x - 2, t.y - sz.y + 1, sz.x, sz.y)
+		"down": return Rect2i(t.x - 2, t.y, sz.x, sz.y)
+		"left": return Rect2i(t.x - sz.x + 1, t.y - sz.y + 1, sz.x, sz.y)
+		_: return Rect2i(t.x, t.y - sz.y + 1, sz.x, sz.y)
+
+func building_fits(m: GameMap, r: Rect2i) -> bool:
+	if m.id != "homestead":
+		return false
+	for y in range(r.position.y, r.end.y + 1):        # one extra row so the door isn't blocked
+		for x in range(r.position.x, r.end.x):
+			if x < 1 or y < 1 or x >= m.w - 1 or y >= m.h - 1:
+				return false
+			var tt := m.tile_at(x, y)
+			if tt == "water" or Art.tile_solid(tt):
+				return false
+			if m.solid_mask[y * m.w + x] or m.get_obj(x, y) != null or m.soil.has(GameMap.k(x, y)) or m.structure_at(x, y) != null:
+				return false
+	var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
+	return not r.has_point(pt)
+
+func build_building(kind: String, r: Rect2i) -> void:
+	var b := {"kind": kind, "x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y,
+		"door_x": r.position.x + 3, "door_y": r.position.y + r.size.y - 1, "door_open": false, "hay": 0,
+		"warp": {"to": kind, "tx": 6, "ty": 8, "dir": "up"}}
+	state.buildings.append(b)
+	_attach_building(b)
+
+func _attach_building(b: Dictionary) -> void:
+	maps.homestead.add_structure(b)
+	var inner := MapBuilder.coop(b)
+	maps[b.kind] = inner
+	if state.maps_dyn.has(b.kind) and state.maps_dyn[b.kind].get("objects") is Dictionary:
+		inner.objects = state.maps_dyn[b.kind].objects
+		inner.soil = state.maps_dyn[b.kind].get("soil", {})
+	else:
+		state.maps_dyn[b.kind] = {"objects": inner.objects, "soil": inner.soil}
+
+func animal_door_tile(b: Dictionary) -> Vector2i:
+	return Vector2i(int(b.x) + 1, int(b.y) + int(b.h) - 1)
+
+func animal_room(building: String) -> int:
+	if not has_building(building):
+		return 0
+	return Balance.animals.coop_capacity - state.animals.filter(func(a): return Data.animals[a.type].building == building).size()
+
+func random_animal_name() -> String:
+	var used: Array = state.animals.map(func(a): return a.name)
+	var pool: Array = Data.animal_names.filter(func(n): return not used.has(n))
+	return pool[rng.randi() % pool.size()] if not pool.is_empty() else "Animal %d" % (state.animals.size() + 1)
+
+func adopt_animal(kind: String, name: String) -> Dictionary:
+	var a := {"uid": int(state.get("next_animal", 1)), "type": kind, "name": name.strip_edges().substr(0, 14), "born": int(state.day), "friendship": 100,
+		"petted_day": -1, "fed": true, "last_product": int(state.day), "color": rng.randi() % Data.animals[kind].colors.size()}
+	if a.name == "": a.name = random_animal_name()
+	state.next_animal = int(a.uid) + 1
+	state.animals.append(a)
+	quest_event("animal", {"n": 1})
+	sync_animals(true)
+	return a
+
+func animal_mature(a: Dictionary) -> bool:
+	return int(state.day) - int(a.born) >= int(Data.animals[a.type].mature_days)
+
+func animal_mood(a: Dictionary) -> String:
+	if not a.fed: return "hungry"
+	if int(a.petted_day) == int(state.day): return "happy"
+	return "content" if int(a.friendship) >= 300 else "shy"
+
+func pet_animal(a: Dictionary) -> bool:
+	if int(a.petted_day) == int(state.day):
+		return false
+	a.petted_day = state.day
+	a.friendship = min(1000, int(a.friendship) + Balance.animals.pet_points)
+	add_xp("farming", 5)
+	return true
+
+## Animals go outside on fair days when the coop door is open.
+func animals_outside() -> bool:
+	var b = get_building_rec("coop")
+	if b == null or not b.door_open: return false
+	if season() == "winter" or state.weather in ["rain", "storm", "snow"]: return false
+	return int(state.time) >= Balance.animals.outside_start and int(state.time) < Balance.animals.outside_end
+
+var animals_rt := {}   # uid -> {pos, map, dir, frame, t, goal}
+
+func sync_animals(force := false) -> void:
+	var b = get_building_rec("coop")
+	var out := animals_outside()
+	var keep := {}
+	for a in state.get("animals", []):
+		var uid := int(a.uid)
+		keep[uid] = true
+		var want := "homestead" if out else "coop"
+		var r = animals_rt.get(uid)
+		if r == null or r.map != want or force:
+			var spot := Vector2(rng.randf_range(2, 10) * 16, rng.randf_range(4, 8) * 16)
+			if want == "homestead" and b != null:
+				spot = Vector2((int(b.door_x) + rng.randf_range(-3, 3)) * 16 + 8, (int(b.door_y) + rng.randf_range(2, 4)) * 16 + 12)
+			if r != null and r.map == want and not force:
+				continue
+			animals_rt[uid] = {"pos": spot, "map": want, "dir": "down", "frame": 0, "t": rng.randf() * 2.0, "goal": spot, "home": spot}
+	for uid in animals_rt.keys():
+		if not keep.has(uid): animals_rt.erase(uid)
+
+func update_animals(dt: float) -> void:
+	if state.get("animals", []).is_empty():
+		return
+	for a in state.animals:
+		var r = animals_rt.get(int(a.uid))
+		if r == null or map == null or r.map != map.id:
+			continue
+		r.t -= dt
+		if r.t <= 0:
+			r.t = rng.randf_range(1.5, 4.0)
+			if rng.randf() < 0.6:
+				r.goal = r.home + Vector2(rng.randf_range(-48, 48), rng.randf_range(-32, 32))
+			else:
+				r.goal = r.pos
+		var d: Vector2 = r.goal - r.pos
+		if d.length() > 2:
+			var step: Vector2 = d.normalized() * (14.0 if a.type == "chicken" else 18.0) * dt
+			var np: Vector2 = r.pos + step
+			var tx := int(floor(np.x / 16))
+			var ty := int(floor((np.y - 3) / 16))
+			if map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
+				r.pos = np
+				r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
+				r.frame = int(Time.get_ticks_msec() / 200) % 2
+			else:
+				r.goal = r.pos
+		else:
+			r.frame = 0
+
+## Morning: animals eat from the hopper, grow, and leave products on the coop floor.
+func animals_overnight(rep: Dictionary) -> void:
+	var b = get_building_rec("coop")
+	if b == null or state.animals.is_empty():
+		return
+	var A: Dictionary = Balance.animals
+	var cm: GameMap = maps.coop
+	var hungry := 0
+	var made := 0
+	for a in state.animals:
+		if int(b.hay) > 0:
+			b.hay = int(b.hay) - 1
+			a.fed = true
+			a.friendship = min(1000, int(a.friendship) + A.fed_points)
+		else:
+			a.fed = false
+			a.friendship = max(0, int(a.friendship) + A.unfed_points)
+			hungry += 1
+		if int(a.petted_day) < int(state.day) - 1:
+			a.friendship = max(0, int(a.friendship) + A.unpetted_points)
+	# products appear the next morning (called after the day advances)
+	for a in state.animals:
+		var D: Dictionary = Data.animals[a.type]
+		if not a.fed or not animal_mature(a): continue
+		if int(state.day) - int(a.last_product) < int(D.every): continue
+		var item: String = D.product
+		if D.has("big_product") and int(a.friendship) >= A.big_product_friendship and rng.randf() < A.big_product_chance:
+			item = D.big_product
+		if D.has("rare_product") and int(a.friendship) >= A.rare_friendship and rng.randf() < A.rare_chance:
+			item = D.rare_product
+		for tries in 40:
+			var x := rng.randi_range(1, cm.w - 2)
+			var y := rng.randi_range(3, cm.h - 2)
+			if cm.tile_free(x, y) and not (x == 6 and y >= 8):
+				cm.add_obj(x, y, "animal_product", {"item": item})
+				made += 1
+				break
+		a.last_product = state.day
+	if made > 0: rep.lines.append("Your animals left %d item%s in the coop." % [made, "" if made == 1 else "s"])
+	if hungry > 0: rep.lines.append("%d of your animals went hungry. Fill the hay hopper in the coop." % hungry)
 
 # ================================================================ machines, power and defenses
 func abs_min() -> int:
@@ -824,6 +1021,15 @@ func resolve_raid(m: GameMap) -> Array:
 			o.ammo_n = int(o.get("ammo_n", 0)) - k * int(d.ammo_per_kill)
 		turret_kills += k
 		left -= k
+	# an open coop door is an invitation
+	var lost_names := []
+	var coop = get_building_rec("coop")
+	if left > 0 and coop != null and coop.door_open and not state.animals.is_empty():
+		var n_lost: int = min(state.animals.size(), int(ceil(left / float(Balance.animals.open_door_losses_per))))
+		for i in n_lost:
+			var a: Dictionary = state.animals[rng.randi() % state.animals.size()]
+			lost_names.append(a.name)
+			state.animals.erase(a)
 	# 2. the perimeter
 	var damaged := 0
 	var broke := 0
@@ -869,6 +1075,8 @@ func resolve_raid(m: GameMap) -> Array:
 	if damaged > 0: parts.append("%d barrier section%s took damage" % [damaged, "" if damaged == 1 else "s"])
 	if broke > 0: parts.append("%d broke" % broke)
 	lines.append(head + (" " + ", ".join(parts).capitalize().substr(0, 1) + ", ".join(parts).substr(1) + "." if not parts.is_empty() else ""))
+	if not lost_names.is_empty():
+		lines.append("The coop door was left open. %s %s gone. Close the animal door before nightfall." % [", ".join(lost_names), "is" if lost_names.size() == 1 else "are"])
 	if trampled > 0:
 		lines.append("They got into your fields and trampled %d crop%s. Fences and turrets will keep them out." % [trampled, "" if trampled == 1 else "s"])
 	elif left > 0 and targets.door:
@@ -1376,6 +1584,11 @@ func shop_stock(shop_id: String) -> Array:
 			e.price = stage.price
 			e.mats = stage.mats
 			e.desc = stage.desc + " Needs " + ", ".join(stage.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
+		if e.get("service", "") == "coop" and (has_building("coop") or count_item("coop_kit") > 0):
+			continue
+		if e.get("service", "") == "animal":
+			var room := animal_room(Data.animals[e.animal].building)
+			e.desc = Data.shops[shop_id].stock[i].desc + (" Room in your coop: %d." % room if has_building("coop") else " You need a coop first.")
 		e.sale = i == sale_idx
 		e.final_price = int(e.price * 0.75) if e.sale else int(e.price)
 		out.append(e)
@@ -1400,6 +1613,33 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		state.flags.house_repair_to = stage.to
 		Sfx.play("coin")
 		toast("Hal will work on the farmhouse tonight.")
+		return ""
+	if e.get("service", "") == "coop":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Marisol needs %d %s for the coop (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		if not can_fit("coop_kit", 1):
+			return "Not enough room in your pack."
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		add_item("coop_kit", 1)
+		Sfx.play("coin")
+		return ""
+	if e.get("service", "") == "animal":
+		var kind: String = e.animal
+		if not has_building(Data.animals[kind].building):
+			Sfx.play("error")
+			return "You need a coop first. Marisol sells Coop Kits."
+		if animal_room(Data.animals[kind].building) <= 0:
+			Sfx.play("error")
+			return "Your coop is full."
+		state.money = int(state.money) - cost
+		Sfx.play("coin")
+		var kind2 := kind
+		ui.close()
+		ui.open("name_animal", {"kind": kind2, "name": random_animal_name()})
 		return ""
 	if e.get("service", "") == "backpack":
 		if state.flags.get("backpack", false):
@@ -1604,6 +1844,7 @@ func recover_from_collapse() -> void:
 		return
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 
 func pass_out() -> void:
 	var cfg := mode_cfg()
@@ -1682,6 +1923,7 @@ func end_day(reason: String) -> void:
 			var o: Dictionary = maps[mid].objects[kk]
 			if o.type == "rain_collector":
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
+	animals_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)
 	if waters: rep.lines.append("%s today. Your outdoor crops are already watered." % Data.weather_info[state.weather].name)
@@ -1742,6 +1984,7 @@ func end_day(reason: String) -> void:
 	clock_acc = 0.0
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 	rep.saved = write_save()
 	Sfx.play("sleep")
 	Sfx.play_music(season())

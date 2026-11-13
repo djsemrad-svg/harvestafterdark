@@ -979,6 +979,121 @@ func run_all() -> void:
 	close_all()
 	check("Collections: a Shipping Log tracks every crop, forage, fish and artisan good shipped", has_log)
 
+	# ---------- Phase 2: animals
+	start("adventure", 2)
+	while G.weekday() == "Tue": sleep()
+	G.state.time = 600; G.sync_npcs()
+	check("Marisol runs Reyes Ranch in town", Data.npcs.has("marisol") and G.maps.has("ranch") and G.npcs.marisol.map == "ranch" and G.is_shop_open("ranch"), "map=%s" % G.npcs.marisol.map)
+	G.state.money = 20000
+	var stock_r: Array = G.shop_stock("ranch")
+	var chick_e: Dictionary = {}
+	var coop_e: Dictionary = {}
+	for x in stock_r:
+		if x.get("animal", "") == "chicken": chick_e = x
+		if x.get("service", "") == "coop": coop_e = x
+	var no_coop_err: String = G.shop_buy("ranch", chick_e, 1)
+	var kit_err_mats: String = G.shop_buy("ranch", coop_e, 1)
+	G.add_item("wood", 150, {"silent": true}); G.add_item("stone", 50, {"silent": true})
+	var kit_err: String = G.shop_buy("ranch", coop_e, 1)
+	check("Coop Kit: needs scrip plus wood and stone; animals need a coop first", no_coop_err != "" and kit_err_mats != "" and kit_err == "" and G.count_item("coop_kit") == 1, "%s | %s | %s" % [no_coop_err, kit_err_mats, kit_err])
+
+	hm = G.maps.homestead
+	for xx in range(18, 26):
+		for yy in range(22, 29):
+			clear_tile(hm, xx, yy)
+	at("homestead", 21, 28, "up")
+	select("coop_kit")
+	var rect: Rect2i = G.building_rect("coop", W.facing_tile(), "up")
+	var fits: bool = G.building_fits(hm, rect)
+	W.use_selected(0, false)
+	var coop_b = G.get_building_rec("coop")
+	check("Coop: placed where you choose on the farm, with its own interior", fits and coop_b != null and G.count_item("coop_kit") == 0 and G.maps.has("coop") and hm.structure_at(rect.position.x, rect.position.y) != null, "rect=%s fits=%s" % [rect, fits])
+	if coop_b == null:
+		return
+	G.change_map("coop", 6, 8, "up", {"silent": true})
+	var in_coop: bool = G.map.id == "coop"
+	walk(Vector2.DOWN, 900)
+	check("Coop: the door leads inside and back out", in_coop and G.map.id == "homestead", "now=%s" % G.map.id)
+
+	at("store", 5, 5)
+	G.shop_buy("ranch", chick_e, 1)
+	var named: bool = ov() == "name_animal"
+	if named:
+		U.overlay.name = "Clucky"
+		U._adopt()
+	var rab_e: Dictionary = {}
+	for x in G.shop_stock("ranch"):
+		if x.get("animal", "") == "rabbit": rab_e = x
+	G.shop_buy("ranch", rab_e, 1)
+	if ov() == "name_animal": U._adopt()
+	check("Buying animals: you name them and they move into the coop", named and G.state.animals.size() == 2 and G.state.animals[0].name == "Clucky" and G.animals_rt.size() == 2, "n=%d" % G.state.animals.size())
+
+	var hen: Dictionary = G.state.animals[0]
+	var bun: Dictionary = G.state.animals[1]
+	G.change_map("coop", 6, 6, "up", {"silent": true})
+	G.add_item("hay", 40, {"silent": true})
+	W.interact_object(G.map.get_obj(2, 2))
+	var hay_in: int = int(coop_b.hay)
+	var f0: int = int(hen.friendship)
+	var r_h: Dictionary = G.animals_rt[int(hen.uid)]
+	G.player.pos = r_h.pos + Vector2(0, 12); G.player.dir = "up"
+	r_h.goal = r_h.pos
+	var pet_first: bool = W.animal_in_front() == hen
+	W.interact(false)
+	var pet2: bool = G.pet_animal(hen)
+	check("Animals: fill the hay hopper; pet each animal once a day", hay_in == 40 and G.count_item("hay") == 0 and pet_first and int(hen.friendship) == f0 + 15 and not pet2, "hay=%d pet_found=%s f=%d" % [hay_in, pet_first, int(hen.friendship)])
+
+	var eggs := 0
+	var furs := 0
+	for i in 7:
+		sleep()
+		for kk in G.maps.coop.objects.keys():
+			var ob = G.maps.coop.objects.get(kk)
+			if ob != null and ob.type == "animal_product":
+				if ob.item in ["egg", "large_egg"]: eggs += 1
+				if ob.item in ["rabbit_fur", "lucky_paw"]: furs += 1
+				G.maps.coop.remove_obj(int(ob.x), int(ob.y))
+	check("Animals: grown hens lay eggs daily and rabbits shed fur every few days when fed", eggs >= 4 and furs >= 1 and int(coop_b.hay) == 40 - 14 and G.animal_mature(hen), "eggs=%d furs=%d hay=%d" % [eggs, furs, int(coop_b.hay)])
+
+	coop_b.hay = 0
+	var fr: int = int(hen.friendship)
+	sleep()
+	check("Animals: with an empty hopper they go hungry, lose friendship and stop producing", not hen.fed and int(hen.friendship) < fr and not G.maps.coop.objects.values().any(func(o): return o.type == "animal_product"))
+
+	G.state.weather = "sun"; G.state.time = 600
+	coop_b.door_open = true
+	G.sync_animals()
+	var outside: bool = G.animals_rt[int(hen.uid)].map == "homestead"
+	coop_b.door_open = false
+	G.sync_animals()
+	check("Animals: they go outside on fair days when the animal door is open", outside and G.animals_rt[int(hen.uid)].map == "coop")
+
+	coop_b.hay = 20
+	sleep()
+	var snap_a := JSON.stringify(G.state.animals)
+	G.quit_to_title()
+	G.load_game("adventure", 2)
+	U.close_all()
+	check("Save keeps the coop, its hay and every animal", G.has_building("coop") and G.maps.has("coop") and JSON.stringify(G.state.animals) == snap_a and int(G.get_building_rec("coop").hay) == 18, "hay=%s same=%s" % [G.get_building_rec("coop").hay if G.has_building("coop") else "-", JSON.stringify(G.state.animals) == snap_a])
+
+	Balance.raids.grace_days = 4
+	G.get_building_rec("coop").door_open = false
+	G.state.raid = {"day": G.state.day, "size": 4, "spawned": false, "killed": 0, "warned": true}
+	G.resolve_raid(G.maps.homestead)
+	var safe_n: int = G.state.animals.size()
+	G.get_building_rec("coop").door_open = true
+	G.state.raid = {"day": G.state.day, "size": 2, "spawned": false, "killed": 0, "warned": true}
+	var rl: Array = G.resolve_raid(G.maps.homestead)
+	Balance.raids.grace_days = 99999
+	check("Raids: animals are safe behind a closed coop door, but an open door costs you", safe_n == 2 and G.state.animals.size() == 1 and " ".join(rl).contains("coop door"), " ".join(rl))
+
+	clear_tile(G.maps.homestead, 30, 33)
+	var rack: Dictionary = G.maps.homestead.add_obj(30, 33, "tanning_rack")
+	G.add_item("rabbit_fur", 2, {"silent": true})
+	var terr: String = G.machine_load(rack, "rabbit_fur")
+	sleep()
+	check("Tanning Rack turns rabbit fur into a tanned pelt overnight", terr == "" and G.machine_collect(rack) == 1 and G.count_item("tanned_pelt") == 1, terr)
+
 	# ---------- night raids
 	Balance.raids.grace_days = 4
 	start("survivor", 3)

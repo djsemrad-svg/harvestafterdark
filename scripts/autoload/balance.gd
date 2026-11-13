@@ -186,3 +186,19 @@ var bombs := {
 	"fuse_sec": 1.8,
 	"player_damage": 15,
 }
+
+var animals := {
+	"coop_capacity": 8,
+	"hopper_cap": 60,
+	"pet_points": 15,           # friendship for petting once a day
+	"fed_points": 5,            # each morning after eating
+	"unfed_points": -20,
+	"unpetted_points": -5,      # each day you don't pet them
+	"big_product_friendship": 600,
+	"big_product_chance": 0.5,
+	"rare_friendship": 800,
+	"rare_chance": 0.08,
+	"hay_from_weeds_chance": 0.5,   # once you own a coop, scything weeds can give hay
+	"open_door_losses_per": 2,      # one animal lost per this many raiders that reach an open coop
+	"outside_start": 540, "outside_end": 1080,
+}

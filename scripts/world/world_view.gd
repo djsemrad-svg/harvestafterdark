@@ -190,6 +190,10 @@ func _draw() -> void:
 				sorted.append([n.pos.y, 3, n])
 		for en in Game.enemies:
 			sorted.append([en.pos.y, 4, en])
+		for a in Game.state.get("animals", []):
+			var r = Game.animals_rt.get(int(a.uid))
+			if r != null and r.map == m.id:
+				sorted.append([r.pos.y, 7, [a, r]])
 		for d in m.drops:
 			sorted.append([d.pos.y, 5, d])
 		sorted.append([Game.player.pos.y, 6, Game.player])
@@ -203,6 +207,11 @@ func _draw() -> void:
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
 			6: _draw_player()
+			7:
+				var a: Dictionary = it[2][0]
+				var r: Dictionary = it[2][1]
+				var tex: Texture2D = Art.get_animal(a.type, int(a.color), r.dir, int(r.frame), Game.animal_mature(a))
+				draw_texture(tex, (r.pos - Vector2(8, 15)).round())
 	for q in Game.particles if Game.screen == "game" else []:
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
 	if Game.screen == "game":
@@ -219,7 +228,14 @@ func _draw() -> void:
 		var s = Game.selected_stack()
 		if s != null:
 			var it: Dictionary = Data.items[s.id]
-			if it.has("tool") or it.cat == "seed" or it.has("place") or it.has("fert"):
+			if it.has("building") and m.id == "homestead":
+				var rr: Rect2i = Game.building_rect(it.building, world.facing_tile(), Game.player.dir)
+				var ok: bool = Game.building_fits(m, rr)
+				var col := Color(0.4, 1.0, 0.4, 0.28) if ok else Color(1.0, 0.3, 0.3, 0.28)
+				draw_rect(Rect2(rr.position * 16, rr.size * 16), col)
+				draw_rect(Rect2(rr.position * 16, rr.size * 16), Color(col, 0.9), false, 1.0)
+				draw_rect(Rect2(Vector2(rr.position.x + 3, rr.end.y - 1) * 16 + Vector2(4, 4), Vector2(8, 12)), Color(1, 1, 1, 0.5))
+			elif it.has("tool") or it.cat == "seed" or it.has("place") or it.has("fert"):
 				var t: Vector2i = world.target_preview()
 				var tiles: Array = world.area_tiles(t, world.charge_level()) if Game.charge != null else [t]
 				for tt in tiles:

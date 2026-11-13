@@ -96,6 +96,7 @@ func step(dt: float) -> void:
 	var mini: bool = Game.fishing != null and Game.fishing.phase == "mini"
 	if not mini:
 		Game.update_npcs(dt)
+		Game.update_animals(dt)
 		update_enemies(dt)
 	if Game.overlay_open():
 		return
@@ -169,6 +170,7 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	elif it.cat == "seed": plant_at(t, s.id)
 	elif it.has("fert"): apply_fert(t, s.id)
 	elif it.has("bomb"): place_bomb(t, s.id)
+	elif it.has("building"): place_building(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
 	elif it.has("edible"):
 		var id: String = s.id
@@ -322,6 +324,8 @@ func break_object(o: Dictionary) -> void:
 	var c := Vector2(ox * 16 + 8, oy * 16 + 8)
 	var rng: RandomNumberGenerator = Game.rng
 	m.remove_obj(ox, oy)
+	if o.type == "weeds" and Game.has_building("coop") and rng.randf() < Balance.animals.hay_from_weeds_chance:
+		spawn_drop("hay", 1, c)
 	for d in def.get("drops", []):
 		var q := rng.randi_range(d[1], d[2])
 		if d[0] == "wood" and rng.randf() < Game.skill_level("foraging") * 0.05:
@@ -742,6 +746,50 @@ func bite(e: Dictionary) -> void:
 	else:
 		Game.damage_player(Data.enemies[e.type].damage, e.pos, "infected")
 
+
+
+# ================================================================ animals and farm buildings
+func animal_in_front():
+	var d: Vector2i = DIRS[Game.player.dir]
+	var f: Vector2 = Game.player.pos + Vector2(d.x * 13, -4 + d.y * 13)
+	var best = null
+	var bd := 13.0
+	for a in Game.state.get("animals", []):
+		var r = Game.animals_rt.get(int(a.uid))
+		if r == null or r.map != Game.map.id: continue
+		var dd: float = (r.pos + Vector2(0, -4)).distance_to(f)
+		if dd < bd:
+			bd = dd
+			best = a
+	return best
+
+func interact_animal(a: Dictionary) -> void:
+	var kind: String = Data.animals[a.type].name.to_lower()
+	var r = Game.animals_rt.get(int(a.uid))
+	if Game.pet_animal(a):
+		Sfx.play("pickup")
+		if r != null:
+			Game.floaters.append({"text": "♥", "pos": r.pos + Vector2(-2, -20), "t": 1.0, "color": Color("#f05a7a")})
+		Game.toast("You pet %s. %s" % [a.name, {"happy": "They look delighted.", "content": "They nuzzle your hand.", "shy": "They're warming up to you.", "hungry": "They seem hungry."}[Game.animal_mood(a)]])
+	else:
+		var age: int = int(Game.state.day) - int(a.born)
+		Game.toast("%s the %s%s. Friendship %d/1000. Mood: %s." % [a.name, kind, "" if Game.animal_mature(a) else " (still growing, day %d)" % age, int(a.friendship), Game.animal_mood(a)])
+
+func place_building(t: Vector2i, id: String) -> void:
+	var kind: String = Data.items[id].building
+	var r := Game.building_rect(kind, t, Game.player.dir)
+	if Game.map.id != "homestead":
+		Game.toast("Build it on your farm.", id, "warn")
+		return
+	if not Game.building_fits(Game.map, r):
+		Game.toast("Not enough clear ground. The coop needs a 6 by 4 space with nothing on it, plus room in front of the door.", id, "warn")
+		Sfx.play("error")
+		return
+	Game.remove_item(id, 1)
+	Game.build_building(kind, r)
+	burst(Vector2(r.get_center()) * 16, Color("#c8a070"), 16)
+	Sfx.play("chop")
+	Game.toast("Your coop is built! Fill the hay hopper inside, then buy animals from Marisol at Reyes Ranch.", "coop_kit", "gold")
 
 # ================================================================ defenses, raids, projectiles and bombs
 var _def_t := 0.0
@@ -1194,8 +1242,19 @@ func interact(from_mouse: bool) -> void:
 	if npc != null:
 		Game.talk_to(npc)
 		return
+	var an = animal_in_front()
+	if an != null:
+		interact_animal(an)
+		return
 	var t := target_tile(from_mouse)
 	var m: GameMap = Game.map
+	var coop = Game.get_building_rec("coop")
+	if coop != null and m.id == "homestead" and t == Game.animal_door_tile(coop):
+		coop.door_open = not coop.door_open
+		Sfx.play("door")
+		Game.toast("Animal door %s." % ("open: your animals can go out on fair days" if coop.door_open else "closed for the night"))
+		Game.sync_animals()
+		return
 	var s = m.soil.get(GameMap.k(t.x, t.y))
 	if s != null and crop_ready(s.get("crop")):
 		harvest_at(t)
@@ -1274,6 +1333,29 @@ func interact_object(o: Dictionary) -> void:
 			Game.ui.say("", def.get("text", ""))
 		"ammo_bench":
 			Game.ui.open("craft", {"station": "ammo_bench"})
+		"hay_hopper":
+			var b = Game.get_building_rec("coop")
+			if b == null: return
+			var have := Game.count_item("hay")
+			var room: int = Balance.animals.hopper_cap - int(b.hay)
+			if have > 0 and room > 0:
+				var n: int = min(have, room)
+				Game.remove_item("hay", n)
+				b.hay = int(b.hay) + n
+				Sfx.play("pick")
+				Game.toast("Added %d hay. The hopper holds %d of %d." % [n, int(b.hay), Balance.animals.hopper_cap], "hay")
+			else:
+				Game.toast("Hay hopper: %d of %d. Each animal eats 1 a day.%s" % [int(b.hay), Balance.animals.hopper_cap, " Buy hay from Marisol or scythe weeds." if have == 0 else ""], "hay")
+		"animal_product":
+			if not Game.can_fit(o.item, 1):
+				Game.toast("Your inventory is full.", "", "warn")
+				return
+			Game.map.remove_obj(int(o.x), int(o.y))
+			Game.add_item(o.item, 1)
+			Game.add_xp("farming", 3)
+			Sfx.play("pickup")
+		"nest_box", "water_trough", "hay_bale":
+			pass
 		"generator":
 			var have := Game.count_item("coal")
 			var cap: int = Balance.power.generator_fuel_cap

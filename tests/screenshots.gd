@@ -80,6 +80,36 @@ func _ready() -> void:
 	await frames(90)
 	await shot("16_raid_night")
 	main.ui.open("craft", {"station": "hand"}); await shot("17_crafting")
+	main.ui.close_all()
+	# coop and animals
+	for xx in range(5, 15):
+		for yy in range(12, 18):
+			hm.remove_obj(xx, yy)
+			hm.soil.erase(GameMap.k(xx, yy))
+	Game.build_building("coop", Rect2i(6, 12, 6, 4))
+	for i in 5:
+		Game.adopt_animal("chicken" if i < 3 else "rabbit", "A%d" % i)
+	for a in Game.state.animals: a.born = -10
+	Game.get_building_rec("coop").door_open = true
+	Game.state.time = 700; Game.state.weather = "sun"
+	Game.sync_animals(true)
+	Game.change_map("homestead", 9, 18, "up", {"silent": true})
+	Game.sync_animals(true)
+	await frames(40)
+	await shot("18_coop_outside")
+	Game.maps.coop.add_obj(3, 5, "animal_product", {"item": "egg"}); Game.maps.coop.add_obj(8, 6, "animal_product", {"item": "rabbit_fur"})
+	Game.get_building_rec("coop").door_open = false
+	Game.sync_animals(true)
+	Game.change_map("coop", 6, 7, "up", {"silent": true})
+	await frames(40)
+	await shot("19_coop_inside")
+	Game.state.time = 600
+	Game.change_map("town", 37, 11, "up", {"silent": true})
+	await frames(20)
+	await shot("20_ranch")
+	Game.change_map("ranch", 6, 7, "up", {"silent": true}); Game.sync_npcs()
+	await frames(20)
+	await shot("21_ranch_inside")
 	get_tree().quit()
 
 func frames(n: int) -> void:

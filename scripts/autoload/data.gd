@@ -26,6 +26,7 @@ var categories := {
 	"farm_supply": {"label": "Farm Supply", "color": "#9ac070"},
 	"artisan": {"label": "Artisan Good", "color": "#e0a050"},
 	"junk": {"label": "Junk", "color": "#888888"},
+	"animal": {"label": "Animal Product", "color": "#f0d8a0"},
 	"quest": {"label": "Quest Item", "color": "#f0e070", "protected": true},
 }
 
@@ -223,12 +224,16 @@ var recipes := [
 	{"id": "r_furnace", "group": "Equipment", "out": "brick_furnace", "qty": 1, "station": "hand", "inputs": [["stone", 25], ["copper_ore", 15], ["clay", 4]], "unlock": {"type": "skill", "skill": "mining", "level": 1}, "note": "Smelt your own bars."},
 	{"id": "r_collector", "group": "Equipment", "out": "rain_collector", "qty": 1, "station": "hand", "inputs": [["wood", 25], ["scrap", 6], ["cloth", 2]], "unlock": {"type": "skill", "skill": "foraging", "level": 2}, "note": "Fills a bottle of clean water each day."},
 	{"id": "r_smoker", "group": "Equipment", "out": "smoker", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 10], ["scrap", 5], ["coal", 5]], "unlock": {"type": "skill", "skill": "fishing", "level": 2}},
+	{"id": "r_tanning", "group": "Equipment", "out": "tanning_rack", "qty": 1, "station": "hand", "inputs": [["wood", 25], ["fiber", 10], ["scrap", 4]], "unlock": {"type": "skill", "skill": "farming", "level": 2}, "note": "Turns rabbit fur into tanned pelts."},
 	{"id": "r_jar", "group": "Equipment", "out": "preserves_jar", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 20], ["coal", 4]], "unlock": {"type": "skill", "skill": "farming", "level": 3}},
 	# cooking (stove)
 	{"id": "c_fish", "group": "Cooking", "out": "fried_fish", "qty": 1, "station": "stove", "inputs": [["cat:fish", 1]], "unlock": {"type": "start"}},
 	{"id": "c_stew", "group": "Cooking", "out": "veggie_stew", "qty": 1, "station": "stove", "inputs": [["cat:crop", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_salad", "group": "Cooking", "out": "forager_salad", "qty": 1, "station": "stove", "inputs": [["cat:forage", 2]], "unlock": {"type": "start"}},
 	{"id": "c_potato", "group": "Cooking", "out": "baked_potato", "qty": 1, "station": "stove", "inputs": [["potato", 1], ["wood", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 1}},
+	{"id": "c_egg", "group": "Cooking", "out": "fried_egg", "qty": 1, "station": "stove", "inputs": [["egg", 1]], "unlock": {"type": "start"}},
+	{"id": "c_skillet", "group": "Cooking", "out": "breakfast_skillet", "qty": 1, "station": "stove", "inputs": [["egg", 1], ["potato", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 1}},
+	{"id": "c_omelette", "group": "Cooking", "out": "garden_omelette", "qty": 1, "station": "stove", "inputs": [["large_egg", 1], ["cat:crop", 1]], "unlock": {"type": "friend", "npc": "marisol", "hearts": 3}},
 	{"id": "c_tea", "group": "Cooking", "out": "dandelion_tea", "qty": 1, "station": "stove", "inputs": [["dandelion", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_mint", "group": "Cooking", "out": "mint_tea", "qty": 1, "station": "stove", "inputs": [["wild_mint", 1], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_corn", "group": "Cooking", "out": "roast_corn", "qty": 1, "station": "stove", "inputs": [["corn", 1]], "unlock": {"type": "start"}},
@@ -264,6 +269,7 @@ var machines := {
 		{"in": "old_can", "qty": 1, "out": "scrap", "out_qty": 2, "min": 60},
 		{"in": "soggy_paper", "qty": 1, "out": "fiber", "out_qty": 3, "min": 60}], "hint": "junk"},
 	"rain_collector": {"recipes": [], "passive": "water_bottle", "hint": ""},
+	"tanning_rack": {"recipes": [{"in": "rabbit_fur", "qty": 2, "out": "tanned_pelt", "out_qty": 1, "min": 1440}], "hint": "2 rabbit fur"},
 }
 
 var skills := {
@@ -341,6 +347,12 @@ var obj_defs := {
 	"rug": {"solid": false, "fixture": true, "floor": true},
 	"window": {"solid": true, "fixture": true},
 	"counter": {"solid": true, "fixture": true},
+	"hay_hopper": {"solid": true, "fixture": true},
+	"nest_box": {"solid": true, "fixture": true},
+	"water_trough": {"solid": true, "fixture": true},
+	"hay_bale": {"solid": true, "fixture": true},
+	"animal_product": {"solid": false, "pickup": true},
+	"tanning_rack": {"solid": true, "returns": "tanning_rack", "machine": true, "name": "Tanning Rack"},
 	"shelf": {"solid": true, "fixture": true},
 	"anvil": {"solid": true, "fixture": true},
 	"furnace": {"solid": true, "fixture": true, "light": 70},
@@ -379,6 +391,8 @@ var buildings := {
 	"house_a": {"roof": "#5a6a8a", "roof2": "#46546e", "wall": "#b8a888", "trim": "#5a4a3a", "windows": 2, "condition": 3},
 	"house_b": {"roof": "#8a5a4a", "roof2": "#6e463a", "wall": "#a8b098", "trim": "#4a4a3a", "windows": 2, "condition": 3},
 	"ruin": {"roof": "#555555", "roof2": "#444444", "wall": "#8a8478", "trim": "#4a4440", "windows": 2, "condition": 0},
+	"ranch": {"roof": "#8a3a2a", "roof2": "#6e2a1e", "wall": "#c8a070", "trim": "#5a3a22", "sign": "REYES RANCH", "windows": 2, "condition": 4, "door": "#5a7a3a", "curtain": "#e8d8a0"},
+	"coop": {"roof": "#8a4a2e", "roof2": "#6e3820", "wall": "#e8dcc0", "trim": "#6a4a2e", "sign": "COOP", "windows": 1, "condition": 4, "door": "#6a4a2e", "curtain": "#d8c070"},
 	"mine": {"special": "mine"},
 }
 
@@ -465,6 +479,27 @@ var npcs := {
 			"gift": {"love": "No way! This is my favorite!", "like": "Ooh, thank you!", "neutral": "Thanks!", "dislike": "Oh. Um. Thanks, I guess?"},
 		},
 	},
+	"marisol": {
+		"name": "Marisol Reyes", "role": "Rancher", "birthday": {"season": "summer", "day": 20},
+		"look": {"skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
+		"loves": ["sunflower", "strawbloom", "tanned_pelt"], "likes": ["egg", "large_egg", "cat:crop", "hay"], "dislikes": ["cat:junk", "coal", "scrap"],
+		"schedules": {
+			"default": [[360, ""], [480, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
+			"Tue": [[360, ""], [540, "town", 32, 9, "up"], [720, "mountain", 12, 24, "up"], [960, "town", 25, 21, "left"], [1140, ""]],
+			"rain": [[360, ""], [480, "ranch", 6, 3, "down"], [1140, ""]],
+		},
+		"dialogue": {
+			"intro": ["You're the one who took the old homestead! I'm Marisol. I keep the chickens and rabbits for Brightwater.", "Animals keep a town honest. They need feeding every single day, outbreak or no outbreak.", "When you've got a coop, come see me. I'll sell you birds, rabbits and hay. And mind your coop door at night."],
+			"generic": ["A hen that's been petted lays bigger eggs. Don't laugh, it's true.", "Rabbits are skittish. Talk to them every day and they'll trust you.", "Keep the hopper full. Hungry animals don't produce a thing.", "The infected can't open a latch, but they can walk through an open door.", "My grandmother kept goats in the hills. Maybe someday I'll find some."],
+			"spring": ["Spring chicks! Everyone wants one this time of year."],
+			"summer": ["Let them out on sunny days. They're happier for it."],
+			"autumn": ["Stock up on hay before winter. The animals can't go outside in the snow."],
+			"winter": ["Winter's hard on the coop. Keep it full and keep it closed."],
+			"rain": ["Rain day. The hens are sulking and so am I."],
+			"hearts": ["I lost my whole herd the first winter of the Fall. Started over with two hens. Look at us now.", "You've got good hands with animals. Steady. They can tell."],
+			"gift": {"love": "Oh, you remembered! This is perfect.", "like": "That's kind of you. Thank you.", "neutral": "Thanks, neighbour.", "dislike": "Hm. I'll... find somewhere for it."},
+		},
+	},
 }
 
 # ---------------- Shops ----------------
@@ -478,7 +513,24 @@ var shops := {
 		"buys": ["ore", "bar", "mineral", "gem"], "daily_sale": false,
 		"stock": [{"id": "coal", "price": 45}, {"id": "copper_ore", "price": 30}, {"id": "iron_ore", "price": 60, "min_deepest": 5}],
 	},
+	"ranch": {
+		"name": "Reyes Ranch", "owner": "marisol", "map": "ranch", "open": 540, "close": 960, "closed_days": ["Tue"],
+		"buys": ["animal"], "daily_sale": false,
+		"stock": [
+			{"id": "hay", "price": 50},
+			{"service": "coop", "name": "Coop Kit", "desc": "A pre-cut coop for up to 8 chickens or rabbits. You choose where it goes on your farm. Also needs 150 wood and 50 stone.", "price": 3000, "mats": [["wood", 150], ["stone", 50]]},
+			{"service": "animal", "animal": "chicken", "name": "Chicken", "desc": "Lays an egg every day it's fed. Lives in a coop.", "price": 600},
+			{"service": "animal", "animal": "rabbit", "name": "Rabbit", "desc": "Sheds soft fur every few days. Lives in a coop.", "price": 1500},
+		],
+	},
 }
+
+## Farm animals. "every": days between products. Friendship is 0-1000.
+var animals := {
+	"chicken": {"name": "Chicken", "building": "coop", "product": "egg", "big_product": "large_egg", "every": 1, "mature_days": 3, "colors": ["#f4f0e8", "#b8743a", "#3a3a40"]},
+	"rabbit": {"name": "Rabbit", "building": "coop", "product": "rabbit_fur", "rare_product": "lucky_paw", "every": 4, "mature_days": 6, "colors": ["#b8b0a8", "#8a6a4a", "#f0ece8"]},
+}
+var animal_names := ["Clover", "Pip", "Bess", "Nugget", "Juniper", "Biscuit", "Maple", "Hazel", "Pepper", "Tater", "Daisy", "Sprout", "Mabel", "Rook", "Thistle", "Butter", "Cinder", "Wren Jr.", "Dot", "Moss"]
 
 # ---------------- Quests ----------------
 # type: talk | plant | harvest | ship | catch | mine_floor | geode | upgrade
@@ -519,6 +571,14 @@ var weather_info := {
 ## Heart events: a short scene the first time you talk to someone after reaching
 ## that many hearts. Options are [answer, friendship points, their reply].
 var heart_events := {
+	"marisol": {
+		2: {"lines": ["See this hen? Her name's Duchess. She's nine. That's ancient for a chicken.", "She was one of the two I started over with. Stubborn as a mule and twice as loud."],
+			"q": "", "options": [["She's beautiful.", 40, "Don't tell her that. She'll get a big head."], ["Nine years is a long time.", 30, "It is. She's seen this whole town come back."]]},
+		4: {"lines": ["Some nights I hear them. Out past the fence. Just shuffling.", "The rabbits go still. The hens stop clucking. And I sit up with a lantern until it passes."],
+			"q": "", "options": [["Next time, come get me.", 45, "...I might. It's easier with company."], ["Have you thought about turrets?", 25, "Ha. Ines keeps offering. Maybe I'll let her."]]},
+		6: {"lines": ["I've been saving these for someone who'd treat them right.", "Two of my best hens' eggs. And a bale of good hay. Take care of your flock."], "reward": ["hay", 20],
+			"q": "", "options": [["I'll treat them like family.", 40, "I know you will. That's why I picked you."]]},
+	},
 	"ruth": {
 		2: {"lines": ["Do you know what I write first in the ledger every morning? Not seeds. Names.", "Everyone who's still here. Some days the list was shorter than the day before. Not lately, though."],
 			"q": "Why keep the list?", "options": [["So no one is forgotten.", 40, "Exactly. Someone has to remember them out loud."], ["That sounds heavy.", 20, "It is. It's lighter when someone asks about it."], ["Seems like a waste of ink.", -10, "...Ink is the one thing we have plenty of."]]},
@@ -586,7 +646,7 @@ var regions := [
 	{"id": "quarry", "name": "Quarry", "gx": 6, "gy": 0, "gw": 3, "gh": 1, "lock": "Past the rockslide on the ridge."},
 ]
 
-var location_names := {"house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
+var location_names := {"ranch": "Reyes Ranch", "coop": "Your Coop", "house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
 
 var look_options := {
 	"skin": ["#f6d3b3", "#e8b48f", "#c98e66", "#a26a45", "#7a4a2c", "#553220"],
@@ -714,6 +774,18 @@ func _init() -> void:
 	for id in dishes:
 		var dd: Array = dishes[id]
 		def_item(id, {"name": dd[0], "cat": "cooked", "price": dd[1], "edible": {"hunger": dd[2], "thirst": dd[3], "energy": dd[4], "hp": dd[5]}, "drink": dd[6] == "cup", "desc": dd[8], "icon": {"s": dd[6], "c": dd[7]}})
+
+	# ---- animals and their products
+	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the coop's hopper to feed your animals.", "icon": {"s": "hay"}})
+	def_item("egg", {"name": "Egg", "cat": "animal", "price": 50, "edible": {"hunger": 6, "energy": 10, "hp": 1, "thirst": 0}, "desc": "A fresh egg. Better cooked.", "icon": {"s": "egg", "c": "#f4ecd8"}})
+	def_item("large_egg", {"name": "Large Egg", "cat": "animal", "price": 95, "edible": {"hunger": 10, "energy": 16, "hp": 2, "thirst": 0}, "desc": "From a happy, well-fed hen.", "icon": {"s": "egg", "c": "#e8d0a8", "big": true}})
+	def_item("rabbit_fur", {"name": "Rabbit Fur", "cat": "animal", "price": 140, "desc": "Soft and warm. Tan it on a Tanning Rack.", "icon": {"s": "fur", "c": "#c8c0b8"}})
+	def_item("lucky_paw", {"name": "Lucky Paw", "cat": "animal", "price": 500, "desc": "A rabbit's shed toe-tuft, said to bring luck. Only very happy rabbits leave one.", "icon": {"s": "fur", "c": "#f0e0c0"}})
+	def_item("tanned_pelt", {"name": "Tanned Pelt", "cat": "artisan", "price": 420, "desc": "Supple and warm. Valuable in winter.", "icon": {"s": "fur", "c": "#a8703a"}})
+	def_item("coop_kit", {"name": "Coop Kit", "cat": "placeable", "price": 0, "building": "coop", "stack": 1, "desc": "Hold it on your farm to see where the coop will go (6 by 4 tiles), then use it to build.", "icon": {"s": "kit"}})
+	def_item("tanning_rack", {"name": "Tanning Rack", "cat": "machine", "price": 90, "place": "tanning_rack", "desc": "Turns 2 rabbit fur into a tanned pelt overnight.", "icon": {"s": "obj", "obj": "tanning_rack"}})
+	for dd in [["fried_egg", "Fried Egg", 70, 14, 0, 25, 4, "dish", "#f8e0a0", "Sunny side up."], ["breakfast_skillet", "Breakfast Skillet", 160, 35, 0, 50, 12, "dish", "#e8b860", "Eggs and crispy potatoes. Gets you through a mine trip."], ["garden_omelette", "Marisol's Garden Omelette", 240, 40, 5, 70, 25, "dish", "#f0d070", "Marisol's recipe: one big egg and whatever's fresh."]]:
+		def_item(dd[0], {"name": dd[1], "cat": "cooked", "price": dd[2], "edible": {"hunger": dd[3], "thirst": dd[4], "energy": dd[5], "hp": dd[6]}, "desc": dd[9], "icon": {"s": dd[7], "c": dd[8]}})
 
 	# ---- crafted placeables (icons are drawn from the object art)
 	var placeables := {
