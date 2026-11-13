@@ -995,7 +995,7 @@ func run_all() -> void:
 	var kit_err_mats: String = G.shop_buy("ranch", coop_e, 1)
 	G.add_item("wood", 150, {"silent": true}); G.add_item("stone", 50, {"silent": true})
 	var kit_err: String = G.shop_buy("ranch", coop_e, 1)
-	check("Coop Kit: needs scrip plus wood and stone; animals need a coop first", no_coop_err != "" and kit_err_mats != "" and kit_err == "" and G.count_item("coop_kit") == 1, "%s | %s | %s" % [no_coop_err, kit_err_mats, kit_err])
+	check("Coop Kit: needs gold plus wood and stone; animals need a coop first", no_coop_err != "" and kit_err_mats != "" and kit_err == "" and G.count_item("coop_kit") == 1, "%s | %s | %s" % [no_coop_err, kit_err_mats, kit_err])
 
 	hm = G.maps.homestead
 	for xx in range(18, 26):

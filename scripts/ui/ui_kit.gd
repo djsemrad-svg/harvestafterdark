@@ -200,7 +200,7 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 			q.add_theme_color_override("font_outline_color", Color.BLACK)
 			q.position = Vector2(size - 4 - 4 * str(stack.qty).length(), size - 10)
 			b.add_child(q)
-		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d scrip each)" % it.price) + "\n" + it.desc
+		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d gold each)" % it.price) + "\n" + it.desc
 	if on_click != null:
 		b.gui_input.connect(func(ev):
 			if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):

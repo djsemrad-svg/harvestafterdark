@@ -192,7 +192,7 @@ func _title_slots() -> void:
 				if is_new: h.add_child(K.button("Overwrite", func(): _start_create(slot_n), "small"))
 			else:
 				h.add_child(K.icon(Art.get_portrait(d.character.look), 18))
-				var info := K.label("%s of %s\n%s · %d scrip" % [d.character.name, d.property_name, Game.date_label(d.day), d.money], 7, null)
+				var info := K.label("%s of %s\n%s · %d gold" % [d.character.name, d.property_name, Game.date_label(d.day), d.money], 7, null)
 				info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				h.add_child(info)
 				if is_new:
@@ -500,7 +500,7 @@ func update_hud(dt: float) -> void:
 		return
 	var st: Dictionary = Game.state
 	var late: bool = st.time >= Balance.time.midnight
-	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s scrip[/color][/b]%s[/right]" % [
+	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s gold[/color][/b]%s[/right]" % [
 		Game.weekday(), Game.season().capitalize(), Game.day_of_season(), Game.year(), "#b3392e" if late else "#5a2c0e", Game.fmt_time(int(st.time)),
 		Data.weather_info[st.weather].name, Game.location_name(), _num(int(st.money)), "\n[color=#b3392e][b]PAUSED[/b][/color]" if Game.paused else ""]
 	if _last.get("clock") != clock:
@@ -920,7 +920,7 @@ func _ov_death() -> Control:
 func _ov_collapse() -> Control:
 	var pw := _window("Rescued", 260)
 	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out."}.get(overlay.cause, "You collapsed.")
-	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d scrip along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
+	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d gold along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 240
 		pw[1].add_child(l)
@@ -936,7 +936,7 @@ func _ov_report() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(K.label("%s. %s · %s" % [Game.weekday(), Game.date_label(), Data.weather_info[Game.state.weather].name], 7, K.INK_SOFT))
 	if r.reason == "passout":
-		v.add_child(K.label("You collapsed from exhaustion at 2:00 am and woke up at home%s." % ((", %d scrip lighter" % r.lost) if r.lost else ""), 7, K.EMBER, true))
+		v.add_child(K.label("You collapsed from exhaustion at 2:00 am and woke up at home%s." % ((", %d gold lighter" % r.lost) if r.lost else ""), 7, K.EMBER, true))
 	v.add_child(K.label("Trade crate sales", 8, K.WOOD_DARK))
 	if r.sales.is_empty():
 		v.add_child(K.label("Nothing was shipped yesterday.", 7, K.INK_SOFT))
@@ -1098,7 +1098,7 @@ func _ov_ship() -> Control:
 	var total := 0
 	for s in st.shipping:
 		total += Data.items[s.id].price * int(s.qty)
-	b.add_child(K.label("In the crate (worth about %d scrip)" % total, 8, K.WOOD_DARK))
+	b.add_child(K.label("In the crate (worth about %d gold)" % total, 8, K.WOOD_DARK))
 	b.add_child(_grid(st.shipping, 6, func(i, _btn):
 		var s: Dictionary = st.shipping[i]
 		var left := Game.add_item(s.id, int(s.qty), {"silent": true})
@@ -1134,7 +1134,7 @@ func _ship_add(i: int, btn: int) -> void:
 	var only: bool = Game.count_item(id) <= n
 	if (fl.donatable and only) or Data.items[id].price >= 200:
 		var saved := overlay.duplicate()
-		confirm(("This is your only %s. The Archive may want one when it reopens. " % Data.items[id].name if fl.donatable and only else "This is a valuable item. ") + "Ship %d %s for %d scrip?" % [n, Data.items[id].name, Data.items[id].price * n],
+		confirm(("This is your only %s. The Archive may want one when it reopens. " % Data.items[id].name if fl.donatable and only else "This is a valuable item. ") + "Ship %d %s for %d gold?" % [n, Data.items[id].name, Data.items[id].price * n],
 			func():
 				do_ship.call()
 				overlay = saved
@@ -1267,7 +1267,7 @@ func _shop_head(owner: String, title: String, sub: String) -> HBoxContainer:
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(tv)
 	var purse := K.row_box(Color("#fff0c8"))
-	purse.add_child(K.label("%s scrip" % _num(int(Game.state.money)), 8, Color("#6a4a10")))
+	purse.add_child(K.label("%s gold" % _num(int(Game.state.money)), 8, Color("#6a4a10")))
 	h.add_child(purse)
 	return h
 
@@ -1301,7 +1301,7 @@ func _ov_forge() -> Control:
 	var body := K.vbox(2)
 	match tab:
 		"geodes":
-			body.add_child(K.label("Fee: %d scrip per geode. Each geode type has its own pool of possible finds." % Balance.services.geode_fee, 7, K.INK_SOFT))
+			body.add_child(K.label("Fee: %d gold per geode. Each geode type has its own pool of possible finds." % Balance.services.geode_fee, 7, K.INK_SOFT))
 			var any := false
 			for g in Data.geode_tables:
 				if Game.count_item(g) <= 0: continue
@@ -1344,7 +1344,7 @@ func _ov_forge() -> Control:
 				var row := K.row_box()
 				var rh := K.hbox(3)
 				rh.add_child(K.icon(Art.get_icon(bar), 14))
-				var nm := K.label("%s: %d %s (have %d) + %d Coal (have %d) + %d scrip" % [Data.items[bar].name, r.ore_qty, Data.items[r.ore].name, Game.count_item(r.ore), r.coal, Game.count_item("coal"), fee], 6, null, true)
+				var nm := K.label("%s: %d %s (have %d) + %d Coal (have %d) + %d gold" % [Data.items[bar].name, r.ore_qty, Data.items[r.ore].name, Game.count_item(r.ore), r.coal, Game.count_item("coal"), fee], 6, null, true)
 				nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				rh.add_child(nm)
 				var b1 := K.button("Refine 1", func(): overlay.err = Game.forge_refine(bid, 1); render_overlay(), "small")
@@ -1366,7 +1366,7 @@ func _ov_forge() -> Control:
 			if not pending.is_empty():
 				body.add_child(K.label("In the furnace: " + ", ".join(pending.map(func(o): return "%d %s (ready %s)" % [o.qty, Data.items[o.bar].name, Game.date_label(int(o.ready_day))])), 7, K.INK_SOFT, true))
 		"upgrade":
-			body.add_child(K.label("Upgrades need refined bars, scrip and your current tool. The tool stays with Ines until it is done.", 7, K.INK_SOFT, true))
+			body.add_child(K.label("Upgrades need refined bars, gold and your current tool. The tool stays with Ines until it is done.", 7, K.INK_SOFT, true))
 			for t in Data.tool_defs:
 				if not Data.tool_defs[t].upgradable: continue
 				var tid: String = t
@@ -1386,7 +1386,7 @@ func _ov_forge() -> Control:
 					rh.add_child(K.icon(Art.get_icon(t, up.tier), 16))
 					var ok_b: bool = Game.count_item(up.bar) >= up.bars
 					var ok_m: bool = int(st.money) >= up.cost
-					text = "[b]%s → %s %s[/b]\n[font_size=5]Now: %s Upgraded: %s[/font_size]\n[color=%s]%d %ss (have %d)[/color] · [color=%s]%d scrip[/color] · %d days" % [
+					text = "[b]%s → %s %s[/b]\n[font_size=5]Now: %s Upgraded: %s[/font_size]\n[color=%s]%d %ss (have %d)[/color] · [color=%s]%d gold[/color] · %d days" % [
 						Data.tool_tiers[cur].name, Data.tool_tiers[up.tier].name, Data.tool_defs[t].name, Game.tool_effect_text(t, cur), Game.tool_effect_text(t, up.tier),
 						"#3f7a2c" if ok_b else "#b3392e", up.bars, Data.items[up.bar].name, Game.count_item(up.bar), "#3f7a2c" if ok_m else "#b3392e", up.cost, up.days]
 				var rl := K.rich(text, 6)
@@ -1541,7 +1541,7 @@ func _tab_inventory() -> Control:
 	for t in Data.tool_defs:
 		if Data.tool_defs[t].upgradable:
 			tools.append(Data.tool_tiers[Game.tool_tier(t)].name + " " + Data.tool_defs[t].name + (" (at forge)" if Game.tool_busy(t) != null else ""))
-	var info := K.label("%s of %s\n%s · %s scrip\nEquipment: %s · Outfit: %s%s (change at your mirror)\nTools: %s" % [st.character.name, st.property_name, Balance.modes[st.mode].label, _num(int(st.money)),
+	var info := K.label("%s of %s\n%s · %s gold\nEquipment: %s · Outfit: %s%s (change at your mirror)\nTools: %s" % [st.character.name, st.property_name, Balance.modes[st.mode].label, _num(int(st.money)),
 		("%s (Damage %d)" % [Data.items[weapon[0].id].name, Data.items[weapon[0].id].weapon.damage]) if not weapon.is_empty() else "none", look.shirt_style, ", " + look.acc if look.acc != "None" else "", ", ".join(tools)], 6, null, true)
 	info.custom_minimum_size.x = 220
 	eh.add_child(info)
@@ -1697,7 +1697,7 @@ func _tab_quests() -> Control:
 		var d := Game.quest_def(id)
 		var r: Dictionary = d.get("reward", {})
 		var rew := []
-		if r.has("money"): rew.append("%d scrip" % r.money)
+		if r.has("money"): rew.append("%d gold" % r.money)
 		for pair in r.get("items", []): rew.append("%d %s" % [pair[1], Data.items[pair[0]].name])
 		var b := K.row_box()
 		b.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [d.title, Game.quest_progress_text(d), d.desc, Data.npcs[d.giver].name, ", ".join(rew)], 6))
@@ -1943,7 +1943,7 @@ func _help_box() -> Control:
 	for t in ["The daily loop: wake at 6:00 am, work your land, visit Brightwater, explore the mine, and get to bed before 2:00 am. Sleeping in your bed is how the game saves.",
 		"Farming: clear weeds with the scythe, rocks with the pickaxe and branches with the axe. Till soil with the hoe, plant, and water every day (rain does it for you). Crops die when their season ends.",
 		"Selling: drop goods in the trade crate beside your house to sell them overnight, or sell directly at shops during opening hours.",
-		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and scrip.",
+		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and gold.",
 		"Fishing: talk to Wren at the river to get a rod. Hold to cast, press when the \"!\" appears, then hold Space to keep the fish inside the green bar.",
 		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them with your club to knock them back. In Survivor Mode a bite reloads your last sleep."]:
 		var l := K.label(t, 7, null, true)

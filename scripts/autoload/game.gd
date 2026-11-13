@@ -1362,7 +1362,7 @@ func talk_to(id: String) -> void:
 		ui.dialogue(id, d.dialogue.intro.duplicate(), func():
 			if id == "ruth":
 				state.money = int(state.money) + 100
-				toast("+100 scrip from Ruth", "", "gold")
+				toast("+100 gold from Ruth", "", "gold")
 				Sfx.play("coin")
 			if id == "wren":
 				state.flags.got_rod = true
@@ -1529,7 +1529,7 @@ func complete_quest(d: Dictionary) -> void:
 	if r.has("money"):
 		var m := int(round(r.money * mode_cfg().bonus_reward_mult))
 		state.money = int(state.money) + m
-		parts.append("%d scrip" % m)
+		parts.append("%d gold" % m)
 	for pair in r.get("items", []):
 		var left := add_item(pair[0], pair[1], {"silent": true})
 		if left > 0 and world:
@@ -1598,7 +1598,7 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 	var cost: int = e.final_price * qty
 	if int(state.money) < cost:
 		Sfx.play("error")
-		return "Not enough scrip."
+		return "Not enough gold."
 	if e.get("service", "") == "house_repair":
 		var stage := next_house_repair()
 		if stage.is_empty():
@@ -1720,7 +1720,7 @@ func forge_open_geode(geode_id: String) -> Dictionary:
 	if count_item(geode_id) < 1:
 		return {"error": "You have no %s." % Data.items[geode_id].name}
 	if int(state.money) < fee:
-		return {"error": "Not enough scrip for the fee."}
+		return {"error": "Not enough gold for the fee."}
 	var pick := MapBuilder.weighted(rng, Data.geode_tables[geode_id])
 	var qty := rng.randi_range(pick.q[0], pick.q[1])
 	remove_item(geode_id, 1)
@@ -1739,7 +1739,7 @@ func forge_refine(bar: String, qty: int) -> String:
 	var fee: int = Balance.services.refine_fee_per_bar[bar] * qty
 	if count_item(r.ore) < r.ore_qty * qty: return "You need %d %s." % [r.ore_qty * qty, Data.items[r.ore].name]
 	if count_item("coal") < r.coal * qty: return "You need %d Coal." % (r.coal * qty)
-	if int(state.money) < fee: return "Not enough scrip for the fee."
+	if int(state.money) < fee: return "Not enough gold for the fee."
 	remove_item(r.ore, r.ore_qty * qty)
 	remove_item("coal", r.coal * qty)
 	state.money = int(state.money) - fee
@@ -1783,7 +1783,7 @@ func forge_upgrade(tool: String) -> String:
 		if state.tools[t].upgrading != null:
 			return "Ines can only work on one tool at a time."
 	if count_item(up.bar) < up.bars: return "You need %d %ss." % [up.bars, Data.items[up.bar].name]
-	if int(state.money) < up.cost: return "You need %d scrip." % up.cost
+	if int(state.money) < up.cost: return "You need %d gold." % up.cost
 	remove_item(up.bar, up.bars)
 	state.money = int(state.money) - up.cost
 	state.tools[tool].upgrading = {"tier": up.tier, "ready_day": int(state.day) + up.days}
