@@ -23,6 +23,8 @@ var fish_zone := ""
 var dark := false
 ## Colour mood: "warm" for safe places (farm, town), "cold" for dangerous ones (mine, outskirts).
 var mood := "warm"
+## A room picture drawn instead of tiles (path under res://art/), "" for tiled maps.
+var backdrop := ""
 var mine := false
 # mine floors only
 var floor_n := 0

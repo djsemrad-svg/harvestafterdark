@@ -467,7 +467,15 @@ func build_persistent_maps() -> void:
 		"forge": MapBuilder.forge(),
 		"mountain": MapBuilder.mountain(int(state.seed)),
 		"ranch": MapBuilder.ranch(),
+		"clinic": MapBuilder.room("clinic"),
+		"workshop": MapBuilder.room("workshop"),
+		"guild": MapBuilder.room("guild"),
 	}
+	var gh := {"kind": "greenhouse", "x": 26, "y": 3, "w": 7, "h": 6, "door_x": 29, "door_y": 8,
+		"warp": {"to": "greenhouse", "tx": 7, "ty": 9, "dir": "up", "requires": "greenhouse"},
+		"locked_text": "The old greenhouse. Most of the glass is cracked and vines have taken the benches. Jo at Mercer Workshop could restore it."}
+	maps.homestead.add_structure(gh)
+	maps["greenhouse"] = MapBuilder.room("greenhouse", ["homestead", 29, 9])
 	for b in state.get("buildings", []):
 		maps.homestead.add_structure(b)
 		maps[b.kind] = MapBuilder.coop(b)
@@ -480,6 +488,21 @@ func build_persistent_maps() -> void:
 			m.soil = state.maps_dyn[id].soil
 		else:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
+	# older saves: clear anything sitting where a newer building now stands
+	for id in ["homestead", "town"]:
+		var mm: GameMap = maps[id]
+		for st in mm.structures:
+			var tiles := []
+			for y in range(st.y, st.y + st.h):
+				for x in range(st.x, st.x + st.w):
+					tiles.append(Vector2i(x, y))
+			for y in range(st.door_y + 1, st.door_y + 3):       # keep the doorstep clear too
+				for x in range(st.door_x - 1, st.door_x + 2):
+					tiles.append(Vector2i(x, y))
+			for t in tiles:
+				var o = mm.get_obj(t.x, t.y)
+				if o != null and not Data.obj_defs.get(o.type, {}).get("fixture", false):
+					mm.remove_obj(t.x, t.y)
 
 func start_session() -> void:
 	build_persistent_maps()
@@ -1586,6 +1609,18 @@ func shop_stock(shop_id: String) -> Array:
 			e.desc = stage.desc + " Needs " + ", ".join(stage.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
 		if e.get("service", "") == "coop" and (has_building("coop") or count_item("coop_kit") > 0):
 			continue
+		if e.get("service", "") == "greenhouse" and (state.flags.get("greenhouse", false) or state.flags.get("greenhouse_pending", false)):
+			continue
+		if e.get("service", "") == "bounty":
+			var b = state.get("bounty")
+			if b == null or b.is_empty():
+				var done := int(state.flags.get("bounties_done", 0))
+				e.name = "Take a bounty"
+				e.desc = "Put down %d infected anywhere. Reward: %d gold." % [10 + 5 * done, 400 + 150 * done]
+			else:
+				var prog: int = int(state.stats.infected_defeated) - int(b.start)
+				e.name = "Claim bounty" if prog >= int(b.target) else "Bounty in progress"
+				e.desc = "%d of %d infected put down. Reward: %d gold." % [min(prog, int(b.target)), int(b.target), int(b.reward)]
 		if e.get("service", "") == "animal":
 			var room := animal_room(Data.animals[e.animal].building)
 			e.desc = Data.shops[shop_id].stock[i].desc + (" Room in your coop: %d." % room if has_building("coop") else " You need a coop first.")
@@ -1614,6 +1649,44 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		Sfx.play("coin")
 		toast("Hal will work on the farmhouse tonight.")
 		return ""
+	if e.get("service", "") == "treatment":
+		if float(state.health) >= Balance.player.max_health and float(state.energy) >= Balance.player.max_energy * 0.5:
+			return "Elias looks you over. \"You're fine. Go eat something.\""
+		state.money = int(state.money) - cost
+		state.health = float(Balance.player.max_health)
+		state.energy = maxf(float(state.energy), Balance.player.max_energy * 0.5)
+		Sfx.play("eat")
+		toast("Elias patches you up. Good as new.")
+		return ""
+	if e.get("service", "") == "greenhouse":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Jo needs %d %s for the greenhouse (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		state.flags.greenhouse_pending = true
+		Sfx.play("coin")
+		toast("Jo will rebuild your greenhouse tonight.")
+		return ""
+	if e.get("service", "") == "bounty":
+		var b = state.get("bounty")
+		var kills := int(state.stats.infected_defeated)
+		if b == null or b.is_empty():
+			var done := int(state.flags.get("bounties_done", 0))
+			state.bounty = {"target": 10 + 5 * done, "start": kills, "reward": 400 + 150 * done}
+			toast("Bounty taken: put down %d infected." % int(state.bounty.target))
+			return ""
+		if kills - int(b.start) >= int(b.target):
+			state.money = int(state.money) + int(b.reward)
+			state.flags.bounties_done = int(state.flags.get("bounties_done", 0)) + 1
+			state.bounty = {}
+			add_xp("survival", 40)
+			Sfx.play("coin")
+			toast("Bounty paid: +%d gold." % int(b.reward), "", "gold")
+			return ""
+		return "Not done yet: %d of %d infected." % [kills - int(b.start), int(b.target)]
 	if e.get("service", "") == "coop":
 		for m in e.mats:
 			if count_item(m[0]) < m[1]:
@@ -1911,7 +1984,7 @@ func end_day(reason: String) -> void:
 					if s.get("fert", "") == "tonic" and rng.randf() < Balance.farming_extra.tonic_bonus_chance:
 						c.g = int(c.g) + 1
 					grew += 1
-			elif c == null and not int(s.w) and rng.randf() < Balance.farming.empty_soil_revert_chance:
+			elif c == null and not int(s.w) and not s.get("fixed", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
 				m.soil.erase(kk)
 				continue
 			var keep: bool = s.get("fert", "") == "mulch" and int(s.w) == 1 and rng.randf() < Balance.farming_extra.mulch_keep_chance
@@ -1938,6 +2011,10 @@ func end_day(reason: String) -> void:
 				state.can_water = can_capacity()
 			rep.lines.append("Ines finished your %s %s. It is back in your pack." % [Data.tool_tiers[int(u.tier)].name, Data.tool_defs[t].name])
 			quest_event("upgrade", {"n": 1})
+	if state.flags.get("greenhouse_pending", false):
+		state.flags.erase("greenhouse_pending")
+		state.flags.greenhouse = true
+		rep.lines.append("Jo rebuilt your greenhouse overnight. Crops planted inside grow in any season.")
 	if state.flags.has("house_repair_to"):
 		state.flags.house_condition = int(state.flags.house_repair_to)
 		state.flags.erase("house_repair_to")

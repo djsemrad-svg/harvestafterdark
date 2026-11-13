@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 12, 2026)
+## Status (Nov 13, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 97 / 97 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 101 / 101 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -46,11 +46,26 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
 - Tanning Rack (Farming 2) turns 2 Rabbit Fur into a Tanned Pelt. Three egg recipes, one taught by Marisol at 3 hearts.
 - Your animals are listed in the Social tab.
 
+### Art pass and new places (added Nov 13)
+
+Decisions agreed with Daniel: use his five AI-generated sheets (he made them himself) for everything, including characters; add the Clinic, Workshop, Combat Guild and Greenhouse; use his room pictures as interior backdrops.
+
+- Art override system: any PNG in `res://art/` replaces the procedural art for that thing. Missing files fall back to procedural art, so art can be swapped piece by piece.
+  - `art/buildings/<kind>_<condition>.png` or `<kind>.png`, `art/trees/`, `art/objects/<type>.png`, `art/animals/`, `art/characters/<sprite>_<dir>.png`, `art/enemies/`, `art/icons/<item id>.png`, `art/rooms/<room>.png`.
+  - Source sheets are in `art_source/`. `python3 tools/atlas_tool.py build` cuts them using the list in `tools/art_map.py` (remove background, clean halos, shrink to the 16 px grid, reduce colours). After adding PNGs, run `godot --headless --path . --import`.
+- Characters: the player is the atlas farmer, recoloured in the creator (skin, hair, shirt, overalls). All 8 neighbours and the infected use atlas sprites.
+- New neighbours: Dr. Elias (Clinic, treatment 150 gold, bandages, med kits), Jo (Workshop, sells materials and builds the greenhouse), Cole the guildmaster (Combat Guild, bounties, machete, crossbow, ammo).
+- Greenhouse: north of the farmhouse, locked until Jo restores it (3,000 gold, 200 wood, 100 stone, 5 copper bars). Inside, crops grow in any season.
+- Interiors for Clinic, Workshop, Guild and Greenhouse use Daniel's room pictures as backdrops with invisible walls and counters.
+
+Art still procedural (needs sheets): forge, town hall, houses, ruin, coop, ground tiles, NPC walk frames (neighbours bob instead of walking), and item icons (Daniel is making an icon sheet from the 220-item list; tool tiers will need tier paths added).
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
 - `scripts/autoload/data.gd`: all content (items, crops, fish, NPCs, quests, shops, buildings). Content lives in GDScript dictionaries instead of Resource files so it is easy to read and edit in one place.
-- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings). Can be swapped for image files later.
+- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader.
+- `tools/atlas_tool.py`, `tools/art_map.py`: sheet cutter and the list of what to cut.
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), drawing (`world_view.gd`), colour grade shader.
 - `scripts/ui/`: interface (`ui.gd`) and theme helpers (`ui_kit.gd`).
@@ -59,7 +74,7 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
 ## Visual direction (agreed with Daniel)
 
 - Currency is gold (renamed from scrip on Nov 13).
-- Daniel shared three AI-generated pixel atlases (tiles, buildings, objects, trees, zombies, animals). They are not on a true pixel grid, so each sprite must be cut out, shrunk to the 16 px grid and colour-reduced. A test conversion looked good. Pending Daniel's go-ahead: an art override folder so converted PNGs replace procedural art piece by piece.
+- Daniel's five pixel sheets are in use through the art override folder (see Art pass above).
 
 - Stardew-like 16-bit look, adapted to a small community in an outbreak.
 - Colour mood: warm and saturated in safe areas, greyer and colder in dangerous ones (mine, ridge, ruins). Done with a per-map grade (`GameMap.mood`).
@@ -73,7 +88,7 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
 
 ## Next steps
 
-1. Polish found in screenshots: dialogue portrait crop (top of head cut off); area banner overlaps the clock panel (move it lower); HUD panels could be more compact.
+1. Done: HUD polish (compact panels, banner moved, dialogue box pinned).
 2. Done: crafting expansion (decisions agreed):
    - Rework Stardew-style crafting categories (bombs, fences, sprinklers, artisan equipment, fertilizer, storage, lighting, refining, signs) into original, outbreak-flavoured items with new sprites.
    - Survival additions: tiered turrets, tiered fences and barriers (wood, stone, barbed wire, electrified), an ammo bench, and more.
@@ -83,5 +98,6 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
    - Gear look: mixed by tier. Low tiers homemade from scrap; top tiers restored military hardware.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
-4. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; mine floors 11-20 with silver and new infected plus a miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
-5. Later phases: residents, factions, hostile settlements.
+4. Art: convert Daniel's item icon sheet into `art/icons/`; more sheets for the buildings and tiles listed above.
+5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; mine floors 11-20 with silver and new infected plus a miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
+6. Later phases: residents, factions, hostile settlements.

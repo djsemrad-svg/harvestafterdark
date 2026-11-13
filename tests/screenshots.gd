@@ -110,6 +110,16 @@ func _ready() -> void:
 	Game.change_map("ranch", 6, 7, "up", {"silent": true}); Game.sync_npcs()
 	await frames(20)
 	await shot("21_ranch_inside")
+	main.ui.close_all()
+	Game.state.time = 660; Game.sync_npcs()
+	Game.change_map("town", 8, 11, "up", {"silent": true}); await frames(20); await shot("22_town_clinic")
+	Game.change_map("town", 46, 18, "up", {"silent": true}); await frames(20); await shot("23_town_workshop")
+	Game.change_map("town", 12, 32, "up", {"silent": true}); await frames(20); await shot("24_town_guild")
+	for rid in ["clinic", "workshop", "guild"]:
+		Game.change_map(rid, 6, 9, "up", {"silent": true}); Game.sync_npcs(); await frames(20); await shot("25_room_" + rid)
+	Game.state.flags.greenhouse = true
+	Game.change_map("greenhouse", 7, 9, "up", {"silent": true}); await frames(20); await shot("26_room_greenhouse")
+	Game.change_map("homestead", 29, 11, "up", {"silent": true}); await frames(20); await shot("27_greenhouse_outside")
 	get_tree().quit()
 
 func frames(n: int) -> void:

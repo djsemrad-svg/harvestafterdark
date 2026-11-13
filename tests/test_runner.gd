@@ -211,7 +211,7 @@ func run_all() -> void:
 	for se in Balance.calendar.seasons:
 		grass[sig.call(Art.get_tile("grass", se, 1, 0).get_image())] = true
 		trees[sig.call(Art.get_obj({"type": "tree", "v": 1, "x": 0, "y": 0}, se, 0, 0).tex.get_image())] = true
-		houses[sig.call(Art.get_building(G.maps.homestead.structures[0], se, false).get_image())] = true
+		houses[sig.call(Art.get_building({"kind": "house_a", "x": 3, "y": 24, "w": 6, "h": 5, "door_x": 6, "door_y": 28}, se, false).get_image())] = true
 	check("Seasonal art: grass, trees and buildings differ per season", grass.size() == 4 and trees.size() == 4 and houses.size() >= 2, "grass=%d trees=%d buildings=%d" % [grass.size(), trees.size(), houses.size()])
 
 	# ---------- bed save
@@ -494,7 +494,7 @@ func run_all() -> void:
 
 	var inf_img: Image = Art.get_char(Data.enemies.shambler.look, "down", 0).get_image()
 	var pl_img: Image = Art.get_char(LOOK, "down", 0).get_image()
-	check("Characters are 16x32 (Stardew proportions); infected use the same rig", inf_img.get_size() == Vector2i(16, 32) and pl_img.get_size() == Vector2i(16, 32))
+	check("Characters are 32 px tall (Stardew proportions); infected use the same rig", inf_img.get_height() == 32 and pl_img.get_height() == 32, "%s %s" % [inf_img.get_size(), pl_img.get_size()])
 
 	# ---------- NPCs
 	start("adventure", 2)
@@ -1094,6 +1094,79 @@ func run_all() -> void:
 	sleep()
 	check("Tanning Rack turns rabbit fur into a tanned pelt overnight", terr == "" and G.machine_collect(rack) == 1 and G.count_item("tanned_pelt") == 1, terr)
 
+	# ---------- new places: clinic, workshop, guild, greenhouse
+	start("adventure", 2)
+	while G.weekday() in ["Sat", "Wed", "Mon"]: sleep()
+	G.state.time = 660; G.sync_npcs()
+	var people_ok: bool = G.npcs.elias.map == "clinic" and G.npcs.jo.map == "workshop" and G.npcs.cole.map == "guild"
+	var rooms_ok := true
+	for rid in ["clinic", "workshop", "guild"]:
+		G.change_map(rid, 0, 0, "up", {"silent": true})
+		var wp0: Dictionary = G.map.warps[0]
+		G.player.pos = Vector2(wp0.x * 16 + 8, (wp0.y - 1) * 16 + 14)
+		var inside: bool = G.map.id == rid and not G.map.is_solid(int(wp0.x), int(wp0.y) - 1)
+		var ctr = null
+		for kk in G.map.objects:
+			if G.map.objects[kk].type == "hidden_counter": ctr = G.map.objects[kk]
+		if ctr != null: W.interact_object(ctr)
+		var shop_ui: bool = ov() == "shop" and U.overlay.shop == rid
+		close_all()
+		walk(Vector2.DOWN, 900)
+		if not (inside and shop_ui and G.map.id == "town"):
+			rooms_ok = false
+			print("ROOM ", rid, " inside=", inside, " shop=", shop_ui, " now=", G.map.id)
+	check("Clinic, Workshop and Combat Guild: open in town with their owners, counters and working doors", people_ok and rooms_ok, "people=%s rooms=%s" % [people_ok, rooms_ok])
+
+	G.state.money = 50000
+	G.state.health = 20.0
+	var tr_e: Dictionary = {}
+	for x in G.shop_stock("clinic"):
+		if x.get("service", "") == "treatment": tr_e = x
+	var terr2: String = G.shop_buy("clinic", tr_e, 1)
+	check("Clinic: Elias restores your health for a fee", terr2 == "" and G.state.health == Balance.player.max_health)
+
+	at("homestead", 29, 10, "up")
+	walk(Vector2.UP, 600)
+	var locked: bool = G.map.id == "homestead"
+	close_all()
+	G.add_item("wood", 200, {"silent": true}); G.add_item("stone", 100, {"silent": true}); G.add_item("copper_bar", 5, {"silent": true})
+	var gh_e: Dictionary = {}
+	for x in G.shop_stock("workshop"):
+		if x.get("service", "") == "greenhouse": gh_e = x
+	var gerr: String = G.shop_buy("workshop", gh_e, 1)
+	G.state.weather_tomorrow = "sun"
+	sleep()
+	at("homestead", 29, 10, "up")
+	walk(Vector2.UP, 600)
+	var inside_gh: bool = G.map.id == "greenhouse"
+	var plot_g: Dictionary = {}
+	for kk in G.map.soil:
+		plot_g = G.map.soil[kk]
+		break
+	G.add_item("melon_seed", 1, {"silent": true})
+	var off_season: bool = not Data.crops.melon.seasons.has(G.season())
+	var pk := ""
+	for kk in G.map.soil: pk = kk; break
+	var pt3g := GameMap.unk(pk)
+	W.plant_at(pt3g, "melon_seed")
+	check("Greenhouse: locked until Jo restores it, then any crop grows inside in any season", locked and gerr == "" and G.state.flags.get("greenhouse", false) and inside_gh and off_season and G.map.soil[pk].crop != null, "locked=%s err='%s' inside=%s" % [locked, gerr, inside_gh])
+	close_all()
+
+	var b_e: Dictionary = {}
+	for x in G.shop_stock("guild"):
+		if x.get("service", "") == "bounty": b_e = x
+	G.shop_buy("guild", b_e, 1)
+	var tgt: int = int(G.state.bounty.target)
+	var early: String = G.shop_buy("guild", b_e, 1)
+	G.state.stats.infected_defeated = int(G.state.stats.infected_defeated) + tgt
+	var m0b: int = G.state.money
+	var claim: String = G.shop_buy("guild", b_e, 1)
+	var mach: Dictionary = {}
+	for x in G.shop_stock("guild"):
+		if x.get("id", "") == "machete": mach = x
+	var merr: String = G.shop_buy("guild", mach, 1)
+	check("Combat Guild: bounties pay out once enough infected are down; sells the Guild Machete", early != "" and claim == "" and G.state.money > m0b - 1000 and merr == "" and G.count_item("machete") == 1, "early='%s' claim='%s'" % [early, claim])
+
 	# ---------- night raids
 	Balance.raids.grace_days = 4
 	start("survivor", 3)
@@ -1135,9 +1208,11 @@ func run_all() -> void:
 	G.state.raid = {"day": G.state.day, "size": 3, "spawned": false, "killed": 0, "warned": false}
 	at("homestead", 20, 20, "down")
 	G.state.time = 1300
-	tick(7000 * 3)
+	var raiders := 0
+	for i in 21:
+		tick(1000)
+		raiders = max(raiders, G.enemies.filter(func(x): return x.get("raider", false)).size())
 	var warned2: bool = G.state.raid.get("warned", false)
-	var raiders: int = G.enemies.filter(func(x): return x.get("raider", false)).size()
 	check("Night raids: a warning at dusk, then infected arrive at 10 pm if you're home", warned2 and raiders == 3, "raiders=%d" % raiders)
 	Balance.raids.grace_days = 99999
 

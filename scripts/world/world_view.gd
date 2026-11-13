@@ -148,7 +148,10 @@ func _draw() -> void:
 	var y1: int = min(m.h - 1, int(floor((c.y + vs.y) / 16)))
 	draw_rect(Rect2(c - Vector2(8, 8), vs + Vector2(16, 16)), Color("#0c0a0a") if m.mine else Color("#1a1a1a"))
 	var wf := int(anim_t / 0.42) % 4
-	for y in range(y0, y1 + 1):
+	var bd: Texture2D = Art.override(m.backdrop) if m.backdrop != "" else null
+	if bd != null:
+		draw_texture(bd, Vector2.ZERO)
+	for y in range(y0, y1 + 1) if bd == null else []:
 		for x in range(x0, x1 + 1):
 			var t := m.tile_at(x, y)
 			var v := int(Art.hash2(x, y, 5) * 4)
@@ -162,11 +165,15 @@ func _draw() -> void:
 			var s = m.soil.get(GameMap.k(x, y))
 			if s != null:
 				draw_texture(Art.get_soil(int(s.w) == 1, season), pos)
+	if bd != null:
+		for kk in m.soil:
+			var tt := GameMap.unk(kk)
+			draw_texture(Art.get_soil(int(m.soil[kk].w) == 1, season), Vector2(tt.x * 16, tt.y * 16))
 	var sorted := []
 	for y in range(y0 - 1, min(m.h - 1, y1 + 3) + 1):
 		for x in range(x0 - 2, x1 + 2):
 			var o = m.objects.get(GameMap.k(x, y))
-			if o == null or o.type == "part":
+			if o == null or o.type == "part" or Data.obj_defs.get(o.type, {}).get("invisible", false):
 				continue
 			if Data.obj_defs.get(o.type, {}).get("floor", false):
 				_draw_obj(o, m, e)
@@ -202,7 +209,10 @@ func _draw() -> void:
 		match it[1]:
 			0: _draw_obj(it[2], m, e)
 			1: _draw_crop(it[2][0], it[2][1], it[2][2])
-			2: draw_texture(Art.get_building(it[2], season, night), Vector2(it[2].x * 16, it[2].y * 16))
+			2:
+				var bt: Texture2D = Art.get_building(it[2], season, night)
+				var bst: Dictionary = it[2]
+				draw_texture(bt, Vector2(bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2, (bst.y + bst.h) * 16 - bt.get_height()))
 			3: _draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
@@ -286,7 +296,8 @@ func _shadow(at: Vector2, w: float) -> void:
 
 func _draw_char(look: Dictionary, pos: Vector2, dir: String, frame: int, alpha: float) -> void:
 	_shadow(pos, 10)
-	draw_texture(Art.get_char(look, dir, frame), (pos - Vector2(8, 31)).round(), Color(1, 1, 1, alpha))
+	var ct: Texture2D = Art.get_char(look, dir, frame)
+	draw_texture(ct, (pos - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), Color(1, 1, 1, alpha))
 
 func _draw_enemy(en: Dictionary) -> void:
 	var jx = round(sin(anim_t * 40.0)) if en.state == "telegraph" else 0.0

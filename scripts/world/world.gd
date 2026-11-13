@@ -572,6 +572,11 @@ func update_player(dt: float) -> void:
 	if Game.last_warp_tile == "":
 		for w in Game.map.warps:
 			if pt.x >= w.x and pt.x < w.x + w.w and pt.y >= w.y and pt.y < w.y + w.h:
+				if w.has("requires") and not Game.state.flags.get(w.requires, false):
+					Game.last_warp_tile = tk
+					var st = Game.map.structure_at(w.x, w.y)
+					Game.ui.say("", st.get("locked_text", "It's locked.") if st != null else "It's locked.")
+					break
 				if w.has("shop") and not Game.shop_door_open(w.shop):
 					Game.last_warp_tile = tk
 					Game.ui.say("", Game.shop_closed_text(w.shop))
@@ -1304,7 +1309,7 @@ func interact_object(o: Dictionary) -> void:
 				msg = "The water is cold and clean. " + msg
 			Sfx.play("water")
 			Game.toast(msg, "water_bottle")
-		"counter":
+		"counter", "hidden_counter":
 			if not o.has("shop"):
 				return
 			if Game.is_shop_open(o.shop):

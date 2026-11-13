@@ -348,6 +348,7 @@ var obj_defs := {
 	"window": {"solid": true, "fixture": true},
 	"counter": {"solid": true, "fixture": true},
 	"hay_hopper": {"solid": true, "fixture": true},
+	"hidden_counter": {"solid": true, "fixture": true, "invisible": true},
 	"nest_box": {"solid": true, "fixture": true},
 	"water_trough": {"solid": true, "fixture": true},
 	"hay_bale": {"solid": true, "fixture": true},
@@ -393,6 +394,10 @@ var buildings := {
 	"ruin": {"roof": "#555555", "roof2": "#444444", "wall": "#8a8478", "trim": "#4a4440", "windows": 2, "condition": 0},
 	"ranch": {"roof": "#8a3a2a", "roof2": "#6e2a1e", "wall": "#c8a070", "trim": "#5a3a22", "sign": "REYES RANCH", "windows": 2, "condition": 4, "door": "#5a7a3a", "curtain": "#e8d8a0"},
 	"coop": {"roof": "#8a4a2e", "roof2": "#6e3820", "wall": "#e8dcc0", "trim": "#6a4a2e", "sign": "COOP", "windows": 1, "condition": 4, "door": "#6a4a2e", "curtain": "#d8c070"},
+	"clinic": {"roof": "#4a5a6a", "roof2": "#3a4a5a", "wall": "#e8e4dc", "trim": "#4a4a52", "sign": "CLINIC", "windows": 2, "condition": 4, "door": "#8a3a3a", "curtain": "#d8e0e8"},
+	"workshop": {"roof": "#5a5a62", "roof2": "#46464e", "wall": "#b8a888", "trim": "#4a3a2a", "sign": "WORKSHOP", "windows": 1, "condition": 3},
+	"guild": {"roof": "#4a3a2a", "roof2": "#3a2a1e", "wall": "#8a6a48", "trim": "#3a2a1a", "sign": "COMBAT GUILD", "windows": 2, "condition": 3},
+	"greenhouse": {"roof": "#9ac8d8", "roof2": "#7aa8b8", "wall": "#c8e0e8", "trim": "#6a6a5a", "windows": 3, "condition": 1},
 	"mine": {"special": "mine"},
 }
 
@@ -401,7 +406,7 @@ var buildings := {
 var npcs := {
 	"ruth": {
 		"name": "Ruth Adeyemi", "role": "Town coordinator", "birthday": {"season": "autumn", "day": 14},
-		"look": {"skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
+		"look": {"sprite": "ruth", "skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
 		"loves": ["pumpkin", "amethyst", "veggie_stew", "sunflower"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
@@ -421,7 +426,7 @@ var npcs := {
 	},
 	"hal": {
 		"name": "Hal Brennan", "role": "Owner of Brennan's General", "birthday": {"season": "spring", "day": 21},
-		"look": {"skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
+		"look": {"sprite": "hal", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
 		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato", "hot_pepper"], "dislikes": ["stone", "cat:junk", "clay"],
 		"schedules": {
 			"default": [[360, ""], [510, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
@@ -441,7 +446,7 @@ var npcs := {
 	},
 	"ines": {
 		"name": "Ines Varga", "role": "Blacksmith", "birthday": {"season": "winter", "day": 5},
-		"look": {"skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
+		"look": {"sprite": "ines", "skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["emerald", "ruby", "iron_bar", "glimmerite"], "likes": ["cat:ore", "cat:gem", "coal", "fried_fish"], "dislikes": ["cat:forage", "dandelion", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "forge", 6, 3, "down"], [960, "mountain", 24, 10, "up"], [1140, "town", 31, 22, "down"], [1260, ""]],
@@ -461,7 +466,7 @@ var npcs := {
 	},
 	"wren": {
 		"name": "Wren Calloway", "role": "Angler", "birthday": {"season": "summer", "day": 9},
-		"look": {"skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
+		"look": {"sprite": "wren", "skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
 		"loves": ["ghost_pike", "sunberry", "forager_salad"], "likes": ["cat:fish", "wild_mint", "bread_loaf"], "dislikes": ["cat:ore", "stone", "scrap"],
 		"schedules": {
 			"default": [[360, "town", 14, 33, "down"], [720, "mountain", 9, 21, "up"], [1080, "town", 16, 33, "down"], [1320, ""]],
@@ -481,7 +486,7 @@ var npcs := {
 	},
 	"marisol": {
 		"name": "Marisol Reyes", "role": "Rancher", "birthday": {"season": "summer", "day": 20},
-		"look": {"skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
+		"look": {"sprite": "marisol", "skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
 		"loves": ["sunflower", "strawbloom", "tanned_pelt"], "likes": ["egg", "large_egg", "cat:crop", "hay"], "dislikes": ["cat:junk", "coal", "scrap"],
 		"schedules": {
 			"default": [[360, ""], [480, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
@@ -498,6 +503,66 @@ var npcs := {
 			"rain": ["Rain day. The hens are sulking and so am I."],
 			"hearts": ["I lost my whole herd the first winter of the Fall. Started over with two hens. Look at us now.", "You've got good hands with animals. Steady. They can tell."],
 			"gift": {"love": "Oh, you remembered! This is perfect.", "like": "That's kind of you. Thank you.", "neutral": "Thanks, neighbour.", "dislike": "Hm. I'll... find somewhere for it."},
+		},
+	},
+	"elias": {
+		"name": "Dr. Elias Okoro", "role": "Town doctor", "birthday": {"season": "winter", "day": 18},
+		"look": {"sprite": "elias", "skin": "#7a4a2c", "hair": "#1a1210", "hair_style": "Buzz", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#e8e8e0", "pants": "#333a44", "acc": "None", "acc_color": "#222222"},
+		"loves": ["med_kit", "mint_tea", "garlic"], "likes": ["cat:forage", "bandage", "dandelion_tea"], "dislikes": ["cat:junk", "pipe_charge", "hot_pepper"],
+		"schedules": {
+			"default": [[360, ""], [510, "clinic", 10, 3, "down"], [1020, "town", 26, 21, "left"], [1140, ""]],
+			"Sat": [[360, ""], [600, "town", 31, 32, "down"], [900, "mountain", 14, 20, "up"], [1080, ""]],
+		},
+		"dialogue": {
+			"intro": ["Ah, the new farmer. I'm Elias, the closest thing Brightwater has to a doctor.", "Medical school, two years. Field medicine, nine. I stitch, I splint, I listen.", "If you're hurt, come to the clinic. If you're bitten... well. Don't get bitten."],
+			"generic": ["Wash your hands. I know. But wash them.", "Fresh greens do more for this town than anything in my cabinet.", "Bandages are just clean cloth and patience. I'll show you how sometime.", "Most of my patients are farmers with sore backs. I count that as a victory.", "Sleep is medicine too. Get to bed before two."],
+			"spring": ["Spring allergies. Even the apocalypse couldn't kill pollen."],
+			"summer": ["Drink water before you're thirsty. By then it's late."],
+			"autumn": ["Harvest injuries keep me busy. Mind your scythe."],
+			"winter": ["Keep warm. Cold makes the body careless."],
+			"rain": ["Rain days, people come in to talk. I don't mind."],
+			"hearts": ["I couldn't save everyone, the first year. I try to save everyone now.", "You check in on people. That's half of medicine, you know."],
+			"gift": {"love": "This is exactly what I needed. Thank you.", "like": "Very thoughtful. Thank you.", "neutral": "Thank you. Truly.", "dislike": "I'll... make sure it's disposed of safely."},
+		},
+	},
+	"jo": {
+		"name": "Jo Mercer", "role": "Mechanic and builder", "birthday": {"season": "spring", "day": 7},
+		"look": {"sprite": "jo", "skin": "#f6d3b3", "hair": "#c8502a", "hair_style": "Long", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Overalls", "shirt": "#3f6fb5", "pants": "#3f6fb5", "acc": "None", "acc_color": "#222222"},
+		"loves": ["iron_bar", "copper_bar", "smoked_fish"], "likes": ["scrap", "wood", "cat:bar"], "dislikes": ["cat:junk", "soggy_paper", "sunflower"],
+		"schedules": {
+			"default": [[360, ""], [480, "workshop", 6, 5, "down"], [1020, "town", 47, 16, "down"], [1200, ""]],
+			"Wed": [[360, ""], [600, "town", 46, 19, "left"], [840, "mountain", 22, 22, "down"], [1080, ""]],
+		},
+		"dialogue": {
+			"intro": ["You're the farmer! Jo. I fix things. Engines, roofs, fences, sometimes people's opinions.", "Bring me materials and I'll build what you need. The old greenhouse on your land? I could get it running.", "The workshop's open eight to five, closed Wednesdays. That's my salvage day."],
+			"generic": ["Everything can be fixed. Some things just need more duct tape.", "That rusted bus out by the ridge? I've got plans for it.", "Wood's cheap. Copper's dear. Iron's a miracle.", "I run the workshop's lights off a bike generator. My legs are amazing.", "If it's broken, bring it here. If it's sparking, bring it here faster."],
+			"spring": ["Spring is roof season. Everyone's leaks show up at once."],
+			"summer": ["Too hot to weld. I weld anyway."],
+			"autumn": ["Get your greenhouse fixed before winter. You'll thank me."],
+			"winter": ["Winter's when I build. Nobody's out farming."],
+			"rain": ["Rain means I get to test everyone's roofs. Including mine."],
+			"hearts": ["I used to race motorbikes. Now I build turrets. It's basically the same thing.", "You're one of the few people who brings me what I ask for. Respect."],
+			"gift": {"love": "Oh, now we're talking! Thank you!", "like": "Nice. I'll use this.", "neutral": "Thanks!", "dislike": "Uh. What am I supposed to do with this?"},
+		},
+	},
+	"cole": {
+		"name": "Cole Ashford", "role": "Guildmaster", "birthday": {"season": "autumn", "day": 27},
+		"look": {"sprite": "guildmaster", "skin": "#e8b48f", "hair": "#8a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Beard", "shirt_style": "Jacket", "shirt": "#6a4a2e", "pants": "#3f5a8a", "acc": "Bandana", "acc_color": "#b5442f"},
+		"loves": ["ember_chili", "iron_bar", "survivor_plate"], "likes": ["cat:cooked", "bolts", "nail_rounds"], "dislikes": ["cat:junk", "sunflower", "mint_tea"],
+		"schedules": {
+			"default": [[360, ""], [600, "guild", 8, 2, "down"], [1320, "town", 12, 31, "down"], [1440, ""]],
+			"Mon": [[360, ""], [480, "mountain", 18, 14, "up"], [900, "town", 12, 31, "down"], [1200, ""]],
+		},
+		"dialogue": {
+			"intro": ["So you're the farmer who's been clearing the treeline. Cole Ashford. I run the Combat Guild.", "We keep the infected thin around Brightwater. Bounties for anyone who helps, gear for anyone who can pay.", "Check the board when you're in. And don't go into the mine without something sharp."],
+			"generic": ["A good blade beats a good plan. A good plan beats a bad blade.", "The infected are slow, not stupid. Watch for the wind-up.", "Turrets are fine. A friend with a crossbow is better.", "We lost three good people the first winter. Nobody goes out alone now.", "Rest is a weapon. Use it."],
+			"spring": ["Spring thaw brings them out of the hills. Stay sharp."],
+			"summer": ["Long days. Short nights. My favorite season."],
+			"autumn": ["Harvest raids. They follow the smell of the fields."],
+			"winter": ["Cold slows them down. Doesn't stop them."],
+			"rain": ["Rain hides footsteps. Theirs and ours."],
+			"hearts": ["I wasn't always a fighter. I taught history. Turns out history is mostly fighting.", "You've got steady hands. Ever think about joining the Guild proper?"],
+			"gift": {"love": "Now that's a gift. Thank you.", "like": "Appreciated.", "neutral": "Thanks.", "dislike": "Hm. Keep your junk, farmer."},
 		},
 	},
 }
@@ -523,8 +588,34 @@ var shops := {
 			{"service": "animal", "animal": "rabbit", "name": "Rabbit", "desc": "Sheds soft fur every few days. Lives in a coop.", "price": 1500},
 		],
 	},
+	"clinic": {
+		"name": "Brightwater Clinic", "owner": "elias", "map": "clinic", "open": 540, "close": 1020, "closed_days": ["Sat"],
+		"buys": ["medical"], "daily_sale": false,
+		"stock": [
+			{"service": "treatment", "name": "Full treatment", "desc": "Elias patches you up: restores all health and half your energy.", "price": 150},
+			{"id": "bandage", "price": 40}, {"id": "med_kit", "price": 160}, {"id": "water_bottle", "price": 60},
+		],
+	},
+	"workshop": {
+		"name": "Mercer Workshop", "owner": "jo", "map": "workshop", "open": 480, "close": 1020, "closed_days": ["Wed"],
+		"buys": ["resource", "bar"], "daily_sale": false,
+		"stock": [
+			{"service": "greenhouse", "name": "Restore the greenhouse", "desc": "Jo rebuilds the old greenhouse on your farm overnight. Crops grow inside in any season. Also needs 200 wood, 100 stone and 5 copper bars.", "price": 3000, "mats": [["wood", 200], ["stone", 100], ["copper_bar", 5]]},
+			{"id": "wood", "price": 15}, {"id": "stone", "price": 15}, {"id": "scrap", "price": 35}, {"id": "clay", "price": 25},
+		],
+	},
+	"guild": {
+		"name": "Combat Guild", "owner": "cole", "map": "guild", "open": 600, "close": 1320, "closed_days": ["Mon"],
+		"buys": ["ammo"], "daily_sale": false,
+		"stock": [
+			{"service": "bounty", "name": "Bounty board", "desc": "", "price": 0},
+			{"id": "machete", "price": 900}, {"id": "scrap_crossbow", "price": 1400},
+			{"id": "bolts", "price": 6}, {"id": "nail_rounds", "price": 3}, {"id": "buckshot", "price": 10}, {"id": "bandage", "price": 50},
+		],
+	},
 }
 
+## (more shops)
 ## Farm animals. "every": days between products. Friendship is 0-1000.
 var animals := {
 	"chicken": {"name": "Chicken", "building": "coop", "product": "egg", "big_product": "large_egg", "every": 1, "mature_days": 3, "colors": ["#f4f0e8", "#b8743a", "#3a3a40"]},
@@ -615,10 +706,10 @@ var heart_events := {
 
 var enemies := {
 	"shambler": {"name": "Shambler", "hp": 5, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 88.0, "damage": 15, "xp": 6,
-		"look": {"skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
+		"look": {"sprite": "shambler", "skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
 		"drops": [["cloth", 0.45], ["scrap", 0.45], ["geode", 0.06]]},
 	"lurcher": {"name": "Lurcher", "hp": 7, "wander_speed": 18.0, "chase_speed": 40.0, "sight": 104.0, "damage": 20, "xp": 10,
-		"look": {"skin": "#9aa080", "hair": "#5a4a3a", "hair_style": "Long", "eyes": "#f0c060", "face": "Plain", "shirt_style": "Jacket", "shirt": "#5a4a5a", "pants": "#3a3a44", "acc": "None", "acc_color": "#000000", "infected": true},
+		"look": {"sprite": "lurcher", "skin": "#9aa080", "hair": "#5a4a3a", "hair_style": "Long", "eyes": "#f0c060", "face": "Plain", "shirt_style": "Jacket", "shirt": "#5a4a5a", "pants": "#3a3a44", "acc": "None", "acc_color": "#000000", "infected": true},
 		"drops": [["cloth", 0.5], ["scrap", 0.6], ["deep_geode", 0.06]]},
 }
 
@@ -646,9 +737,9 @@ var regions := [
 	{"id": "quarry", "name": "Quarry", "gx": 6, "gy": 0, "gw": 3, "gh": 1, "lock": "Past the rockslide on the ridge."},
 ]
 
-var location_names := {"ranch": "Reyes Ranch", "coop": "Your Coop", "house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
+var location_names := {"clinic": "Brightwater Clinic", "workshop": "Mercer Workshop", "guild": "Combat Guild", "greenhouse": "Your Greenhouse", "ranch": "Reyes Ranch", "coop": "Your Coop", "house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
 
-var look_options := {
+var look_options_full := {
 	"skin": ["#f6d3b3", "#e8b48f", "#c98e66", "#a26a45", "#7a4a2c", "#553220"],
 	"hair": ["#2b1d16", "#5a3a22", "#8b5a2b", "#c98b3c", "#e7c66b", "#d8d8d8", "#b5442f", "#6a3d9a", "#2e86c1", "#3f8f4f"],
 	"hair_style": ["Short", "Long", "Ponytail", "Curly", "Buzz", "Spiky", "Bob"],
@@ -660,8 +751,15 @@ var look_options := {
 	"acc": ["None", "Cap", "Beanie", "Glasses", "Bandana", "Headband", "Scarf"],
 	"acc_color": ["#b5442f", "#3f6fb5", "#3f8f4f", "#d9a43a", "#e4e4e4", "#222222", "#c46a9a"],
 }
-var look_labels := {"skin": "Skin tone", "hair": "Hair color", "hair_style": "Hair style", "eyes": "Eye color", "face": "Face", "shirt_style": "Clothing", "shirt": "Clothing color", "pants": "Pants color", "acc": "Accessory", "acc_color": "Accessory color"}
-var default_look := {"skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f8f4f", "pants": "#333a44", "acc": "None", "acc_color": "#b5442f"}
+## The atlas farmer can be recoloured: skin, hair, shirt and overalls.
+var look_options := {
+	"skin": look_options_full.skin,
+	"hair": look_options_full.hair,
+	"shirt": look_options_full.shirt,
+	"pants": look_options_full.pants,
+}
+var look_labels := {"skin": "Skin tone", "hair": "Hair color", "hair_style": "Hair style", "eyes": "Eye color", "face": "Face", "shirt_style": "Clothing", "shirt": "Clothing color", "pants": "Overalls color", "acc": "Accessory", "acc_color": "Accessory color"}
+var default_look := {"sprite": "player", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#b5442f", "pants": "#3f6fb5", "acc": "None", "acc_color": "#b5442f"}
 
 
 func _init() -> void:
@@ -827,6 +925,8 @@ func _init() -> void:
 	def_item("scrap_crossbow", {"name": "Scrap Crossbow", "cat": "weapon", "stack": 1,
 		"weapon": {"damage": 3, "knock": 0.6, "ranged": {"ammo": "bolts", "speed": 230.0, "range": 120.0}},
 		"desc": "Fires Bolts in the direction you face. Damage 3.", "icon": {"s": "crossbow"}})
+	def_item("machete", {"name": "Guild Machete", "cat": "weapon", "stack": 1, "price": 450, "weapon": {"damage": 4, "knock": 1.2},
+		"desc": "A heavy, balanced blade from the Combat Guild. Damage 4, Knockback 1.2.", "icon": {"s": "machete"}})
 	def_item("bandage", {"name": "Bandage", "cat": "medical", "price": 10, "edible": {"hp": 20, "energy": 0, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Clean cloth strips. Restores 20 health.", "icon": {"s": "bandage"}})
 	def_item("med_kit", {"name": "Med Kit", "cat": "medical", "price": 60, "edible": {"hp": 60, "energy": 10, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Herbal salve, bandages and boiled water. Restores 60 health.", "icon": {"s": "medkit"}})
 	def_item("pipe_charge", {"name": "Pipe Charge", "cat": "defense", "price": 25, "place": "pipe_charge_lit", "bomb": true, "desc": "Place it and stand back. Breaks rocks and hurts the infected in a small radius.", "icon": {"s": "pipebomb"}})

@@ -288,6 +288,9 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 	if t in ["torch_post", "furnace", "crystal"]: k += "|%d" % (frame % 4)
 	if t == "window": k += "|%d" % (1 if frame > 0 else 0)
 	k += obj_state_key(o, nb, frame)
+	var ov := obj_override(o, season)
+	if not ov.is_empty():
+		return ov
 	if not _obj.has(k):
 		var r := _draw_obj(o, season, frame, nb)
 		_obj[k] = {"tex": to_tex(r[0]), "ox": r[1], "oy": r[2]}
@@ -671,6 +674,131 @@ func get_crop(crop_id: String, stage: int) -> Dictionary:
 		_obj[k] = {"tex": to_tex(outline(x, "#16200e")), "ox": 0, "oy": -oy}
 	return _obj[k]
 
+
+# ================================================================ art overrides
+# Any PNG in res://art/ replaces the generated art for that thing (see tools/art_map.py).
+const ART_DIR := "res://art/"
+var _ov := {}
+
+func override(path: String) -> Texture2D:
+	if _ov.has(path):
+		return _ov[path]
+	var full := ART_DIR + path
+	var tex: Texture2D = null
+	if ResourceLoader.exists(full):
+		tex = load(full)
+	elif FileAccess.file_exists(full):
+		var im := Image.load_from_file(ProjectSettings.globalize_path(full))
+		if im != null: tex = ImageTexture.create_from_image(im)
+	_ov[path] = tex
+	return tex
+
+func has_override(path: String) -> bool:
+	return override(path) != null
+
+## Objects that have hand-made art. Returns {} when there is none.
+func obj_override(o: Dictionary, season: String) -> Dictionary:
+	var t: String = o.type
+	var d: Dictionary = Data.obj_defs.get(t, {})
+	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
+		return {}
+	var v: int = int(o.get("v", 0))
+	var name := ""
+	match t:
+		"tree": name = "trees/%s_%s.png" % ["tree" if v % 2 == 0 else "tree2", season]
+		"pine": name = "trees/pine.png"
+		"rock": name = "objects/rock.png" if v % 2 == 0 else "objects/rock2.png"
+		_: name = "objects/%s.png" % t
+	if t == "rock" and o.get("palette", "field") != "field":
+		return {}
+	var tex := override(name)
+	if tex == null:
+		return {}
+	var fw: int = int(o.get("w", 1))
+	var fh: int = int(o.get("h", 1))
+	return {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+
+## People and infected drawn from the sprite sheets. look.sprite names them.
+func char_override(look: Dictionary, dir: String, frame: int) -> Image:
+	var sp: String = look.get("sprite", "")
+	if sp == "":
+		return null
+	var base := "characters/" if not look.get("infected", false) else "enemies/"
+	var flip := false
+	var name := ""
+	if sp == "player":
+		var d := "right" if dir == "left" else dir
+		flip = dir == "left"
+		var f := frame % 4
+		if d == "down" or d == "up":
+			name = "player_%s_%d.png" % [d, 1 if f == 1 or f == 3 else 0]
+		else:
+			name = "player_%s_%d.png" % [d, f]
+	elif look.get("infected", false):
+		if dir == "down" or dir == "up":
+			name = sp + "_down.png"
+		else:
+			name = "%s_right_%d.png" % [sp, 1 if frame % 4 >= 2 else 0]
+			flip = dir == "left"
+	else:
+		# directional sprites when the sheet has them, else one front view
+		var dname := "%s_%s.png" % [sp, dir]
+		if dir == "down" and (frame == 1 or frame == 3) and has_override(base + sp + "_down_1.png"):
+			dname = sp + "_down_1.png"
+		if has_override(base + dname):
+			name = dname
+		elif dir == "left" and has_override(base + sp + "_right.png"):
+			name = sp + "_right.png"
+			flip = true
+		elif has_override(base + sp + "_down.png"):
+			name = sp + "_down.png"
+		else:
+			name = sp + ".png"
+			flip = dir == "left"
+	var tex := override(base + name)
+	if tex == null:
+		return null
+	var im := tex.get_image()
+	if im.is_compressed(): im.decompress()
+	im.convert(Image.FORMAT_RGBA8)
+	if sp == "player":
+		im = recolor_player(im, look)
+	if flip:
+		im.flip_x()
+	# a small bob on step frames for sprites without walk cycles
+	if sp != "player" and (frame == 1 or frame == 3) and not look.get("infected", false):
+		var bob := Image.create(im.get_width(), im.get_height(), false, Image.FORMAT_RGBA8)
+		bob.blit_rect(im, Rect2i(0, 0, im.get_width(), im.get_height() - 1), Vector2i(0, 1))
+		im = bob
+	return im
+
+## The atlas farmer wears a red shirt, blue overalls and brown hair. Swap those for the player's choices.
+func recolor_player(src: Image, look: Dictionary) -> Image:
+	var im := src.duplicate()
+	var targets := {"shirt": Color(look.get("shirt", "#b5442f")), "pants": Color(look.get("pants", "#3f6fb5")), "hair": Color(look.get("hair", "#5a3a22")), "skin": Color(look.get("skin", "#e8b48f"))}
+	var refs := {"shirt": Color("#a83a2c"), "pants": Color("#3a5aa8"), "hair": Color("#5a3a22"), "skin": Color("#e0a878")}
+	for y in im.get_height():
+		for x in im.get_width():
+			var c: Color = im.get_pixel(x, y)
+			if c.a < 0.5: continue
+			var h: float = c.h * 360.0
+			var head: bool = y < im.get_height() * 0.42
+			var part := ""
+			if head:
+				# the head: dark warm pixels are hair, light warm pixels are skin
+				if (h <= 45 or h > 330) and c.s > 0.2:
+					part = "hair" if c.v < 0.55 else "skin"
+			else:
+				if (h < 14 or h > 335) and c.s > 0.4 and c.v > 0.3: part = "shirt"
+				elif h > 195 and h < 255 and c.s > 0.22: part = "pants"
+				elif h >= 14 and h <= 45 and c.s > 0.2 and c.v >= 0.6: part = "skin"
+			if part == "": continue
+			var t: Color = targets[part]
+			var r: Color = refs[part]
+			var nv: float = clampf(c.v * (t.v / maxf(r.v, 0.05)), 0.0, 1.0)
+			im.set_pixel(x, y, Color.from_hsv(t.h, clampf(t.s * (c.s / maxf(r.s, 0.05)), 0.0, 1.0), nv, c.a))
+	return im
+
 # ---------------------------------------------------------------- characters (16x32, Stardew-like proportions)
 # Feet sit on row 31. The world draws a character at pos - (8, 31).
 const CHAR_W := 16
@@ -681,9 +809,13 @@ func look_key(l: Dictionary) -> String:
 	for k in ["skin", "hair", "hair_style", "eyes", "face", "shirt_style", "shirt", "pants", "acc", "acc_color"]:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
+	parts.append(str(l.get("sprite", "")))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int) -> Image:
+	var ovr := char_override(look, dir, frame)
+	if ovr != null:
+		return ovr
 	if dir == "right":
 		var im := _draw_character(look, "left", frame)
 		im.flip_x()
@@ -695,7 +827,9 @@ func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
 func get_portrait(look: Dictionary) -> ImageTexture:
-	return cached("pt|" + look_key(look), func(): return char_image(look, "down", 0).get_region(Rect2i(0, 1, 16, 18)))
+	return cached("pt|" + look_key(look), func():
+		var im := char_image(look, "down", 0)
+		return im.get_region(Rect2i(0, 0, im.get_width(), 18 if im.get_width() > 16 else 18)) if im.get_width() > 16 else im.get_region(Rect2i(0, 1, 16, 18)))
 
 func _draw_character(L: Dictionary, dir: String, frame: int) -> Image:
 	var x := img(CHAR_W, CHAR_H)
@@ -940,6 +1074,11 @@ func get_icon(id: String, tier: int = 0) -> ImageTexture:
 func icon_image(id: String, tier: int) -> Image:
 	var x := img(16, 16)
 	var it: Dictionary = Data.items.get(id, {})
+	if tier == 0 and has_override("icons/%s.png" % id):
+		var oi: Image = override("icons/%s.png" % id).get_image()
+		if oi.is_compressed(): oi.decompress()
+		oi.convert(Image.FORMAT_RGBA8)
+		return oi
 	if it.has("icon") and it.icon.s == "obj":
 		return outline(obj_icon(it.icon.obj), "#1a1414")
 	if it.has("icon"):
@@ -1040,6 +1179,7 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			R(x, ex + 1, ey, ew - 2, eh, c); R(x, ex, ey + 2, ew, eh - 3, c); P(x, ex + 2, ey + 2, "#ffffff"); R(x, ex + 1, ey + eh - 1, ew - 2, 1, shade(c, -0.15))
 		"fur": R(x, 3, 5, 10, 8, c); R(x, 2, 7, 12, 4, c); R(x, 4, 4, 8, 1, shade(c, 0.15)); for i in 5: P(x, 3 + i * 2, 12 + i % 2, shade(c, -0.2)); P(x, 6, 7, shade(c, 0.25))
 		"kit": R(x, 2, 6, 12, 8, "#c8a070"); R(x, 2, 6, 12, 1, "#e0c090"); R(x, 2, 9, 12, 1, "#a8804a"); R(x, 5, 3, 6, 3, "#8a3a2a"); R(x, 4, 4, 8, 2, "#8a3a2a"); R(x, 7, 10, 2, 3, "#6a4a2e")
+		"machete": _diag(x, 3, 13, 10, 2, "#c8ccd4"); _diag(x, 4, 13, 9, 1, "#eef2f8"); R(x, 1, 12, 4, 3, "#5a3a22"); R(x, 2, 13, 2, 1, "#7a5a3a"); P(x, 13, 2, "#9aa0a8")
 		"cup": R(x, 3, 6, 9, 8, "#e8e0d0"); R(x, 4, 7, 7, 3, c); R(x, 12, 8, 2, 4, "#e8e0d0"); R(x, 3, 14, 9, 1, "#b8b0a0"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
 		"pie": R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c); for i in 3: R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
 		"bar_snack": R(x, 2, 6, 12, 6, c); R(x, 2, 6, 12, 1, shade(c, 0.3)); P(x, 4, 8, "#e8d8a0"); P(x, 8, 9, "#8a2a4a"); P(x, 11, 8, "#e8d8a0"); R(x, 2, 12, 12, 1, shade(c, -0.3))
@@ -1341,7 +1481,27 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	return [x, 0, 0]
 
 # ---------------------------------------------------------------- farm animals (16x16, feet at row 15)
+const ANIMAL_FACING := {"chicken_0": "left", "chicken_1": "right", "rabbit_0": "left"}
+
 func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> ImageTexture:
+	var nm := "%s_%d" % [type, color_i % 2]
+	if not has_override("animals/%s.png" % nm): nm = "%s_0" % type
+	if has_override("animals/%s.png" % nm):
+		return cached("anov|%s|%s|%d|%s" % [nm, dir, frame, adult], func():
+			var im: Image = override("animals/%s.png" % nm).get_image()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			var face: String = ANIMAL_FACING.get(nm, "left")
+			if (dir == "right" and face == "left") or (dir == "left" and face == "right"):
+				im.flip_x()
+			var out := img(16, 16)
+			var w := im.get_width()
+			var h := im.get_height()
+			if not adult:
+				im.resize(int(w * 0.7), int(h * 0.7), Image.INTERPOLATE_NEAREST)
+				w = im.get_width(); h = im.get_height()
+			out.blit_rect(im, Rect2i(0, 0, w, h), Vector2i((16 - w) / 2, 16 - h - (frame % 2)))
+			return out)
 	return cached("an|%s|%d|%s|%d|%s" % [type, color_i, dir, frame, adult], func(): return _draw_animal(type, color_i, dir, frame, adult))
 
 func _draw_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
@@ -1413,11 +1573,22 @@ func obj_icon(type: String) -> Image:
 # Lived-in places look cared for; empty ones decay. Hostile settlements in later
 # phases reuse the same scale.
 func building_condition(s: Dictionary) -> int:
+	if s.kind == "greenhouse":
+		return 4 if Game.state.get("flags", {}).get("greenhouse", false) else 0
 	if s.kind == "farmhouse" and Game.state.has("flags"):
 		return int(Game.state.flags.get("house_condition", Data.buildings.farmhouse.condition))
 	return int(s.get("condition", Data.buildings[s.kind].get("condition", 2)))
 
-func get_building(s: Dictionary, season: String, night: bool) -> ImageTexture:
+func building_override(s: Dictionary) -> Texture2D:
+	var cond := building_condition(s)
+	var t := override("buildings/%s_%d.png" % [s.kind, cond])
+	if t == null: t = override("buildings/%s.png" % s.kind)
+	return t
+
+func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
+	var ovb := building_override(s)
+	if ovb != null:
+		return ovb
 	var cond := building_condition(s)
 	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d|%s" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y, s.get("door_open", false)]
 	return cached(k, func(): return _draw_building(s, season, night, cond))

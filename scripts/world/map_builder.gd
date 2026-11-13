@@ -125,6 +125,47 @@ static func coop(b: Dictionary) -> GameMap:
 	m.lights = [{"x": 6, "y": 5, "r": 80}]
 	return m
 
+## Rooms drawn from a picture (art/interiors/<id>.png), 14 x 11 tiles.
+## Grid letters: # solid, . floor, C shop counter (solid), P greenhouse plot (pre-tilled, solid).
+const ROOMS := {
+	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "grid": [
+		"##############", "##############", "##############", "##########...#", "####CCCCC#.###",
+		"###.......####", "###.......####", "###.......####", "######....####", "######....####", "######...#####"]},
+	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "grid": [
+		"##############", "##############", "##############", "##############", "#####....###.#",
+		"###.......####", "###CCCCCC.####", "#########....#", "###.......####", "###.......####", "#####....#####"]},
+	"guild": {"exit": ["town", 12, 29], "shop": "guild", "grid": [
+		"##############", "##############", "##############", "####.CCCCC####", "####......####",
+		"####......####", "####......##.#", "####.####.##.#", "####.####...##", "##..........##", "######..######"]},
+	"greenhouse": {"exit": ["homestead", 0, 0], "shop": "", "grid": [
+		"##############", "##############", "##PPPPP.PPPPP#", "#............#", "#............#",
+		"##PPPPP.PPPPP#", "#............#", "#............#", "######...#####", "######...#####", "######...#####"]},
+}
+
+static func room(id: String, exit_override := []) -> GameMap:
+	var R: Dictionary = ROOMS[id]
+	var rows: Array = R.grid
+	var m := GameMap.new(id, 14, 11, "floor")
+	m.indoor = true
+	m.backdrop = "interiors/%s.png" % id
+	var ex: Array = exit_override if not exit_override.is_empty() else R.exit
+	for y in rows.size():
+		var row: String = rows[y]
+		for x in row.length():
+			var ch := row[x]
+			if ch == "#" or ch == "C" or ch == "P":
+				m.solid_mask[y * m.w + x] = 1
+			if ch == "C":
+				m.add_obj(x, y, "hidden_counter", {"shop": R.shop})
+			if ch == "P":
+				m.soil[GameMap.k(x, y)] = {"w": 0, "crop": null, "fixed": true}
+			if ch == "." and y == rows.size() - 1:
+				m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": ex[0], "tx": ex[1], "ty": ex[2], "dir": "down", "door": true})
+	if id == "greenhouse":
+		m.farmable = true
+	m.lights = [{"x": 7, "y": 5, "r": 110}]
+	return m
+
 static func forge() -> GameMap:
 	var m := _interior("forge")
 	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 39, "ty": 17, "dir": "down", "door": true})
@@ -163,6 +204,9 @@ static func town(world_seed: int) -> GameMap:
 	for yy in range(4, 8):
 		m.add_obj(31, yy, "fence")
 	m.add_obj(32, 5, "hay_bale"); m.add_obj(32, 7, "water_trough")
+	m.add_structure({"kind": "clinic", "x": 5, "y": 3, "w": 7, "h": 5, "door_x": 8, "door_y": 7, "warp": {"to": "clinic", "tx": 7, "ty": 9, "dir": "up", "shop": "clinic"}})
+	m.add_structure({"kind": "workshop", "x": 45, "y": 10, "w": 7, "h": 5, "door_x": 48, "door_y": 14, "warp": {"to": "workshop", "tx": 6, "ty": 9, "dir": "up", "shop": "workshop"}})
+	m.add_structure({"kind": "guild", "x": 9, "y": 24, "w": 7, "h": 5, "door_x": 12, "door_y": 28, "warp": {"to": "guild", "tx": 6, "ty": 9, "dir": "up", "shop": "guild"}})
 	m.add_structure({"kind": "ruin", "x": 45, "y": 3, "w": 7, "h": 5, "door_x": 48, "door_y": 7, "text": "A collapsed house. Too dangerous to enter."})
 	m.warps.append({"x": 0, "y": 18, "w": 1, "h": 3, "to": "homestead", "tx": 48, "ty": 19, "dir": "left"})
 	m.warps.append({"x": 27, "y": 0, "w": 3, "h": 1, "to": "mountain", "tx": 19, "ty": 30, "dir": "up"})
@@ -189,7 +233,7 @@ static func town(world_seed: int) -> GameMap:
 		m.add_obj(x, 39, "rubble")
 	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Repairs needed."})
 	m.add_obj(31, 32, "sign", {"text": "Brightwater River. Good fishing, says Wren."})
-	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11)])
+	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11), Rect2i(4, 2, 9, 8), Rect2i(44, 9, 9, 8), Rect2i(8, 23, 9, 9)])
 	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4)])
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
