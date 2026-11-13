@@ -131,6 +131,7 @@ func new_game_state(opts: Dictionary) -> Dictionary:
 		"factions": {}, "story": {"chapter": 0},
 		"equip": {"head": null, "chest": null, "legs": null, "feet": null},
 		"loot_seen": {},
+		"buffs": [],
 	}
 	for i in st.inv_size:
 		st.inventory.append(null)
@@ -163,6 +164,12 @@ func count_item(id: String) -> int:
 func matches(spec: String, id: String) -> bool:
 	if spec.begins_with("cat:"):
 		return Data.items.has(id) and Data.items[id].cat == spec.substr(4)
+	if spec.begins_with("grp:"):
+		var g := spec.substr(4)
+		if g == "produce": return Data.items.has(id) and (Data.items[id].cat == "crop" or Data.groups.fruit.has(id))
+		if g == "meat_fish": return Data.groups.meat_fish.has(id) or (Data.items.has(id) and Data.items[id].cat == "fish")
+		return Data.groups.get(g, []).has(id)
+	if spec == "milk" and id == "powdered_milk": return true   # the sheet: a substitute for Milk in recipes
 	return spec == id
 
 func count_match(spec: String) -> int:
@@ -341,7 +348,7 @@ func gear_total() -> Dictionary:
 	return t
 
 func max_health() -> float:
-	return float(Balance.player.max_health) + gear_total().hp
+	return float(Balance.player.max_health) + gear_total().hp + (buff("max hp") if not state.is_empty() else 0.0)
 
 ## Makes the pack the right size for your pockets. Returns false if items would be lost.
 func apply_carry(extra := -999) -> bool:
@@ -511,6 +518,12 @@ func tool_tier(id: String) -> int:
 func tool_busy(id: String):
 	return state.tools[id].upgrading if state.tools.has(id) else null
 
+## "cat:fish" -> "any Fish", "grp:fruit" -> "any fruit", otherwise the item's name.
+func spec_name(spec: String) -> String:
+	if spec.begins_with("cat:"): return "any " + Data.categories[spec.substr(4)].label
+	if spec.begins_with("grp:"): return {"produce": "any fruit or vegetable", "meat_fish": "any meat or fish", "raw_meat": "any raw meat"}.get(spec.substr(4), "any " + spec.substr(4).replace("_", " "))
+	return Data.items[spec].name
+
 func item_display_name(id: String) -> String:
 	var it: Dictionary = Data.items[id]
 	if it.has("tool") and Data.tool_defs[it.tool].upgradable:
@@ -594,6 +607,18 @@ func migrate_save(d: Dictionary) -> Dictionary:
 		if not d.npcs.has(n): d.npcs[n] = {"points": 0, "talked_day": 0, "gifted_day": 0, "met": false, "known": {}}
 	while d.inventory.size() < int(d.inv_size):
 		d.inventory.append(null)
+	# items renamed to match the item spreadsheet
+	for i in d.inventory.size():
+		var s0 = d.inventory[i]
+		if s0 != null and Catalog.RENAMES.has(s0.get("id", "")): s0.id = Catalog.RENAMES[s0.id]
+	for mid in d.maps_dyn:
+		var objs = d.maps_dyn[mid].get("objects", {})
+		if objs is Dictionary:
+			for kk in objs:
+				var ob: Dictionary = objs[kk]
+				if Catalog.RENAMES.has(ob.get("type", "")): ob.type = Catalog.RENAMES[ob.type]
+				for st2 in ob.get("items", []):
+					if st2 != null and Catalog.RENAMES.has(st2.get("id", "")): st2.id = Catalog.RENAMES[st2.id]
 	for i in d.inventory.size():
 		var s = d.inventory[i]
 		if s != null and not Data.items.has(s.get("id", "")):
@@ -852,6 +877,7 @@ func update_clock(dt: float) -> void:
 		tick10()
 
 func tick10() -> void:
+	expire_buffs()
 	state.time = int(state.time) + 10
 	survival_tick(10)
 	if state.time == Balance.time.midnight:
@@ -1101,7 +1127,12 @@ func machine_load(o: Dictionary, item_id: String) -> String:
 	var ready: int = abs_min() + int(r.min)
 	if int(r.min) >= 1440:
 		ready = (int(state.day) + int(r.min) / 1440) * 1440 + Balance.time.day_start   # ready by that morning
-	o.job = {"out": r.out, "qty": r.get("out_qty", 1), "ready": ready}
+	var out_id: String = r.out
+	var out_q: int = int(r.get("out_qty", 1))
+	if out_id == "$seed":
+		out_id = item_id + "_seed" if Data.items.has(item_id + "_seed") else "wild_seed_mix"
+		out_q = rng.randi_range(1, 3)
+	o.job = {"out": out_id, "qty": out_q, "ready": ready}
 	return ""
 
 func machine_collect(o: Dictionary) -> int:
@@ -1446,6 +1477,10 @@ func status_effects() -> Array:
 	var out := []
 	if state.is_empty():
 		return out
+	for b in state.get("buffs", []):
+		if int(b.until) > abs_min() and b.stat != "crash":
+			var left: int = int(b.until) - abs_min()
+			out.append({"id": "buff_" + str(b.stat), "label": str(b.stat).capitalize(), "desc": buff_text(str(b.stat), float(b.v), left) + " left."})
 	var S: Dictionary = Balance.survival
 	var g := "Health drops after %d hours." % (S.grace_minutes / 60)
 	if is_survivor():
@@ -1500,9 +1535,84 @@ func eat_item(id: String) -> bool:
 		if e.get("hunger", 0): parts.append("%+d hunger" % round(e.hunger * mult))
 		if e.get("thirst", 0): parts.append("%+d thirst" % round(e.thirst * mult))
 		add_xp("survival", 3)
-	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + ": " + ", ".join(parts), id)
+	for b in it.get("buffs", []):
+		add_buff(str(b.stat), float(b.v), int(b.min))
+		parts.append(buff_text(str(b.stat), float(b.v), int(b.min)))
+	if it.get("wake_full", false):
+		state.flags.wake_full = true
+		parts.append("you'll wake with full energy")
+	if it.has("crash"):
+		add_buff("crash", float(it.crash), 60)
+	if it.get("dirty", false) and rng.randf() < 0.35:
+		state.health = maxf(1.0, state.health - 8.0)
+		parts.append("your stomach turns (-8 health)")
+	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + (": " + ", ".join(parts) if not parts.is_empty() else ""), id)
 	Sfx.play("eat")
 	return true
+
+# ================================================================ timed effects from food and medicine
+## stat names come from the item sheet ("move speed", "crit chance", "stamina regen", ...)
+func add_buff(stat: String, v: float, minutes: int) -> void:
+	if not state.has("buffs"): state.buffs = []
+	state.buffs = state.buffs.filter(func(b): return b.stat != stat)
+	state.buffs.append({"stat": stat, "v": v, "until": abs_min() + max(1, minutes)})
+
+func buff(stat: String) -> float:
+	var t := 0.0
+	for b in state.get("buffs", []):
+		if b.stat == stat and int(b.until) > abs_min():
+			t += float(b.v)
+	return t
+
+func expire_buffs() -> void:
+	if not state.has("buffs"): return
+	var keep := []
+	for b in state.buffs:
+		if int(b.until) > abs_min():
+			keep.append(b)
+		elif b.stat == "crash":
+			state.energy = maxf(0.0, state.energy - float(b.v))
+			toast("The energy drink wears off. You feel drained.", "", "warn")
+	state.buffs = keep
+
+func buff_text(stat: String, v: float, minutes: int) -> String:
+	var dur := "%d min" % minutes if minutes < 1440 else "a day"
+	if stat in ["night vision", "cold resistance", "heat resistance", "easier catches"]:
+		return "%s for %s" % [stat, dur]
+	if stat == "max hp": return "+%d max health for %s" % [int(v), dur]
+	return "%+d%% %s for %s" % [int(v * 100), stat, dur]
+
+## Bags from the item sheet add pack slots for good (one of each kind).
+func use_pack_upgrade(id: String) -> bool:
+	var it: Dictionary = Data.items[id]
+	var key := "pack_" + id
+	if state.flags.get(key, false):
+		toast("You already use a %s." % it.name, id, "warn")
+		return false
+	if not remove_item(id, 1): return false
+	state.flags[key] = true
+	var add: int = int(it.pack_slots)
+	state.inv_size = int(state.inv_size) + add
+	for i in add: inv().append(null)
+	toast("You strap on the %s: +%d pack slots." % [it.name, add], id, "gold")
+	Sfx.play("levelup")
+	return true
+
+## Upgrading a tool yourself at an Anvil: bars only, done on the spot.
+func anvil_upgrade(tool: String) -> String:
+	var up := next_upgrade(tool)
+	if up.is_empty(): return "That tool cannot be upgraded further."
+	if tool_busy(tool) != null: return "That tool is at Varga Forge."
+	var bars := 5
+	if count_item(up.bar) < bars: return "You need %d %s." % [bars, Data.items[up.bar].name]
+	if up.bar == "aurium_bar" and count_item("glimmerite") < 1: return "You also need a Glimmerite."
+	remove_item(up.bar, bars)
+	if up.bar == "aurium_bar": remove_item("glimmerite", 1)
+	state.tools[tool].tier = int(up.tier)
+	if tool == "watering_can": state.can_water = can_capacity()
+	Sfx.play("levelup")
+	quest_event("upgrade", {"n": 1})
+	return ""
 
 # ================================================================ weather and daily content
 func roll_weather(d: int) -> String:
@@ -1905,7 +2015,7 @@ func rotating_stock(pool_id: String, n: int) -> Array:
 	if pool_id == "guild_arms":
 		for tag in ["police", "military", "sports", "hardware", "wilderness", "gun_store", "farm", "pawn", "construction"]:
 			for id in Data.loot_tags.get(tag, []):
-				if Data.items[id].get("rarity", "") == "Normal" and not pool.has(id) and Data.items[id].cat in ["weapon", "gear"]:
+				if Data.items[id].get("rarity", "") == "Normal" and not pool.has(id) and Data.items[id].cat in ["weapon", "gear"] and not id in ["machete", "scrap_crossbow"]:
 					pool.append(id)
 	pool.sort()
 	var r := RandomNumberGenerator.new()
@@ -2042,6 +2152,39 @@ func sprinkler_tiles(o: Dictionary) -> Array:
 					if dx or dy: out.append(Vector2i(x + dx, y + dy))
 	return out
 
+## Bee houses, worm bins, mushroom logs, fruit trees and crab pots work overnight.
+func overnight_object(m: GameMap, o: Dictionary, rep: Dictionary) -> void:
+	var d: Dictionary = Data.obj_defs.get(o.type, {})
+	if d.has("producer") and int(d.producer[1]) > 0:
+		o.days = int(o.get("days", 0)) + 1
+		if int(o.days) >= int(d.producer[1]) and o.get("ready", "") == "" and not (o.type == "bee_house" and season() == "winter"):
+			var item: String = d.producer[0]
+			if o.type == "bee_house" and rng.randf() < 0.35: item = "wildflower_honey"
+			if o.type == "mushroom_log" and rng.randf() < 0.15: item = "morel" if season() == "spring" else "glowcap"
+			o.ready = item
+			o.days = 0
+	if o.type == "fruit_tree":
+		o.age = int(o.get("age", 0)) + (2 if o.get("fed", false) else 1)
+		var fr: String = o.get("fruit", "apple")
+		var seasons: Array = Data.items[fr].get("sheet", {}).get("tree", {}).get("seasons", ["autumn"])
+		if int(o.age) >= Balance.trees.grow_days and seasons.has(season()):
+			o.fruit_n = min(3, int(o.get("fruit_n", 0)) + 1)
+		elif not seasons.has(season()):
+			o.fruit_n = 0
+	if d.get("crab_pot", false) and o.get("bait", false):
+		var zone := ""
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if m.tile_at(int(o.x) + dx, int(o.y) + dy) == "water": zone = m.fish_zone if m.fish_zone != "" else "pond"
+		if zone != "":
+			var pool := []
+			for f in Data.fish:
+				var fd: Dictionary = Data.fish[f]
+				if fd.get("crab", false) and fd.seasons.has(season()): pool.append(f)
+			if not pool.is_empty():
+				o.catch = pool[rng.randi() % pool.size()]
+				o.bait = false
+
 func run_sprinklers() -> int:
 	var n := 0
 	for mid in maps:
@@ -2092,8 +2235,12 @@ func shop_sell(shop_id: String, slot: int, qty: int) -> void:
 	Sfx.play("coin")
 
 # ================================================================ Varga Forge
-func forge_open_geode(geode_id: String) -> Dictionary:
-	var fee: int = Balance.services.geode_fee
+## Cracking a geode yourself with a Builder's Hammer: no fee.
+func crack_geode(geode_id: String, free := false) -> Dictionary:
+	return forge_open_geode(geode_id, free)
+
+func forge_open_geode(geode_id: String, free := false) -> Dictionary:
+	var fee: int = 0 if free else Balance.services.geode_fee
 	if count_item(geode_id) < 1:
 		return {"error": "You have no %s." % Data.items[geode_id].name}
 	if int(state.money) < fee:
@@ -2255,6 +2402,9 @@ func end_day(reason: String) -> void:
 	# 1. advance the day
 	state.day = int(state.day) + 1
 	state.time = Balance.time.day_start
+	if state.flags.get("wake_full", false):
+		state.flags.erase("wake_full")
+		restore = 1.0
 	state.energy = round(Balance.player.max_energy * restore)
 	if is_survivor():
 		state.health = min(max_health(), state.health + round((max_health() - state.health) * 0.6))
@@ -2300,6 +2450,7 @@ func end_day(reason: String) -> void:
 			var o: Dictionary = maps[mid].objects[kk]
 			if o.type == "rain_collector":
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
+			overnight_object(maps[mid], o, rep)
 	animals_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)

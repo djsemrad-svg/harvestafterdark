@@ -23,10 +23,20 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	var pick := func(list: Array): return list[rng.randi() % list.size()]
 	look.sprite = "zv"
 	look.body = int(pick.call(L.get("bodies", [0])))
+	look.hair = pick.call(L.get("hair", ["#3a3a30", "#5a4a3a", "#2a2420", "#8a7a5a", "#6a3a2a", "#9a9a90"]))
+	look.hair_style = pick.call(L.get("hair_style", ["Short", "Long", "Buzz", "Curly", "Bob", "Spiky", "Ponytail"]))
+	look.shirt_style = pick.call(L.get("shirt_style", ["T-Shirt", "Jacket", "Hoodie", "Vest", "Overalls"]))
+	look.face = pick.call(["Plain", "Plain", "Stubble", "Beard"])
 	look.skin = pick.call(L.get("skin", [look.skin]))
 	look.shirt = pick.call(L.get("shirt", [look.shirt]))
 	look.pants = pick.call(L.get("pants", [look.pants]))
 	look.extra = L.get("extra", "")
+	match look.extra:
+		"riot": look.acc = "Cap"; look.acc_color = "#1c1e26"; look.shirt_style = "Vest"
+		"soldier": look.acc = "Cap"; look.acc_color = "#4a5630"; look.shirt_style = "Jacket"
+		"mouth": look.hair = "#e8e8e0"; look.eyes = "#ff4040"
+		"embers": look.eyes = "#ff8a20"; look.hair = "#1a1410"
+		"drool": look.eyes = "#c8f040"
 	look.scale = float(L.get("scale", 1.0))
 	look.lying = L.get("lying", false)
 	return look

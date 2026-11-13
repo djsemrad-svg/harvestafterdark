@@ -80,7 +80,7 @@ func use_pressed(from_mouse: bool) -> void:
 	if f != null or not can_act():
 		return
 	var s = Game.selected_stack()
-	if s != null and s.id == "fishing_rod":
+	if s != null and (s.id == "fishing_rod" or Data.items[s.id].has("rod")):
 		if from_mouse: target_tile(true)
 		start_fishing_charge()
 	elif s != null and Data.items[s.id].has("tool") and Data.tool_defs[s.id].get("chargeable", false) and Game.tool_tier(s.id) >= 1 and Game.tool_busy(s.id) == null:
@@ -117,6 +117,7 @@ func step(dt: float) -> void:
 	if Game.overlay_open():
 		return
 	cb.update(dt)
+	update_traps(dt)
 	update_defenses(dt)
 	cb.update_projectiles(dt)
 	update_bombs(dt)
@@ -188,6 +189,11 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	elif it.has("bomb"): place_bomb(t, s.id)
 	elif it.has("building"): place_building(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
+	elif it.has("pack_slots"):
+		var pid: String = s.id
+		Game.ui.confirm("Use the %s? It adds %d pack slots for good." % [it.name, int(it.pack_slots)], func(): Game.use_pack_upgrade(pid))
+	elif it.has("gadget"):
+		use_gadget(s.id, t)
 	elif it.has("edible"):
 		var id: String = s.id
 		Game.ui.confirm(it.get("use_word", "Drink" if it.get("drink", false) else "Eat") + " " + it.name + "?", func(): Game.eat_item(id))
@@ -216,9 +222,18 @@ func use_tool(tool: String, level: int, t: Vector2i) -> void:
 	Game.player.swing = {"t": 0.0, "dur": Balance.player.swing_sec, "tool": tool, "tier": tier, "applied": false, "apply": func(): apply_tool(tool, tier, tiles)}
 	Sfx.play("swing")
 
+## The scythe's swing grows with its tier (item sheet: Copper wider, Iron 2 rows, Silver/Gold 3x3, Aurium 5x5).
 func scythe_tiles(t: Vector2i) -> Array:
 	var d: Vector2i = DIRS[Game.player.dir]
-	return [t, Vector2i(t.x - d.y, t.y + d.x), Vector2i(t.x + d.y, t.y - d.x)]
+	var tier := Game.tool_tier("scythe")
+	var out := []
+	var side: int = 1 if tier == 0 else 2
+	var rows: int = 1 if tier <= 1 else (2 if tier == 2 else (3 if tier <= 4 else 5))
+	if tier >= 3: side = 1 if tier <= 4 else 2
+	for f in rows:
+		for sx in range(-side, side + 1):
+			out.append(Vector2i(t.x + d.x * f - d.y * sx, t.y + d.y * f + d.x * sx))
+	return out
 
 func apply_tool(tool: String, tier: int, tiles: Array) -> void:
 	var m: GameMap = Game.map
@@ -441,7 +456,7 @@ func place_at(t: Vector2i, id: String) -> void:
 	if not m.placeable:
 		Game.toast("You can only place that on your own property.", id, "warn")
 		return
-	if m.id == "house" and not it.place in ["chest", "ammo_bench", "recycler", "smoker", "preserves_jar"]:
+	if m.id == "house" and not it.place in ["chest", "ammo_bench", "recycler", "smoker", "preserves_jar"] and not Data.obj_defs.get(it.place, {}).get("indoor", false):
 		Game.toast("That belongs outside.", id, "warn")
 		return
 	if not m.tile_free(t.x, t.y):
@@ -450,8 +465,24 @@ func place_at(t: Vector2i, id: String) -> void:
 	if player_tile() == t and Data.obj_defs[it.place].get("solid", false):
 		Game.toast("Step back first.", id, "warn")
 		return
+	var extra := {}
+	var pd: Dictionary = Data.obj_defs.get(it.place, {})
+	if it.place == "chest" or pd.has("storage"): extra = {"items": []}
+	if it.place == "fruit_tree":
+		extra = {"fruit": it.tree_fruit, "age": 0, "planted": int(Game.state.day)}
+		if not m.outdoor and m.id != "greenhouse":
+			Game.toast("Fruit trees need to be planted outside or in the greenhouse.", id, "warn")
+			return
+	if pd.get("crab_pot", false):
+		var near_water := false
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if m.tile_at(t.x + dx, t.y + dy) == "water": near_water = true
+		if not near_water:
+			Game.toast("A crab pot goes right beside the water.", id, "warn")
+			return
 	Game.remove_item(id, 1)
-	m.add_obj(t.x, t.y, it.place, {"items": []} if it.place == "chest" else {})
+	m.add_obj(t.x, t.y, it.place, extra)
 	Sfx.play("pick")
 
 # ================================================================ drops and particles
@@ -669,6 +700,167 @@ func search(o: Dictionary, tags: Array, what: String, quality := 0.0) -> void:
 	Sfx.play("pick")
 	cb.alert(Game.player.pos, 2 * 16.0)
 
+# ================================================================ things from the item sheet
+## Stations, machines, producers, fruit trees, crab pots, the decoy radio and decorations.
+func interact_catalog(o: Dictionary, def: Dictionary) -> void:
+	var sel = Game.selected_stack()
+	if def.has("station"):
+		if def.get("machine", false) and (o.get("job") != null or (sel != null and not Game.machine_recipe_for(o.type, sel.id).is_empty())):
+			interact_machine(o)
+			return
+		if o.type == "anvil":
+			Game.ui.open("anvil")
+			return
+		Game.ui.open("craft", {"station": def.station})
+		return
+	if def.get("machine", false):
+		interact_machine(o)
+		return
+	if def.has("producer"):
+		if o.type == "well":
+			Game.state.can_water = Game.can_capacity()
+			if Game.can_fit("dirty_water", 1): Game.add_item("dirty_water", 1)
+			Sfx.play("water")
+			Game.toast("You draw water from the well. Watering can refilled.", "dirty_water")
+			return
+		if o.get("ready", "") != "":
+			var item: String = o.ready
+			if not Game.can_fit(item, 1):
+				Game.toast("Your inventory is full.", "", "warn")
+				return
+			Game.add_item(item, 1)
+			if o.type == "bee_house" and Game.rng.randf() < 0.3: Game.add_item("beeswax", 1)
+			o.ready = ""
+			Sfx.play("pickup")
+		else:
+			Game.toast("%s: nothing ready yet. It makes %s every %d day%s." % [def.name, Data.items[def.producer[0]].name, int(def.producer[1]), "" if int(def.producer[1]) == 1 else "s"], o.type)
+		return
+	if o.type == "fruit_tree":
+		var fr: String = o.get("fruit", "apple")
+		if int(o.get("fruit_n", 0)) > 0:
+			var n := int(o.fruit_n)
+			Game.add_item(fr, n)
+			o.fruit_n = 0
+			Game.add_xp("foraging", 5)
+			Sfx.play("pickup")
+		else:
+			var left: int = Balance.trees.grow_days - int(o.get("age", 0))
+			Game.toast(("%s tree: %d more days to grow." % [Data.items[fr].name, left]) if left > 0 else "%s tree: no fruit right now. It fruits in %s." % [Data.items[fr].name, ", ".join(Data.items[fr].sheet.tree.seasons)], fr)
+		return
+	if def.get("crab_pot", false):
+		if o.get("catch", "") != "":
+			Game.add_item(o.catch, 1)
+			o.catch = ""
+			Sfx.play("catch")
+		elif not o.get("bait", false):
+			if Game.remove_item("bait", 1) or Game.remove_item("premium_bait", 1):
+				o.bait = true
+				Game.toast("Baited the crab pot. Check it tomorrow.", "bait")
+			else:
+				Game.toast("The crab pot needs bait.", "bait", "warn")
+		else:
+			Game.toast("The crab pot is baited. Check it tomorrow morning.", "crab_pot")
+		return
+	if def.get("decoy", false):
+		cb.alert(Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 8), 24 * 16.0, true)
+		Game.toast("The radio crackles to life. Anything nearby will come to it.", o.type)
+		Sfx.play("zap")
+		return
+	var it: Dictionary = Data.items.get(o.type, {})
+	Game.ui.say("", "%s. %s%s" % [def.get("name", ""), it.get("desc", ""), (" (" + str(def.todo) + ")") if def.has("todo") else ""])
+
+## Tools from the item sheet.
+func use_gadget(id: String, t: Vector2i) -> void:
+	var m: GameMap = Game.map
+	match id:
+		"builders_hammer":
+			var o = m.get_obj(t.x, t.y)
+			if o != null and Data.obj_defs.get(o.type, {}).get("barrier", false) and Game.barrier_damaged(o):
+				interact_barrier(o)
+				return
+			for g in Data.geode_tables:
+				if Game.count_item(g) > 0:
+					var res: Dictionary = Game.crack_geode(g, true)
+					if res.has("id"): Game.toast("Cracked the %s: %d %s!" % [Data.items[g].name, int(res.qty), Data.items[res.id].name], res.id, "gold")
+					return
+			Game.toast("Point it at a damaged barrier to repair it, or carry a geode to crack.", id)
+		"gold_pan":
+			if m.tile_at(t.x, t.y) != "water" or m.fish_zone != "river":
+				Game.toast("Pan in a river.", id, "warn")
+				return
+			if Game.state.energy < 3:
+				Game.toast("You're too tired.", "", "bad")
+				return
+			Game.state.energy -= 3
+			var r := Game.rng.randf()
+			var got := ""
+			if r < 0.25: got = "copper_ore"
+			elif r < 0.4: got = "quartz"
+			elif r < 0.5: got = "iron_ore"
+			elif r < 0.56: got = "gold_ore"
+			elif r < 0.62: got = ["amethyst", "topaz", "garnet"][Game.rng.randi() % 3]
+			elif r < 0.68: got = "sand"
+			splash(t)
+			Sfx.play("water")
+			if got == "": Game.toast("Just silt this time.")
+			else: Game.add_item(got, 1)
+		"seed_spreader":
+			var seed_id := ""
+			for st in Game.inv():
+				if st != null and Data.items[st.id].cat == "seed":
+					seed_id = st.id
+					break
+			if seed_id == "":
+				Game.toast("Carry some seeds to spread.", id, "warn")
+				return
+			var n := 0
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if Game.count_item(seed_id) <= 0: break
+					var tt := Vector2i(t.x + dx, t.y + dy)
+					var sl = m.soil.get(GameMap.k(tt.x, tt.y))
+					if sl != null and sl.crop == null:
+						plant_at(tt, seed_id)
+						n += 1
+			if n == 0: Game.toast("Point it at tilled, empty soil.", id, "warn")
+		"flashlight":
+			Game.toast("The flashlight lights your way while you hold it.", id)
+		_:
+			var it: Dictionary = Data.items[id]
+			Game.ui.say("", "%s: %s.%s" % [it.name, it.desc, (" (" + str(it.todo) + ")") if it.has("todo") else ""])
+
+## Traps and alarms: the infected set them off by walking over them.
+func update_traps(dt: float) -> void:
+	var m: GameMap = Game.map
+	for e in Game.enemies.duplicate():
+		if not Game.enemies.has(e): continue
+		var tx := int(e.pos.x) >> 4
+		var ty := int(e.pos.y - 4) >> 4
+		var o = m.get_obj(tx, ty)
+		if o == null: continue
+		var def: Dictionary = Data.obj_defs.get(o.type, {})
+		if def.has("trap"):
+			var tr: Array = def.trap
+			if bool(tr[2]):   # mines go off once
+				m.remove_obj(tx, ty)
+				if o.type == "nail_mine":
+					for e2 in Game.enemies.duplicate():
+						if e2.pos.distance_to(e.pos) < 40: cb.damage(e2, float(tr[0]), (e2.pos - e.pos).normalized() * 60, {"kind": "blast"}); cb.add_dot(e2, "bleed", [5, 4])
+					Sfx.play("boom")
+				else:
+					cb.explode(e.pos, 4.0, float(tr[0]), {})
+				continue
+			o.cd = maxf(0.0, float(o.get("cd", 0.0)) - dt)
+			if float(o.cd) <= 0:
+				o.cd = 1.0
+				cb.damage(e, float(tr[0]), Vector2.ZERO, {"kind": "trap"})
+				if float(tr[1]) > 0 and Game.enemies.has(e): e.pin = float(tr[1])
+				if Game.enemies.has(e): e.slow = 2.0
+		elif def.get("alarm", false) and float(o.get("rang", -99.0)) < Time.get_ticks_msec() / 1000.0 - 20.0:
+			o.rang = Time.get_ticks_msec() / 1000.0
+			Game.toast("Something rattles the %s!" % def.name.to_lower(), o.type, "warn")
+			Sfx.play("pick")
+
 ## Double-tap Shift: a quick burst, if your shoes allow it.
 func dash() -> void:
 	var p: Dictionary = Game.player
@@ -692,6 +884,10 @@ func kill_enemy(e: Dictionary) -> void:
 	burst(e.pos + Vector2(0, -8), Color("#7a8a70"), 12)
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+	# drops from the item sheet (every infected, then this type)
+	for dr in Data.enemy_drops.get("*", []) + Data.enemy_drops.get(e.type, []):
+		if Game.rng.randf() < float(dr[1]):
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
 	# rare weapon and gear drops from the spreadsheets
 	for dr in Data.rare_drops.get(e.type, []):
@@ -1045,9 +1241,12 @@ func release_cast() -> void:
 	if f == null or f.phase != "charge":
 		return
 	Game.state.energy = max(0.0, Game.state.energy - 3)
-	if Game.count_item("bait") > 0:
-		Game.remove_item("bait", 1)
-		f.bait = true
+	for bt in ["premium_bait", "bait"]:
+		if Game.count_item(bt) > 0:
+			Game.remove_item(bt, 1)
+			f.bait = true
+			f.premium = bt == "premium_bait"
+			break
 	var d: Vector2i = DIRS[Game.player.dir]
 	var pt := player_tile()
 	var dist := 1 + int(round(f.power * 4))
@@ -1077,7 +1276,7 @@ func update_fishing(dt: float) -> void:
 					return
 				Sfx.play("splash")
 				f.phase = "wait"
-				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0)
+				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0) * (0.6 if f.get("premium", false) else 1.0) * (0.75 if has_tackle("spinner") else 1.0) * (0.7 if has_tackle("glow_lure") and (Game.map.mine or int(Game.state.time) >= 1140) else 1.0)
 		"wait":
 			f.t -= dt
 			if f.t <= 0:
@@ -1096,6 +1295,21 @@ func update_fishing(dt: float) -> void:
 			if f.t <= 0:
 				Game.fishing = null
 
+## The rod in your hand, and the tackle it can use (Fiberglass: 1 slot, Iron-Reel and Aurium: 2).
+func rod_id() -> String:
+	var s = Game.selected_stack()
+	return s.id if s != null else ""
+
+func has_tackle(t: String) -> bool:
+	var slots: int = {"fishing_rod_fiberglass": 1, "fishing_rod_ironreel": 2, "fishing_rod_aurium": 2}.get(rod_id(), 0)
+	if slots <= 0 or Game.count_item(t) <= 0: return false
+	var owned := 0
+	for tk in ["spinner", "cork_bobber", "lead_weight", "trap_bobber", "glow_lure", "treasure_hook"]:
+		if Game.count_item(tk) > 0:
+			owned += 1
+			if tk == t: return owned <= slots
+	return false
+
 func pick_fish(zone: String) -> String:
 	var st: Dictionary = Game.state
 	var s := Game.season()
@@ -1106,7 +1320,11 @@ func pick_fish(zone: String) -> String:
 		if d.locs.has(zone) and d.seasons.has(s) and int(st.time) >= d.time[0] and int(st.time) < d.time[1] and (d.weather == "any" or (d.weather == "rain" and rainy)):
 			pool.append({"id": id, "w": d.w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
-		return "soggy_paper" if Game.rng.randf() < 0.5 else "old_can"
+		if has_tackle("treasure_hook") and Game.rng.randf() < 0.4:
+			var arts := ["old_coin", "wedding_ring", "pocket_watch", "polaroid", "cassette_tape", "rusted_key"]
+			return arts[Game.rng.randi() % arts.size()]
+		var junk := ["soggy_paper", "old_can", "broken_glasses", "torn_boot", "empty_bottle", "bent_fork", "dead_battery", "plastic_bag", "shredded_tire"]
+		return junk[Game.rng.randi() % junk.size()]
 	return MapBuilder.weighted(Game.rng, pool).id
 
 func hook_fish() -> void:
@@ -1127,7 +1345,10 @@ func hook_fish() -> void:
 	f.move_t = 0.0
 	f.bar = 0.2
 	f.bar_v = 0.0
-	f.bar_size = F.bar_base + Game.skill_level("fishing") * F.bar_per_level
+	f.bar_size = F.bar_base + Game.skill_level("fishing") * F.bar_per_level + (0.05 if has_tackle("cork_bobber") else 0.0) + (0.05 if Game.buff("easier catches") > 0 else 0.0)
+	f.calm = has_tackle("lead_weight")
+	f.slow_loss = (0.7 if has_tackle("trap_bobber") else 1.0) * (0.7 if rod_id() == "fishing_rod_aurium" and Data.fish[id].get("legendary", false) else 1.0)
+	f.fast_reel = 1.2 if rod_id() in ["fishing_rod_ironreel", "fishing_rod_aurium"] else 1.0
 	f.prog = F.start_progress
 	f.inside = false
 
@@ -1138,7 +1359,7 @@ func update_minigame(dt: float) -> void:
 	f.move_t -= dt
 	if f.move_t <= 0:
 		f.move_t = (0.25 if f.move == "dart" else 0.45) + Game.rng.randf() * (1.3 - d)
-		var delta := (Game.rng.randf() - 0.5) * (0.25 + d * 0.9)
+		var delta := (Game.rng.randf() - 0.5) * (0.25 + d * 0.9) * (0.7 if f.get("calm", false) else 1.0)
 		if f.move == "sinker":
 			delta -= 0.08
 		f.target = clamp(f.pos + delta, 0.03, 0.97)
@@ -1153,7 +1374,7 @@ func update_minigame(dt: float) -> void:
 		f.bar = 1.0 - f.bar_size
 		f.bar_v = min(0.0, -f.bar_v * 0.3)
 	f.inside = f.pos >= f.bar and f.pos <= f.bar + f.bar_size
-	f.prog += F.gain_per_sec * dt if f.inside else -F.loss_per_sec * (0.7 + d * 0.6) * dt
+	f.prog += F.gain_per_sec * float(f.get("fast_reel", 1.0)) * dt if f.inside else -F.loss_per_sec * (0.7 + d * 0.6) * float(f.get("slow_loss", 1.0)) * dt
 	if f.prog >= 1.0:
 		finish_catch(f.fish)
 	elif f.prog <= 0.0:
@@ -1295,8 +1516,8 @@ func interact_object(o: Dictionary) -> void:
 			search(o, def.loot, "the supply crate", float(o.get("quality", 0.3)))
 		"rubble", "sandbags", "barricade", "toppled_sign":
 			Game.ui.say("", def.get("text", ""))
-		"weapon_bench":
-			Game.ui.open("craft", {"station": "weapon_bench"})
+		"armory_bench":
+			Game.ui.open("craft", {"station": "armory_bench"})
 		"ammo_bench":
 			Game.ui.open("craft", {"station": "ammo_bench"})
 		"hay_hopper":
@@ -1363,4 +1584,6 @@ func interact_object(o: Dictionary) -> void:
 				Game.ui.say("", "%s: %s" % [Data.items[o.type].name, "powered." if o.get("powered", false) else "no power. Place a generator or solar panel nearby."])
 				return
 			if def.has("storage"):
-				Game.ui.open("chest", {"obj": o, "title": "Storage"})
+				Game.ui.open("chest", {"obj": o, "title": def.get("name", "Storage")})
+				return
+			interact_catalog(o, def)

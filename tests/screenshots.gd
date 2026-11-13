@@ -196,10 +196,38 @@ func arsenal_shots() -> void:
 	main.ui.close_all()
 	main.ui.open("forge", {"tab": "repair"}); await frames(2); await shot("34_repair")
 	main.ui.close_all()
-	main.ui.open("craft", {"station": "weapon_bench"}); await frames(2); await shot("35_weapon_bench")
+	main.ui.open("craft", {"station": "armory_bench"}); await frames(2); await shot("35_weapon_bench")
 	main.ui.close_all()
 	main.ui.open("shop", {"shop": "guild"}); await frames(2); await shot("36_guild_shop")
 	main.ui.close_all()
+	# things from the item sheet on the farm
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(15, 33):
+		for yy in range(22, 32):
+			hm.remove_obj(xx, yy)
+	var row1 := ["workbench", "anvil", "campfire", "cookstove", "sewing_table", "armory_bench", "electronics_bench", "chem_station", "grain_mill", "oil_press"]
+	var row2 := ["ferment_barrel", "butter_churn", "loom", "dehydrator", "still", "water_purifier", "seed_maker", "compost_bin", "worm_bin", "bee_house"]
+	var row3 := ["mushroom_log", "well", "scarecrow", "tin_scarecrow", "cold_frame", "crab_pot", "large_chest", "garden_gnome", "flower_pot", "bookshelf"]
+	var row4 := ["spike_trap", "bear_trap", "landmine", "tripwire_alarm", "crossbow_turret", "flame_turret", "metal_gate", "concrete_wall", "spiked_barricade", "wind_turbine"]
+	var rows := [row1, row2, row3, row4]
+	for ri in rows.size():
+		for ci in rows[ri].size():
+			hm.add_obj(16 + ci * 2 - (1 if ri % 2 else 0), 23 + ri * 2, rows[ri][ci])
+	hm.add_obj(17, 31, "fruit_tree", {"fruit": "apple", "age": 40, "fruit_n": 3})
+	hm.add_obj(21, 31, "fruit_tree", {"fruit": "cherry", "age": 10})
+	for kk in [Vector2i(25, 31), Vector2i(26, 31), Vector2i(27, 31)]: hm.add_obj(kk.x, kk.y, "brick_path")
+	Game.state.time = 700
+	Game.change_map("homestead", 24, 29, "up", {"silent": true}); await frames(20); await shot("37_item_sheet_objects")
+	for it2 in ["honey", "cheese", "camp_coffee", "jerky", "carrot", "apple", "walleye", "sapphire", "dog_tags", "rotten_flesh", "circuit_board", "satchel", "pancakes", "antiseptic", "tin_ore", "steel_bar"]:
+		Game.add_item(it2, 3, {"silent": true})
+	main.ui.open("journal", {"tab": "inventory"})
+	for i in Game.inv().size():
+		if Game.inv()[i] != null and Game.inv()[i].id == "camp_coffee": main.ui.overlay.sel = i
+	main.ui.render_overlay(); await frames(2); await shot("38_inventory_items")
+	main.ui.close_all()
+	main.ui.open("craft", {"station": "workbench"}); await frames(2); await shot("39_workbench")
+	main.ui.close_all()
+	Game.change_map("clinic", 7, 9, "up", {"silent": true}); Game.sync_npcs(); await frames(20); await shot("40_clinic_coded")
 
 func frames(n: int) -> void:
 	for i in n:

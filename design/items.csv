@@ -1,0 +1,679 @@
+﻿Name,ID,Category,Status,Source,Where / Made At,Ingredients,Use / Effect
+Basic Hoe,hoe,Tool,Existing,Starter,Starting gear,,Tills 1 tile
+Copper Hoe,hoe_copper,Tool,Existing,Upgrade,Anvil,Basic Hoe + Copper Bar x5,Charge to till 3 tiles in a line
+Iron Hoe,hoe_iron,Tool,Existing,Upgrade,Anvil,Copper Hoe + Iron Bar x5,Charge to till 5 tiles in a line
+Silver Hoe,hoe_silver,Tool,Existing,Upgrade,Anvil,Iron Hoe + Silver Bar x5,Charge to till a 3x3 area
+Gold Hoe,hoe_gold,Tool,Existing,Upgrade,Anvil,Silver Hoe + Gold Bar x5,Charge to till a 3x6 area
+Aurium Hoe,hoe_aurium,Tool,Existing,Upgrade,Anvil,Gold Hoe + Aurium Bar x5 + Glimmerite,"Charge to till a 5x5 area; uses no stamina on soft soil"
+Basic Pickaxe,pickaxe,Tool,Existing,Starter,Starting gear,,"Breaks rocks; mines Copper Ore"
+Copper Pickaxe,pickaxe_copper,Tool,Existing,Upgrade,Anvil,Basic Pickaxe + Copper Bar x5,Mines Iron Ore
+Iron Pickaxe,pickaxe_iron,Tool,Existing,Upgrade,Anvil,Copper Pickaxe + Iron Bar x5,Mines Silver Ore and Lead Ore
+Silver Pickaxe,pickaxe_silver,Tool,Existing,Upgrade,Anvil,Iron Pickaxe + Silver Bar x5,"Mines Gold Ore; breaks small boulders"
+Gold Pickaxe,pickaxe_gold,Tool,Existing,Upgrade,Anvil,Silver Pickaxe + Gold Bar x5,"Mines Aurium Ore; breaks large boulders"
+Aurium Pickaxe,pickaxe_aurium,Tool,Existing,Upgrade,Anvil,Gold Pickaxe + Aurium Bar x5 + Glimmerite,"Mines anything in 1 to 2 hits; 10% chance of double ore"
+Basic Axe,axe,Tool,Existing,Starter,Starting gear,,Chops branches and small trees
+Copper Axe,axe_copper,Tool,Existing,Upgrade,Anvil,Basic Axe + Copper Bar x5,Chops stumps
+Iron Axe,axe_iron,Tool,Existing,Upgrade,Anvil,Copper Axe + Iron Bar x5,Chops hardwood logs into Hardwood
+Silver Axe,axe_silver,Tool,Existing,Upgrade,Anvil,Iron Axe + Silver Bar x5,"Chops large logs; breaks wooden barricades"
+Gold Axe,axe_gold,Tool,Existing,Upgrade,Anvil,Silver Axe + Gold Bar x5,Fells trees in 2 hits
+Aurium Axe,axe_aurium,Tool,Existing,Upgrade,Anvil,Gold Axe + Aurium Bar x5 + Glimmerite,"Fells trees in 1 hit; 10% chance of double wood"
+Basic Watering Can,watering_can,Tool,Existing,Starter,Starting gear,,"Holds 40 water; waters 1 tile"
+Copper Watering Can,watering_can_copper,Tool,Existing,Upgrade,Anvil,Basic Watering Can + Copper Bar x5,"Holds 55 water; charge to water 3 tiles"
+Iron Watering Can,watering_can_iron,Tool,Existing,Upgrade,Anvil,Copper Watering Can + Iron Bar x5,"Holds 70 water; charge to water 5 tiles"
+Silver Watering Can,watering_can_silver,Tool,Existing,Upgrade,Anvil,Iron Watering Can + Silver Bar x5,"Holds 85 water; charge to water a 3x3 area"
+Gold Watering Can,watering_can_gold,Tool,Existing,Upgrade,Anvil,Silver Watering Can + Gold Bar x5,"Holds 100 water; charge to water a 3x6 area"
+Aurium Watering Can,watering_can_aurium,Tool,Existing,Upgrade,Anvil,Gold Watering Can + Aurium Bar x5 + Glimmerite,"Holds 120 water; charge to water a 5x5 area"
+Scythe,scythe,Tool,Existing,Starter,Starting gear,,"Cuts grass into Hay and Fiber; harvests Wheat"
+Copper Scythe,scythe_copper,Tool,New,Upgrade,Anvil,Scythe + Copper Bar x5,Wider swing arc
+Iron Scythe,scythe_iron,Tool,New,Upgrade,Anvil,Copper Scythe + Iron Bar x5,"Wider arc; cuts 2 rows"
+Silver Scythe,scythe_silver,Tool,New,Upgrade,Anvil,Iron Scythe + Silver Bar x5,Cuts a 3x3 area
+Gold Scythe,scythe_gold,Tool,New,Upgrade,Anvil,Silver Scythe + Gold Bar x5,"Cuts a 3x3 area; double Fiber chance"
+Aurium Scythe,scythe_aurium,Tool,New,Upgrade,Anvil,Gold Scythe + Aurium Bar x5 + Glimmerite,"Cuts a 5x5 area; double Hay and Fiber"
+Driftwood Rod,fishing_rod,Tool,Existing,Starter,Starting gear,,"Basic fishing; no bait or tackle"
+Bamboo Rod,fishing_rod_bamboo,Tool,New,Craft,Workbench,Bamboo x5 + Fiber x10 + Copper Bar,Can use bait
+Fiberglass Rod,fishing_rod_fiberglass,Tool,New,Craft,Workbench,Plastic x8 + Iron Bar x2 + Thread x3,Bait + 1 tackle slot
+Iron-Reel Rod,fishing_rod_ironreel,Tool,New,Craft,Workbench,Fiberglass Rod + Steel Bar x3 + Spring x2,"Bait + 2 tackle slots; reels 20% faster"
+Aurium Rod,fishing_rod_aurium,Tool,New,Upgrade,Anvil,Iron-Reel Rod + Aurium Bar x3,"Bait + 2 tackle slots; legendary fish escape 30% slower"
+Shears,shears,Tool,New,Craft,Workbench,Iron Bar x2 + Wood x5,Shears Sheep for Wool
+Milk Pail,milk_pail,Tool,New,Craft,Workbench,Copper Bar x2 + Wood x3,Milks Cows and Goats
+Builder's Hammer,builders_hammer,Tool,New,Craft,Workbench,Wood x10 + Iron Bar,"Places, rotates, repairs, and picks up structures and defenses; cracks geodes"
+Lockpick Set,lockpick_set,Tool,New,Craft,Workbench,Scrap x3 + Spring,Quietly opens locked doors and containers
+Gold Pan,gold_pan,Tool,New,Craft,Workbench,Copper Bar x3,"Pan in rivers for ore, Quartz, and gems"
+Metal Detector,metal_detector,Tool,New,Craft,Electronics Bench,Copper Wire x5 + Circuit Board x2 + Car Battery,"Beeps near buried artifacts, coins, and ore"
+Flashlight,flashlight,Tool,New,Find,"Police cars, homes, hardware stores",,"Portable light; drains batteries"
+Binoculars,binoculars,Tool,New,Find,"Ranger stations, hunting lodges",,Scout zombies and points of interest from far away
+Seed Spreader,seed_spreader,Tool,New,Craft,Workbench,Wood x10 + Iron Bar x2 + Gear Assembly,Plants seeds in a 3x3 area at once
+Workbench,workbench,Crafting Station,New,Craft,By hand,Wood x20 + Stone x10,"Basic crafting; builds most other stations"
+Campfire,campfire,Crafting Station,New,Craft,By hand,Wood x10 + Stone x10,"Simple cooking; boils Dirty Water; its light draws zombies at night"
+Tanning Rack,tanning_rack,Crafting Station,Existing,Craft,Workbench,Wood x20 + Fiber x10 + Rope x2,"Rabbit Fur into Tanned Pelt; hides into Leather"
+Ammo Bench,ammo_bench,Crafting Station,Existing,Craft,Workbench,Iron Bar x5 + Wood x15 + Gear Assembly,Crafts all ammunition
+Recycler,recycler,Crafting Station,Existing,Craft,Workbench,Scrap x20 + Iron Bar x3 + Gear Assembly x2,"Turns Junk into Scrap, Cloth, Plastic, and Glass Shards"
+Charcoal Kiln,charcoal_kiln,Crafting Station,Existing,Craft,Workbench,Stone x30 + Clay x10,Wood x10 into Coal and Ash
+Brick Furnace,brick_furnace,Crafting Station,Existing,Craft,Workbench,Stone x25 + Clay x20 + Coal x5,"Smelts ore into bars; Clay into Brick; Sand into Glass"
+Smoker,smoker,Crafting Station,Existing,Craft,Workbench,Wood x25 + Stone x15 + Iron Bar,"Fish into Smoked Fish; meat into Smoked Meat"
+Preserves Jar,preserves_jar,Crafting Station,Existing,Craft,Workbench,Wood x10 + Glass x2 + Coal,"Fruit or vegetables into Jar of Preserves; fish into Aged Roe"
+Anvil,anvil,Crafting Station,New,Craft,Workbench,Iron Bar x10 + Stone x20,"Upgrades tools with metal bars; makes Rebar and Metal Pipe"
+Cookstove,cookstove,Crafting Station,New,Craft,Workbench,Iron Bar x5 + Brick x10 + Coal x5,"Cooks every recipe at 2x speed; burns Coal or Propane"
+Sewing Table,sewing_table,Crafting Station,New,Craft,Workbench,Wood x15 + Iron Bar x2 + Thread x5,"Crafts and repairs clothing and armor; makes Gear Upgrade Kits"
+Armory Bench,armory_bench,Crafting Station,New,Craft,Workbench,Steel Bar x5 + Wood x20 + Precision Parts x2,"Crafts and repairs weapons; makes weapon Upgrade Kits"
+Electronics Bench,electronics_bench,Crafting Station,New,Craft,Workbench,Copper Wire x10 + Circuit Board x2 + Iron Bar x3,"Builds turrets, power, Electric Fence, and Metal Detector"
+Chemistry Station,chem_station,Crafting Station,New,Craft,Workbench,Glass x5 + Iron Bar x3 + Copper Wire x2,"Medical supplies, Gunpowder, explosives, tonics, and sprays"
+Grain Mill,grain_mill,Crafting Station,New,Craft,Workbench,Stone x40 + Wood x20 + Gear Assembly x2,"Wheat or Ashgrain into Flour; Sweet Corn into Cornmeal; Beet into Beet Sugar; Bone into Bone Meal"
+Oil Press,oil_press,Crafting Station,New,Craft,Workbench,Iron Bar x4 + Wood x15 + Gear Assembly,"Sunflower, Soybean, or Peanut into Cooking Oil; Truffle into Truffle Oil"
+Fermentation Barrel,ferment_barrel,Crafting Station,New,Craft,Workbench,Hardwood x15 + Iron Bar,"Makes Hard Cider, Ale, Pickles, Sauerkraut, and Kimchi"
+Butter Churn,butter_churn,Crafting Station,New,Craft,Workbench,Wood x15 + Copper Bar,Milk into Butter
+Cheese Press,cheese_press,Crafting Station,New,Craft,Workbench,Hardwood x20 + Stone x10 + Copper Bar,"Milk into Cheese; Goat Milk into Goat Cheese"
+Loom,loom,Crafting Station,New,Craft,Workbench,Wood x20 + Fiber x30 + Gear Assembly,"Wool, Flax, and Cotton into cloth; Fiber into Thread"
+Dehydrator,dehydrator,Crafting Station,New,Craft,Workbench,Wood x15 + Scrap x5 + Iron Bar,"Dried Fruit, Dried Mushrooms, and Jerky"
+Still,still,Crafting Station,New,Craft,Workbench,Copper Bar x8 + Glass x2 + Rubber Tubing x2,"Fruit or grain into Antiseptic; Sweet Corn or Ashgrain into Biofuel"
+Water Purifier,water_purifier,Crafting Station,New,Craft,Workbench,Iron Bar x3 + Coal x5 + Sand x10 + Glass,Dirty Water into Clean Water with no fuel
+Seed Maker,seed_maker,Crafting Station,New,Craft,Workbench,Wood x25 + Gear Assembly x2 + Gold Bar,Any crop into 1 to 3 of its seeds
+Bucket Sprinkler,bucket_sprinkler,Farm Equipment,Existing,Craft,Workbench,Scrap x5 + Wood x5 + Copper Bar,Waters the 4 adjacent tiles each morning
+Pressure Sprinkler,pressure_sprinkler,Farm Equipment,Existing,Craft,Workbench,Iron Bar x2 + Copper Bar x2 + Rubber Tubing,Waters the 8 surrounding tiles each morning
+Drip Array,drip_array,Farm Equipment,Existing,Craft,Workbench,Pressure Sprinkler + Silver Bar x2 + Rubber Tubing x3,Waters a 5x5 area each morning
+Rain Collector,rain_collector,Farm Equipment,Existing,Craft,Workbench,Wood x15 + Scrap x5 + Plastic x5,"Fills with Dirty Water when it rains; refills watering cans"
+Scarecrow,scarecrow,Farm Equipment,New,Craft,Workbench,Wood x15 + Hay x5 + Tattered Cloth x3,Keeps crows off crops in an 8-tile radius
+Tin Can Scarecrow,tin_scarecrow,Farm Equipment,New,Craft,Workbench,Old Tin Can x10 + Wood x10 + Rope,"Scares crows in an 8-tile radius; rattles when zombies brush past"
+Trellis,trellis,Farm Equipment,New,Craft,Workbench,Wood x5 + Fiber x5,"'+1 harvest on climbing crops (Snap Bean, Cucumber, Hops)"
+Raised Bed,raised_bed,Farm Equipment,New,Craft,Workbench,Wood x10 + Stone x5,"3x3 bed; crops grow 10% faster; Crawlers cannot trample it"
+Cold Frame,cold_frame,Farm Equipment,New,Craft,Workbench,Wood x20 + Glass x6,"Grows 1 crop tile out of season; blocks frost"
+Compost Bin,compost_bin,Farm Equipment,New,Craft,Workbench,Wood x15 + Fiber x10,"Rotten Food, Rotten Flesh, and crop scraps into Compost"
+Worm Bin,worm_bin,Farm Equipment,New,Craft,Workbench,Hardwood x15 + Fiber x10 + Clay x5,"Makes Bait daily; Compost into Premium Bait"
+Bee House,bee_house,Farm Equipment,New,Craft,Workbench,Wood x30 + Iron Bar + Sap x5,"Makes Honey every 4 days; flowers nearby make Wildflower Honey; Beeswax byproduct"
+Mushroom Log,mushroom_log,Farm Equipment,New,Craft,Workbench,Hardwood x10 + Field Mushroom x5,"Grows Field Mushrooms; sometimes Morels or Glowcaps"
+Feed Trough,feed_trough,Farm Equipment,New,Craft,Workbench,Wood x10,Holds Hay and Mixed Feed for livestock
+Water Trough,water_trough,Farm Equipment,New,Craft,Workbench,Wood x5 + Iron Bar,"Waters livestock; refills from a nearby Rain Collector"
+Hay Silo,hay_silo,Farm Equipment,New,Craft,Workbench,Stone x50 + Clay x10 + Copper Bar x5,Stores Hay automatically when you cut grass
+Well,well,Farm Equipment,New,Craft,Workbench,Stone x75 + Brick x20 + Rope x3 + Iron Bar x2,Unlimited Dirty Water and watering can refills
+Radish Seeds,radish_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 4 days
+Potato Seeds,potato_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 6 days
+Snap Bean Seeds,snapbean_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Spring. Grows in 8 days; regrows every 3 days"
+Tomato Seeds,tomato_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 10 days; regrows every 4 days"
+Sweet Corn Seeds,corn_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer, Fall. Grows in 12 days; regrows every 4 days"
+Sun Melon Seeds,melon_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 12 days
+Pumpkin Seeds,pumpkin_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 13 days
+Beet Seeds,beet_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 6 days
+Amber Squash Seeds,squash_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 10 days
+Frost Cabbage Seeds,cabbage_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Winter. Grows in 10 days
+Emberroot Seeds,emberroot_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 8 days
+Snowpea Seeds,snowpea_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Winter. Grows in 7 days; regrows every 3 days"
+Pale Parsnip Seeds,parsnip_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 4 days
+Garlic Seeds,garlic_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 5 days
+Kale Seeds,kale_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 6 days
+Strawbloom Seeds,strawbloom_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Spring. Grows in 8 days; regrows every 4 days"
+Hot Pepper Seeds,hot_pepper_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 5 days; regrows every 3 days"
+Bluebell Berry Seeds,bluebell_berry_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 13 days; regrows every 4 days"
+Wheat Seeds,wheat_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer, Fall. Grows in 4 days"
+Sunflower Seeds,sunflower_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer, Fall. Grows in 8 days"
+Bogberry Seeds,bogberry_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Fall. Grows in 7 days; regrows every 5 days"
+Eggplant Seeds,eggplant_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Fall. Grows in 5 days; regrows every 5 days"
+Amber Yam Seeds,amber_yam_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 10 days
+Bok Choy Seeds,bok_choy_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 4 days
+Frost Turnip Seeds,frost_turnip_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Winter. Grows in 6 days
+Frost Leek Seeds,frost_leek_seed,Seed,Existing,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Winter. Grows in 8 days
+Carrot Seeds,carrot_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 5 days
+Onion Seeds,onion_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 6 days
+Lettuce Seeds,lettuce_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 4 days
+Spinach Seeds,spinach_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 5 days
+Flax Seeds,flax_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 7 days
+Chamomile Seeds,chamomile_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 6 days
+Cauliflower Seeds,cauliflower_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Spring. Grows in 12 days
+Cucumber Seeds,cucumber_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 7 days; regrows every 3 days"
+Zucchini Seeds,zucchini_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 6 days; regrows every 3 days"
+Bell Pepper Seeds,bell_pepper_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 8 days; regrows every 4 days"
+Peanut Seeds,peanut_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 10 days
+Soybean Seeds,soybean_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 8 days
+Hops Seeds,hops_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 11 days; regrows every 1 days"
+Cotton Seeds,cotton_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 12 days
+Basil Seeds,basil_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer. Grows in 5 days; regrows every 3 days"
+Yarrow Seeds,yarrow_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Summer. Grows in 7 days
+Coffee Bean Seeds,coffee_bean_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Summer, Fall. Grows in 10 days; regrows every 2 days"
+Moonbloom Seeds,moonbloom_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,Plant in Fall. Grows in 9 days
+Ashgrain Seeds,ashgrain_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Fall, Winter. Grows in 8 days"
+Cinder Bean Seeds,cinder_bean_seed,Seed,New,Buy,"Seed shop, abandoned gardens, Seed Maker",,"Plant in Winter. Grows in 9 days; regrows every 4 days"
+Apple Sapling,apple_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Apple Tree in 28 days; fruits in Fall"
+Pear Sapling,pear_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Pear Tree in 28 days; fruits in Fall"
+Cherry Sapling,cherry_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Cherry Tree in 28 days; fruits in Spring"
+Peach Sapling,peach_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Peach Tree in 28 days; fruits in Summer"
+Plum Sapling,plum_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Plum Tree in 28 days; fruits in Summer"
+Walnut Sapling,walnut_sapling,Sapling,New,Buy,"Orchard trader; overgrown orchards",,"Grows into a Walnut Tree in 28 days; fruits in Fall"
+Radish,radish,Crop,Existing,Grow,Spring,Radish Seeds,"Quick early crop; Crisp Radish Slaw"
+Potato,potato,Crop,Existing,Grow,Spring,Potato Seeds,"Chance of extra potatoes; stews, hash, baked dishes"
+Snap Bean,snapbean,Crop,Existing,Grow,Spring,Snap Bean Seeds,"Bean Pot, Garden Stew, chili"
+Tomato,tomato,Crop,Existing,Grow,Summer,Tomato Seeds,"Soups, stews, sauces"
+Sweet Corn,corn,Crop,Existing,Grow,"Summer, Fall",Sweet Corn Seeds,"Roast Corn; Cornmeal; Biofuel"
+Sun Melon,melon,Crop,Existing,Grow,Summer,Sun Melon Seeds,"Melon Chill; high sell value"
+Pumpkin,pumpkin,Crop,Existing,Grow,Fall,Pumpkin Seeds,"Ruth's Pumpkin Pie; Harvest Feast"
+Beet,beet,Crop,Existing,Grow,Fall,Beet Seeds,"Beet Borscht; Beet Sugar"
+Amber Squash,squash,Crop,Existing,Grow,Fall,Amber Squash Seeds,"Squash Bake; stews"
+Frost Cabbage,cabbage,Crop,Existing,Grow,Winter,Frost Cabbage Seeds,"Cold-hardy; Cabbage Rolls; Sauerkraut"
+Emberroot,emberroot,Crop,Existing,Grow,Summer,Emberroot Seeds,"Warming root; cold-resistance dishes and Hal's Ember Chili"
+Snowpea,snowpea,Crop,Existing,Grow,Winter,Snowpea Seeds,Snowpea Stir-Fry
+Pale Parsnip,parsnip,Crop,Existing,Grow,Spring,Pale Parsnip Seeds,"Skillet Hash; Garden Omelette"
+Garlic,garlic,Crop,Existing,Grow,Spring,Garlic Seeds,"Flavoring for many dishes; Pest Spray"
+Kale,kale,Crop,Existing,Grow,Spring,Kale Seeds,"Survivor's Plate; Garden Omelette"
+Strawbloom,strawbloom,Crop,Existing,Grow,Spring,Strawbloom Seeds,"Sweet berry; preserves and desserts"
+Hot Pepper,hot_pepper,Crop,Existing,Grow,Summer,Hot Pepper Seeds,"Chili, Kimchi, Pest Spray"
+Bluebell Berry,bluebell_berry,Crop,Existing,Grow,Summer,Bluebell Berry Seeds,"Ines's Berry Cobbler; preserves"
+Wheat,wheat,Crop,Existing,Grow,"Summer, Fall",Wheat Seeds,"Flour; Hay; Ale; Mixed Feed"
+Sunflower,sunflower,Crop,Existing,Grow,"Summer, Fall",Sunflower Seeds,"Cooking Oil; drops extra seeds; feeds Bee House"
+Bogberry,bogberry,Crop,Existing,Grow,Fall,Bogberry Seeds,"Grows best in wet soil; cobbler and preserves"
+Eggplant,eggplant,Crop,Existing,Grow,Fall,Eggplant Seeds,Garden Ratatouille
+Amber Yam,amber_yam,Crop,Existing,Grow,Fall,Amber Yam Seeds,"Hearty root; stews and roasts"
+Bok Choy,bok_choy,Crop,Existing,Grow,Fall,Bok Choy Seeds,"Snowpea Stir-Fry; Kimchi"
+Frost Turnip,frost_turnip,Crop,Existing,Grow,Winter,Frost Turnip Seeds,"Cold-hardy root; winter stews"
+Frost Leek,frost_leek,Crop,Existing,Grow,Winter,Frost Leek Seeds,"Cold-hardy; soups"
+Carrot,carrot,Crop,New,Grow,Spring,Carrot Seeds,"Glazed Carrots; Rabbit Stew; rabbits love them"
+Onion,onion,Crop,New,Grow,Spring,Onion Seeds,"Onion Soup; flavoring for many dishes"
+Lettuce,lettuce,Crop,New,Grow,Spring,Lettuce Seeds,"Salads; Tomas's Fish Tacos"
+Spinach,spinach,Crop,New,Grow,Spring,Spinach Seeds,Salads and omelettes
+Flax,flax,Crop,New,Grow,Spring,Flax Seeds,"Linen at the Loom; extra Fiber"
+Chamomile,chamomile,Crop,New,Grow,Spring,Chamomile Seeds,"Chamomile Tea; feeds Bee House"
+Cauliflower,cauliflower,Crop,New,Grow,Spring,Cauliflower Seeds,"High sell value; roasts"
+Cucumber,cucumber,Crop,New,Grow,Summer,Cucumber Seeds,"Pickles; salads"
+Zucchini,zucchini,Crop,New,Grow,Summer,Zucchini Seeds,Garden Ratatouille
+Bell Pepper,bell_pepper,Crop,New,Grow,Summer,Bell Pepper Seeds,"Stuffed Peppers; Ratatouille"
+Peanut,peanut,Crop,New,Grow,Summer,Peanut Seeds,"Cooking Oil; Peanut Butter Toast"
+Soybean,soybean,Crop,New,Grow,Summer,Soybean Seeds,"Cooking Oil; Mixed Feed"
+Hops,hops,Crop,New,Grow,Summer,Hops Seeds,Ale at the Fermentation Barrel
+Cotton,cotton,Crop,New,Grow,Summer,Cotton Seeds,Cotton Cloth and Thread at the Loom
+Basil,basil,Crop,New,Grow,Summer,Basil Seeds,Herb for poultry and fish dishes
+Yarrow,yarrow,Crop,New,Grow,Summer,Yarrow Seeds,"Medicinal herb; Herbal Poultice"
+Coffee Bean,coffee_bean,Crop,New,Grow,"Summer, Fall",Coffee Bean Seeds,"Roasted Coffee; Camp Coffee"
+Moonbloom,moonbloom,Crop,New,Grow,Fall,Moonbloom Seeds,"Glowing night flower; Growth Tonic and Burn Salve ingredient"
+Ashgrain,ashgrain,Crop,New,Grow,"Fall, Winter",Ashgrain Seeds,"Grows in poor or scorched soil; Flour, porridge, Biofuel"
+Cinder Bean,cinder_bean,Crop,New,Grow,Winter,Cinder Bean Seeds,"Spicy cold-hardy bean; warming chili"
+Apple,apple,Fruit,New,Grow,"Apple Tree, Fall",Apple Sapling,"Hard Cider; Apple Crumble; pies"
+Pear,pear,Fruit,New,Grow,"Pear Tree, Fall",Pear Sapling,"Preserves; Dried Fruit"
+Cherry,cherry,Fruit,New,Grow,"Cherry Tree, Spring",Cherry Sapling,"Cherry Tart; preserves"
+Peach,peach,Fruit,New,Grow,"Peach Tree, Summer",Peach Sapling,"Preserves; Dried Fruit"
+Plum,plum,Fruit,New,Grow,"Plum Tree, Summer",Plum Sapling,"Preserves; Dried Fruit"
+Walnut,walnut,Fruit,New,Grow,"Walnut Tree, Fall",Walnut Sapling,"Trail Bar; baking"
+Wild Leek,wild_leek,Forage,Existing,Forage,"Spring; forest edges",,"Forager's Salad; Wren's Trout Chowder"
+Dandelion,dandelion,Forage,Existing,Forage,"Spring; meadows",,"Dandelion Tea; salads"
+Sunberry,sunberry,Forage,Existing,Forage,"Summer; sunny clearings",,"Snack; Trail Bar; preserves"
+Wild Mint,wild_mint,Forage,Existing,Forage,"Spring, Summer; creek banks",,"Mint Tea; Melon Chill"
+Hazelnut,hazelnut,Forage,Existing,Forage,"Fall; forest",,"Trail Bar; snack"
+Field Mushroom,field_mushroom,Forage,Existing,Forage,"Fall; forest floor and meadows",,"Mushroom Toast; starts a Mushroom Log"
+Winter Root,winter_root,Forage,Existing,Forage,"Winter; dig spots",,Winter stews
+Frost Lichen,frost_lichen,Forage,Existing,Forage,"Winter; rocks and cave mouths",,"Herbal Poultice; winter tea"
+Morel,morel,Forage,New,Forage,"Spring; burned forest areas",,"Rare, valuable; Morel Skillet"
+Fiddlehead Fern,fiddlehead,Forage,New,Forage,"Spring; riverbanks",,"Sauteed side; salads"
+Chickweed,chickweed,Forage,New,Forage,"Spring; overgrown gardens",,"Salads; Herbal Poultice"
+Elderflower,elderflower,Forage,New,Forage,"Summer; hedgerows",,Elderflower Cordial
+Chanterelle,chanterelle,Forage,New,Forage,"Summer; mossy forest",,"Mushroom dishes; Dried Mushrooms"
+Blackberry,blackberry,Forage,New,Forage,"Summer, Fall; bramble patches",,"Cobbler; preserves"
+Wild Raspberry,wild_raspberry,Forage,New,Forage,"Summer; forest edges",,"Snack; preserves"
+Cattail,cattail,Forage,New,Forage,"Summer; ponds and swamps",,"Edible root; extra Fiber"
+Willow Bark,willow_bark,Forage,New,Forage,"Any; riverside willows",,"Willow Bark Tea; Painkillers"
+Acorn,acorn,Forage,New,Forage,"Fall; oak trees",,"Animal feed; grind into Flour"
+Chestnut,chestnut,Forage,New,Forage,"Fall; forest",,"Chestnut Stuffing; roasting"
+Rose Hip,rose_hip,Forage,New,Forage,"Fall; wild rose bushes",,"Tea; preserves"
+Puffball,puffball,Forage,New,Forage,"Fall; meadows",,Mushroom dishes
+Wild Grape,wild_grape,Forage,New,Forage,"Fall; fences and treelines",,"Preserves; Antiseptic at the Still"
+Wild Ginseng,wild_ginseng,Forage,New,Forage,"Fall; deep forest (rare)",,"'+50 Stamina when eaten; valuable trade item"
+Cranberry,cranberry,Forage,New,Forage,"Fall, Winter; bogs",,"Preserves; baking"
+Pine Nut,pine_nut,Forage,New,Forage,"Winter; pine forest",,"Trail Bar; snack"
+Pine Needles,pine_needles,Forage,New,Forage,"Winter; pine forest",,Pine Needle Tea
+Holly Berry,holly_berry,Forage,New,Forage,"Winter; forest",,"Toxic to eat; decoration and trade"
+Glowcap,glowcap,Forage,New,Forage,"Any; caves and mines",,"Glowing mushroom; Growth Tonic and Glow Lure"
+River Chub,river_chub,Fish,Existing,Fish,"River; all seasons; day",,"Easy. Common catch; cooking"
+Silver Dace,silver_dace,Fish,Existing,Fish,"River; Spring, Summer; day",,"Easy. Cooking; Smoker"
+Mud Catfish,mud_catfish,Fish,Existing,Fish,"Pond, swamp; Summer, Fall; night",,"Medium. Cooking; Smoker"
+Rainbow Trout,rainbow_trout,Fish,Existing,Fish,"River; Spring, Summer; day",,Medium. Wren's Trout Chowder
+Pond Sunfish,pond_sunfish,Fish,Existing,Fish,"Pond; Spring, Summer; day",,Easy. Cooking
+Mirror Carp,mirror_carp,Fish,Existing,Fish,"Lake, pond; all seasons; any time",,Medium. Cooking
+Lake Perch,lake_perch,Fish,Existing,Fish,"Lake; Fall, Winter; day",,Easy. Pan-Fried Fish
+Ghost Pike,ghost_pike,Fish,Existing,Fish,"Lake; Winter; night",,"Hard. Pale and rare; high value"
+Stone Loach,stone_loach,Fish,Existing,Fish,"River (rocky shallows); all seasons",,Easy. Bait fish
+Sunset Bream,sunset_bream,Fish,Existing,Fish,"Lake; Summer; evening",,Medium. Cooking
+River Gar,river_gar,Fish,Existing,Fish,"River; Summer; day",,"Hard. Cooking; Smoker"
+Ice Smelt,ice_smelt,Fish,Existing,Fish,"Lake (ice fishing); Winter",,"Easy. Bait; frying"
+Old Whiskers,old_whiskers,Fish,Existing,Fish,"Swamp; Fall; rainy nights",,"Legendary. Giant catfish; one per save"
+Spotted Bullhead,spotted_bullhead,Fish,Existing,Fish,"Pond, swamp; Spring, Fall; night",,Easy. Cooking
+Gold Shiner,gold_shiner,Fish,Existing,Fish,"River; Summer; day",,"Medium. Rare; high value"
+Bog Eel,bog_eel,Fish,Existing,Fish,"Swamp; all seasons; night",,Hard. Smoker
+Lake Whitefish,lake_whitefish,Fish,Existing,Fish,"Lake; Fall, Winter; day",,Medium. Smoked Fish
+Highland Char,highland_char,Fish,Existing,Fish,"Mountain lake; Spring, Fall",,Hard. High value
+Bramble Bass,bramble_bass,Fish,Existing,Fish,"Overgrown ponds; Summer, Fall",,Medium. Cooking
+Pale Sturgeon,pale_sturgeon,Fish,Existing,Fish,"Deep lake; Spring, Fall",,Very Hard. Aged Roe
+The Ridge Lurker,ridge_lurker,Fish,Existing,Fish,"Mountain lake; Winter; night",,Legendary. One per save
+Crappie,crappie,Fish,New,Fish,"Lake, pond; Spring, Fall; day",,Easy. Pan-Fried Fish
+Walleye,walleye,Fish,New,Fish,"Lake; Fall, Winter; night",,Medium. Cooking
+Brook Trout,brook_trout,Fish,New,Fish,"Mountain stream; Spring, Fall",,Medium. Cooking
+Brown Trout,brown_trout,Fish,New,Fish,"River; Fall",,"Medium. Cooking; Smoker"
+Chinook Salmon,chinook_salmon,Fish,New,Fish,"River; Fall salmon run",,"Hard. Salmon Bake; Aged Roe"
+Shad,shad,Fish,New,Fish,"River; Spring run",,"Easy. Bait; Smoker"
+Bowfin,bowfin,Fish,New,Fish,"Swamp; Summer",,Hard. Cooking
+Lamprey,lamprey,Fish,New,Fish,"River; Spring; night",,"Medium. Bait; Compost"
+Muskie,muskie,Fish,New,Fish,"Lake; Summer, Fall",,"Very Hard. Trophy fish; high value"
+Minnow,minnow,Fish,New,Fish,"Any freshwater; any time",,Easy. Live bait
+Burbot,burbot,Fish,New,Fish,"Lake (ice fishing); Winter; night",,Medium. Cooking
+Cave Blindfish,cave_blindfish,Fish,New,Fish,Underground mine pools,,Medium. Glow Lure ingredient
+Golden Koi,golden_koi,Fish,New,Fish,"City park pond; any time",,"Hard. Rare; very high value"
+Glow Carp,glow_carp,Fish,New,Fish,"Pond near Halvorsen Biomedical; night",,"Hard. Mutated and glowing; research quests"
+Crayfish,crayfish,Fish,New,Fish,"Crab Pot; river, pond",,Crayfish Boil
+River Clam,river_clam,Fish,New,Fish,"Crab Pot; river",,"Chowder; chance of a pearl"
+Bullfrog,bullfrog,Fish,New,Fish,"Crab Pot; pond; Summer",,"Cooking; bait"
+Snapping Turtle,snapping_turtle,Fish,New,Fish,"Crab Pot or rod; swamp; Summer",,"Hard. Turtle soup; shell for crafting"
+Rotgill,rotgill,Fish,New,Fish,"Flooded quarantine zone; Fall; night",,"Legendary. Grew fat on the drowned dead; one per save"
+Lantern Queen,lantern_queen,Fish,New,Fish,"Deepest mine pool; any time",,"Legendary. Glowing cave fish; one per save"
+Crab Pot,crab_pot,Fishing Tackle,New,Craft,Workbench,Wood x25 + Iron Bar x3 + Rope,"Place in water with bait; catches Crayfish, Clams, Bullfrogs, Turtles"
+Spinner,spinner,Fishing Tackle,New,Craft,Workbench,Copper Bar x2,Fish bite faster
+Cork Bobber,cork_bobber,Fishing Tackle,New,Craft,Workbench,Wood x5 + Sap x2,Larger catch zone
+Lead Weight,lead_weight,Fishing Tackle,New,Craft,Workbench,Lead Bar,Fish dart around less
+Trap Bobber,trap_bobber,Fishing Tackle,New,Craft,Workbench,Copper Bar + Iron Bar,Fish escape slower
+Glow Lure,glow_lure,Fishing Tackle,New,Craft,Workbench,Glowcap x3 + Glass,Better night and cave fishing
+Treasure Hook,treasure_hook,Fishing Tackle,New,Craft,Workbench,Gold Bar + Magnet,Higher chance to hook artifacts and treasure
+Chicken,chicken,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Eggs and Large Eggs; drops Feathers"
+Duck,duck,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Duck Eggs; drops Feathers"
+Quail,quail,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Quail Eggs; small and cheap to feed"
+Rabbit,rabbit,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Hutch",,"Drops Rabbit Fur; rare Lucky Paw"
+Goat,goat,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Barn",,Gives Goat Milk
+Cow,cow,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Barn",,Gives Milk and Large Milk
+Sheep,sheep,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Barn",,Gives Wool when sheared
+Pig,pig,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Barn",,Digs up Truffles outdoors
+Guard Dog,guard_dog,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Doghouse",,"Barks when zombies approach; attacks intruders"
+Barn Cat,barn_cat,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Barn or house",,"Keeps pests out of feed; brings you small finds"
+Egg,egg,Animal Product,Existing,Animal,Chicken,,"Cooking; Mayonnaise"
+Large Egg,large_egg,Animal Product,Existing,Animal,Happy Chicken,,"Cooking; higher value"
+Rabbit Fur,rabbit_fur,Animal Product,Existing,Animal,"Rabbit; hunting",,Tanned Pelt at the Tanning Rack
+Lucky Paw,lucky_paw,Animal Product,Existing,Animal,Rabbit (rare),,"Rare crafting ingredient; lucky charm"
+Duck Egg,duck_egg,Animal Product,New,Animal,Duck,,"Cooking; baking"
+Quail Egg,quail_egg,Animal Product,New,Animal,Quail,,"Cooking; Deviled Eggs"
+Golden Egg,golden_egg,Animal Product,New,Animal,Chicken (very rare),,"Very high value; rare recipes"
+Milk,milk,Animal Product,New,Animal,Cow,,"Butter, Cheese, cooking"
+Large Milk,large_milk,Animal Product,New,Animal,Happy Cow,,"Butter, Cheese; higher value"
+Goat Milk,goat_milk,Animal Product,New,Animal,Goat,,Goat Cheese
+Wool,wool,Animal Product,New,Animal,Sheep (Shears),,Wool Cloth at the Loom
+Feather,feather,Animal Product,New,Animal,"Chicken, Duck; hunting birds",,Arrows and Bolts
+Truffle,truffle,Animal Product,New,Animal,Pig,,"Truffle Oil; very high value"
+Rabbit Meat,rabbit_meat,Animal Product,New,Animal,"Hunting; Rabbit",,Rabbit Stew
+Venison,venison,Animal Product,New,Hunt,Hunting deer,,"Venison Steak; Jerky"
+Boar Meat,boar_meat,Animal Product,New,Hunt,Hunting boar,,Boar Roast
+Raw Poultry,poultry,Animal Product,New,Hunt,Hunting turkey and birds,,Roast Poultry
+Animal Fat,animal_fat,Animal Product,New,Hunt,Hunting,,"Soap, Candles, Lamp Oil"
+Bone,bone,Animal Product,New,Hunt,"Hunting; zombies",,"Bone Meal; arrowheads"
+Sinew,sinew,Animal Product,New,Hunt,Hunting deer,,Bowstring
+Deer Hide,deer_hide,Animal Product,New,Hunt,Hunting deer,,Leather at the Tanning Rack
+Boar Hide,boar_hide,Animal Product,New,Hunt,Hunting boar,,Thick Leather for armor
+Tanned Pelt,tanned_pelt,Artisan Good,Existing,Machine,Tanning Rack,Rabbit Fur x2,"Sewing; warm clothing"
+Jar of Preserves,preserves,Artisan Good,Existing,Machine,Preserves Jar,Any fruit or vegetable x3,"Never spoils; high value"
+Smoked Fish,smoked_fish,Artisan Good,Existing,Machine,Smoker,Any fish + Coal,"Never spoils;' +30 Health"
+Honey,honey,Artisan Good,New,Machine,Bee House,,"Cooking;' +20 Stamina"
+Wildflower Honey,wildflower_honey,Artisan Good,New,Machine,Bee House near flowers,,"Cooking;' +40 Stamina; higher value"
+Beeswax,beeswax,Artisan Good,New,Machine,Bee House,,"Candles, Burn Salve, waterproofing"
+Candle,candle,Artisan Good,New,Machine,Workbench,Beeswax or Animal Fat + Thread,"Silent light source; does not draw zombies"
+Soap,soap,Artisan Good,New,Machine,Chemistry Station,Animal Fat + Ash,Clean up: -5% infection chance for 1 day
+Butter,butter,Artisan Good,New,Machine,Butter Churn,Milk,Baking and cooking
+Cheese,cheese,Artisan Good,New,Machine,Cheese Press,Milk,"Cooking; high value"
+Goat Cheese,goat_cheese,Artisan Good,New,Machine,Cheese Press,Goat Milk,"Cooking; high value"
+Mayonnaise,mayonnaise,Artisan Good,New,Machine,Cookstove,Egg + Cooking Oil,"Deviled Eggs; sandwiches"
+Flour,flour,Artisan Good,New,Machine,Grain Mill,Wheat x2 or Ashgrain x2,"Bread, pies, baking"
+Cornmeal,cornmeal,Artisan Good,New,Machine,Grain Mill,Sweet Corn x2,"Cornbread; tacos"
+Beet Sugar,beet_sugar,Artisan Good,New,Machine,Grain Mill,Beet x3,"Pies, tarts, desserts"
+Cooking Oil,cooking_oil,Artisan Good,New,Machine,Oil Press,"Sunflower x3, Soybean x3, or Peanut x3","Frying; Lamp Oil"
+Truffle Oil,truffle_oil,Artisan Good,New,Machine,Oil Press,Truffle,Very high value
+Pickles,pickles,Artisan Good,New,Machine,Fermentation Barrel,Cucumber x3,Never spoils
+Sauerkraut,sauerkraut,Artisan Good,New,Machine,Fermentation Barrel,Frost Cabbage x2,"Never spoils;' +10% stamina regen"
+Kimchi,kimchi,Artisan Good,New,Machine,Fermentation Barrel,Bok Choy x2 + Hot Pepper,"Never spoils;' +5% crit chance"
+Hard Cider,hard_cider,Artisan Good,New,Machine,Fermentation Barrel,Apple x3,"Trade item; morale"
+Ale,ale,Artisan Good,New,Machine,Fermentation Barrel,Wheat x2 + Hops,"Trade item; Harvest Feast"
+Roasted Coffee,roasted_coffee,Artisan Good,New,Machine,Campfire or Cookstove,Coffee Bean x3,Camp Coffee
+Dried Fruit,dried_fruit,Artisan Good,New,Machine,Dehydrator,Any fruit x5,"Never spoils;' +25 Stamina"
+Dried Mushrooms,dried_mushrooms,Artisan Good,New,Machine,Dehydrator,Any mushroom x5,"Never spoils; cooking"
+Jerky,jerky,Artisan Good,New,Machine,Dehydrator,Any raw meat,"Never spoils;' +30 Health"
+Smoked Meat,smoked_meat,Artisan Good,New,Machine,Smoker,Any raw meat + Coal,"Never spoils;' +40 Health"
+Aged Roe,aged_roe,Artisan Good,New,Machine,Preserves Jar,Pale Sturgeon or Chinook Salmon,Very high value
+Wool Cloth,wool_cloth,Artisan Good,New,Machine,Loom,Wool x2,"Warm clothing; Military Rucksack"
+Linen,linen,Artisan Good,New,Machine,Loom,Flax x3,"Clothing; Sterile Bandages"
+Cotton Cloth,cotton_cloth,Artisan Good,New,Machine,Loom,Cotton x3,"Clothing; Frost Cloth; Hiking Pack"
+Leather,leather,Artisan Good,New,Machine,Tanning Rack,Deer Hide or Boar Hide,"Armor, straps, upgrade kits"
+Pan-Fried Fish,fried_fish,Cooked Dish,Existing,Cook,Campfire or Cookstove,Any fish + Cooking Oil,'+25 Health
+Garden Stew,veggie_stew,Cooked Dish,Existing,Cook,Campfire or Cookstove,Potato + Snap Bean + Tomato,"'+40 Health;' +10% stamina regen for 3 min"
+Forager's Salad,forager_salad,Cooked Dish,Existing,Cook,Campfire or Cookstove,Wild Leek + Dandelion + Sunberry,"'+20 Health;' +5% move speed for 2 min"
+Ember-Baked Potato,baked_potato,Cooked Dish,Existing,Cook,Campfire or Cookstove,Potato + Emberroot,"'+30 Health; cold resistance for 3 min"
+Dandelion Tea,dandelion_tea,Cooked Dish,Existing,Cook,Campfire or Cookstove,Dandelion x2 + Clean Water,'+25 Stamina
+Mint Tea,mint_tea,Cooked Dish,Existing,Cook,Campfire or Cookstove,Wild Mint x2 + Clean Water,"'+30 Stamina;' -10% stamina costs for 3 min"
+Roast Corn,roast_corn,Cooked Dish,Existing,Cook,Campfire or Cookstove,Sweet Corn,'+20 Health
+Crisp Radish Slaw,radish_slaw,Cooked Dish,Existing,Cook,Campfire or Cookstove,Radish x2 + Kale,"'+20 Health;' +5% crit chance for 3 min"
+Skillet Hash,skillet_hash,Cooked Dish,Existing,Cook,Campfire or Cookstove,Potato + Pale Parsnip + Egg,'+45 Health
+Mushroom Toast,mushroom_toast,Cooked Dish,Existing,Cook,Campfire or Cookstove,Field Mushroom + Bread Loaf,'+35 Health
+Tomato Soup,tomato_soup,Cooked Dish,Existing,Cook,Campfire or Cookstove,Tomato x2 + Garlic,"'+35 Health;' +10% stamina regen for 3 min"
+Beet Borscht,beet_borscht,Cooked Dish,Existing,Cook,Campfire or Cookstove,Beet x2 + Frost Cabbage + Garlic,"'+45 Health; cold resistance for 5 min"
+Trail Bar,trail_bar,Cooked Dish,Existing,Cook,Campfire or Cookstove,Hazelnut + Sunberry + Flour,"'+20 Health, +30 Stamina; never spoils"
+Bean Pot,bean_pot,Cooked Dish,Existing,Cook,Campfire or Cookstove,Snap Bean x3 + Hot Pepper,'+50 Health
+Melon Chill,melon_chill,Cooked Dish,Existing,Cook,Campfire or Cookstove,Sun Melon + Wild Mint,"'+40 Stamina; heat resistance for 5 min"
+Cabbage Rolls,cabbage_rolls,Cooked Dish,Existing,Cook,Campfire or Cookstove,Frost Cabbage + Potato + Garlic,'+45 Health
+Fisherman's Stew,fishermans_stew,Cooked Dish,Existing,Cook,Campfire or Cookstove,Any fish x2 + Potato + Tomato,"'+60 Health; easier catches for 5 min"
+Squash Bake,squash_bake,Cooked Dish,Existing,Cook,Campfire or Cookstove,Amber Squash + Butter,'+45 Health
+Snowpea Stir-Fry,snowpea_stirfry,Cooked Dish,Existing,Cook,Campfire or Cookstove,Snowpea + Bok Choy + Garlic + Cooking Oil,"'+45 Health;' +5% move speed for 3 min"
+Survivor's Plate,survivor_plate,Cooked Dish,Existing,Cook,Campfire or Cookstove,Any meat or fish + Potato + Kale,"'+70 Health;' +10 max HP for 5 min"
+Ruth's Pumpkin Pie,pumpkin_pie,Cooked Dish,Existing,Reward,"Recipe reward; cook at Cookstove",Pumpkin + Flour + Egg + Beet Sugar,"'+80 Health; recipe from Ruth"
+Hal's Ember Chili,ember_chili,Cooked Dish,Existing,Reward,"Recipe reward; cook at Cookstove",Emberroot + Hot Pepper + Snap Bean + Tomato,"'+70 Health;' +10% melee damage and cold immunity for 5 min; recipe from Hal"
+Ines's Berry Cobbler,berry_cobbler,Cooked Dish,Existing,Reward,"Recipe reward; cook at Cookstove",Bluebell Berry + Bogberry + Flour + Butter,"'+75 Health, +50 Stamina; recipe from Ines"
+Wren's Trout Chowder,trout_chowder,Cooked Dish,Existing,Reward,"Recipe reward; cook at Cookstove",Rainbow Trout + Potato + Milk + Wild Leek,"'+80 Health;' +15% stamina regen for 5 min; recipe from Wren"
+Fried Egg,fried_egg,Cooked Dish,Existing,Cook,Campfire or Cookstove,Egg,'+20 Health
+Breakfast Skillet,breakfast_skillet,Cooked Dish,Existing,Cook,Campfire or Cookstove,Egg x2 + Potato + Hot Pepper,'+55 Health
+Marisol's Garden Omelette,garden_omelette,Cooked Dish,Existing,Reward,"Recipe reward; cook at Cookstove",Egg x2 + Tomato + Kale + Pale Parsnip,"'+65 Health;' +5% move speed for 5 min; recipe from Marisol"
+Venison Steak,venison_steak,Cooked Dish,New,Cook,Campfire or Cookstove,Venison + Garlic,"'+60 Health;' +10% melee damage for 3 min"
+Rabbit Stew,rabbit_stew,Cooked Dish,New,Cook,Campfire or Cookstove,Rabbit Meat + Carrot + Potato,'+55 Health
+Boar Roast,boar_roast,Cooked Dish,New,Cook,Campfire or Cookstove,Boar Meat + Onion + Apple,"'+75 Health;' +5% damage reduction for 5 min"
+Roast Poultry,roast_poultry,Cooked Dish,New,Cook,Campfire or Cookstove,Raw Poultry + Onion + Basil,'+55 Health
+Tomas's Fish Tacos,fish_tacos,Cooked Dish,New,Reward,"Recipe reward; cook at Cookstove",Any fish + Cornmeal + Lettuce + Hot Pepper,"'+65 Health; recipe from Tomas"
+Salmon Bake,salmon_bake,Cooked Dish,New,Cook,Campfire or Cookstove,Chinook Salmon + Butter + Basil,"'+70 Health;' +10% crit chance for 5 min"
+Crayfish Boil,crayfish_boil,Cooked Dish,New,Cook,Campfire or Cookstove,Crayfish x3 + Sweet Corn + Potato + Garlic,'+70 Health
+Flatbread,flatbread,Cooked Dish,New,Cook,Campfire or Cookstove,Flour + Cooking Oil,'+20 Health
+Pancakes,pancakes,Cooked Dish,New,Cook,Campfire or Cookstove,Flour + Egg + Milk,"'+40 Health, +20 Stamina"
+Bea's Honey Cornbread,honey_cornbread,Cooked Dish,New,Reward,"Recipe reward; cook at Cookstove",Cornmeal + Egg + Honey,"'+50 Health; recipe from Bea"
+Glazed Carrots,glazed_carrots,Cooked Dish,New,Cook,Campfire or Cookstove,Carrot x2 + Honey + Butter,"'+35 Health; night vision for 3 min"
+Stuffed Peppers,stuffed_peppers,Cooked Dish,New,Cook,Campfire or Cookstove,Bell Pepper + Ashgrain + Tomato + Cheese,'+55 Health
+Garden Ratatouille,ratatouille,Cooked Dish,New,Cook,Campfire or Cookstove,Eggplant + Zucchini + Tomato + Bell Pepper,"'+60 Health;' +10% stamina regen for 5 min"
+Deviled Eggs,deviled_eggs,Cooked Dish,New,Cook,Campfire or Cookstove,Egg x2 + Mayonnaise,'+30 Health
+Cheesy Potato Bake,potato_gratin,Cooked Dish,New,Cook,Campfire or Cookstove,Potato x2 + Cheese + Milk,'+60 Health
+Peanut Butter Toast,pb_toast,Cooked Dish,New,Cook,Campfire or Cookstove,Bread Loaf + Peanut x2,"'+35 Health, +25 Stamina"
+Ashgrain Porridge,ashgrain_porridge,Cooked Dish,New,Cook,Campfire or Cookstove,Ashgrain + Milk + Honey,"'+40 Health, +40 Stamina"
+Onion Soup,onion_soup,Cooked Dish,New,Cook,Campfire or Cookstove,Onion x3 + Butter + Bread Loaf,'+50 Health
+Morel Skillet,morel_skillet,Cooked Dish,New,Cook,Campfire or Cookstove,Morel x2 + Butter + Wild Leek,"'+60 Health;' +5% move speed for 5 min"
+Chestnut Stuffing,chestnut_stuffing,Cooked Dish,New,Cook,Campfire or Cookstove,Chestnut x3 + Bread Loaf + Onion,'+45 Health
+Apple Crumble,apple_crumble,Cooked Dish,New,Cook,Campfire or Cookstove,Apple x2 + Flour + Butter + Beet Sugar,'+60 Health
+Cherry Tart,cherry_tart,Cooked Dish,New,Cook,Campfire or Cookstove,Cherry x3 + Flour + Butter + Beet Sugar,"'+60 Health, +20 Stamina"
+Camp Coffee,camp_coffee,Cooked Dish,New,Cook,Campfire or Cookstove,Roasted Coffee + Clean Water,"'+50 Stamina;' +10% move speed for 2 min"
+Chamomile Tea,chamomile_tea,Cooked Dish,New,Cook,Campfire or Cookstove,Chamomile x2 + Clean Water,"'+20 Health; wake with full Stamina"
+Elderflower Cordial,elderflower_cordial,Cooked Dish,New,Cook,Campfire or Cookstove,Elderflower x3 + Honey + Clean Water,'+40 Stamina
+Pine Needle Tea,pine_tea,Cooked Dish,New,Cook,Campfire or Cookstove,Pine Needles x3 + Clean Water,"'+20 Health; cold resistance for 3 min"
+Dot's Apple Butter Biscuits,apple_biscuits,Cooked Dish,New,Reward,"Recipe reward; cook at Cookstove",Flour + Butter + Apple + Milk,"'+60 Health; recipe from Dot"
+Sergeant Kole's Field Rations,field_rations,Cooked Dish,New,Reward,"Recipe reward; cook at Cookstove",Jerky + Hardtack + Canned Beans + Roasted Coffee,"'+80 Health, +40 Stamina; never spoils; recipe from Sgt. Kole"
+Harvest Feast,harvest_feast,Cooked Dish,New,Reward,"Recipe from the Fall community dinner quest; Cookstove",Pumpkin + Roast Poultry + Bread Loaf + Apple Crumble + Ale,"Full Health and Stamina;' +20 max HP and +10% damage for 10 min"
+Clean Water,water_bottle,Provisions,Existing,Find,"Homes, stores; or boil Dirty Water, or Water Purifier",,"Safe to drink; cooking ingredient"
+Canned Beans,canned_beans,Provisions,Existing,Find,"Homes, grocery stores",,"'+30 Health; never spoils"
+Bread Loaf,bread_loaf,Provisions,Existing,Cook,"Bakeries, homes; or Campfire / Cookstove",Flour + Clean Water,"'+25 Health; cooking ingredient"
+Dirty Water,dirty_water,Provisions,New,Find,"Rivers, ponds, Rain Collector, Well",,"Risk of sickness if drunk; boil or purify first"
+Canned Soup,canned_soup,Provisions,New,Find,"Homes, grocery stores",,"'+35 Health; never spoils"
+Canned Peaches,canned_peaches,Provisions,New,Find,"Homes, grocery stores",,"'+20 Health, +20 Stamina; never spoils"
+Canned Tuna,canned_tuna,Provisions,New,Find,"Homes, grocery stores",,"'+30 Health; never spoils"
+Canned Meat,canned_meat,Provisions,New,Find,"Homes, grocery stores",,"'+40 Health; never spoils"
+Instant Noodles,instant_noodles,Provisions,New,Find,"Homes, gas stations, dorms",,"'+30 Health; needs Clean Water"
+Crackers,crackers,Provisions,New,Find,"Homes, gas stations",,'+15 Health
+Granola Bar,granola_bar,Provisions,New,Find,"Gas stations, schools",,"'+15 Health, +20 Stamina"
+Peanut Butter Jar,peanut_butter,Provisions,New,Find,"Homes, grocery stores",,"'+40 Health; never spoils"
+Chocolate Bar,chocolate_bar,Provisions,New,Find,"Gas stations, vending machines",,"'+25 Stamina; morale boost"
+MRE,mre,Provisions,New,Find,"Military bases, National Guard checkpoints",,"'+60 Health, +40 Stamina; never spoils"
+Energy Drink,energy_drink,Provisions,New,Find,"Gas stations, vending machines",,"'+60 Stamina;' -20 Stamina when it wears off"
+Soda,soda,Provisions,New,Find,"Vending machines, homes",,'+20 Stamina
+Boxed Cereal,cereal,Provisions,New,Find,"Homes, grocery stores",,'+20 Health
+Powdered Milk,powdered_milk,Provisions,New,Find,"Homes, grocery stores",,Substitute for Milk in recipes
+Bag of Rice,rice_bag,Provisions,New,Find,"Grocery stores, restaurants",,"Cooking ingredient; never spoils"
+Dried Pasta,dried_pasta,Provisions,New,Find,"Grocery stores, homes",,"Cooking ingredient; never spoils"
+Hardtack,hardtack,Provisions,New,Cook,Campfire or Cookstove,Flour + Clean Water + Salt,"'+25 Health; never spoils"
+Bandage,bandage,Medical,Existing,Craft,Workbench,Tattered Cloth x2,"Stops bleeding;' +10 Health"
+Med Kit,med_kit,Medical,Existing,Craft,Chemistry Station,Sterile Bandage x2 + Antiseptic + Painkillers,"'+60 Health; stops bleeding"
+Sterile Bandage,sterile_bandage,Medical,New,Craft,Chemistry Station,Bandage + Antiseptic,"Stops bleeding;' +20 Health; lowers wound infection risk"
+Antiseptic,antiseptic,Medical,New,Machine,Still,Any fruit x3 or Ashgrain x3,"Cleans wounds;' -50% wound infection chance"
+Painkillers,painkillers,Medical,New,Craft,"Pharmacies; or Chemistry Station",Willow Bark x3 + Glass Bottle,"Ignore injury penalties;' +10 Health over time"
+Antibiotics,antibiotics,Medical,New,Find,"Pharmacies, hospitals",,Cures sickness and wound infection (not zombie infection)
+Splint,splint,Medical,New,Craft,Workbench,Wood x2 + Rope,Fixes a broken limb and removes its slow
+Suture Kit,suture_kit,Medical,New,Craft,"Hospitals; or Chemistry Station",Thread x3 + Iron Bar,"Closes deep wounds;' +30 Health"
+Herbal Poultice,herbal_poultice,Medical,New,Craft,Campfire or Chemistry Station,Yarrow x2 + Chickweed + Clean Water,"Stops bleeding;' +15 Health"
+Willow Bark Tea,willow_tea,Medical,New,Cook,Campfire or Cookstove,Willow Bark x2 + Clean Water,"Mild pain relief;' +15 Health"
+Burn Salve,burn_salve,Medical,New,Craft,Chemistry Station,Moonbloom + Beeswax,"Heals burns;' +25 Health;' -50% burn damage for 1 min"
+Iodine Tablets,iodine_tablets,Medical,New,Find,"Military bases, camping stores",,Purifies Dirty Water anywhere
+Vitamins,vitamins,Medical,New,Find,"Pharmacies, homes",,'+10% max Stamina for 1 day
+Adrenaline Shot,adrenaline_shot,Medical,New,Find,"Hospitals, ambulances",,"Instantly get up when downed;' +30% move speed for 10 s"
+Blood Bag,blood_bag,Medical,New,Find,"Hospitals, blood bank",,"'+100 Health; recovers max HP lost to heavy bleeding"
+Experimental Antiviral,antiviral,Medical,New,Reward,Halvorsen Biomedical quest chain (very rare),,Cures zombie infection if used within 1 day of a bite
+Field Surgery Kit,surgery_kit,Medical,New,Craft,Chemistry Station,Suture Kit + Sterile Bandage x2 + Antiseptic + Painkillers,"Full heal; fixes all injuries"
+Wood,wood,Resource,Existing,Gather,"Trees, branches, salvaged furniture",,"Building, crafting, fuel"
+Stone,stone,Resource,Existing,Mine,"Rocks, rubble",,"Building, walls, paths"
+Fiber,fiber,Resource,Existing,Gather,Weeds and grass (Scythe),,"Rope, Thread, crafting"
+Clay,clay,Resource,Existing,Gather,"Hoeing dirt, riverbanks",,"Brick, kilns, furnaces"
+Scrap Metal,scrap,Resource,Existing,Find,"Cars, junk piles, Recycler",,"Metal crafting, defenses, repairs"
+Tattered Cloth,cloth,Resource,Existing,Find,"Homes, zombies, Recycler",,"Bandages, Molotovs, scarecrows"
+Coal,coal,Resource,Existing,Mine,"Mines; Charcoal Kiln",,"Smelting fuel, Gunpowder, Smoker"
+Hay,hay,Resource,Existing,Gather,"Cut grass, Wheat",,"Livestock feed; scarecrows"
+Hardwood,hardwood,Resource,New,Gather,Stumps and large logs (Iron Axe or better),,"Strong building material; furniture; barrels"
+Sap,sap,Resource,New,Gather,Chopping trees,,"Bobbers, Bee House, waterproofing"
+Pine Resin,resin,Resource,New,Gather,Pine trees,,"Torches, sealant, glue"
+Sand,sand,Resource,New,Gather,"Riverbanks, beaches",,"Glass, Sandbag Wall, Cement"
+Gravel,gravel,Resource,New,Mine,"Riverbeds, mines",,"Gravel Path, Cement"
+Rubber,rubber,Resource,New,Find,"Tires, boots, Recycler",,"Rubber Tubing, Power Cable"
+Plastic,plastic,Resource,New,Find,"Homes, stores, Recycler",,"Rods, flashlights, Rain Collector"
+Electronic Scrap,e_scrap,Resource,New,Find,"TVs, computers, phones, cars",,"Circuit Boards, Copper Wire"
+Ash,ash,Resource,New,Machine,"Charcoal Kiln, campfires",,"Soap, Fertilizer"
+Saltpeter,saltpeter,Resource,New,Mine,"Cave walls, old cellars",,"Gunpowder, Flares"
+Sulfur,sulfur,Resource,New,Mine,"Hot springs, deep mines",,"Gunpowder, Incendiary Shells"
+Salt,salt,Resource,New,Find,"Kitchens, salt flats, road salt piles",,"Cooking, Hardtack, curing meat"
+Bamboo,bamboo,Resource,New,Gather,Bamboo groves,,"Bamboo Rod, scaffolding"
+Glass Shards,glass_shards,Resource,New,Find,"Broken windows, Recycler",,Glass at the Brick Furnace
+Gasoline,gasoline,Fuel,New,Find,"Siphon cars, gas stations",,"Generator, Chainsaw, Molotovs, Fire Trench"
+Diesel,diesel,Fuel,New,Find,"Trucks, farm tanks",,"Generator; burns 50% longer than Gasoline"
+Propane Tank,propane_tank,Fuel,New,Find,"Grills, RV parks, hardware stores",,"Cookstove fuel; Blast Canister; explodes when shot"
+Lamp Oil,lamp_oil,Fuel,New,Craft,Workbench,Animal Fat x2 or Cooking Oil x2,"Oil Lantern Post; Fire Arrows"
+Car Battery,car_battery,Fuel,New,Find,"Cars, auto shops",,"Powers Electric Fence and small devices; Live-Wire weapons"
+Biofuel,biofuel,Fuel,New,Machine,Still,Sweet Corn x5 or Ashgrain x5,Generator fuel you can grow
+Copper Ore,copper_ore,Ore,Existing,Mine,Mine levels 1 to 20,,Copper Bar
+Iron Ore,iron_ore,Ore,Existing,Mine,Mine levels 20 to 40,,Iron Bar
+Silver Ore,silver_ore,Ore,Existing,Mine,Mine levels 40 to 60,,Silver Bar
+Gold Ore,gold_ore,Ore,Existing,Mine,Mine levels 60 to 80,,Gold Bar
+Aurium Ore,aurium_ore,Ore,Existing,Mine,"Mine levels 80+; Glimmer Caverns",,Aurium Bar
+Tin Ore,tin_ore,Ore,New,Mine,Mine levels 1 to 20,,"Tin Bar; Bronze"
+Zinc Ore,zinc_ore,Ore,New,Mine,Mine levels 20 to 40,,"Zinc Bar; Brass"
+Lead Ore,lead_ore,Ore,New,Mine,Mine levels 40 to 60,,"Lead Bar; bullets"
+Copper Bar,copper_bar,Metal Bar,Existing,Machine,Brick Furnace,Copper Ore x5 + Coal,"Tier 1 tool upgrades; wiring"
+Iron Bar,iron_bar,Metal Bar,Existing,Machine,Brick Furnace,Iron Ore x5 + Coal,"Tier 2 tool upgrades; most crafting"
+Silver Bar,silver_bar,Metal Bar,Existing,Machine,Brick Furnace,Silver Ore x5 + Coal,"Tier 3 tool upgrades; electronics"
+Gold Bar,gold_bar,Metal Bar,Existing,Machine,Brick Furnace,Gold Ore x5 + Coal,"Tier 4 tool upgrades; Seed Maker"
+Aurium Bar,aurium_bar,Metal Bar,Existing,Machine,Brick Furnace,Aurium Ore x5 + Coal x2,"Tier 5 tool upgrades; legendary crafting"
+Tin Bar,tin_bar,Metal Bar,New,Machine,Brick Furnace,Tin Ore x5 + Coal,Bronze Bar
+Zinc Bar,zinc_bar,Metal Bar,New,Machine,Brick Furnace,Zinc Ore x5 + Coal,Brass Bar
+Lead Bar,lead_bar,Metal Bar,New,Machine,Brick Furnace,Lead Ore x5 + Coal,"Bullets, Buckshot, Lead Weight"
+Bronze Bar,bronze_bar,Metal Bar,New,Machine,Brick Furnace,Copper Bar + Tin Bar,"Tool parts, bells, fittings"
+Brass Bar,brass_bar,Metal Bar,New,Machine,Brick Furnace,Copper Bar + Zinc Bar,"Ammo casings; Precision Parts"
+Steel Bar,steel_bar,Metal Bar,New,Machine,Brick Furnace,Iron Bar x2 + Coal x2,"Weapons, armor, Rebar, Reinforced Barrier"
+Scrap Ingot,scrap_ingot,Metal Bar,New,Machine,Brick Furnace,Scrap Metal x10,Cheap metal for repairs and basic crafting
+Amethyst,amethyst,Gemstone,Existing,Mine,"Mines, geodes",,"Trade; jewelry; gifts"
+Topaz,topaz,Gemstone,Existing,Mine,"Mines, geodes",,"Trade; jewelry; gifts"
+Emerald,emerald,Gemstone,Existing,Mine,"Mines, geodes",,"Trade; high value"
+Ruby,ruby,Gemstone,Existing,Mine,"Mines, geodes",,"Trade; high value"
+Glimmerite,glimmerite,Gemstone,Existing,Mine,"Deep mines; Deep Geodes",,"Luminous gem; Aurium tool upgrades"
+Garnet,garnet,Gemstone,New,Mine,"Mines, geodes",,"Trade; jewelry"
+Jade,jade,Gemstone,New,Mine,"Mines, Frost Geodes",,"Trade; jewelry"
+Sapphire,sapphire,Gemstone,New,Mine,"Mines, Frost Geodes",,"Trade; high value"
+Opal,opal,Gemstone,New,Mine,"Mines, Crystal Geodes",,"Trade; high value"
+Diamond,diamond,Gemstone,New,Mine,Deep mines (rare),,"Very high value; top-tier crafting"
+Ember Opal,ember_opal,Gemstone,New,Mine,Ember Geodes,,"Fiery gem; fire-themed legendary crafting"
+Quartz,quartz,Mineral,Existing,Mine,"Mines, river panning",,"Glass; Whetstone; electronics"
+Calcite,calcite,Mineral,New,Mine,"Mines, Stone Geodes",,"Collection; trade"
+Mica,mica,Mineral,New,Mine,"Mines, Stone Geodes",,"Collection; trade"
+Pyrite,pyrite,Mineral,New,Mine,"Mines, Stone Geodes",,"Fool's gold; trade"
+Jasper,jasper,Mineral,New,Mine,"Mines, Stone Geodes",,"Collection; trade"
+Malachite,malachite,Mineral,New,Mine,"Mines, Deep Geodes",,"Collection; trade"
+Fluorite,fluorite,Mineral,New,Mine,"Mines, Crystal Geodes",,"Collection; trade"
+Marble,marble,Mineral,New,Mine,"Quarry, mines",,"Decor; trade"
+Limestone,limestone,Mineral,New,Mine,"Quarry, mines",,Cement
+Obsidian,obsidian,Mineral,New,Mine,"Ember Geodes, volcanic vents",,"Sharp arrowheads; trade"
+Amber,amber,Mineral,New,Mine,"Fossil Nodules, riverbanks",,"Collection; may hold an ancient insect"
+Petrified Wood,petrified_wood,Mineral,New,Mine,"Fossil Nodules, dig spots",,"Collection; trade"
+Stone Geode,geode,Geode,Existing,Mine,"Mines, any level",Crack with Builder's Hammer or at the Workbench,Crack open for common minerals and gems
+Deep Geode,deep_geode,Geode,Existing,Mine,Mine levels 60+,Crack with Builder's Hammer or at the Workbench,Crack open for rare minerals and Glimmerite
+Frost Geode,frost_geode,Geode,New,Mine,"Icy mine levels; Winter dig spots",Crack with Builder's Hammer or at the Workbench,"Crack open for Jade, Sapphire, and cold minerals"
+Ember Geode,ember_geode,Geode,New,Mine,"Volcanic vents; deep mines",Crack with Builder's Hammer or at the Workbench,Crack open for Ember Opal and Obsidian
+Crystal Geode,crystal_geode,Geode,New,Mine,Crystal caverns,Crack with Builder's Hammer or at the Workbench,"Crack open for Opal, Fluorite, and Quartz"
+Fossil Nodule,fossil_nodule,Geode,New,Mine,"Riverbanks, quarries, dig spots",Crack with Builder's Hammer or at the Workbench,"Crack open for fossils, Amber, and Petrified Wood"
+Cracked Phone,old_phone,Artifact,Existing,Find,"Dig spots, zombies",,Lore: last messages
+Rusted Key,rusted_key,Artifact,Existing,Find,"Dig spots, fishing",,Opens a locked shed somewhere in town
+Faded Postcard,faded_postcard,Artifact,Existing,Find,"Homes, dig spots",,"Lore; collection"
+Wind-up Robot,toy_robot,Artifact,Existing,Find,"Kids' rooms, dig spots",,"Collection; gift"
+Radio Dial,radio_dial,Artifact,Existing,Find,"Radio towers, dig spots",,Repairs the Ham Radio
+Fern Fossil,fern_fossil,Artifact,Existing,Find,"Fossil Nodules, quarries",,Museum collection
+Dog Tags,dog_tags,Artifact,New,Find,"Soldier zombies, military bases",,Return to the memorial for a reward
+Polaroid Photo,polaroid,Artifact,New,Find,"Homes, zombies",,"Lore; collection"
+Wedding Ring,wedding_ring,Artifact,New,Find,"Zombies, dig spots",,"Side quest item; high value"
+Vinyl Record,vinyl_record,Artifact,New,Find,"Music stores, homes",,Play on a record player for morale
+Old Coin,old_coin,Artifact,New,Find,"Metal Detector, dig spots",,"Collection; trade"
+Pocket Watch,pocket_watch,Artifact,New,Find,"Metal Detector, antique shops",,"Collection; high value"
+Snow Globe,snow_globe,Artifact,New,Find,"Gift shops, homes",,"Collection; decor"
+Cassette Tape,cassette_tape,Artifact,New,Find,"Cars, homes",,Lore: recorded survivor logs
+Child's Drawing,childs_drawing,Artifact,New,Find,"Schools, homes",,"Lore; collection"
+War Medal,war_medal,Artifact,New,Find,"Military bases, homes",,"Collection; high value"
+Game Cartridge,game_cartridge,Artifact,New,Find,"Homes, game stores",,"Collection; morale"
+Diary Page,diary_page,Artifact,New,Find,Everywhere (30 to find),,Lore: how the outbreak started
+Evacuation Flyer,evac_flyer,Artifact,New,Find,"Town square, police stations",,"Lore; reveals map locations"
+Hospital Wristband,hospital_band,Artifact,New,Find,Hospital zombies,,Lore: Patient Zero trail
+Lab Keycard,lab_keycard,Artifact,New,Find,Halvorsen Biomedical,,Opens Lab 6
+Arrowhead,arrowhead,Artifact,New,Find,"Dig spots, fields",,Museum collection
+Trilobite,trilobite,Artifact,New,Find,Fossil Nodules,,Museum collection
+Ammonite,ammonite,Artifact,New,Find,Fossil Nodules,,Museum collection
+Mammoth Tooth,mammoth_tooth,Artifact,New,Find,Deep dig spots (rare),,"Museum collection; high value"
+Soggy Newspaper,soggy_paper,Junk,Existing,Find,"Fishing, trash cans, spoiled food",,Recycler: Tattered Cloth or Plastic
+Old Tin Can,old_can,Junk,Existing,Find,"Fishing, trash cans, spoiled food",,"Recycler: Scrap; Tripwire Alarm, Tin Can Scarecrow"
+Broken Glasses,broken_glasses,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Glass Shards
+Torn Boot,torn_boot,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Rubber
+Moldy Bread,moldy_bread,Junk,New,Find,"Fishing, trash cans, spoiled food",,Compost
+Empty Bottle,empty_bottle,Junk,New,Find,"Fishing, trash cans, spoiled food",,Rinse in water to make a Glass Bottle
+Bent Fork,bent_fork,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Scrap
+Dead Battery,dead_battery,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Scrap and Electronic Scrap
+Broken Umbrella,broken_umbrella,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Scrap and Tattered Cloth
+Wet Cardboard,wet_cardboard,Junk,New,Find,"Fishing, trash cans, spoiled food",,Compost
+Plastic Bag,plastic_bag,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Plastic
+Rotten Food,rotten_food,Junk,New,Find,"Fishing, trash cans, spoiled food",,"Compost; Bait"
+Shredded Tire,shredded_tire,Junk,New,Find,"Fishing, trash cans, spoiled food",,Recycler: Rubber
+Rotten Flesh,rotten_flesh,Zombie Drop,New,Drop,Any zombie,,"Compost; Bait"
+Zombie Tooth,zombie_tooth,Zombie Drop,New,Drop,Any zombie,,"Trade; Spike Trap upgrade"
+Infected Sample,infected_sample,Zombie Drop,New,Drop,Any zombie (rare),,"Research quests; Experimental Antiviral"
+Spitter Gland,spitter_gland,Zombie Drop,New,Drop,Spitter zombies,,"Corrosive weapons; Acid traps"
+Brute Hide,brute_hide,Zombie Drop,New,Drop,Brute zombies,,Thick leather for heavy armor
+Runner Tendon,runner_tendon,Zombie Drop,New,Drop,Runner zombies,,"Strong Bowstring; sprint gear"
+Stalker Eye,stalker_eye,Zombie Drop,New,Drop,Stalker zombies,,Night vision gear
+Screamer Sac,screamer_sac,Zombie Drop,New,Drop,Screamer zombies,,"Decoy Radio; noise lures"
+Charred Bone,charred_bone,Zombie Drop,New,Drop,Charred zombies,,Fire-themed crafting
+Plank,plank,Component,New,Craft,Workbench,Wood x2,"Furniture, floors, structures"
+Rope,rope,Component,New,Craft,Workbench,Fiber x5,"Traps, stations, splints"
+Duct Tape,duct_tape,Component,New,Find,"garages, hardware stores",,"Quick repairs; Makeshift Spear"
+Nails,nails,Component,New,Craft,Workbench,Scrap Metal x2 (makes 10),"Building, Nail Rounds, Spike Trap"
+Thread,thread,Component,New,Craft,Loom,Fiber x3 or Cotton,"Sewing, Suture Kit, Candles"
+Leather Strap,leather_strap,Component,New,Craft,Workbench,Leather (makes 4),"Grips, packs, armor"
+Bowstring,bowstring,Component,New,Craft,Workbench,Sinew x2 or Runner Tendon,"Bows; Ranged Upgrade Kit"
+Rubber Tubing,rubber_tubing,Component,New,Craft,Workbench,Rubber x2,"Sprinklers, slingshots, Still"
+Glass,glass,Component,New,Craft,Brick Furnace,Sand x5 or Glass Shards x5,"Windows, Cold Frame, scopes"
+Glass Bottle,glass_bottle,Component,New,Craft,Brick Furnace,Glass,"Molotovs, medicine, preserves"
+Brick,brick,Component,New,Craft,Brick Furnace,Clay x3,"Cookstove, Well, Brick Path"
+Cement,cement,Component,New,Craft,Brick Furnace,Limestone x2 + Gravel x2 + Sand,Concrete Wall
+Metal Pipe,metal_pipe,Component,New,Craft,Anvil,Iron Bar x2,"Pipe Charge, Flame Turret"
+Rebar,rebar,Component,New,Craft,Anvil,Steel Bar (makes 3),"Reinforced Barrier, Concrete Wall, spiked armor"
+Barbed Wire,barbed_wire,Component,New,Craft,Workbench,Scrap Metal x3 + Iron Bar,"Barbed Wire Fence; Barbed Wire Bat"
+Spring,spring,Component,New,Craft,Workbench,Steel Bar (makes 2),"Traps, crossbows, Lockpick Set"
+Gear Assembly,gear_assembly,Component,New,Craft,Workbench,Iron Bar x2 + Scrap Metal,"Stations, machines, turrets"
+Copper Wire,copper_wire,Component,New,Craft,Workbench,Copper Bar (makes 3),"Electronics, Electric Fence"
+Circuit Board,circuit_board,Component,New,Craft,Electronics Bench,Electronic Scrap x5 + Copper Wire x2,"Turrets, power, Metal Detector"
+Magnet,magnet,Component,New,Craft,Electronics Bench,Iron Bar + Copper Wire x5,"Magnet Bait, Treasure Hook"
+Gunpowder,gunpowder,Component,New,Craft,Chemistry Station,Saltpeter + Sulfur + Coal,Ammunition and explosives
+Fuse,fuse,Component,New,Craft,Workbench,Fiber + Gunpowder,Explosives
+Precision Parts,precision_parts,Component,New,Craft,Armory Bench,Steel Bar x2 + Brass Bar,"Firearms, crossbows, upgrade kits"
+Scope,scope,Component,New,Craft,Armory Bench,Glass x2 + Steel Bar + Precision Parts,Scoped rifles
+Whetstone,whetstone,Component,New,Craft,Workbench,Stone x5 + Quartz,"Repairs blades; Blade Upgrade Kit"
+Sewing Kit,sewing_kit,Component,New,Craft,Sewing Table,Thread x3 + Scrap Metal,Repairs clothing and armor in the field
+Blade Upgrade Kit,blade_kit,Component,New,Craft,Armory Bench,Whetstone + Steel Bar x2 + Leather Strap,Upgrades a Normal blade or axe to Rare
+Blunt Upgrade Kit,blunt_kit,Component,New,Craft,Armory Bench,Steel Bar x3 + Leather Strap,Upgrades a Normal blunt or heavy weapon to Rare
+Ranged Upgrade Kit,ranged_kit,Component,New,Craft,Armory Bench,Bowstring + Precision Parts + Hardwood x3,"Upgrades a Normal bow, crossbow, sling, or thrown weapon to Rare"
+Gun Upgrade Kit,gun_kit,Component,New,Craft,Armory Bench,Precision Parts x2 + Spring + Steel Bar,Upgrades a Normal firearm to Rare
+Gear Upgrade Kit,gear_kit,Component,New,Craft,Sewing Table,Leather x2 + Thread x5 + Steel Bar,Upgrades Normal clothing or armor to Rare
+Nail Rounds,nail_rounds,Ammunition,Existing,Craft,Ammo Bench,Nails x10 + Scrap Metal (makes 30),"Nail Gun; Nail Turret"
+Buckshot,buckshot,Ammunition,Existing,Craft,Ammo Bench,Lead Bar + Brass Bar + Gunpowder (makes 6),"12 gauge shotguns; Scrap Shotgun Turret"
+Bolts,bolts,Ammunition,Existing,Craft,Ammo Bench,Wood x2 + Scrap Metal + Feather (makes 5),"Crossbows; Crossbow Turret"
+Arrow,arrow,Ammunition,New,Craft,Workbench,Wood + Feather + Stone (makes 5),Bows
+Broadhead Arrow,broadhead_arrow,Ammunition,New,Craft,Ammo Bench,Arrow x5 + Steel Bar,"'+25% damage; causes Bleed"
+Fire Arrow,fire_arrow,Ammunition,New,Craft,Workbench,Arrow x5 + Tattered Cloth + Lamp Oil,Sets targets on fire
+Explosive Bolt,explosive_bolt,Ammunition,New,Craft,Ammo Bench,Bolts x3 + Gunpowder + Fuse,Explodes on impact (2-tile radius)
+Ball Bearings,ball_bearings,Ammunition,New,Craft,"Hardware stores; or Workbench",Scrap Metal (makes 20),Slingshots
+Harpoon Spear,harpoon_spear,Ammunition,New,Craft,Workbench,Steel Bar + Hardwood,Speargun
+.22 LR Rounds,ammo_22lr,Ammunition,New,Craft,"Homes, sporting goods; or Ammo Bench",Brass Bar + Lead Bar + Gunpowder (makes 30),".22 Pistol, .22 Rifle"
+9mm Rounds,ammo_9mm,Ammunition,New,Craft,"Police stations; or Ammo Bench",Brass Bar + Lead Bar + Gunpowder (makes 20),"9mm Pistol, Compact SMG"
+.45 ACP Rounds,ammo_45acp,Ammunition,New,Craft,"Police stations, gun stores; or Ammo Bench",Brass Bar + Lead Bar + Gunpowder x2 (makes 15),".45 Pistol, .45 SMG"
+.357 Magnum Rounds,ammo_357,Ammunition,New,Craft,"Gun stores, rural homes; or Ammo Bench",Brass Bar + Lead Bar x2 + Gunpowder x2 (makes 12),.357 Revolvers
+.30-30 Rounds,ammo_3030,Ammunition,New,Craft,"Hunting lodges; or Ammo Bench",Brass Bar x2 + Lead Bar x2 + Gunpowder x2 (makes 10),Lever-Action Rifles
+5.56 Rounds,ammo_556,Ammunition,New,Craft,"Military bases; or Ammo Bench",Brass Bar x2 + Lead Bar x2 + Gunpowder x2 (makes 20),"Carbine, Assault Rifle, LMG, Salvaged Sentry"
+.308 Rounds,ammo_308,Ammunition,New,Craft,"Hunting lodges, military; or Ammo Bench",Brass Bar x2 + Lead Bar x2 + Gunpowder x3 (makes 10),Bolt-Action and Battle Rifles
+.50 BMG Rounds,ammo_50bmg,Ammunition,New,Find,Military bases only,,.50 Cal Sniper Rifle
+Shotgun Slug,shotgun_slug,Ammunition,New,Craft,Ammo Bench,Lead Bar x2 + Brass Bar + Gunpowder (makes 6),"Shotguns; long range single projectile"
+Incendiary Shell,incendiary_shell,Ammunition,New,Craft,Ammo Bench,Buckshot x6 + Sulfur x2,"Shotguns; sets targets on fire"
+Flare,flare,Ammunition,New,Craft,"Boats, marinas; or Chemistry Station",Sulfur + Saltpeter + Plastic,"Flare Gun; lures zombies"
+Moisture Mulch,moisture_mulch,Farm Supply,Existing,Craft,Workbench,Fiber x5 + Compost,50% chance soil stays watered overnight
+Growth Tonic,growth_tonic,Farm Supply,Existing,Craft,Chemistry Station,Moonbloom + Glowcap + Clean Water,Crops grow 10% faster
+Bait,bait,Farm Supply,Existing,Craft,"Workbench; or Worm Bin",Rotten Food x2 or Rotten Flesh,Fish bite faster
+Compost,compost,Farm Supply,New,Machine,Compost Bin,"Rotten Food, Rotten Flesh, or crop scraps","Fertilizer; Moisture Mulch; Premium Bait"
+Fertilizer,fertilizer,Farm Supply,New,Craft,Workbench,Compost + Ash,Better crop quality
+Quality Fertilizer,quality_fertilizer,Farm Supply,New,Craft,Chemistry Station,Fertilizer + Bone Meal + any fish,Much better crop quality
+Bone Meal,bone_meal,Farm Supply,New,Machine,Grain Mill,Bone x3,"Fruit trees grow faster; Quality Fertilizer"
+Tree Fertilizer,tree_fertilizer,Farm Supply,New,Craft,Workbench,Bone Meal + Compost,Saplings grow 2x faster
+Pest Spray,pest_spray,Farm Supply,New,Craft,Chemistry Station,Hot Pepper + Garlic + Clean Water,Protects crops from pests and blight for 7 days
+Frost Cloth,frost_cloth,Farm Supply,New,Machine,Loom,Cotton Cloth x3,Protects crops from frost for 3 days
+Wild Seed Mix,wild_seed_mix,Farm Supply,New,Craft,Workbench,Any forage x4 from one season,Grows that season's forage items
+Mixed Feed,mixed_feed,Farm Supply,New,Machine,Grain Mill,Wheat + Soybean + Sweet Corn,Livestock produce better products
+Premium Bait,premium_bait,Farm Supply,New,Machine,Worm Bin,Compost,Fish bite much faster
+Magnet Bait,magnet_bait,Farm Supply,New,Craft,Workbench,Bait + Magnet,Higher chance to hook artifacts
+Satchel,satchel,Upgrade,New,Craft,Workbench,Tattered Cloth x10 + Rope,'+6 inventory slots
+Hiking Pack,hiking_pack,Upgrade,New,Craft,Sewing Table,Cotton Cloth x5 + Leather Strap x4,'+12 inventory slots
+Military Rucksack,military_rucksack,Upgrade,New,Craft,"Military bases; or Sewing Table",Wool Cloth x5 + Leather x4 + Steel Bar,'+18 inventory slots
+Tool Belt,tool_belt,Upgrade,New,Craft,Sewing Table,Leather x3 + Leather Strap x2,'+2 hotbar slots
+Ammo Pouch,ammo_pouch,Upgrade,New,Craft,Sewing Table,Leather x2 + Thread x3,Ammo stacks 50% larger
+Wood Fence,fence,Defense,Existing,Craft,Workbench,Wood x2,"Blocks animals; slows zombies (50 durability)"
+Wood Gate,wood_gate,Defense,Existing,Craft,Workbench,Wood x10,"Opens for you; blocks zombies (80 durability)"
+Sandbag Wall,sandbag_wall,Defense,Existing,Craft,Workbench,Tattered Cloth x2 + Sand x10,Blocks bullets and zombies (150 durability)
+Stone Wall,stone_wall,Defense,Existing,Craft,Workbench,Stone x10,Sturdy wall (250 durability)
+Barbed Wire Fence,barbed_fence,Defense,Existing,Craft,Workbench,Barbed Wire x2 + Wood x2,Zombies take 5 dmg and slow down crossing it
+Electric Fence,electric_fence,Defense,Existing,Craft,Electronics Bench,Barbed Wire x2 + Copper Wire x3 + Iron Bar,"Needs power; 20 dmg and a short stun on touch"
+Reinforced Barrier,reinforced_wall,Defense,Existing,Craft,Armory Bench,Steel Bar x3 + Rebar x4,Heavy wall (800 durability)
+Nail Turret,nail_turret,Defense,Existing,Craft,Electronics Bench,Nail Gun + Gear Assembly + Circuit Board,"Short-range turret; uses Nail Rounds"
+Scrap Shotgun Turret,shotgun_turret,Defense,Existing,Craft,Electronics Bench,Scrap Metal x20 + Precision Parts x2 + Circuit Board,"Wide-cone turret; uses Buckshot"
+Salvaged Sentry,sentry_turret,Defense,Existing,Craft,Electronics Bench,Broken Sentry (military bases) + Circuit Board x5 + Steel Bar x5,"Long-range turret; uses 5.56 Rounds; needs power"
+Arc Pylon,arc_pylon,Defense,Existing,Craft,Electronics Bench,Copper Wire x10 + Silver Bar x3 + Circuit Board x2,"Chain lightning within 4 tiles; heavy power draw"
+Generator,generator,Defense,Existing,Craft,Electronics Bench,Gear Assembly x3 + Steel Bar x5 + Copper Wire x5,"Power from Gasoline, Diesel, or Biofuel; loud"
+Solar Panel,solar_panel,Defense,Existing,Craft,Electronics Bench,Glass x5 + Circuit Board + Silver Bar x2,Silent power during the day
+Pipe Charge,pipe_charge,Defense,Existing,Craft,Chemistry Station,Metal Pipe + Gunpowder x3 + Fuse,"Placed explosive; 3-tile blast"
+Blast Canister,blast_canister,Defense,Existing,Craft,Chemistry Station,Propane Tank + Gunpowder x2 + Fuse,"Placed explosive; 5-tile blast plus fire"
+Spike Trap,spike_trap,Defense,New,Craft,Workbench,Wood x5 + Nails x10,15 dmg and slows zombies that step on it
+Bear Trap,bear_trap,Defense,New,Craft,Armory Bench,Steel Bar x2 + Spring x2,"40 dmg; holds a zombie for 5 s; reusable"
+Punji Pit,punji_pit,Defense,New,Craft,Workbench,Hardwood x5 + dug hole,Zombies fall in and stay stuck for 10 s
+Spiked Barricade,spiked_barricade,Defense,New,Craft,Workbench,Wood x10 + Nails x20,3-tile barrier that damages zombies pushing on it
+Tripwire Alarm,tripwire_alarm,Defense,New,Craft,Workbench,Old Tin Can x5 + Rope,Rattles when zombies cross it
+Metal Gate,metal_gate,Defense,New,Craft,Armory Bench,Steel Bar x4 + Spring,Strong gate (500 durability)
+Concrete Wall,concrete_wall,Defense,New,Craft,Workbench,Cement x5 + Rebar x2,"Strongest wall (1,200 durability)"
+Watchtower,watchtower,Defense,New,Craft,Workbench,Wood x60 + Hardwood x20 + Rope x5,"Raised platform;' +50% vision; zombies cannot climb it"
+Decoy Radio,decoy_radio,Defense,New,Craft,Electronics Bench,Radio Dial + Copper Wire x2 + Screamer Sac,Plays noise for 30 s to lure zombies away
+Crossbow Turret,crossbow_turret,Defense,New,Craft,Armory Bench,Crossbow + Gear Assembly + Spring x2,"Silent turret; uses Bolts; no power needed"
+Flame Turret,flame_turret,Defense,New,Craft,Electronics Bench,Metal Pipe x3 + Propane Tank + Circuit Board,"Short fire cone; uses Gasoline"
+Landmine,landmine,Defense,New,Craft,Chemistry Station,Gunpowder x3 + Scrap Metal x5 + Spring,"4-tile blast when stepped on; single use"
+Nail Mine,nail_mine,Defense,New,Craft,Chemistry Station,Nails x20 + Gunpowder x2 + Spring,"Shrapnel burst; causes Bleed; single use"
+Fire Trench,fire_trench,Defense,New,Craft,Workbench,Wood x10 + Gasoline x2 + dug trench,Light it for a 30 s wall of fire
+Battery Bank,battery_bank,Defense,New,Craft,Electronics Bench,Car Battery x4 + Copper Wire x5,Stores power for use at night
+Wind Turbine,wind_turbine,Defense,New,Craft,Electronics Bench,Steel Bar x6 + Gear Assembly x2 + Copper Wire x10,"Silent power day and night; more in storms"
+Power Cable,power_cable,Defense,New,Craft,Workbench,Copper Wire x2 + Rubber,Connects power sources to defenses and lights
+Storage Chest,chest,Placeable,Existing,Craft,Workbench,Wood x30,24 storage slots
+Torch Post,torch_post,Placeable,Existing,Craft,Workbench,Wood x3 + Coal,"Light; draws zombies at night"
+Stone Path,stone_path,Placeable,Existing,Craft,Workbench,Stone,'+10% move speed on paths
+Coop Kit,coop_kit,Placeable,Existing,Craft,Workbench,Wood x100 + Stone x50 + Hay x10,Builds a Coop for 8 birds
+Floodlight,floodlight,Placeable,Existing,Craft,Electronics Bench,Glass x2 + Copper Wire x3 + Circuit Board,"Big light radius; reveals zombies; needs power"
+Oil Lantern Post,oil_lantern,Placeable,Existing,Craft,Workbench,Iron Bar + Glass + Lamp Oil,Light without power
+Large Chest,large_chest,Placeable,New,Craft,Workbench,Hardwood x30 + Iron Bar x2,48 storage slots
+Lockbox,lockbox,Placeable,New,Craft,Workbench,Steel Bar x3 + Spring,Locked storage raiders cannot open
+Fridge,fridge,Placeable,New,Craft,Electronics Bench,Salvaged fridge + Copper Wire x3,"Food does not spoil; needs power"
+Bed,bed,Placeable,New,Craft,Workbench,Wood x20 + Tattered Cloth x10,Sleep to save and restore Stamina
+Sleeping Bag,sleeping_bag,Placeable,New,Craft,Sewing Table,Cotton Cloth x4 + Fiber x10,"Portable bed; sleep anywhere safe"
+Weapon Rack,weapon_rack,Placeable,New,Craft,Workbench,Wood x15 + Iron Bar,Displays and stores 6 weapons
+Armor Stand,armor_stand,Placeable,New,Craft,Workbench,Wood x10 + Iron Bar,Displays and stores a full gear set
+Map Table,map_table,Placeable,New,Craft,Workbench,Hardwood x10 + Evacuation Flyer,Marks found locations on the world map
+Ham Radio,ham_radio,Placeable,New,Craft,Electronics Bench,Radio Dial + Circuit Board + Copper Wire x5,"Hear survivor broadcasts; unlocks quests"
+Barn Kit,barn_kit,Placeable,New,Craft,Workbench,Wood x150 + Stone x75 + Iron Bar x5,Builds a Barn for 8 large animals
+Hutch Kit,hutch_kit,Placeable,New,Craft,Workbench,Wood x40 + Hay x10,Builds a Hutch for 6 Rabbits
+Doghouse,doghouse,Placeable,New,Craft,Workbench,Wood x25,Home for a Guard Dog
+Wood Sign,wood_sign,Placeable,New,Craft,Workbench,Wood x5,Write a label or warning
+Table and Chairs,table_set,Placeable,New,Craft,Workbench,Plank x10,"Decor; eat here for +10% food effects"
+Bookshelf,bookshelf,Placeable,New,Craft,Workbench,Plank x12,"Decor; stores skill books"
+Flower Pot,flower_pot,Placeable,New,Craft,Workbench,Clay x3,"Decor; grows 1 flower or herb indoors"
+Brick Path,brick_path,Placeable,New,Craft,Workbench,Brick,'+15% move speed on paths
+Gravel Path,gravel_path,Placeable,New,Craft,Workbench,Gravel,"'+10% move speed; footsteps reveal sneaking zombies"
+Wood Floor,wood_floor,Placeable,New,Craft,Workbench,Plank,Indoor flooring
+Lamp Post,lamp_post,Placeable,New,Craft,Electronics Bench,Steel Bar + Glass + Copper Wire x2,"Electric light; needs power"
+String Lights,string_lights,Placeable,New,Craft,Electronics Bench,Copper Wire x3 + Glass,"Decor light; needs power"
+Garden Gnome,garden_gnome,Placeable,New,Find,"Lawns, garden centers",,"Decor; there are 12 to collect"

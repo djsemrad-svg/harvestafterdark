@@ -19,23 +19,22 @@ const SLOT_NAMES := {"head": "Head", "chest": "Chest", "legs": "Legs", "feet": "
 
 ## Ammunition: id -> [name, class, price, description, icon shape, colour]
 const AMMO := {
-	"ammo_22": [".22 LR Rounds", "Handgun", 3, "Small, quiet rounds for .22 pistols and rifles.", "a_small", "#c8a040"],
+	"ammo_22lr": [".22 LR Rounds", "Handgun", 3, "Small, quiet rounds for .22 pistols and rifles.", "a_small", "#c8a040"],
 	"ammo_9mm": ["9mm Rounds", "Handgun", 4, "The most common pistol round in the old world.", "a_small", "#d0b050"],
-	"ammo_45": [".45 ACP Rounds", "Handgun", 5, "Heavy pistol rounds. Hit hard.", "a_small", "#b89040"],
+	"ammo_45acp": [".45 ACP Rounds", "Handgun", 5, "Heavy pistol rounds. Hit hard.", "a_small", "#b89040"],
 	"ammo_357": [".357 Magnum Rounds", "Handgun", 7, "Revolver rounds with real stopping power.", "a_small", "#d8c070"],
 	"ammo_3030": [".30-30 Rounds", "Rifle", 8, "Lever-action rifle rounds.", "a_rifle", "#c89040"],
 	"ammo_308": [".308 Rounds", "Rifle", 10, "Long-range rifle rounds.", "a_rifle", "#b08a3a"],
 	"ammo_556": ["5.56 Rounds", "Rifle", 8, "Military rifle rounds.", "a_rifle", "#a0a050"],
-	"ammo_50": [".50 BMG Rounds", "Rifle", 40, "Enormous anti-materiel rounds.", "a_rifle", "#808a50"],
+	"ammo_50bmg": [".50 BMG Rounds", "Rifle", 40, "Enormous anti-materiel rounds.", "a_rifle", "#808a50"],
 	"ammo_serum": ["Serum-Coated 5.56", "Rifle", 30, "Rounds laced with Lab 6's failed cure. They glow faintly green.", "a_rifle", "#60d860"],
 	"buckshot": ["12 Gauge Shells", "Shotgun", 8, "Hand-packed buckshot. Used by shotguns and the Scrap Shotgun Turret.", "a_shell", "#c03a2a"],
-	"shells_incendiary": ["Incendiary Shells", "Shotgun", 20, "12 gauge shells packed with magnesium. They set targets on fire.", "a_shell", "#e8702a"],
-	"arrows": ["Arrows", "Bow", 4, "Wooden arrows with stone heads and chicken feathers.", "a_arrow", "#a87a4a"],
+	"incendiary_shell": ["Incendiary Shells", "Shotgun", 20, "12 gauge shells packed with magnesium. They set targets on fire.", "a_shell", "#e8702a"],
+	"arrow": ["Arrows", "Bow", 4, "Wooden arrows with stone heads and chicken feathers.", "a_arrow", "#a87a4a"],
 	"bolts": ["Bolts", "Crossbow", 3, "Short, heavy crossbow bolts.", "a_bolt", "#8a8a90"],
-	"harpoons": ["Harpoon Spears", "Special", 12, "Barbed spears for a speargun.", "a_harpoon", "#9aa0a8"],
-	"nail_strips": ["Nail Strips", "Special", 1, "Collated nails for a nail gun.", "a_nails", "#b0b0b8"],
+	"harpoon_spear": ["Harpoon Spears", "Special", 12, "Barbed spears for a speargun.", "a_harpoon", "#9aa0a8"],
 	"nail_rounds": ["Nail Rounds", "Special", 1, "Clips of nails for a Nail Turret.", "a_nails", "#a0a0a8"],
-	"flares": ["Flares", "Special", 15, "Signal flares. They burn and draw the infected toward the light.", "a_flare", "#e83a2a"],
+	"flare": ["Flares", "Special", 15, "Signal flares. They burn and draw the infected toward the light.", "a_flare", "#e83a2a"],
 	"ball_bearings": ["Ball Bearings", "Special", 1, "Steel balls for a slingshot. Stones work too.", "a_balls", "#c0c8d0"],
 	"gasoline": ["Gasoline Can", "Special", 60, "Fuel. One can refills a chainsaw's tank.", "a_gas", "#c83a2a"],
 }
@@ -72,11 +71,11 @@ const MATS := {
 	"nails": ["Nails", 1, "A handful of nails.", "a_nails", "#b0b0b8"],
 	"rebar": ["Rebar", 10, "Steel reinforcing bar.", "m_pipe", "#7a5a4a"],
 	"saw_blade": ["Saw Blade", 60, "A circular saw blade.", "m_saw", "#c0c0c8"],
-	"kit_blade": ["Blade Upgrade Kit", 300, "Whetstones, rivets and a new grip. Upgrades a bladed weapon at a Weapon Bench.", "m_kit", "#5a8ac8"],
-	"kit_blunt": ["Blunt Upgrade Kit", 300, "Weights, wraps and bands. Upgrades a blunt weapon at a Weapon Bench.", "m_kit", "#c87a3a"],
-	"kit_ranged": ["Ranged Upgrade Kit", 350, "Strings, limbs and sights. Upgrades a bow, sling or thrown weapon at a Weapon Bench.", "m_kit", "#5aa860"],
-	"kit_gun": ["Gun Upgrade Kit", 500, "Springs, a polished barrel and new sights. Upgrades a firearm at a Weapon Bench.", "m_kit", "#6a6a78"],
-	"kit_gear": ["Gear Upgrade Kit", 250, "Padding, stitching and straps. Upgrades clothing and armour at a Weapon Bench.", "m_kit", "#a87ad8"],
+	"blade_kit": ["Blade Upgrade Kit", 300, "Whetstones, rivets and a new grip. Upgrades a bladed weapon at a Armory Bench.", "m_kit", "#5a8ac8"],
+	"blunt_kit": ["Blunt Upgrade Kit", 300, "Weights, wraps and bands. Upgrades a blunt weapon at a Armory Bench.", "m_kit", "#c87a3a"],
+	"ranged_kit": ["Ranged Upgrade Kit", 350, "Strings, limbs and sights. Upgrades a bow, sling or thrown weapon at a Armory Bench.", "m_kit", "#5aa860"],
+	"gun_kit": ["Gun Upgrade Kit", 500, "Springs, a polished barrel and new sights. Upgrades a firearm at a Armory Bench.", "m_kit", "#6a6a78"],
+	"gear_kit": ["Gear Upgrade Kit", 250, "Padding, stitching and straps. Upgrades clothing and armour at a Armory Bench.", "m_kit", "#a87ad8"],
 	"scope": ["Rifle Scope", 450, "A hunting scope. Fits a bolt-action rifle.", "m_scope", "#3a3a40"],
 	"sheriff_page": ["Sheriff's List Page", 0, "A page from the Harlan County sheriff's list. Names, crossed out one by one.", "m_book", "#d8c8a0"],
 	"journal_half": ["Morrow Journal (half)", 0, "Half of the Morrow sisters' journal.", "m_book", "#3a6aa8"],
@@ -87,64 +86,64 @@ const MATS := {
 ## Simple recipes for materials and ammo. [out, qty, station, inputs, group]
 const RECIPES := [
 	["gunpowder", 3, "ammo_bench", [["coal", 1], ["saltpeter", 1]], "Ammunition"],
-	["ammo_22", 15, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
+	["ammo_22lr", 15, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
 	["ammo_9mm", 12, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
-	["ammo_45", 10, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
+	["ammo_45acp", 10, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
 	["ammo_357", 6, "ammo_bench", [["scrap", 1], ["gunpowder", 1]], "Ammunition"],
 	["ammo_3030", 8, "ammo_bench", [["scrap", 2], ["gunpowder", 2]], "Ammunition"],
 	["ammo_308", 8, "ammo_bench", [["scrap", 2], ["gunpowder", 2], ["copper_bar", 1]], "Ammunition"],
 	["ammo_556", 15, "ammo_bench", [["scrap", 2], ["gunpowder", 2], ["copper_bar", 1]], "Ammunition"],
-	["ammo_50", 4, "ammo_bench", [["iron_bar", 1], ["gunpowder", 3]], "Ammunition"],
+	["ammo_50bmg", 4, "ammo_bench", [["iron_bar", 1], ["gunpowder", 3]], "Ammunition"],
 	["buckshot", 6, "ammo_bench", [["scrap", 1], ["gunpowder", 1], ["cloth", 1]], "Ammunition"],
-	["shells_incendiary", 6, "ammo_bench", [["buckshot", 6], ["magnesium", 1]], "Ammunition"],
-	["arrows", 5, "ammo_bench", [["wood", 2], ["stone", 1], ["feather", 1]], "Ammunition"],
-	["harpoons", 3, "ammo_bench", [["metal_pipe", 1]], "Ammunition"],
-	["nail_strips", 30, "ammo_bench", [["nails", 20]], "Ammunition"],
-	["flares", 2, "ammo_bench", [["gunpowder", 2], ["cloth", 1]], "Ammunition"],
+	["incendiary_shell", 6, "ammo_bench", [["buckshot", 6], ["magnesium", 1]], "Ammunition"],
+	["arrow", 5, "ammo_bench", [["wood", 2], ["stone", 1], ["feather", 1]], "Ammunition"],
+	["harpoon_spear", 3, "ammo_bench", [["metal_pipe", 1]], "Ammunition"],
+	["nail_rounds", 30, "ammo_bench", [["nails", 20]], "Ammunition"],
+	["flare", 2, "ammo_bench", [["gunpowder", 2], ["cloth", 1]], "Ammunition"],
 	["ball_bearings", 15, "ammo_bench", [["scrap", 1]], "Ammunition"],
 	["nails", 20, "ammo_bench", [["scrap", 2]], "Materials"],
 	["rag", 2, "hand", [["cloth", 1]], "Materials"],
 	["wooden_pole", 1, "hand", [["wood", 6]], "Materials"],
 	["y_branch", 1, "hand", [["wood", 3]], "Materials"],
 	["fuse", 2, "ammo_bench", [["fiber", 3], ["gunpowder", 1]], "Materials"],
-	["metal_pipe", 2, "weapon_bench", [["iron_bar", 1]], "Materials"],
-	["rebar", 3, "weapon_bench", [["iron_bar", 1], ["scrap", 2]], "Materials"],
-	["balance_weight", 1, "weapon_bench", [["iron_bar", 1]], "Materials"],
-	["copper_wire", 5, "weapon_bench", [["copper_bar", 1]], "Materials"],
-	["copper_coil", 1, "weapon_bench", [["copper_wire", 10]], "Materials"],
-	["leather_grip", 1, "weapon_bench", [["tanned_pelt", 1]], "Materials"],
-	["gear_assembly", 1, "weapon_bench", [["iron_bar", 2], ["scrap", 5]], "Materials"],
-	["saw_blade", 1, "weapon_bench", [["iron_bar", 2]], "Materials"],
-	["kit_blade", 1, "weapon_bench", [["iron_bar", 2], ["stone", 10], ["leather_grip", 1]], "Upgrade Kits"],
-	["kit_blunt", 1, "weapon_bench", [["iron_bar", 2], ["duct_tape", 1], ["leather_grip", 1]], "Upgrade Kits"],
-	["kit_ranged", 1, "weapon_bench", [["copper_bar", 2], ["rubber_tubing", 1], ["fiber", 20]], "Upgrade Kits"],
-	["kit_gun", 1, "weapon_bench", [["iron_bar", 3], ["precision_parts", 1]], "Upgrade Kits"],
-	["kit_gear", 1, "weapon_bench", [["cloth", 10], ["leather_grip", 1], ["duct_tape", 1]], "Upgrade Kits"],
+	["metal_pipe", 2, "armory_bench", [["iron_bar", 1]], "Materials"],
+	["rebar", 3, "armory_bench", [["iron_bar", 1], ["scrap", 2]], "Materials"],
+	["balance_weight", 1, "armory_bench", [["iron_bar", 1]], "Materials"],
+	["copper_wire", 5, "armory_bench", [["copper_bar", 1]], "Materials"],
+	["copper_coil", 1, "armory_bench", [["copper_wire", 10]], "Materials"],
+	["leather_grip", 1, "armory_bench", [["tanned_pelt", 1]], "Materials"],
+	["gear_assembly", 1, "armory_bench", [["iron_bar", 2], ["scrap", 5]], "Materials"],
+	["saw_blade", 1, "armory_bench", [["iron_bar", 2]], "Materials"],
+	["blade_kit", 1, "armory_bench", [["iron_bar", 2], ["stone", 10], ["leather_grip", 1]], "Upgrade Kits"],
+	["blunt_kit", 1, "armory_bench", [["iron_bar", 2], ["duct_tape", 1], ["leather_grip", 1]], "Upgrade Kits"],
+	["ranged_kit", 1, "armory_bench", [["copper_bar", 2], ["rubber_tubing", 1], ["fiber", 20]], "Upgrade Kits"],
+	["gun_kit", 1, "armory_bench", [["iron_bar", 3], ["precision_parts", 1]], "Upgrade Kits"],
+	["gear_kit", 1, "armory_bench", [["cloth", 10], ["leather_grip", 1], ["duct_tape", 1]], "Upgrade Kits"],
 ]
 
 ## What each kind of place holds besides weapons and gear. [id, min, max, weight]
 const LOOT_MATS := {
-	"home": [["canned_beans", 1, 2, 3], ["water_bottle", 1, 2, 3], ["cloth", 1, 3, 3], ["glass_bottle", 1, 2, 2], ["duct_tape", 1, 1, 1], ["bandage", 1, 2, 2], ["ammo_22", 4, 10, 1], ["ammo_9mm", 3, 8, 1], ["letter", 1, 1, 0]],
+	"home": [["canned_beans", 1, 2, 3], ["water_bottle", 1, 2, 3], ["cloth", 1, 3, 3], ["glass_bottle", 1, 2, 2], ["duct_tape", 1, 1, 1], ["bandage", 1, 2, 2], ["ammo_22lr", 4, 10, 1], ["ammo_9mm", 3, 8, 1], ["letter", 1, 1, 0]],
 	"kitchen": [["canned_beans", 1, 3, 4], ["bread_loaf", 1, 2, 2], ["glass_bottle", 1, 3, 3], ["rag", 1, 3, 2], ["water_bottle", 1, 2, 2]],
 	"hardware": [["nails", 10, 30, 4], ["duct_tape", 1, 2, 3], ["metal_pipe", 1, 2, 2], ["barbed_wire", 1, 3, 2], ["copper_wire", 2, 6, 2], ["saw_blade", 1, 1, 1], ["scrap", 3, 8, 3]],
 	"farm": [["fiber", 5, 15, 3], ["saltpeter", 1, 3, 2], ["rag", 1, 2, 2], ["wood", 5, 15, 3], ["buckshot", 2, 6, 1], ["feather", 1, 4, 2]],
 	"garage": [["gasoline", 1, 1, 2], ["car_battery", 1, 1, 1], ["duct_tape", 1, 2, 2], ["rubber_tubing", 1, 1, 2], ["scrap", 3, 8, 3], ["metal_pipe", 1, 1, 1]],
-	"vehicle": [["gasoline", 1, 1, 3], ["car_battery", 1, 1, 1], ["flares", 1, 3, 2], ["ammo_9mm", 3, 9, 1], ["rubber_tubing", 1, 1, 1], ["scrap", 2, 5, 2]],
-	"police": [["ammo_9mm", 8, 20, 4], ["ammo_45", 6, 14, 2], ["buckshot", 4, 10, 2], ["ammo_556", 6, 15, 1], ["bandage", 1, 3, 2], ["flares", 1, 3, 1], ["sheriff_page", 1, 1, 0]],
-	"military": [["ammo_556", 10, 30, 4], ["ammo_308", 5, 12, 2], ["ammo_9mm", 8, 20, 2], ["ammo_50", 2, 5, 1], ["med_kit", 1, 1, 2], ["precision_parts", 1, 1, 1], ["crossbow_limbs", 1, 1, 0], ["gunpowder", 3, 8, 2]],
-	"gun_store": [["ammo_22", 10, 30, 3], ["ammo_9mm", 10, 25, 3], ["ammo_45", 6, 18, 2], ["ammo_357", 4, 12, 2], ["ammo_3030", 5, 12, 2], ["ammo_308", 4, 10, 2], ["buckshot", 6, 14, 3], ["bolts", 10, 20, 2], ["kit_gun", 1, 1, 1], ["scope", 1, 1, 1]],
-	"pawn": [["ammo_357", 3, 8, 2], ["duct_tape", 1, 2, 1], ["precision_parts", 1, 1, 1], ["kit_blade", 1, 1, 1], ["kit_ranged", 1, 1, 1], ["broken_katana_blade", 1, 1, 0]],
-	"sports": [["water_bottle", 1, 2, 3], ["arrows", 5, 12, 2], ["ammo_22", 6, 15, 2], ["rubber_tubing", 1, 1, 2], ["duct_tape", 1, 1, 1], ["kit_gear", 1, 1, 1]],
-	"wilderness": [["arrows", 6, 15, 3], ["bolts", 6, 15, 2], ["ammo_3030", 4, 10, 2], ["flares", 1, 3, 2], ["feather", 2, 6, 2], ["canned_beans", 1, 2, 2], ["rubber_tubing", 1, 1, 1], ["kit_ranged", 1, 1, 1]],
-	"marina": [["harpoons", 2, 6, 3], ["flares", 1, 4, 3], ["gasoline", 1, 1, 2], ["bait", 5, 15, 3], ["rubber_tubing", 1, 2, 1]],
+	"vehicle": [["gasoline", 1, 1, 3], ["car_battery", 1, 1, 1], ["flare", 1, 3, 2], ["ammo_9mm", 3, 9, 1], ["rubber_tubing", 1, 1, 1], ["scrap", 2, 5, 2]],
+	"police": [["ammo_9mm", 8, 20, 4], ["ammo_45acp", 6, 14, 2], ["buckshot", 4, 10, 2], ["ammo_556", 6, 15, 1], ["bandage", 1, 3, 2], ["flare", 1, 3, 1], ["sheriff_page", 1, 1, 0]],
+	"military": [["ammo_556", 10, 30, 4], ["ammo_308", 5, 12, 2], ["ammo_9mm", 8, 20, 2], ["ammo_50bmg", 2, 5, 1], ["med_kit", 1, 1, 2], ["precision_parts", 1, 1, 1], ["crossbow_limbs", 1, 1, 0], ["gunpowder", 3, 8, 2]],
+	"gun_store": [["ammo_22lr", 10, 30, 3], ["ammo_9mm", 10, 25, 3], ["ammo_45acp", 6, 18, 2], ["ammo_357", 4, 12, 2], ["ammo_3030", 5, 12, 2], ["ammo_308", 4, 10, 2], ["buckshot", 6, 14, 3], ["bolts", 10, 20, 2], ["gun_kit", 1, 1, 1], ["scope", 1, 1, 1]],
+	"pawn": [["ammo_357", 3, 8, 2], ["duct_tape", 1, 2, 1], ["precision_parts", 1, 1, 1], ["blade_kit", 1, 1, 1], ["ranged_kit", 1, 1, 1], ["broken_katana_blade", 1, 1, 0]],
+	"sports": [["water_bottle", 1, 2, 3], ["arrow", 5, 12, 2], ["ammo_22lr", 6, 15, 2], ["rubber_tubing", 1, 1, 2], ["duct_tape", 1, 1, 1], ["gear_kit", 1, 1, 1]],
+	"wilderness": [["arrow", 6, 15, 3], ["bolts", 6, 15, 2], ["ammo_3030", 4, 10, 2], ["flare", 1, 3, 2], ["feather", 2, 6, 2], ["canned_beans", 1, 2, 2], ["rubber_tubing", 1, 1, 1], ["ranged_kit", 1, 1, 1]],
+	"marina": [["harpoon_spear", 2, 6, 3], ["flare", 1, 4, 3], ["gasoline", 1, 1, 2], ["bait", 5, 15, 3], ["rubber_tubing", 1, 2, 1]],
 	"lab": [["med_kit", 1, 2, 3], ["bandage", 2, 4, 3], ["glass_bottle", 2, 4, 2], ["magnesium", 1, 3, 2], ["precision_parts", 1, 1, 1], ["spitter_gland", 1, 1, 1]],
-	"fire_station": [["bandage", 1, 3, 3], ["med_kit", 1, 1, 1], ["flares", 1, 3, 2], ["rag", 2, 4, 2], ["gasoline", 1, 1, 1]],
-	"construction": [["nails", 10, 30, 3], ["rebar", 2, 5, 3], ["duct_tape", 1, 2, 2], ["metal_pipe", 1, 3, 2], ["scrap", 4, 10, 3], ["kit_blunt", 1, 1, 1], ["gear_assembly", 1, 1, 1]],
+	"fire_station": [["bandage", 1, 3, 3], ["med_kit", 1, 1, 1], ["flare", 1, 3, 2], ["rag", 2, 4, 2], ["gasoline", 1, 1, 1]],
+	"construction": [["nails", 10, 30, 3], ["rebar", 2, 5, 3], ["duct_tape", 1, 2, 2], ["metal_pipe", 1, 3, 2], ["scrap", 4, 10, 3], ["blunt_kit", 1, 1, 1], ["gear_assembly", 1, 1, 1]],
 	"lumber": [["wood", 10, 30, 4], ["gasoline", 1, 1, 2], ["saw_blade", 1, 1, 1], ["duct_tape", 1, 1, 1]],
 	"scrapyard": [["scrap", 5, 15, 4], ["metal_pipe", 1, 3, 2], ["car_battery", 1, 1, 1], ["copper_wire", 3, 8, 2], ["gear_assembly", 1, 1, 1], ["rubber_tubing", 1, 1, 1]],
 	"cemetery": [["rag", 1, 2, 2], ["glass_bottle", 1, 1, 1], ["fiber", 3, 8, 2]],
-	"clothing": [["cloth", 2, 5, 4], ["rag", 1, 3, 2], ["kit_gear", 1, 1, 1], ["conspiracy_note", 1, 1, 0]],
-	"biker_bar": [["glass_bottle", 2, 4, 3], ["rag", 1, 3, 2], ["gasoline", 1, 1, 1], ["ammo_45", 4, 10, 2], ["buckshot", 2, 6, 2], ["leather_grip", 1, 1, 1]],
+	"clothing": [["cloth", 2, 5, 4], ["rag", 1, 3, 2], ["gear_kit", 1, 1, 1], ["conspiracy_note", 1, 1, 0]],
+	"biker_bar": [["glass_bottle", 2, 4, 3], ["rag", 1, 3, 2], ["gasoline", 1, 1, 1], ["ammo_45acp", 4, 10, 2], ["buckshot", 2, 6, 2], ["leather_grip", 1, 1, 1]],
 }
 
 static func register(d) -> void:
@@ -189,7 +188,7 @@ static func register(d) -> void:
 								push_warning("Recipe for %s needs unknown item %s" % [e.id, p[0]])
 								ok = false
 						if not ok: continue
-						var station := "weapon_bench"
+						var station := "armory_bench" if not e.has("slot") else "sewing_table"
 						if e.id == "scrap_crossbow" or e.get("mode", "") == "consumable": station = "ammo_bench"
 						if e.get("cosmetic", false) or (e.has("slot") and s["in"].size() == 1 and d.items[s["in"][0][0]].cat == "resource"): station = "hand"
 						var is_upgrade: bool = s["in"].any(func(p): return str(p[0]).begins_with("kit_") or p[0] == "scope")
@@ -222,7 +221,7 @@ static func register(d) -> void:
 			d.enemies[t].look = lk
 	# incendiary shells need the press
 	for r in d.recipes:
-		if r.out == "shells_incendiary":
+		if r.out == "incendiary_shell":
 			r.unlock = {"type": "has_item", "item": "shell_press"}
 			r.note = "Needs an Incendiary Shell Press in your pack."
 
@@ -279,10 +278,10 @@ static func roll_loot(tags: Array, rng: RandomNumberGenerator, rolls := 2, quali
 				if Data.items[pick].stack > 1: q = rng.randi_range(1, 3)
 				out.append([pick, q])
 				continue
-		var mats: Array = LOOT_MATS.get(tag, LOOT_MATS.home)
+		var mats: Array = LOOT_MATS.get(tag, LOOT_MATS.home) + Data.loot_items.get(tag, [])
 		var mw := []
 		for m in mats:
-			if int(m[3]) > 0: mw.append([m, float(m[3])])
+			if float(m[3]) > 0 and Data.items.has(m[0]): mw.append([m, float(m[3])])
 		var mp = _pick(mw, rng)
 		if mp is Array:
 			out.append([mp[0], rng.randi_range(int(mp[1]), int(mp[2]))])

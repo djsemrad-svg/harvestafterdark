@@ -527,6 +527,9 @@ func update_lighting(m: GameMap) -> void:
 	var e := env()
 	var a := darkness_level(m, e)
 	var dark_col := Color(0.06, 0.04, 0.1) if m.mine else Color(0.1, 0.13, 0.32)
+	# night vision (gear or a meal) lifts most of the dark
+	if Game.screen == "game" and not Game.state.is_empty() and (Game.gear_total().fx.get("night_vision", false) or Game.buff("night vision") > 0):
+		a *= 0.35
 	darkness.color = Color.WHITE.lerp(dark_col, a)
 	var used := 0
 	if a > 0.02:
@@ -555,7 +558,11 @@ func update_lighting(m: GameMap) -> void:
 		for l in m.lights:
 			srcs.append([Vector2(l.x * 16 + 8, l.y * 16 + 8), l.r, true])
 		if Game.screen == "game" and m == Game.map:
-			srcs.append([Game.player.pos + Vector2(0, -16), 100 if m.mine else (30 if m.outdoor else 20), false])
+			var pr: int = 100 if m.mine else (30 if m.outdoor else 20)
+			var hs = Game.selected_stack()
+			if (hs != null and hs.id == "flashlight") or Game.gear_total().fx.get("light", false):
+				pr = int(pr * 2.2) if not m.mine else 160
+			srcs.append([Game.player.pos + Vector2(0, -16), pr, false])
 		for s in srcs:
 			if used >= light_pool.size():
 				break

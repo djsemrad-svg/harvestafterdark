@@ -773,6 +773,7 @@ func run_all() -> void:
 	check("Crafting: chest crafted from wood and placed on the homestead", made and placed and stored and G.count_item("hoe") == 1, "%s,%s,%s" % [made, placed, stored])
 
 	G.add_item("river_chub", 1, {"silent": true})
+	G.add_item("cooking_oil", 1, {"silent": true})
 	at("house", 9, 3, "up")
 	var stove = G.map.get_obj(9, 2)
 	if stove != null: W.interact_object(stove)
@@ -810,14 +811,15 @@ func run_all() -> void:
 	for rr in Data.recipes:
 		if not Data.items.has(rr.out): all_out = false
 		for pair in rr.inputs:
-			if not pair[0].begins_with("cat:") and not Data.items.has(pair[0]): all_out = false
+			if not pair[0].begins_with("cat:") and not pair[0].begins_with("grp:") and not Data.items.has(pair[0]): all_out = false
 	check("Crafting expansion: every recipe, item icon and object sprite is valid", bad_icons.is_empty() and all_out and Data.recipes.size() >= 40, "recipes=%d bad=%s" % [Data.recipes.size(), bad_icons])
 
 	G.add_item("wood", 60, {"silent": true}); G.add_item("scrap", 40, {"silent": true}); G.add_item("stone", 30, {"silent": true}); G.add_item("copper_bar", 3, {"silent": true})
+	G.add_item("iron_bar", 5, {"silent": true}); G.add_item("gear_assembly", 1, {"silent": true}); G.add_item("nails", 10, {"silent": true})
 	var rbench: Dictionary = {}
 	for x in Data.recipes:
 		if x.out == "ammo_bench": rbench = x
-	U.open("craft", {"station": "hand"}); U._craft(rbench); close_all()
+	U.open("craft", {"station": "workbench"}); U._craft(rbench); close_all()
 	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30)
 	select("ammo_bench"); W.use_selected(0, false)
 	var bench = hm.get_obj(21, 30)
@@ -826,13 +828,14 @@ func run_all() -> void:
 	for x in Data.recipes:
 		if x.out == "nail_rounds": U._craft(x)
 	close_all()
-	check("Ammo Bench: crafted, placed, opens its own station and makes Nail Rounds", bench != null and bench_ui and G.count_item("nail_rounds") == 20, "bench=%s ui=%s nails=%d" % [bench != null, bench_ui, G.count_item("nail_rounds")])
+	check("Ammo Bench: crafted at a Workbench, placed, opens its own station and makes Nail Rounds", rbench.station == "workbench" and bench != null and bench_ui and G.count_item("nail_rounds") == 30, "bench=%s ui=%s nails=%d" % [bench != null, bench_ui, G.count_item("nail_rounds")])
 
 	G.state.skills.survival.xp = 100
 	var rt_: Dictionary = {}
 	for x in Data.recipes:
 		if x.out == "nail_turret": rt_ = x
-	U.open("craft", {"station": "hand"}); U._craft(rt_); close_all()
+	for pair in rt_.inputs: G.add_item(pair[0], int(pair[1]), {"silent": true})
+	U.open("craft", {"station": rt_.station}); U._craft(rt_); close_all()
 	G.enemies.clear()
 	at("homestead", 30, 24, "down"); clear_tile(hm, 30, 25)
 	select("nail_turret"); W.use_selected(0, false)
@@ -843,7 +846,7 @@ func run_all() -> void:
 	e = W.spawn_enemy("shambler", 33, 26)
 	e.state = "stun"; e.t = 99.0; e.vel = Vector2.ZERO
 	tick(8000)
-	check("Nail Turret: crafted at Survival 1, loaded with ammo, shoots and kills an infected", tur != null and lerr2 == "" and loaded == 20 and G.enemies.is_empty() and int(tur.ammo_n) < 20, "err='%s' left=%d ammo=%s" % [lerr2, G.enemies.size(), tur.get("ammo_n") if tur != null else "-"])
+	check("Nail Turret: crafted at the Electronics Bench, loaded with ammo, shoots and kills an infected", tur != null and lerr2 == "" and loaded >= 20 and G.enemies.is_empty() and int(tur.ammo_n) < loaded, "err='%s' left=%d ammo=%s" % [lerr2, G.enemies.size(), tur.get("ammo_n") if tur != null else "-"])
 
 	# barriers: damage, break, repair, gate
 	clear_tile(hm, 24, 30)
@@ -940,7 +943,7 @@ func run_all() -> void:
 		if x.out == "pumpkin_pie": pie = x
 	var locked_pie: bool = not U.recipe_unlocked(pie)
 	G.state.npcs.ruth.points = 300
-	G.add_item("pumpkin", 1, {"silent": true}); G.add_item("bread_loaf", 1, {"silent": true})
+	for pair in pie.inputs: G.add_item(pair[0], int(pair[1]), {"silent": true})
 	at("house", 9, 3, "up")
 	W.interact_object(G.map.get_obj(9, 2))
 	U._craft(pie)
@@ -1107,7 +1110,7 @@ func run_all() -> void:
 		var inside: bool = G.map.id == rid and not G.map.is_solid(int(wp0.x), int(wp0.y) - 1)
 		var ctr = null
 		for kk in G.map.objects:
-			if G.map.objects[kk].type == "hidden_counter": ctr = G.map.objects[kk]
+			if G.map.objects[kk].type in ["hidden_counter", "counter"]: ctr = G.map.objects[kk]
 		if ctr != null: W.interact_object(ctr)
 		var shop_ui: bool = ov() == "shop" and U.overlay.shop == rid
 		close_all()
@@ -1217,6 +1220,7 @@ func run_all() -> void:
 	Balance.raids.grace_days = 99999
 
 	run_arsenal()
+	run_items()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -1477,8 +1481,8 @@ func run_arsenal() -> void:
 	for r in Data.recipes:
 		if r.out == "makeshift_spear": rs = r
 	for p in rs.get("inputs", []): G.add_item(p[0], int(p[1]), {"silent": true})
-	U.open("craft", {"station": "weapon_bench"}); U._craft(rs); close_all()
-	check("Weapon Bench: crafts the Makeshift Spear from the sheet's recipe", rs.get("station", "") == "weapon_bench" and G.count_item("makeshift_spear") == 1, str(rs.get("inputs", [])))
+	U.open("craft", {"station": "armory_bench"}); U._craft(rs); close_all()
+	check("Armory Bench: crafts the Makeshift Spear from the sheet's recipe", rs.get("station", "") == "armory_bench" and G.count_item("makeshift_spear") == 1, str(rs.get("inputs", [])))
 
 	var pt: Vector2i = W.player_tile()
 	var crate: Dictionary = G.map.add_obj(pt.x + 1, pt.y, "supply_crate", {"quality": 0.5})
@@ -1511,6 +1515,121 @@ func run_arsenal() -> void:
 	var n_rep: int = count_nodes(U.overlay_root)
 	close_all()
 	check("Interface: weapon and gear details and the repair window render", n_inv > 40 and n_inv2 > 40 and n_rep > 10, "%d %d %d" % [n_inv, n_inv2, n_rep])
+
+func run_items() -> void:
+	var G = Game
+	var rows: Array = Catalog.DB.ITEMS
+	var missing := []
+	for e in rows:
+		if e.cat == "Livestock" or (e.source == "Upgrade" and e.id.split("_")[0] in ["hoe", "pickaxe", "axe", "watering", "scythe"]): continue
+		if not Data.items.has(e.id): missing.append(e.id)
+	var bad_rec := []
+	for r in Data.recipes:
+		for pair in r.inputs:
+			if not str(pair[0]).begins_with("cat:") and not str(pair[0]).begins_with("grp:") and not Data.items.has(pair[0]): bad_rec.append(r.out + ":" + str(pair[0]))
+	check("Item sheet: all %d rows are in the game (items, crops, fish, recipes)" % rows.size(), missing.is_empty() and bad_rec.is_empty() and Data.crops.size() >= 46 and Data.fish.size() >= 41, "missing=%s bad=%s fish=%d" % [missing.slice(0, 6), bad_rec.slice(0, 6), Data.fish.size()])
+
+	# workbench by hand, then a station built at it
+	start("adventure", 2)
+	var hm: GameMap = G.maps.homestead
+	G.add_item("wood", 100, {"silent": true}); G.add_item("stone", 100, {"silent": true}); G.add_item("gear_assembly", 4, {"silent": true})
+	var rw: Dictionary = {}
+	var rmill: Dictionary = {}
+	for r in Data.recipes:
+		if r.out == "workbench": rw = r
+		if r.out == "grain_mill": rmill = r
+	U.open("craft", {"station": "hand"}); U._craft(rw); close_all()
+	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30); clear_tile(hm, 21, 31)
+	select("workbench"); W.use_selected(0, false)
+	var wb = hm.get_obj(21, 30)
+	if wb != null: W.interact_object(wb)
+	var wb_ui: bool = ov() == "craft" and U.overlay.station == "workbench"
+	U._craft(rmill); close_all()
+	check("Workbench: made by hand, placed, and builds other stations (Grain Mill)", rw.station == "hand" and wb_ui and G.count_item("grain_mill") == 1, "ui=%s mill=%d" % [wb_ui, G.count_item("grain_mill")])
+
+	# a machine from the sheet: wheat into flour
+	G.map.remove_obj(21, 30)
+	select("grain_mill"); W.use_selected(0, false)
+	var mill = hm.get_obj(21, 30)
+	G.add_item("wheat", 2, {"silent": true})
+	select("wheat")
+	if mill != null: W.interact_object(mill)
+	G.state.time = int(G.state.time) + 200
+	if mill != null: W.interact_object(mill)
+	check("Machines: the Grain Mill turns 2 wheat into flour", mill != null and G.count_item("flour") == 1 and G.count_item("wheat") == 0, "flour=%d" % G.count_item("flour"))
+
+	# producers and fruit trees overnight
+	clear_tile(hm, 22, 32); clear_tile(hm, 24, 32)
+	var bee: Dictionary = hm.add_obj(22, 32, "bee_house")
+	var tree: Dictionary = hm.add_obj(24, 32, "fruit_tree", {"fruit": "cherry", "age": 27})
+	for i in 4:
+		G.overnight_object(hm, bee, {"lines": []})
+	G.state.day = 1
+	G.overnight_object(hm, tree, {"lines": []})
+	at("homestead", 22, 31, "down")
+	W.interact_object(bee)
+	W.interact_object(tree)
+	check("Bee House makes honey every few days; a grown Cherry tree fruits in spring", G.count_item("honey") + G.count_item("wildflower_honey") >= 1 and G.count_item("cherry") >= 1, "honey=%d cherry=%d" % [G.count_item("honey") + G.count_item("wildflower_honey"), G.count_item("cherry")])
+
+	# food effects
+	G.add_item("camp_coffee", 1, {"silent": true})
+	var sp0: float = W.cb.speed_mult()
+	G.eat_item("camp_coffee")
+	var sp1: float = W.cb.speed_mult()
+	G.state.time = int(G.state.time) + 200
+	G.expire_buffs()
+	var sp2: float = W.cb.speed_mult()
+	check("Food buffs: Camp Coffee speeds you up for a while, then wears off", sp1 > sp0 and is_equal_approx(sp2, sp0), "%.2f %.2f %.2f" % [sp0, sp1, sp2])
+
+	var inv0: int = G.inv().size()
+	G.add_item("satchel", 1, {"silent": true})
+	G.use_pack_upgrade("satchel")
+	check("Upgrades: a Satchel adds 6 pack slots", G.inv().size() == inv0 + 6)
+
+	# crab pot
+	var ptile := Vector2i(-1, -1)
+	for yy in range(1, hm.h - 1):
+		for xx in range(1, hm.w - 1):
+			if ptile.x < 0 and hm.tile_at(xx, yy) != "water" and hm.tile_at(xx + 1, yy) == "water": ptile = Vector2i(xx, yy)
+	clear_tile(hm, ptile.x, ptile.y)
+	var pot: Dictionary = hm.add_obj(ptile.x, ptile.y, "crab_pot")
+	var near_water := false
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			if hm.tile_at(ptile.x + dx, ptile.y + dy) == "water": near_water = true
+	pot.bait = true
+	G.overnight_object(hm, pot, {"lines": []})
+	check("Crab pot: baited beside water, it catches something overnight", near_water and str(pot.get("catch", "")) != "", "near_water=%s catch=%s" % [near_water, pot.get("catch", "")])
+
+	# anvil upgrade
+	G.add_item("copper_bar", 5, {"silent": true})
+	var tier0: int = G.tool_tier("hoe")
+	var aerr: String = G.anvil_upgrade("hoe")
+	check("Anvil: upgrade a tool yourself with 5 bars", aerr == "" and G.tool_tier("hoe") == tier0 + 1, aerr)
+
+	# seed maker
+	var sm: Dictionary = hm.add_obj(30, 33, "seed_maker")
+	G.add_item("carrot", 1, {"silent": true})
+	var err: String = G.machine_load(sm, "carrot")
+	check("Seed Maker: a carrot becomes carrot seeds; new crops from the sheet grow", err == "" and str(sm.job.out) == "carrot_seed" and Data.crops.carrot.days == 5, err)
+
+	# traps
+	arena()
+	var pt: Vector2i = W.player_tile()
+	var tx: int = pt.x + 3
+	G.map.add_obj(tx, pt.y, "spike_trap")
+	var e: Dictionary = foe("shambler", Vector2.ZERO)
+	e.pos = Vector2(tx * 16 + 8, pt.y * 16 + 12)
+	tick(200)
+	var spiked: bool = float(e.hp) < 45.0
+	G.map.add_obj(tx + 4, pt.y, "landmine")
+	var e2: Dictionary = foe("brute", Vector2.ZERO)
+	e2.pos = Vector2((tx + 4) * 16 + 8, pt.y * 16 + 12)
+	tick(200)
+	check("Traps: spike traps hurt the infected that step on them; landmines blow up", spiked and float(e2.hp) < 260.0 and G.map.get_obj(tx + 4, pt.y) == null, "hp=%s brute=%s" % [e.hp, e2.hp])
+
+	var drops_all: Array = Data.enemy_drops.get("*", []).map(func(x): return x[0])
+	check("Zombie drops from the sheet: any infected can drop Rotten Flesh and Zombie Teeth", drops_all.has("rotten_flesh") and drops_all.has("zombie_tooth"), str(drops_all))
 
 func count_nodes(n: Node) -> int:
 	var c := 1

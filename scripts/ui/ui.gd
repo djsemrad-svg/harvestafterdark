@@ -666,7 +666,7 @@ func hint_text() -> String:
 		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
 		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
-		if o.type == "weapon_bench": return "E: Use Weapon Bench"
+		if o.type == "armory_bench": return "E: Use Armory Bench"
 		if o.type in ["car_wreck", "suitcase", "supply_crate"]:
 			return ("E: Search" if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
@@ -1457,15 +1457,19 @@ func recipe_unlocked(r: Dictionary) -> bool:
 	if r.unlock.type == "skill": return Game.skill_level(r.unlock.skill) >= r.unlock.level
 	if r.unlock.type == "friend": return Game.hearts(r.unlock.npc) >= r.unlock.hearts
 	if r.unlock.type == "has_item": return Game.count_item(r.unlock.item) > 0
+	if r.unlock.type == "reward": return Game.state.flags.get("recipe_" + r.out, false)
 	return false
 
 func unlock_text(r: Dictionary) -> String:
 	if r.unlock.type == "skill": return "Locked: reach %s level %d." % [Data.skills[r.unlock.skill].name, r.unlock.level]
 	if r.unlock.type == "friend": return "Locked: become friends with %s (%d hearts)." % [Data.npcs[r.unlock.npc].name.split(" ")[0], r.unlock.hearts]
 	if r.unlock.type == "has_item": return "Locked: needs a %s in your pack." % Data.items[r.unlock.item].name
+	if r.unlock.type == "reward": return "Locked: %s." % str(r.unlock.get("text", "a recipe reward"))
 	return "Locked."
 
-const STATION_NAMES := {"stove": "Stove (in your house)", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench", "weapon_bench": "Weapon Bench"}
+const STATION_NAMES := {"stove": "Stove, Campfire or Cookstove", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench", "armory_bench": "Armory Bench",
+	"workbench": "Workbench", "anvil": "Anvil", "electronics_bench": "Electronics Bench", "chem_station": "Chemistry Station", "sewing_table": "Sewing Table",
+	"brick_furnace": "Brick Furnace", "loom": "Loom", "ferment_barrel": "Fermentation Barrel", "grain_mill": "Grain Mill"}
 
 func _recipes(station: String, show_all: bool) -> VBoxContainer:
 	var v := K.vbox(2)
@@ -1486,7 +1490,7 @@ func _recipes(station: String, show_all: bool) -> VBoxContainer:
 		var ins := []
 		for pair in r.inputs:
 			var have := Game.count_match(pair[0])
-			var nm: String = ("any " + Data.categories[pair[0].substr(4)].label) if pair[0].begins_with("cat:") else Data.items[pair[0]].name
+			var nm: String = Game.spec_name(pair[0])
 			ins.append("[color=%s]%d %s (%d)[/color]" % ["#3f7a2c" if have >= pair[1] else "#b3392e", pair[1], nm, have])
 		var text := "[b]%s%s[/b]\n%s\n[font_size=5]%s · %s%s[/font_size]" % [Data.items[r.out].name, " x%d" % r.qty if r.qty > 1 else "",
 			", ".join(ins) if un else unlock_text(r),
@@ -1520,8 +1524,38 @@ func _craft(r: Dictionary) -> void:
 	overlay.err = ""
 	render_overlay()
 
+## Your own anvil: upgrade tools with 5 bars of the next metal, on the spot.
+func _ov_anvil() -> Control:
+	var pw := _window("Anvil", 380)
+	var v: VBoxContainer = pw[1]
+	v.add_child(K.label("Upgrade a tool with 5 bars of the next metal (Aurium also needs a Glimmerite). No fee, no wait.", 7, K.INK_SOFT, true))
+	for t in Data.tool_defs:
+		if not Data.tool_defs[t].upgradable: continue
+		var up := Game.next_upgrade(t)
+		var row := K.row_box()
+		var rh := K.hbox(4)
+		rh.add_child(K.icon(Art.get_icon(t, Game.tool_tier(t)), 16))
+		var txt := "%s %s" % [Data.tool_tiers[Game.tool_tier(t)].name, Data.tool_defs[t].name]
+		if not up.is_empty(): txt += "  >  %s (5 %s, you have %d)" % [Data.tool_tiers[int(up.tier)].name, Data.items[up.bar].name, Game.count_item(up.bar)]
+		var nl := K.label(txt, 6)
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rh.add_child(nl)
+		if not up.is_empty():
+			var tid: String = t
+			rh.add_child(K.button("Upgrade", func():
+				overlay.err = Game.anvil_upgrade(tid)
+				if overlay.err == "": toast("Upgraded your %s." % Data.tool_defs[tid].name, tid, "gold")
+				render_overlay(), "small"))
+		row.add_child(rh)
+		v.add_child(row)
+	v.add_child(K.label("Also made here:", 7, K.WOOD_DARK))
+	v.add_child(K.scroll(_recipes("anvil", false), 90))
+	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
+	v.add_child(_close_btn())
+	return pw[0]
+
 func _ov_craft() -> Control:
-	var pw := _window({"stove": "Cooking", "ammo_bench": "Ammo Bench"}.get(overlay.station, "Crafting"), 380)
+	var pw := _window({"stove": "Cooking"}.get(overlay.station, STATION_NAMES.get(overlay.station, "Crafting")), 380)
 	pw[1].add_child(K.scroll(_recipes(overlay.station, false), 170))
 	if overlay.get("err", "") != "": pw[1].add_child(K.label(overlay.err, 7, K.DANGER))
 	pw[1].add_child(_close_btn())
@@ -1626,6 +1660,14 @@ func _tab_inventory() -> Control:
 			dv.add_child(K.rich(gear_info(sel), 6))
 		else:
 			dv.add_child(K.label(it.desc, 6, null, true))
+			if it.has("buffs"):
+				dv.add_child(K.label("Also: " + ", ".join(it.buffs.map(func(b): return Game.buff_text(str(b.stat), float(b.v), int(b.min)))), 6, K.MOSS, true))
+			var od: Dictionary = Data.obj_defs.get(it.get("place", ""), {})
+			var todo: String = str(it.get("todo", od.get("todo", "")))
+			if todo != "":
+				dv.add_child(K.label("Not in the game yet: " + todo, 6, Color("#9a8a7a"), true))
+			if it.has("sheet") and it.sheet.where != "" and not it.has("weapon"):
+				dv.add_child(K.label(("Made at: " if it.sheet.source in ["Craft", "Cook", "Machine", "Upgrade"] else "Found: ") + str(it.sheet.where), 5, K.INK_SOFT, true))
 		if it.has("tool") and Data.tool_defs[it.tool].upgradable:
 			dv.add_child(K.label(Game.tool_effect_text(it.tool, Game.tool_tier(it.tool)), 6, K.INK_SOFT, true))
 		if it.has("edible"):

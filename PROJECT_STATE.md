@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 13, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 127 / 127 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 138 / 138 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -46,19 +46,22 @@ Decisions agreed with Daniel: a new rancher neighbour sells animals; chickens an
 - Tanning Rack (Farming 2) turns 2 Rabbit Fur into a Tanned Pelt. Three egg recipes, one taught by Marisol at 3 hearts.
 - Your animals are listed in the Social tab.
 
-### Art pass and new places (added Nov 13)
+### Art: back to code-drawn art (Nov 13)
 
-Decisions agreed with Daniel: use his five AI-generated sheets (he made them himself) for everything, including characters; add the Clinic, Workshop, Combat Guild and Greenhouse; use his room pictures as interior backdrops.
+Daniel decided to start the art over: his AI-generated sheets didn't come through in a usable way. All of his art (`art/`, `art_source/`) was removed and the game draws everything in code again. The override loader is still there: any PNG put in `res://art/` (for example `art/icons/<item id>.png`) replaces the code-drawn version, so new art can go in piece by piece. `tools/atlas_tool.py` still works; `tools/art_map.py` is empty.
 
-- Art override system: any PNG in `res://art/` replaces the procedural art for that thing. Missing files fall back to procedural art, so art can be swapped piece by piece.
-  - `art/buildings/<kind>_<condition>.png` or `<kind>.png`, `art/trees/`, `art/objects/<type>.png`, `art/animals/`, `art/characters/<sprite>_<dir>.png`, `art/enemies/`, `art/icons/<item id>.png`, `art/rooms/<room>.png`.
-  - Source sheets are in `art_source/`. `python3 tools/atlas_tool.py build` cuts them using the list in `tools/art_map.py` (remove background, clean halos, shrink to the 16 px grid, reduce colours). After adding PNGs, run `godot --headless --path . --import`.
-- Characters: the player is the atlas farmer, recoloured in the creator (skin, hair, shirt, overalls). All 8 neighbours and the infected use atlas sprites.
-- New neighbours: Dr. Elias (Clinic, treatment 150 gold, bandages, med kits), Jo (Workshop, sells materials and builds the greenhouse), Cole the guildmaster (Combat Guild, bounties, machete, crossbow, ammo).
-- Greenhouse: north of the farmhouse, locked until Jo restores it (3,000 gold, 200 wood, 100 stone, 5 copper bars). Inside, crops grow in any season.
-- Interiors for Clinic, Workshop, Guild and Greenhouse use Daniel's room pictures as backdrops with invisible walls and counters.
+The Clinic, Workshop, Combat Guild and Greenhouse (with Dr. Elias, Jo and Cole) stay. Their rooms are now built from tiles and furniture in `MapBuilder.ROOMS` instead of pictures. Infected keep several looks per type, now drawn in code (clothes, hair, helmets for Riot and Soldier); knocked-down infected and Crawlers are drawn lying down.
 
-Art still procedural (needs sheets): forge, town hall, houses, ruin, coop, ground tiles, NPC walk frames (neighbours bob instead of walking), and item icons (Daniel is making an icon sheet from the 220-item list; tool tiers will need tier paths added).
+### Item sheet (added Nov 13)
+
+Source of truth: `design/items.csv` (Daniel's item spreadsheet, 678 rows). `python3 tools/build_items.py` turns it into `scripts/autoload/items_db.gd`; `scripts/autoload/catalog.gd` adds everything to the game. Where the sheet and the old game disagreed, the sheet won: recipes, stations and ingredients follow it (for example the Ammo Bench is now built at a Workbench from iron bars, wood and a gear assembly). Ammo, upgrade kit and bench ids from the weapon work were renamed to the sheet's ids (`ammo_9mm`, `arrow`, `blade_kit`, `armory_bench`...); old saves are converted on load.
+
+Working:
+- Every item exists with the sheet's name and effect, and can be bought, found, crafted, cooked, grown, fished, mined or dropped as the sheet says.
+- 23 crafting stations, each placeable with its own recipe list. Machines take jobs (Grain Mill, Oil Press, Fermentation Barrel, Loom, Still, Dehydrator, Butter Churn, Cheese Press, Compost Bin, Water Purifier, Seed Maker, plus the old ones). Producers make things over time (Bee House, Worm Bin, Mushroom Log, Well). Anvil upgrades tools on the spot with 5 bars.
+- Cooking (63 recipes at the stove, campfire or cookstove) with health, energy and timed buffs (move speed, crit chance, stamina, melee damage, damage reduction, max health, night vision, easier fishing), shown as status badges.
+- 20 new crops, 6 fruit trees (saplings grow in 28 days, fruit in season), 20 new forage items, 20 new fish, crab pots, rods and tackle, ducks and quail in the coop, tin/zinc/lead ores and bronze/brass/steel bars, new gems, minerals and geodes, artifacts, junk and zombie drops, new ammo types, bags that add pack slots, traps and mines, metal gates, concrete walls, crossbow and flame turrets, wind turbine, decoy radio, storage, paths, lights and decorations, dirty water (boil it), Builder's Hammer, Gold Pan, Seed Spreader, Flashlight, scythe upgrades.
+- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory: barn animals (goat, cow, sheep, pig, guard dog, barn cat) and their products, shears and milk pail, barns, hutches and doghouses; crows (scarecrows); crop quality and pests (fertilizers, pest spray, frost cloth); growing bonuses (trellis, raised bed, cold frame); injuries and sickness (antibiotics, splint, antiseptic, antiviral); swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
 
 ### Weapons, gear and the infected (stage 1 of 3, added Nov 13)
 
@@ -80,14 +83,14 @@ Built:
 
 Stage 2: Residential District, Industrial District and Riverlands with enterable buildings whose containers use the sheet's "How to Obtain" places (loot tags in `Arsenal`). Stage 3: Cole's contract board, named bosses (Groundskeeper, Juggernaut, Undertaker, Briar King, Crash, Inferno), quest chains and achievements that award the legendaries.
 
-Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`) until Daniel's icon sheet replaces them (see the part 2 item list). Gear isn't drawn on the character yet.
+Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gear isn't drawn on the character yet.
 
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
 - `scripts/autoload/data.gd`: all content (items, crops, fish, NPCs, quests, shops, buildings). Content lives in GDScript dictionaries instead of Resource files so it is easy to read and edit in one place.
-- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader.
-- `tools/atlas_tool.py`, `tools/art_map.py`: sheet cutter and the list of what to cut.
+- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader (empty for now).
+- `scripts/autoload/catalog.gd`: the item sheet. `items_db.gd` is generated from `design/items.csv` by `tools/build_items.py`.
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -97,7 +100,7 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`) unti
 ## Visual direction (agreed with Daniel)
 
 - Currency is gold (renamed from scrip on Nov 13).
-- Daniel's five pixel sheets are in use through the art override folder (see Art pass above).
+- Art is code-drawn for now; Daniel is redoing the art from scratch.
 
 - Stardew-like 16-bit look, adapted to a small community in an outbreak.
 - Colour mood: warm and saturated in safe areas, greyer and colder in dangerous ones (mine, ridge, ruins). Done with a per-map grade (`GameMap.mood`).
@@ -121,7 +124,7 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`) unti
    - Gear look: mixed by tier. Low tiers homemade from scrap; top tiers restored military hardware.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
-4. Art: convert Daniel's item icon sheet into `art/icons/` (part 1: 220 items, part 2: 285 new items); more sheets for the buildings and tiles listed above.
-4b. Weapons stage 2 (new places) and stage 3 (contracts, bosses, achievements).
+4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
+4b. Back to building the game (Daniel's call, Nov 13): weapons stage 2 (new places) and stage 3 (contracts, bosses, achievements), then the systems the item sheet still needs (barns and large animals, crop quality, injuries and sickness).
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.

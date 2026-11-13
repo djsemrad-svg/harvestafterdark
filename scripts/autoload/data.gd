@@ -39,6 +39,10 @@ var weapons := {}     # weapon id -> stats from the spreadsheet (see Arsenal)
 var gear := {}        # clothing and armour id -> stats
 var loot_tags := {}   # place tag -> item ids found there
 var rare_drops := {}  # infected type -> [[item id, chance], ...]
+var groups := {}      # recipe groups ("grp:fruit") -> item ids (see Catalog)
+var loot_items := {}  # place tag -> [[item id, min, max, weight], ...] from the item sheet
+var enemy_drops := {} # infected type ("*" for all) -> [[item id, chance], ...] from the item sheet
+var livestock := {}   # livestock rows from the item sheet
 
 func def_item(id: String, o: Dictionary) -> void:
 	var it := {"id": id, "stack": 999, "price": 0, "cat": "resource", "desc": ""}
@@ -59,7 +63,7 @@ var tool_defs := {
 	"pickaxe": {"name": "Pickaxe", "skill": "mining", "upgradable": true, "desc": "Breaks rocks, ore deposits and placed objects."},
 	"axe": {"name": "Axe", "skill": "foraging", "upgradable": true, "desc": "Chops trees, stumps and branches."},
 	"watering_can": {"name": "Watering Can", "skill": "farming", "upgradable": true, "chargeable": true, "desc": "Waters crops. Refill at the hand pump or any water."},
-	"scythe": {"name": "Scythe", "skill": "farming", "upgradable": false, "desc": "Cuts weeds and harvests ripe crops."},
+	"scythe": {"name": "Scythe", "skill": "farming", "upgradable": true, "desc": "Cuts weeds and harvests ripe crops. Upgrades widen the swing: copper and iron reach farther to the sides, silver and gold cut a 3x3 area, aurium a 5x5 area."},
 	"fishing_rod": {"name": "Driftwood Rod", "skill": "fishing", "upgradable": false, "desc": "Hold to cast into water, then reel in when a fish bites."},
 	# Planned later phases (slots reserved): milk_pail, shears, sifter, salvage_kit
 }
@@ -185,7 +189,7 @@ var recipes := [
 	{"id": "r_chest", "group": "Storage", "out": "chest", "qty": 1, "station": "hand", "inputs": [["wood", 40]], "unlock": {"type": "start"}},
 	{"id": "r_path", "group": "Storage", "out": "stone_path", "qty": 5, "station": "hand", "inputs": [["stone", 5]], "unlock": {"type": "start"}},
 	{"id": "r_bench", "group": "Storage", "out": "ammo_bench", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["scrap", 10], ["stone", 10]], "unlock": {"type": "start"}, "note": "Crafts ammunition and ranged weapons."},
-	{"id": "r_wbench", "group": "Storage", "out": "weapon_bench", "qty": 1, "station": "hand", "inputs": [["wood", 40], ["scrap", 20], ["stone", 20], ["copper_bar", 2]], "unlock": {"type": "start"}, "note": "Crafts and upgrades weapons and gear."},
+	{"id": "r_wbench", "group": "Storage", "out": "armory_bench", "qty": 1, "station": "hand", "inputs": [["wood", 40], ["scrap", 20], ["stone", 20], ["copper_bar", 2]], "unlock": {"type": "start"}, "note": "Crafts and upgrades weapons and gear."},
 	# barriers
 	{"id": "r_fence", "group": "Barriers", "out": "fence", "qty": 4, "station": "hand", "inputs": [["wood", 4]], "unlock": {"type": "start"}},
 	{"id": "r_gate", "group": "Barriers", "out": "wood_gate", "qty": 1, "station": "hand", "inputs": [["wood", 10]], "unlock": {"type": "start"}},
@@ -329,7 +333,7 @@ var obj_defs := {
 	"drip_array": {"solid": true, "returns": "drip_array", "sprinkler": "big"},
 	# stations and processing equipment
 	"ammo_bench": {"solid": true, "returns": "ammo_bench", "station": "ammo_bench", "name": "Ammo Bench"},
-	"weapon_bench": {"solid": true, "returns": "weapon_bench", "station": "weapon_bench", "name": "Weapon Bench"},
+	"armory_bench": {"solid": true, "returns": "armory_bench", "station": "armory_bench", "name": "Armory Bench"},
 	"supply_crate": {"solid": true, "loot": ["military", "police", "hardware", "home", "sports"], "name": "Supply Crate", "fixture": true},
 	"recycler": {"solid": true, "returns": "recycler", "machine": true, "name": "Recycler"},
 	"charcoal_kiln": {"solid": true, "returns": "charcoal_kiln", "machine": true, "name": "Charcoal Kiln", "light": 30},
@@ -610,7 +614,7 @@ var shops := {
 			{"service": "repair", "name": "Repair weapons and gear", "desc": "Jo fixes what you carry and wear. Cost depends on how worn it is.", "price": 0},
 			{"id": "wood", "price": 15}, {"id": "stone", "price": 15}, {"id": "scrap", "price": 35}, {"id": "clay", "price": 25},
 			{"id": "saltpeter", "price": 40}, {"id": "duct_tape", "price": 60}, {"id": "gasoline", "price": 150}, {"id": "rubber_tubing", "price": 50},
-			{"id": "weapon_bench", "price": 600}, {"id": "kit_gear", "price": 750},
+			{"id": "armory_bench", "price": 600}, {"id": "gear_kit", "price": 750},
 		],
 	},
 	"guild": {
@@ -620,7 +624,7 @@ var shops := {
 			{"service": "bounty", "name": "Bounty board", "desc": "", "price": 0},
 			{"id": "machete", "price": 900}, {"id": "scrap_crossbow", "price": 1400},
 			{"id": "bolts", "price": 6}, {"id": "nail_rounds", "price": 3}, {"id": "buckshot", "price": 12}, {"id": "bandage", "price": 50},
-			{"id": "arrows", "price": 8}, {"id": "ammo_22", "price": 6}, {"id": "ammo_9mm", "price": 8}, {"id": "ball_bearings", "price": 2},
+			{"id": "arrow", "price": 8}, {"id": "ammo_22lr", "price": 6}, {"id": "ammo_9mm", "price": 8}, {"id": "ball_bearings", "price": 2},
 			{"rotating": "guild_arms", "count": 6},
 		],
 	},
@@ -959,7 +963,7 @@ func _init() -> void:
 		"pressure_sprinkler": ["Pressure Sprinkler", "machine", 200, "Waters the 8 tiles around it every morning."],
 		"drip_array": ["Drip Array", "machine", 500, "Waters a 5x5 square around it every morning."],
 		"ammo_bench": ["Ammo Bench", "machine", 60, "A workbench for ammunition and ranged weapons."],
-		"weapon_bench": ["Weapon Bench", "machine", 300, "Crafts and upgrades weapons and gear, and makes upgrade kits."],
+		"armory_bench": ["Armory Bench", "machine", 300, "Crafts and upgrades weapons and gear, and makes upgrade kits."],
 		"recycler": ["Recycler", "machine", 40, "Turns junk into scrap and fiber."],
 		"charcoal_kiln": ["Charcoal Kiln", "machine", 120, "Turns 10 wood into 1 coal."],
 		"brick_furnace": ["Brick Furnace", "machine", 150, "Smelts 5 ore and 1 coal into a bar."],
@@ -996,6 +1000,7 @@ func _init() -> void:
 		{"service": "house_repair", "name": "Farmhouse repairs", "desc": "", "price": 0}])
 	shops.general.stock = st
 	Arsenal.register(self)
+	Catalog.register(self)
 
 
 func item(id: String) -> Dictionary:

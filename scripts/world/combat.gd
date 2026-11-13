@@ -52,7 +52,7 @@ func aim(from_mouse: bool) -> Vector2:
 	return DIRS[p.dir]
 
 func energy_cost(wd: Dictionary) -> float:
-	var regen: float = float(fxv("regen", 0.0)) + Game.gear_total().regen
+	var regen: float = float(fxv("regen", 0.0)) + Game.gear_total().regen + Game.buff("stamina regen") - Game.buff("stamina costs")
 	return float(wd.stamina) * Balance.weapons.stamina_to_energy * clampf(1.0 - regen, 0.2, 2.0)
 
 func cooldown(wd: Dictionary) -> float:
@@ -143,7 +143,8 @@ func _melee_hit(s: Dictionary, wd: Dictionary) -> void:
 	elif fx.get("dig", false) and targets.is_empty():
 		w.apply_tool("hoe", 0, [f])
 	if fx.get("brush", false):
-		for t in w.scythe_tiles(f):
+		var dv: Vector2i = Vector2i(DIRS[p.dir])
+		for t in [f, Vector2i(f.x - dv.y, f.y + dv.x), Vector2i(f.x + dv.y, f.y - dv.x)]:
 			var o2 = Game.map.get_obj(t.x, t.y)
 			if o2 != null and Data.obj_defs.get(o2.type, {}).get("tool", "") in ["scythe", "any"]:
 				w.break_object(o2)
@@ -195,7 +196,7 @@ func shot_kind(wd: Dictionary) -> String:
 		"Bow": return "arrow"
 		"Crossbow": return "bolt"
 		"Sling": return "stone"
-		"Launcher": return "flare" if wd.ammo == "flares" else "harpoon"
+		"Launcher": return "flare" if wd.ammo == "flare" else "harpoon"
 		"Power Tool": return "nail"
 	return "bullet"
 
@@ -378,12 +379,13 @@ func hit_enemy(e: Dictionary, info: Dictionary) -> void:
 	var fx: Dictionary = wd.fx
 	var boss: bool = e.get("boss", false)
 	var dmg: float = float(info.get("dmg", wd.damage))
-	var crit_ch: float = (float(wd.crit) + float(fxv("crit_add", 0.0))) / 100.0
+	var crit_ch: float = (float(wd.crit) + float(fxv("crit_add", 0.0))) / 100.0 + Game.buff("crit chance")
 	var crit: bool = info.get("crit", false) or randf() < crit_ch
 	if crit:
 		dmg *= Balance.weapons.crit_mult * (1.0 + float(fx.get("crit_dmg", 0.0)))
 	if info.get("melee", false):
-		dmg *= 1.0 + float(Game.gear_total().fx.get("melee_dmg", 0.0))
+		dmg *= 1.0 + float(Game.gear_total().fx.get("melee_dmg", 0.0)) + Game.buff("melee damage")
+	dmg *= 1.0 + Game.buff("damage")
 	if info.get("double", false):
 		dmg *= 1.0 + float(fx.get("double_tap", 0.0))
 	if e.state in ["stun", "down"] or e.get("pin", 0.0) > 0:
@@ -804,6 +806,7 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 	var dr: float = 0.0
 	if s != null and not Game.is_broken(s): dr = float(Data.weapons[s.id].fx.get("dr", 0.0))
 	if sprinting: dr += float(gfx.get("sprint_dr", 0.0))
+	dr += Game.buff("damage reduction")
 	dmg *= 1.0 - clampf(dr, 0.0, 0.8)
 	if kind == "fire": dmg *= 1.0 - clampf(float(gfx.get("fire_resist", 0.0)), 0.0, 1.0)
 	if kind == "acid":
@@ -904,6 +907,7 @@ func speed_mult() -> float:
 		if sp < 0 and Game.gear_total().fx.get("no_penalty", false): sp = 0.0
 		m += sp
 	if p.has("kill_speed"): m += float(p.kill_speed[0])
+	m += Game.buff("move speed")
 	if float(p.get("wind_t", 0.0)) > 0: m += float(Game.gear_total().fx.second_wind[1]) / 100.0
 	return maxf(0.3, m)
 

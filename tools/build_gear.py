@@ -49,11 +49,11 @@ ID_OVERRIDE = {"MEL-000": "club", "PRJ-000": "scrap_crossbow", "GUN-018": "snipe
 PRICE_CAP = {"Normal": 2500, "Rare": 5000, "Epic": 9000, "Legendary": 15000, "Cosmetic": 400}
 
 AMMO = {
-    ".22 LR": "ammo_22", "9mm": "ammo_9mm", ".45 ACP": "ammo_45", ".357 Magnum": "ammo_357",
-    ".30-30": "ammo_3030", "0.308": "ammo_308", ".308": "ammo_308", "5.56": "ammo_556", ".50 BMG": "ammo_50",
-    "12 Gauge": "buckshot", "12 Gauge (Incendiary)": "shells_incendiary", "5.56 (Serum-Coated)": "ammo_serum",
-    "Arrows": "arrows", "Bolts": "bolts", "Harpoon Spears": "harpoons", "Nail Strips": "nail_strips",
-    "Flares": "flares", "Stones / Ball Bearings": "stone|ball_bearings", "Ball Bearings": "ball_bearings",
+    ".22 LR": "ammo_22lr", "9mm": "ammo_9mm", ".45 ACP": "ammo_45acp", ".357 Magnum": "ammo_357",
+    ".30-30": "ammo_3030", "0.308": "ammo_308", ".308": "ammo_308", "5.56": "ammo_556", ".50 BMG": "ammo_50bmg",
+    "12 Gauge": "buckshot", "12 Gauge (Incendiary)": "incendiary_shell", "5.56 (Serum-Coated)": "ammo_serum",
+    "Arrows": "arrow", "Bolts": "bolts", "Harpoon Spears": "harpoon_spear", "Nail Strips": "nail_rounds",
+    "Flares": "flare", "Stones / Ball Bearings": "stone|ball_bearings", "Ball Bearings": "ball_bearings",
     "Gasoline": "gasoline",
 }
 
@@ -68,8 +68,8 @@ MATS = {
     "incendiary shell press": "shell_press", "magnesium": "magnesium", "military crossbow limbs": "crossbow_limbs",
     "tungsten bolt schematic": "bolt_schematic", "church bell bronze": "bell_bronze", "nails": "nails", "rebar": "rebar",
     "saw blade": "saw_blade", "cloth": "cloth", "scrap metal": "scrap", "wood": "wood", "fiber": "fiber", "copper bar": "copper_bar",
-    "blade upgrade kit": "kit_blade", "blunt upgrade kit": "kit_blunt", "ranged upgrade kit": "kit_ranged",
-    "gun upgrade kit": "kit_gun", "gear upgrade kit": "kit_gear", "scope": "scope",
+    "blade upgrade kit": "blade_kit", "blunt upgrade kit": "blunt_kit", "ranged upgrade kit": "ranged_kit",
+    "gun upgrade kit": "gun_kit", "gear upgrade kit": "gear_kit", "scope": "scope",
 }
 
 # place words in "How to Obtain" -> loot tags used by containers in the world
@@ -214,7 +214,7 @@ def fx_weapon(text, fx, notes):
         if m: put("pin", float(m.group(1)))
         if "continuous damage while held" in lc: put("continuous", True)
         if "burns fuel" in lc: put("fuel", True)
-        m = re.search(r"(\d+)% (?:chance )?(?:bolts |arrows )?(?:are )?recover", lc) or re.search(r"(?:arrows|bolts) (\d+)% recoverable", lc)
+        m = re.search(r"(\d+)% (?:chance )?(?:bolts |arrows )?(?:are )?recover", lc) or re.search(r"(?:arrow|bolts) (\d+)% recoverable", lc)
         if m: put("recover", int(m.group(1)) / 100)
         elif "recover from bodies" in lc or re.search(r"\brecoverable\b", lc): put("recover", 1.0)
         m = re.search(r"pierces (\d+) zombie", lc) or re.search(r"pass(?:es)? through (?:up to )?(\d+) zombies", lc)

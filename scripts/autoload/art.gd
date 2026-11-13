@@ -304,7 +304,9 @@ func rock_pal(p) -> Array:
 func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	var t: String = o.type
 	var dd: Dictionary = Data.obj_defs.get(t, {})
-	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "weapon_bench", "oil_lantern"]:
+	if dd.get("generic", false) or t == "fruit_tree":
+		return _draw_generic(o, dd, season, frame)
+	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "armory_bench", "oil_lantern"]:
 		return _draw_defense(o, season, frame, nb)
 	var v: int = int(o.get("v", 0))
 	var pal: Dictionary = PAL.get(season, PAL.spring)
@@ -781,6 +783,123 @@ func char_override(look: Dictionary, dir: String, frame: int) -> Image:
 		im = bob
 	return im
 
+## Objects from the item sheet: drawn from a simple shape and a colour.
+func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) -> Array:
+	var c = dd.get("color", "#8a7a6a")
+	var cd := shade(c, -0.3)
+	var cl := shade(c, 0.25)
+	var wood := "#8a6a40"; var woodd := "#5e4428"; var metal := "#7a7e88"; var metald := "#4a4e58"
+	if o.type == "fruit_tree":
+		var age := int(o.get("age", 0))
+		var grown: bool = age >= Balance.trees.grow_days
+		if not grown:
+			var x0 := img(16, 16)
+			var hgt: int = 6 + int(age / 4)
+			R(x0, 7, 16 - hgt, 2, hgt, woodd)
+			R(x0, 4, 16 - hgt - 3, 8, 4, "#5a9a3a" if season != "winter" else "#8a8a7a")
+			return [outline(x0, "#1a1410"), 0, -1]
+		var x := img(24, 32)
+		R(x, 10, 18, 4, 14, woodd); R(x, 11, 18, 1, 14, wood)
+		var leaf = {"spring": "#6ab84a", "summer": "#3a8a3a", "autumn": "#c8822a", "winter": "#9aa0a0"}.get(season, "#3a8a3a")
+		for k in [[3, 4, 18, 14], [1, 8, 22, 9], [6, 1, 12, 6]]:
+			R(x, k[0], k[1], k[2], k[3], leaf)
+		R(x, 5, 6, 6, 3, shade(leaf, 0.2))
+		var fr: String = o.get("fruit", "apple")
+		var fc: String = Data.items[fr].get("icon", {}).get("c", "#d03a2a")
+		for i in int(o.get("fruit_n", 0)) * 2:
+			P(x, 5 + (i * 5) % 14, 6 + (i * 3) % 10, fc); P(x, 6 + (i * 5) % 14, 6 + (i * 3) % 10, fc)
+		return [outline(x, "#121a10"), -4, -16]
+	var x := img(16, 16)
+	match dd.get("shape", "box"):
+		"bench":
+			R(x, 0, 6, 16, 3, wood); R(x, 0, 6, 16, 1, shade(wood, 0.2)); R(x, 1, 9, 2, 7, woodd); R(x, 13, 9, 2, 7, woodd)
+			R(x, 3, 11, 10, 1, woodd); R(x, 3, 2, 10, 4, c); R(x, 4, 3, 3, 2, cl); R(x, 9, 3, 3, 2, cd)
+		"anvil":
+			R(x, 2, 5, 12, 3, metal); R(x, 0, 5, 3, 2, metal); R(x, 5, 8, 6, 3, metald); R(x, 3, 11, 10, 4, woodd); R(x, 3, 5, 12, 1, "#a0a4ac")
+		"barrel":
+			R(x, 3, 2, 10, 13, c); R(x, 3, 4, 10, 1, metald); R(x, 3, 11, 10, 1, metald); R(x, 4, 2, 8, 2, cd)
+		"fire":
+			R(x, 2, 11, 12, 3, "#6a6a6a"); R(x, 4, 10, 8, 2, woodd)
+			R(x, 5, 5 + frame % 2, 6, 5, "#f08a30"); R(x, 6, 3 + frame % 2, 4, 4, "#f8c040"); P(x, 8, 2, "#fff0a0")
+		"hive":
+			R(x, 3, 3, 10, 12, "#e8d080"); R(x, 3, 6, 10, 1, "#c8a050"); R(x, 3, 10, 10, 1, "#c8a050"); R(x, 2, 2, 12, 2, wood); R(x, 7, 12, 2, 2, "#3a2a1a")
+			if o.get("ready", "") != "": P(x, 12, 1, "#f0c030")
+		"log":
+			R(x, 1, 8, 14, 6, woodd); R(x, 1, 8, 14, 1, wood); R(x, 1, 8, 3, 6, "#c8a070")
+			R(x, 5, 5, 3, 3, "#d8c8b0"); R(x, 10, 6, 3, 2, "#d8c8b0")
+		"well":
+			R(x, 2, 7, 12, 8, "#8a8a8a"); R(x, 2, 7, 12, 1, "#a8a8a8"); R(x, 4, 9, 8, 3, "#3a5a8a"); R(x, 2, 1, 2, 7, wood); R(x, 12, 1, 2, 7, wood); R(x, 1, 0, 14, 2, "#8a3a2a")
+		"scarecrow":
+			R(x, 7, 4, 2, 12, wood); R(x, 2, 6, 12, 2, wood); R(x, 5, 1, 6, 5, "#e8d080"); R(x, 4, 0, 8, 2, "#6a4a2a"); R(x, 5, 7, 6, 5, c)
+			if dd.get("alarm", false): P(x, 3, 9, "#a8a8b0"); P(x, 12, 9, "#a8a8b0")
+		"frame":
+			R(x, 1, 3, 14, 12, woodd); R(x, 2, 4, 12, 10, "#5a3a22"); R(x, 2, 4, 12, 1, wood)
+			if o.type == "cold_frame": R(x, 2, 4, 12, 4, Color(0.7, 0.9, 1.0, 0.6))
+		"pot":
+			R(x, 4, 7, 8, 7, c); R(x, 3, 6, 10, 2, cd)
+			if o.type == "crab_pot":
+				R(x, 3, 6, 10, 8, "#5a5040")
+				for i in 4:
+					R(x, 4 + i * 2, 7, 1, 6, "#8a8070")
+			if o.get("catch", "") != "": P(x, 8, 4, "#e85a3a")
+		"wall":
+			var broken: bool = o.get("broken", false)
+			var hpf: float = float(o.get("hp", dd.get("max_hp", 1))) / float(dd.get("max_hp", 1))
+			var wc := "#9a9a9a" if o.type == "concrete_wall" else ("#6a6e78" if o.type == "metal_gate" else wood)
+			if broken: R(x, 2, 11, 12, 4, shade(wc, -0.3))
+			elif o.type == "metal_gate" and o.get("open", false): R(x, 0, 6, 3, 10, wc)
+			else:
+				R(x, 0, 3, 16, 12, wc); R(x, 0, 3, 16, 1, shade(wc, 0.2))
+				if o.type == "metal_gate":
+					for i in 4:
+						R(x, 1 + i * 4, 4, 1, 10, metald)
+				if o.type == "spiked_barricade":
+					for i in 5:
+						P(x, 1 + i * 3, 2, "#c8c8d0")
+				if hpf < 0.6: P(x, 5, 7, "#2a2a2a"); P(x, 6, 8, "#2a2a2a")
+				if hpf < 0.3: P(x, 10, 10, "#2a2a2a"); P(x, 11, 9, "#2a2a2a")
+		"trap":
+			match o.type:
+				"bear_trap":
+					R(x, 3, 10, 10, 3, metal)
+					for i in 5:
+						P(x, 3 + i * 2, 9, "#c8c8d0")
+				"landmine", "nail_mine": R(x, 5, 10, 6, 3, "#4a5030"); P(x, 8, 9, "#c83a2a")
+				"punji_pit":
+					R(x, 2, 8, 12, 6, "#3a2a1a")
+					for i in 5:
+						P(x, 3 + i * 2, 9, "#c8a070")
+				"tripwire_alarm": R(x, 0, 11, 16, 1, "#c8c8c0"); R(x, 2, 8, 3, 3, "#a8a8b0"); R(x, 11, 8, 3, 3, "#a8a8b0")
+				_: R(x, 2, 11, 12, 3, woodd); for i in 6: P(x, 2 + i * 2, 10, "#c8c8d0")
+		"turret":
+			R(x, 4, 9, 8, 6, metald); R(x, 3, 5, 10, 5, c); R(x, 12, 6, 4, 2, metal); R(x, 4, 5, 2, 2, cl)
+			if dd.get("flame", false): P(x, 15, 6, "#f08a30")
+		"turbine":
+			R(x, 7, 6, 2, 10, metal); R(x, 6, 4, 4, 3, metald)
+			var a := frame % 2
+			R(x, 2 if a == 0 else 7, 5 if a == 0 else 0, 12 if a == 0 else 2, 2 if a == 0 else 11, "#e8e8e8")
+		"chest":
+			R(x, 1, 5, 14, 10, c); R(x, 1, 5, 14, 3, cl); R(x, 7, 8, 2, 3, "#d8b040"); R(x, 1, 9, 14, 1, cd)
+		"path":
+			var pc = {"brick_path": "#a85a3a", "gravel_path": "#9a948a", "wood_floor": "#a8804a"}.get(o.type, "#8a8a8a")
+			R(x, 0, 0, 16, 16, pc)
+			for i in 4: R(x, 0, i * 4, 16, 1, shade(pc, -0.2))
+			return [x, 0, 0]
+		"lamp":
+			R(x, 7, 4, 2, 12, metald); R(x, 5, 1, 6, 4, "#e8e0a0" if o.get("powered", false) else "#8a8a7a")
+		"table":
+			R(x, 1, 6, 14, 3, wood); R(x, 2, 9, 2, 6, woodd); R(x, 12, 9, 2, 6, woodd)
+		"shelf":
+			R(x, 2, 1, 12, 14, woodd); for i in 3: R(x, 3, 3 + i * 4, 10, 2, ["#c83a2a", "#3a6ac8", "#d8b040"][i])
+		"gnome":
+			R(x, 6, 8, 4, 6, "#3a6ac8"); R(x, 6, 5, 4, 3, "#f0c8a0"); R(x, 6, 1, 4, 4, "#d02a2a"); R(x, 7, 7, 2, 2, "#f0f0f0")
+		"sign":
+			R(x, 7, 8, 2, 8, woodd); R(x, 2, 2, 12, 7, wood); R(x, 4, 4, 8, 1, woodd); R(x, 4, 6, 6, 1, woodd)
+		_:
+			R(x, 2, 4, 12, 11, c); R(x, 2, 4, 12, 2, cl); R(x, 3, 8, 10, 1, cd); R(x, 6, 10, 4, 3, cd)
+			if o.get("job") != null and frame % 2 == 0: P(x, 12, 5, "#f8e080")
+	return [outline(x, "#1a1410"), 0, -2]
+
 ## An infected built from one of the atlas bodies, recoloured and dressed for its type.
 func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
 	var b: int = int(look.get("body", 0))
@@ -925,11 +1044,22 @@ func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 	var ovr := char_override(look, dir, frame)
 	if ovr != null:
 		return ovr
+	var im: Image
 	if dir == "right":
-		var im := _draw_character(look, "left", frame)
+		im = _draw_character(look, "left", frame)
 		im.flip_x()
-		return im
-	return _draw_character(look, dir, frame)
+	else:
+		im = _draw_character(look, dir, frame)
+	# knocked-down infected and crawlers lie on the ground
+	if look.get("lying", false):
+		var used := im.get_used_rect()
+		if used.size.x > 0:
+			im = im.get_region(used)
+		im.rotate_90(CLOCKWISE if dir != "right" else COUNTERCLOCKWISE)
+	var sc: float = float(look.get("scale", 1.0))
+	if abs(sc - 1.0) > 0.01:
+		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	return im
 
 func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
 	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return char_image(look, dir, frame))
@@ -1284,7 +1414,10 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			for i in range(4, 13, 3): P(x, i, 6, "#a8703a")
 		"dish": R(x, 1, 10, 14, 3, "#e8e8e0"); R(x, 2, 12, 12, 1, "#b8b8b0"); R(x, 3, 6, 10, 5, c); P(x, 5, 7, shade(c, 0.4)); R(x, 9, 5, 3, 2, "#62b04a")
 		"bowl": R(x, 2, 8, 12, 5, "#a8825a"); R(x, 4, 13, 8, 1, "#8a6a40"); R(x, 3, 6, 10, 3, c); P(x, 5, 6, shade(c, 0.4)); P(x, 9, 7, "#62b04a"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
-		"hay": R(x, 2, 5, 12, 9, "#e0c070"); R(x, 2, 5, 12, 2, "#f0d890"); R(x, 5, 5, 1, 9, "#a8803a"); R(x, 10, 5, 1, 9, "#a8803a"); for i in 4: P(x, 3 + i * 3, 9, "#c8a050")
+		"hay":
+			R(x, 2, 5, 12, 9, "#e0c070"); R(x, 2, 5, 12, 2, "#f0d890"); R(x, 5, 5, 1, 9, "#a8803a"); R(x, 10, 5, 1, 9, "#a8803a")
+			for i in 4:
+				P(x, 3 + i * 3, 9, "#c8a050")
 		"egg":
 			var big: bool = ic.get("big", false)
 			var ew := 8 if big else 6
@@ -1292,13 +1425,22 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			var ex := 8 - ew / 2
 			var ey := 14 - eh
 			R(x, ex + 1, ey, ew - 2, eh, c); R(x, ex, ey + 2, ew, eh - 3, c); P(x, ex + 2, ey + 2, "#ffffff"); R(x, ex + 1, ey + eh - 1, ew - 2, 1, shade(c, -0.15))
-		"fur": R(x, 3, 5, 10, 8, c); R(x, 2, 7, 12, 4, c); R(x, 4, 4, 8, 1, shade(c, 0.15)); for i in 5: P(x, 3 + i * 2, 12 + i % 2, shade(c, -0.2)); P(x, 6, 7, shade(c, 0.25))
+		"fur":
+			R(x, 3, 5, 10, 8, c); R(x, 2, 7, 12, 4, c); R(x, 4, 4, 8, 1, shade(c, 0.15))
+			for i in 5:
+				P(x, 3 + i * 2, 12 + i % 2, shade(c, -0.2)); P(x, 6, 7, shade(c, 0.25))
 		"kit": R(x, 2, 6, 12, 8, "#c8a070"); R(x, 2, 6, 12, 1, "#e0c090"); R(x, 2, 9, 12, 1, "#a8804a"); R(x, 5, 3, 6, 3, "#8a3a2a"); R(x, 4, 4, 8, 2, "#8a3a2a"); R(x, 7, 10, 2, 3, "#6a4a2e")
 		"machete": _diag(x, 3, 13, 10, 2, "#c8ccd4"); _diag(x, 4, 13, 9, 1, "#eef2f8"); R(x, 1, 12, 4, 3, "#5a3a22"); R(x, 2, 13, 2, 1, "#7a5a3a"); P(x, 13, 2, "#9aa0a8")
 		"cup": R(x, 3, 6, 9, 8, "#e8e0d0"); R(x, 4, 7, 7, 3, c); R(x, 12, 8, 2, 4, "#e8e0d0"); R(x, 3, 14, 9, 1, "#b8b0a0"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
-		"pie": R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c); for i in 3: R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
+		"pie":
+			R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c)
+			for i in 3:
+				R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
 		"bar_snack": R(x, 2, 6, 12, 6, c); R(x, 2, 6, 12, 1, shade(c, 0.3)); P(x, 4, 8, "#e8d8a0"); P(x, 8, 9, "#8a2a4a"); P(x, 11, 8, "#e8d8a0"); R(x, 2, 12, 12, 1, shade(c, -0.3))
-		"nails": R(x, 2, 6, 12, 8, "#5a6a3e"); R(x, 2, 6, 12, 2, "#7a8a56"); for i in 5: R(x, 3 + i * 2, 2, 1, 5, "#a8a8b0"); P(x, 3 + i * 2, 2, "#d8d8e0")
+		"nails":
+			R(x, 2, 6, 12, 8, "#5a6a3e"); R(x, 2, 6, 12, 2, "#7a8a56")
+			for i in 5:
+				R(x, 3 + i * 2, 2, 1, 5, "#a8a8b0"); P(x, 3 + i * 2, 2, "#d8d8e0")
 		"shells":
 			for i in 3: R(x, 2 + i * 4, 4, 3, 8, "#c83a2a"); R(x, 2 + i * 4, 4, 3, 1, "#e85a4a"); R(x, 2 + i * 4, 12, 3, 2, "#d8b040")
 		"bolts":
@@ -1310,7 +1452,10 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 		"canister": R(x, 4, 4, 8, 11, "#c83a2a"); R(x, 4, 4, 8, 1, "#e85a4a"); R(x, 4, 8, 8, 2, "#e8c030"); R(x, 6, 2, 4, 2, "#5a5a62")
 		"sack": R(x, 3, 5, 10, 10, c); R(x, 4, 4, 8, 1, c); R(x, 5, 2, 6, 2, shade(c, -0.2)); R(x, 4, 8, 8, 1, shade(c, 0.2)); P(x, 6, 10, "#3f8a2f"); P(x, 9, 11, "#3f8a2f")
 		"tonic": R(x, 5, 6, 6, 9, "#8ad86a"); R(x, 6, 3, 4, 3, "#c8e8c0"); R(x, 6, 2, 4, 1, "#8a6a40"); P(x, 6, 7, "#e8ffe0")
-		"bait": R(x, 3, 6, 10, 8, "#8a6a40"); R(x, 3, 6, 10, 2, "#a8865a"); for i in 3: P(x, 5 + i * 3, 10, "#d87a8a"); P(x, 6 + i * 3, 11, "#d87a8a")
+		"bait":
+			R(x, 3, 6, 10, 8, "#8a6a40"); R(x, 3, 6, 10, 2, "#a8865a")
+			for i in 3:
+				P(x, 5 + i * 3, 10, "#d87a8a"); P(x, 6 + i * 3, 11, "#d87a8a")
 		"jar": R(x, 4, 4, 8, 11, "#c8e0e8"); R(x, 4, 7, 8, 8, c); R(x, 4, 2, 8, 2, "#8a6a40"); P(x, 5, 5, "#ffffff")
 		"chest": R(x, 2, 5, 12, 9, "#8a5a2e"); R(x, 2, 5, 12, 3, "#a06a36"); R(x, 4, 5, 1, 9, "#4a4a52"); R(x, 11, 5, 1, 9, "#4a4a52"); R(x, 7, 8, 2, 2, "#d8b040")
 		"fence": R(x, 2, 3, 3, 11, "#9a7a50"); R(x, 11, 3, 3, 11, "#9a7a50"); R(x, 1, 6, 14, 2, "#8a6a40"); R(x, 1, 10, 14, 2, "#8a6a40")
@@ -1534,7 +1679,7 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 8, 4, 2, 2, "#c83a3a"); R(x, 10, 4, 2, 2, "#c83a3a"); R(x, 8, 4, 4, 1, "#d8b040")   # shells
 			R(x, 4, 12, 6, 3, "#5a6a3e"); P(x, 5, 13, "#d8c040")
 			return [outline(x, "#1a1410"), 0, -1]
-		"weapon_bench":
+		"armory_bench":
 			R(x, 0, 6, 16, 3, "#6a5a4a"); R(x, 0, 6, 16, 1, "#8a7a64"); R(x, 1, 9, 2, 7, "#4a3a2a"); R(x, 13, 9, 2, 7, "#4a3a2a"); R(x, 3, 11, 10, 1, "#4a3a2a")
 			R(x, 2, 2, 2, 4, "#5a5a62"); R(x, 1, 2, 4, 1, "#7a7a84")          # grinder
 			_diag(x, 7, 5, 6, 1, "#b0b4bc"); R(x, 6, 4, 2, 2, "#5a3a22")       # a blade on the bench

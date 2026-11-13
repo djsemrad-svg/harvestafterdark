@@ -125,39 +125,47 @@ static func coop(b: Dictionary) -> GameMap:
 	m.lights = [{"x": 6, "y": 5, "r": 80}]
 	return m
 
-## Rooms drawn from a picture (art/interiors/<id>.png), 14 x 11 tiles.
-## Grid letters: # solid, . floor, C shop counter (solid), P greenhouse plot (pre-tilled, solid).
+## Rooms for the Clinic, Workshop, Combat Guild and Greenhouse, 14 x 11 tiles.
+## Grid letters: W wall, . floor, C shop counter, P greenhouse plot, and furniture:
+## B bed, S shelf, T table, h chair, X crate, O barrel, L lamp, w window, R rug, D target dummy.
 const ROOMS := {
-	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "grid": [
-		"##############", "##############", "##############", "##########...#", "####CCCCC#.###",
-		"###.......####", "###.......####", "###.......####", "######....####", "######....####", "######...#####"]},
-	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "grid": [
-		"##############", "##############", "##############", "##############", "#####....###.#",
-		"###.......####", "###CCCCCC.####", "#########....#", "###.......####", "###.......####", "#####....#####"]},
-	"guild": {"exit": ["town", 12, 29], "shop": "guild", "grid": [
-		"##############", "##############", "##############", "####.CCCCC####", "####......####",
-		"####......####", "####......##.#", "####.####.##.#", "####.####...##", "##..........##", "######..######"]},
-	"greenhouse": {"exit": ["homestead", 0, 0], "shop": "", "grid": [
-		"##############", "##############", "##PPPPP.PPPPP#", "#............#", "#............#",
-		"##PPPPP.PPPPP#", "#............#", "#............#", "######...#####", "######...#####", "######...#####"]},
+	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSWWwSSSSW", "W............W", "WB.B.....CCCCW", "W.........L..W",
+		"WB.B.........W", "W............W", "WS..RRRR..T.hW", "W...RRRR.....W", "W....O...X...W", "WWWWWW..WWWWWW"]},
+	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSSSwSSXXW", "W............W", "WTT..CCCCC..OW", "W............W",
+		"WXX.......L..W", "W.....TT.....W", "WOO.........XW", "W..........XXW", "WX.........OOW", "WWWWWW..WWWWWW"]},
+	"guild": {"exit": ["town", 12, 29], "shop": "guild", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSWWSSwSSW", "W............W", "W...CCCCCC...W", "W.L..........W",
+		"WD..........DW", "W....RRRR....W", "WD...RRRR...DW", "W............W", "WXXTh......OOW", "WWWWWW..WWWWWW"]},
+	"greenhouse": {"exit": ["homestead", 0, 0], "shop": "", "floor": "dirt", "grid": [
+		"WWWWWWWWWWWWWW", "WwwwwwwwwwwwwW", "W.PPPPP.PPPPPW", "W............W", "W............W",
+		"W.PPPPP.PPPPPW", "W............W", "WO..........XW", "W............W", "WWWWWW...WWWWW", "WWWWWW...WWWWW"]},
 }
 
 static func room(id: String, exit_override := []) -> GameMap:
 	var R: Dictionary = ROOMS[id]
 	var rows: Array = R.grid
-	var m := GameMap.new(id, 14, 11, "floor")
+	var m := GameMap.new(id, 14, 11, R.get("floor", "floor"))
 	m.indoor = true
-	m.backdrop = "interiors/%s.png" % id
 	var ex: Array = exit_override if not exit_override.is_empty() else R.exit
+	var furniture := {"B": "bench", "S": "shelf", "T": "table", "h": "chair", "X": "crate", "O": "barrel", "L": "lamp", "w": "window", "R": "rug", "D": "crate"}
 	for y in rows.size():
 		var row: String = rows[y]
 		for x in row.length():
 			var ch := row[x]
-			if ch == "#" or ch == "C" or ch == "P":
-				m.solid_mask[y * m.w + x] = 1
+			if ch == "W":
+				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else "wall")
+				if y == 1: m.set_tile(x, y, "wall")
+			if ch == "w":
+				m.set_tile(x, y, "wall")
+				m.add_obj(x, y, "window")
+			elif furniture.has(ch):
+				m.add_obj(x, y, furniture[ch], {"h": 2} if ch == "B" else {})
 			if ch == "C":
-				m.add_obj(x, y, "hidden_counter", {"shop": R.shop})
+				m.add_obj(x, y, "counter", {"shop": R.shop})
 			if ch == "P":
+				m.set_tile(x, y, "dirt")
 				m.soil[GameMap.k(x, y)] = {"w": 0, "crop": null, "fixed": true}
 			if ch == "." and y == rows.size() - 1:
 				m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": ex[0], "tx": ex[1], "ty": ex[2], "dir": "down", "door": true})

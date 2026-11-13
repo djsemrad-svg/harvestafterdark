@@ -173,7 +173,7 @@ static func weapon(x: Image, wd: Dictionary) -> void:
 			if has(n, ["repeating", "iron"]): Art.R(x, 7, 5, 3, 2, GUN)
 			if has(n, ["iron"]): Art.P(x, 4, 6, "#e8b040")
 		"Launcher":
-			if wd.ammo == "flares":
+			if wd.ammo == "flare":
 				Art.R(x, 3, 5, 10, 3, "#e8702a" if not has(n, ["cinder"]) else "#3a2a20"); Art.R(x, 4, 8, 3, 5, "#e8702a" if not has(n, ["cinder"]) else "#c83a1a"); Art.R(x, 11, 4, 3, 5, "#c85a1a")
 			else:
 				Art.R(x, 1, 6, 13, 2, "#3a5a6a"); Art.R(x, 3, 8, 3, 4, GRIP); line(x, 10, 7, 15, 7, STEEL, 1)

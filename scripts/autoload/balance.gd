@@ -148,6 +148,9 @@ var achievements := {
 	"heavy_metal_count": 1000,    # Heavy Metal: chainsaw kills
 }
 
+## Fruit trees from saplings (item sheet): days to grow up before they fruit.
+var trees := {"grow_days": 28}
+
 ## Searching wrecks, suitcases and crates.
 var loot := {"respawn_days": 7}
 
