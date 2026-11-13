@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 13, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 149 / 149 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 163 / 163 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -95,6 +95,33 @@ All in `scripts/world/districts.gd` (layouts, rooms, loot, infected) and `script
 - Forage now also appears in the Residential District and the Riverlands. The journal Map tab shows the districts and how to open them.
 - Older saves: the gates and updated signs are put back in town and trees are cleared off the new Maple Street road on load.
 
+### Contracts, bosses and achievements (weapons stage 3, added Nov 13)
+
+All in `scripts/world/contracts.gd`. Rewards are the items whose "How to Obtain" names a boss, quest or achievement in Daniel's sheets.
+
+- Cole's contract board at the Combat Guild (a service in his shop): Posted, In progress and Done lists. Neighbours post their jobs there too. Jobs in a district show once that district is open.
+- Six named bosses, each its own infected type with a health bar at the top of the screen:
+  - The Groundskeeper: St. Luke's cemetery, only after 8 pm; raises crawlers. Grave Digger.
+  - The Undertaker: inside St. Luke's Church; fast and quiet, calls up shamblers. Last Rites.
+  - The Juggernaut: the yard behind Mill Works; armour in front, charges. Thunderclap.
+  - Crash: the scrapyard; fast charges. Wrecker.
+  - The Inferno: inside Fire Station 4; leaves fire where it walks. Firewalkers.
+  - The Briar King: Twin Oaks fields; spits thorns, calls up lurchers. The Briar King chest piece.
+- Other jobs:
+  - The Quiet Dojo (Cole): 25 stealth kills. Shadowstep Katana and Ghost Steps.
+  - Trophy Season (Cole): 12 Stalkers. Hunter's Compound Bow and Ghillie Wrap.
+  - The Last Sheriff (Cole): 5 sheriff's pages from police lockers, desks and patrol cars. Dead Man's Hand.
+  - Overpass (Cole): light the flare at the north end of Elm Street and hold the road for 10 waves. Long Goodbye. Leaving fails the attempt; retry any time.
+  - Twin Oaks (Marisol): the two halves of the Morrow sisters' journal (farmhouse dresser, barn crate). The Twins.
+  - The Last Forge (Ines): her teacher's notes at Mill Works and the broken katana in the Gold Pawn's case. With 3 gold bars the Armory Bench makes Kintsugi.
+  - Appointed Rounds (Ruth): 40 undelivered letters from homes, desks and dumpsters. The Appointed Rounds legs.
+  - Eyes in the Woods (Wren): 3 trail cameras (Ranger Station, Hunting Cabin, campsite tent). Scout's Boonie Hat.
+  - Low Tide (Wren): 10 fish from the Riverlands. Fisherman's Waders.
+- Quest items for "find" jobs are there even if the container was searched that week.
+- Achievements (listed in the journal with progress): Finish Line (sprint 5 km), Cardio (25 km), Anchor Leg (100 km), Head Chef (100 meals), They Knew (10 conspiracy notes, found while scavenging), Road Work (search 10 different wrecked cars), Marksman (100 critical kills from 15+ tiles), Into the Dark (mine floor 20), Unseen (day 100 without a bite), Heavy Metal (1,000 chainsaw kills), Worthless Fortune (earn 1,000,000 gold).
+- Adapted from the sheet: Marksman uses critical hits for headshots and 15 tiles instead of 40 (the screen is 30 tiles wide); Finish Line had no goal in the sheet, so it's 5 km; Worthless Fortune counts gold earned; Heavy Metal awards the Redline directly.
+- Not in the game yet (shown greyed in the journal): Ghost (needs horde nests, Whisper), Drive-Thru (fast food, Burger Mascot Suit), Comfort Zone (safehouses, Bunny Slippers), Clean Room (Lab 6, Turncoat and Quarantine), Showdown at Dry Creek (human raiders, Twin-Hammer Revolver).
+
 Stage 2 (done above): Residential District, Industrial District and Riverlands with enterable buildings whose containers use the sheet's "How to Obtain" places (loot tags in `Arsenal`). Stage 3: Cole's contract board, named bosses (Groundskeeper, Juggernaut, Undertaker, Briar King, Crash, Inferno), quest chains and achievements that award the legendaries.
 
 Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gear isn't drawn on the character yet.
@@ -107,6 +134,7 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gea
 - `scripts/autoload/catalog.gd`: the item sheet. `items_db.gd` is generated from `design/items.csv` by `tools/build_items.py`.
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
+- `scripts/world/contracts.gd`: Cole's board, bosses and achievements.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
 - `scripts/ui/`: interface (`ui.gd`) and theme helpers (`ui_kit.gd`).
@@ -140,6 +168,6 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gea
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stage 2 (new places) is done. Next: stage 3 (Cole's contract board, named bosses, quest chains and achievements that award the legendaries; many bosses can live in the new districts), then the systems the item sheet still needs (barns and large animals, crop quality, injuries and sickness).
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Next: the systems the item sheet still needs (barns and large animals, crop quality, injuries and sickness), then horde nests, a lab and human raiders for the remaining rewards.
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.

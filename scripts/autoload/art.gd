@@ -1482,6 +1482,7 @@ func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 	if d.has("bomb"): k += "|%d" % (frame % 4)
 	if d.get("container", false) or o.type in ["supply_crate", "car_wreck"]: k += "|s%s" % DistrictArt.searched(o)
 	if o.type == "district_gate": k += "|%s|%s" % [o.get("region", ""), o.get("open", false)]
+	if o.type == "overpass_flare": k += "|%s" % (Game.event.get("id", "") == "overpass")
 	return k
 
 func damage_level(o: Dictionary) -> int:

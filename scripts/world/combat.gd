@@ -508,6 +508,9 @@ func kill(e: Dictionary, opts: Dictionary) -> void:
 	var info: Dictionary = opts.get("info", {})
 	var wd: Dictionary = info.get("wd", {})
 	var fx: Dictionary = wd.get("fx", {})
+	if opts.get("kind", "") == "stealth":
+		e.stealth_killed = true
+		Game.state.stats.stealth_kills = int(Game.state.stats.get("stealth_kills", 0)) + 1
 	w.kill_enemy(e)
 	if wd.is_empty():
 		return
@@ -801,6 +804,7 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 			return
 	elif kind == "bite":
 		dmg *= 1.0 - clampf(g.bite, -0.5, 0.9)
+		Game.state.flags.bitten = true
 	if kind in ["bite", "hit", "blast", "acid"]:
 		dmg *= 1.0 - g.armor / (g.armor + Balance.armor.armor_k)
 	var dr: float = 0.0

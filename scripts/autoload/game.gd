@@ -29,6 +29,7 @@ var paused := false
 var clock_acc := 0.0
 var mine_visit := 0
 var mountain_night_spawned := false
+var event := {}                # a running contract event (the Overpass waves), not saved
 var last_warp_tile := ""
 var pass_out_lost := 0
 var projectiles := []          # bolts and turret rounds in flight
@@ -132,6 +133,8 @@ func new_game_state(opts: Dictionary) -> Dictionary:
 		"equip": {"head": null, "chest": null, "legs": null, "feet": null},
 		"loot_seen": {},
 		"buffs": [],
+		"contracts": {"active": [], "done": [], "progress": {}, "found": {}},
+		"achievements": {"done": []},
 	}
 	for i in st.inv_size:
 		st.inventory.append(null)
@@ -212,6 +215,8 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 	if not Data.items.has(id):
 		push_warning("Unknown item " + id)
 		return qty
+	if id == "conspiracy_note" and not opts.has("list") and state.has("stats"):
+		state.stats.notes = int(state.stats.get("notes", 0)) + qty
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
 	var extra: Dictionary = opts.get("extra", {})
@@ -849,6 +854,8 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	else:
 		m = maps[id]
 	_recover_thrown()
+	if not event.is_empty() and event.get("map", "") != id:
+		fail_event("You left the overpass. The bus won't come without a clear road. Light the flare again to retry.")
 	map = m
 	player.pos = Vector2(tx * 16 + 8, ty * 16 + 14)
 	player.dir = dir
@@ -917,6 +924,7 @@ func update_clock(dt: float) -> void:
 
 func tick10() -> void:
 	expire_buffs()
+	check_achievements()
 	state.time = int(state.time) + 10
 	survival_tick(10)
 	if state.time == Balance.time.midnight:
@@ -1709,6 +1717,207 @@ func spawn_daily_content(first: bool) -> void:
 		hm.add_obj(x, y, "weeds" if v < 0.6 else ("twig" if v < 0.8 else "rock"))
 		n2 -= 1
 
+# ================================================================ contracts (stage 3)
+## Cole's board: bosses, the Guild's jobs and neighbours' jobs. See scripts/world/contracts.gd.
+func contract_state() -> Dictionary:
+	if not (state.get("contracts") is Dictionary): state.contracts = {}
+	var cs: Dictionary = state.contracts
+	for k in ["active", "done"]:
+		if not (cs.get(k) is Array): cs[k] = []
+	for k in ["progress", "found"]:
+		if not (cs.get(k) is Dictionary): cs[k] = {}
+	return cs
+
+func contract_available(c: Dictionary) -> bool:
+	var cs := contract_state()
+	if cs.active.has(c.id) or cs.done.has(c.id): return false
+	return not c.has("needs") or state.unlocked.get(c.needs, false)
+
+func take_contract(id: String) -> void:
+	var cs := contract_state()
+	if cs.active.has(id) or cs.done.has(id): return
+	cs.active.append(id)
+	var c := Contracts.get_def(id)
+	toast("Contract taken: " + c.title, "", "gold")
+	Sfx.play("coin")
+	check_contracts()
+
+## [have, need] for the journal and the board.
+func contract_progress(c: Dictionary) -> Array:
+	var cs := contract_state()
+	match c.kind:
+		"boss": return [1 if cs.done.has(c.id) else 0, 1]
+		"find":
+			var n := 0
+			for i in c.spots.size():
+				if cs.found.has("%s:%d" % [c.id, i]): n += 1
+			return [n, c.spots.size()]
+		"collect": return [min(count_item(c.item), int(c.count)), int(c.count)]
+		"waves": return [int(cs.progress.get(c.id, 0)), int(c.waves)]
+	return [min(int(cs.progress.get(c.id, 0)), int(c.count)), int(c.count)]
+
+func contract_progress_text(c: Dictionary) -> String:
+	var pr := contract_progress(c)
+	match c.kind:
+		"boss": return "Not yet" if pr[0] == 0 else "Done"
+		"waves": return "Best: wave %d of %d" % [pr[0], pr[1]]
+	return "%d / %d" % pr
+
+## Kills, catches and boss deaths count toward active jobs.
+func contract_event(kind: String, data: Dictionary) -> void:
+	var cs := contract_state()
+	for id in cs.active.duplicate():
+		var c := Contracts.get_def(id)
+		if c.is_empty(): continue
+		if kind == "kill" and c.kind == "kill":
+			if c.has("types") and not c.types.has(data.type): continue
+			if c.get("stealth", false) and not data.get("stealth", false): continue
+			cs.progress[id] = int(cs.progress.get(id, 0)) + 1
+		elif kind == "catch" and c.kind == "fish" and data.map == c.map:
+			cs.progress[id] = int(cs.progress.get(id, 0)) + 1
+		elif kind == "boss" and c.kind == "boss" and c.boss == data.type:
+			complete_contract(c, data.get("at", player.pos))
+			continue
+		else:
+			continue
+		check_contracts()
+
+func check_contracts() -> void:
+	var cs := contract_state()
+	for id in cs.active.duplicate():
+		var c := Contracts.get_def(id)
+		if c.is_empty() or c.kind in ["boss", "waves"]: continue
+		var pr := contract_progress(c)
+		if pr[0] >= pr[1]:
+			complete_contract(c, player.pos)
+
+func complete_contract(c: Dictionary, at: Vector2) -> void:
+	var cs := contract_state()
+	if not cs.active.has(c.id): return
+	cs.active.erase(c.id)
+	cs.done.append(c.id)
+	if c.kind == "collect":
+		remove_item(c.item, int(c.count))
+	if c.kind == "find" and c.get("consume", false):
+		for sp in c.spots:
+			remove_item(sp[0], 1)
+	var r: Dictionary = c.reward
+	var parts := []
+	if r.has("money"):
+		var m := int(round(r.money * mode_cfg().bonus_reward_mult))
+		state.money = int(state.money) + m
+		parts.append("%d gold" % m)
+	for it in r.get("items", []):
+		give_or_drop(it, at)
+		parts.append(Data.items[it].name)
+	toast("Contract complete: %s (%s)" % [c.title, ", ".join(parts)], "", "gold")
+	Sfx.play("coin")
+	add_xp("survival", 80)
+
+func give_or_drop(id: String, at: Vector2) -> void:
+	var left := add_item(id, 1, {"silent": true})
+	if left > 0 and world:
+		world.spawn_drop(id, left, at)
+
+## Quest items waiting in a container for an active "find" job ("" if none).
+func contract_find(map_id: String, o: Dictionary) -> String:
+	var cs := contract_state()
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		if c.get("kind", "") != "find": continue
+		for i in c.spots.size():
+			var sp: Array = c.spots[i]
+			var key := "%s:%d" % [id, i]
+			if sp[1] == map_id and int(sp[2]) == int(o.x) and int(sp[3]) == int(o.y) and not cs.found.has(key):
+				cs.found[key] = true
+				return sp[0]
+	return ""
+
+## Items for "collect" jobs that turn up while you search ([] if none).
+func contract_collect_roll(tags: Array) -> Array:
+	var out := []
+	var cs := contract_state()
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		if c.get("kind", "") != "collect" or not c.tags.any(func(t): return tags.has(t)): continue
+		if count_item(c.item) < int(c.count) and rng.randf() < 0.6:
+			out.append(c.item)
+	if int(state.stats.get("notes", 0)) < 10 and rng.randf() < 0.035:
+		out.append("conspiracy_note")
+	return out
+
+# ---------------------------------------------------------------- the Overpass: waves
+func start_waves(id: String) -> void:
+	var c := Contracts.get_def(id)
+	if not contract_state().active.has(id):
+		ui.say("", "A road flare in a coffee can, wired to a post. Someone left a note: \"Light it when the road's clear. The bus will see it.\" (Take the Overpass contract from Cole's board first.)")
+		return
+	if not event.is_empty():
+		return
+	event = {"id": id, "map": c.map, "wave": 0, "t": 2.0, "spawned": false}
+	toast("You light the flare. Hold the road!", "", "warn")
+	Sfx.play("boom")
+
+func fail_event(msg: String) -> void:
+	for e in enemies.duplicate():
+		if e.get("hunt", false): enemies.erase(e)
+	event = {}
+	toast(msg, "", "bad")
+
+func update_event(dt: float) -> void:
+	if event.is_empty() or map == null or map.id != event.map:
+		return
+	var c := Contracts.get_def(event.id)
+	var at := Vector2(int(c.at[0]) * 16 + 8, int(c.at[1]) * 16 + 8)
+	if player.pos.distance_to(at) > float(c.radius) * 16.0 * 1.6:
+		fail_event("You fell back too far. The road isn't clear. Light the flare again to retry.")
+		return
+	var left := enemies.filter(func(e): return e.get("hunt", false)).size()
+	if left > 0:
+		return
+	event.t = float(event.t) - dt
+	if float(event.t) > 0:
+		return
+	var cs := contract_state()
+	if int(event.wave) >= int(c.waves):
+		cs.progress[c.id] = int(c.waves)
+		event = {}
+		toast("Headlights on Elm Street. The last bus rattles over the overpass, full of faces at the windows.", "", "gold")
+		complete_contract(c, player.pos)
+		return
+	event.wave = int(event.wave) + 1
+	cs.progress[c.id] = max(int(cs.progress.get(c.id, 0)), int(event.wave) - 1)
+	event.t = 3.0
+	if world: world.spawn_wave(int(event.wave), at)
+	toast("Wave %d of %d" % [int(event.wave), int(c.waves)], "", "warn")
+
+# ---------------------------------------------------------------- achievements
+func achievement_value(stat: String) -> float:
+	var st: Dictionary = state.stats
+	match stat:
+		"sprint_km": return float(st.get("sprint_px", 0.0)) / 16.0 / 1000.0
+		"meals": return float(st.get("meals", 0))
+		"notes": return float(st.get("notes", 0))
+		"wrecks": return float((st.get("wrecks", {}) as Dictionary).size()) if st.get("wrecks") is Dictionary else 0.0
+		"long_crits": return float(st.get("long_crit_kills", 0))
+		"deepest": return float(state.mine.deepest)
+		"unbitten_day": return 0.0 if state.flags.get("bitten", false) else float(state.day)
+		"chainsaw": return float(st.get("chainsaw_kills", 0))
+		"earned": return float(st.get("earned", 0))
+	return 0.0
+
+func check_achievements() -> void:
+	if not (state.get("achievements") is Dictionary): state.achievements = {"done": []}
+	var done: Array = state.achievements.get("done", [])
+	state.achievements.done = done
+	for a in Contracts.ACHIEVEMENTS:
+		if a.has("todo") or done.has(a.id): continue
+		if achievement_value(a.stat) >= float(a.goal):
+			done.append(a.id)
+			give_or_drop(a.reward, player.pos if not player.is_empty() else Vector2.ZERO)
+			toast("Achievement: %s. Reward: %s" % [a.title, Data.items[a.reward].name], "", "gold")
+			Sfx.play("coin")
+
 # ================================================================ NPCs
 func npc_schedule(id: String) -> Array:
 	var S: Dictionary = Data.npcs[id].schedules
@@ -2039,6 +2248,9 @@ func shop_stock(shop_id: String) -> Array:
 			continue
 		if e.get("service", "") == "unlock" and (state.unlocked.get(e.region, false) or state.flags.get("pending_unlocks", []).has(e.region)):
 			continue
+		if e.get("service", "") == "contracts":
+			var avail := Contracts.CONTRACTS.filter(func(c): return contract_available(c)).size()
+			e.desc = "Bosses, Guild jobs and neighbours' jobs. %d posted, %d in progress, %d done." % [avail, contract_state().active.size(), contract_state().done.size()]
 		if e.get("service", "") == "bounty":
 			var b = state.get("bounty")
 			if b == null or b.is_empty():
@@ -2119,6 +2331,9 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		state.flags.greenhouse_pending = true
 		Sfx.play("coin")
 		toast("Jo will rebuild your greenhouse tonight.")
+		return ""
+	if e.get("service", "") == "contracts":
+		ui.open("contracts")
 		return ""
 	if e.get("service", "") == "unlock":
 		for m in e.mats:
@@ -2382,6 +2597,8 @@ func player_bitten() -> void:
 	fishing = null
 	charge = null
 	if reload_checkpoint():
+		state.flags.bitten = true        # for the Unseen achievement; the rollback doesn't undo it
+		write_save()
 		ui.open("death", {"checkpoint": date_label()})
 
 func reload_checkpoint() -> bool:

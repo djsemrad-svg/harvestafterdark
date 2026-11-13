@@ -123,6 +123,7 @@ func step(dt: float) -> void:
 	update_bombs(dt)
 	update_drops(dt)
 	update_particles(dt)
+	Game.update_event(dt)
 
 # ================================================================ targeting
 func player_tile() -> Vector2i:
@@ -685,12 +686,25 @@ var test_crouch := false
 func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [1, 3]) -> void:
 	var day := int(Game.state.day)
 	var last := int(o.get("searched", -99))
+	var at: Vector2 = Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 12)
+	# quest items for an active contract wait here whether or not it was searched this week
+	var quest_item := Game.contract_find(Game.map.id, o)
+	if quest_item != "":
+		Game.give_or_drop(quest_item, at)
+		Game.toast("You found %s!" % Data.items[quest_item].name, quest_item, "gold")
+		Sfx.play("pickup")
+		Game.check_contracts()
 	if day - last < Balance.loot.respawn_days:
-		Game.toast("You already searched %s. Maybe in a few days." % what, "", "warn")
+		if quest_item == "":
+			Game.toast("You already searched %s. Maybe in a few days." % what, "", "warn")
 		return
 	o.searched = day
+	if o.type in ["car_wreck", "police_car"]:
+		if not (Game.state.stats.get("wrecks") is Dictionary): Game.state.stats.wrecks = {}
+		Game.state.stats.wrecks["%s:%d,%d" % [Game.map.id, int(o.x), int(o.y)]] = true
 	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(int(rolls[0]), int(rolls[1])), quality)
-	var at: Vector2 = Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 12)
+	for extra in Game.contract_collect_roll(tags):
+		got.append([extra, 1])
 	if got.is_empty():
 		Game.toast("You search %s. Nothing useful." % what)
 	else:
@@ -897,6 +911,9 @@ func kill_enemy(e: Dictionary) -> void:
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
 	Game.quest_event("kill", {"n": 1})
+	Game.contract_event("kill", {"type": e.type, "stealth": e.get("stealth_killed", false)})
+	if d.get("boss", false):
+		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
 
@@ -924,8 +941,10 @@ func spawn_district_foes(m: GameMap) -> void:
 				continue   # nothing right inside the door: you get a moment to look around
 			if Game.rng.randf() < float(F.chance):
 				spawn_enemy(pick_foe(F.table), sp.x, sp.y, {"asleep": Game.rng.randf() < float(F.asleep)})
+		spawn_bosses(m)
 		return
 	spawn_roamers(m, Game.rng.randi_range(int(F.day[0]), int(F.day[1])), F.table, float(F.asleep))
+	spawn_bosses(m)
 	for f in F.get("fixed", []):
 		if Game.rng.randf() < float(f.chance):
 			var t := free_tile_near(m, int(f.x), int(f.y))
@@ -933,6 +952,38 @@ func spawn_district_foes(m: GameMap) -> void:
 				spawn_enemy(f.type, t.x, t.y, {"asleep": Game.rng.randf() < 0.3})
 	if int(Game.state.time) >= 1200:
 		spawn_night_infected()
+
+## Named bosses wait at their lair while you have their contract (night-only ones after 8 pm).
+func spawn_bosses(m: GameMap) -> void:
+	for id in Game.contract_state().active:
+		var c := Contracts.get_def(id)
+		if c.get("kind", "") != "boss" or c.map != m.id: continue
+		if c.get("night", false) and int(Game.state.time) < 1200: continue
+		if Game.enemies.any(func(e): return e.type == c.boss): continue
+		var t := free_tile_near(m, int(c.at[0]), int(c.at[1]))
+		if t.x < 0: continue
+		spawn_enemy(c.boss, t.x, t.y)
+		Game.toast("%s is here." % Data.enemies[c.boss].name, "", "bad")
+
+## The Overpass: each wave comes up Elm Street from the south.
+func spawn_wave(n: int, at: Vector2) -> void:
+	var m: GameMap = Game.map
+	var table := [["shambler", 40], ["lurcher", 20], ["runner", 15 + n * 2], ["crawler", 10], ["spitter", 5 + n]]
+	if n >= 4: table.append(["riot", 10])
+	if n >= 6: table.append(["brute", 4 + n])
+	var count := 2 + n
+	var tries := 0
+	var placed := 0
+	while placed < count and tries < 400:
+		tries += 1
+		var x := Game.rng.randi_range(22, 38)
+		var y := Game.rng.randi_range(14, 24)
+		if not m.tile_free(x, y) or Vector2(x * 16 + 8, y * 16 + 8).distance_to(at) < 9 * 16:
+			continue
+		var e := spawn_enemy(pick_foe(table), x, y)
+		e.hunt = true
+		e.state = "chase"
+		placed += 1
 
 func pick_foe(table: Array) -> String:
 	var total := 0.0
@@ -972,6 +1023,7 @@ func spawn_night_infected() -> void:
 		var F: Dictionary = m.foes
 		if spawn_roamers(m, Game.rng.randi_range(int(F.night[0]), int(F.night[1])), F.table, 0.0) > 0:
 			Game.toast("It's dark. More of them are moving in the streets.", "", "warn")
+		spawn_bosses(m)
 		return
 	var pt := player_tile()
 	var placed := 0
@@ -1452,6 +1504,7 @@ func finish_catch(id: String) -> void:
 		Game.add_xp("fishing", 6 + int(round(Data.fish[id].diff / 3.0)))
 		st.stats.fish_caught = int(st.stats.fish_caught) + 1
 		Game.quest_event("catch", {"n": 1})
+		Game.contract_event("catch", {"map": Game.map.id})
 		Sfx.play("catch")
 	else:
 		Sfx.play("pickup")
@@ -1574,6 +1627,8 @@ func interact_object(o: Dictionary) -> void:
 			search(o, ["clothing", "home"], "the suitcase")
 		"supply_crate":
 			search(o, o.get("loot", def.loot), "the supply crate", float(o.get("quality", 0.3)))
+		"overpass_flare":
+			Game.start_waves("overpass")
 		"district_gate":
 			if not o.get("open", false):
 				Game.ui.say("", Districts.UNLOCKS[o.region].locked)

@@ -44,6 +44,7 @@ const PROPS := {
 	"scarecrow_old": {"solid": true},
 	"jersey_barrier": {"solid": true},
 	"rail_fence": {"solid": true},
+	"overpass_flare": {"solid": true},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -400,7 +401,8 @@ static func _residential(m: GameMap, r: RandomNumberGenerator) -> void:
 	# Elm Street ends at a collapsed overpass
 	for x in range(29, 32):
 		m.add_obj(x, 1, "rubble")
-	m.add_obj(28, 2, "sign", {"text": "ELM STREET. North of here the overpass came down in the first winter."})
+	m.add_obj(28, 2, "sign", {"text": "ELM STREET OVERPASS. Half of it came down in the first winter. A school bus still crosses what's left, once a season, if someone holds the road."})
+	m.add_obj(32, 4, "overpass_flare")
 	m.add_obj(57, 20, "sign", {"text": "MAPLE STREET. Brightwater is east. Cole's notes on the post: \"Precinct 9 has riot gear. So do the things inside it. Stay out of the church after dark.\""})
 	# wrecks along the roads
 	for c in [[6, 21], [20, 22], [40, 22], [50, 21], [30, 30], [29, 13]]:

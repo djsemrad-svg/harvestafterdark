@@ -65,6 +65,8 @@ func sight(e: Dictionary) -> float:
 		s *= 1.8
 	if float(e.get("blind", 0.0)) > 0:
 		s = 0.0
+	if e.get("hunt", false) or Data.enemies[e.type].get("boss", false) and e.state == "chase":
+		s = maxf(s, 400.0)   # wave attackers and an angry boss always know where you are
 	return s
 
 # ================================================================ every frame
@@ -91,6 +93,8 @@ func update(dt: float) -> void:
 		if e.get("turned", 0.0) > 0:
 			_turned(e, dt)
 			continue
+		if d.get("boss", false):
+			_boss(e, d, dist, dt)
 		if e.get("raider", false) and dist > sight(e) and e.state in ["wander", "chase"]:
 			_raider(e, dt, d)
 			if dist < sight(e): e.state = "chase"
@@ -281,3 +285,32 @@ func _turned(e: Dictionary, dt: float) -> void:
 		_move(e, Vector2.ZERO, dt)
 	else:
 		_move(e, to.normalized() * float(Data.enemies[e.type].chase_speed), dt)
+
+## Bosses: call up helpers now and then, and the Inferno leaves fire where it walks.
+func _boss(e: Dictionary, d: Dictionary, dist: float, dt: float) -> void:
+	if e.state in ["wander", "asleep"]:
+		if dist < 7 * 16.0: e.state = "chase"
+		return
+	if d.has("summon"):
+		var S: Dictionary = d.summon
+		e.summon_t = float(e.get("summon_t", float(S.cd) * 0.5)) - dt
+		if float(e.summon_t) <= 0:
+			e.summon_t = float(S.cd)
+			var helpers := Game.enemies.filter(func(o): return o.get("summoned_by", "") == e.type).size()
+			if helpers < int(S.max):
+				var made := 0
+				for i in int(S.n):
+					var a := Game.rng.randf() * TAU
+					var t := Vector2i((e.pos + Vector2.from_angle(a) * 28.0) / 16.0)
+					if Game.map.tile_free(t.x, t.y):
+						var h: Dictionary = spawn(S.type, t.x, t.y)
+						h.summoned_by = e.type
+						h.state = "chase"
+						made += 1
+				if made > 0:
+					Game.toast(S.say, "", "warn")
+	if d.has("fire_trail"):
+		e.trail_t = float(e.get("trail_t", 0.0)) - dt
+		if float(e.trail_t) <= 0:
+			e.trail_t = float(d.fire_trail)
+			w.cb.add_fire(e.pos + Vector2(0, -2), 10.0, 8.0, 4.0)

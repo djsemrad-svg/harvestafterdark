@@ -1222,6 +1222,7 @@ func run_all() -> void:
 	run_arsenal()
 	run_items()
 	run_districts()
+	run_contracts()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -1799,6 +1800,199 @@ func run_districts() -> void:
 	var map_ok: bool = count_nodes(U.overlay_root) > 20
 	U.close_all()
 	check("Map tab lists the districts and whether they're open", map_ok, "")
+
+# ---------------------------------------------------------------- stage 3: contracts, bosses, achievements
+func has_or_dropped(id: String) -> bool:
+	return Game.count_item(id) > 0 or Game.map.drops.any(func(d): return d.id == id)
+
+func kill_now(e: Dictionary, opts := {}) -> void:
+	W.cb.damage(e, float(e.hp) + 10.0, Vector2.ZERO, opts)
+
+func run_contracts() -> void:
+	var G = Game
+	start("adventure", 2)
+	for id in Districts.DISTRICTS: G.unlock_region(id, true)
+	G.state.money = 0
+	# data: every reward exists, every find spot is a container, every boss draws
+	var bad := []
+	for c in Contracts.CONTRACTS:
+		for it in c.reward.get("items", []):
+			if not Data.items.has(it): bad.append(c.id + " reward " + it)
+		if not Data.npcs.has(c.giver): bad.append(c.id + " giver")
+		if c.kind == "find":
+			for sp in c.spots:
+				var o = G.maps[sp[1]].get_obj(int(sp[2]), int(sp[3]))
+				if o == null or not (Data.obj_defs.get(o.type, {}).get("container", false)): bad.append("%s spot %s" % [c.id, str(sp)])
+		if c.kind == "boss" and not Data.enemies.has(c.boss): bad.append(c.id + " boss")
+	for a in Contracts.ACHIEVEMENTS:
+		if not Data.items.has(a.reward): bad.append(a.id)
+	for b in Contracts.BOSSES:
+		var lk: Dictionary = Infected.make_look(b, G.rng)
+		if Art.char_image(lk, "down", 1) == null: bad.append(b + " art")
+	check("Contracts: %d jobs and %d achievements; rewards, givers, quest spots and boss pictures all check out" % [Contracts.CONTRACTS.size(), Contracts.ACHIEVEMENTS.size()], bad.is_empty() and Contracts.CONTRACTS.size() >= 15, str(bad))
+
+	# the board at the Guild
+	var board = null
+	for e in G.shop_stock("guild"):
+		if e.get("service", "") == "contracts": board = e
+	G.shop_buy("guild", board, 1)
+	var opened: bool = ov() == "contracts" and count_nodes(U.overlay_root) > 30
+	U.overlay.tab = "active"; U.render_overlay()
+	U.close_all()
+	check("Cole's contract board opens from the Combat Guild and lists posted jobs", board != null and opened, "ov=%s" % ov())
+
+	# a boss: the Groundskeeper only walks the cemetery at night
+	G.take_contract("hallowed_ground")
+	G.state.time = 900
+	at("residential", 46, 20, "up")
+	var day_boss: bool = G.enemies.any(func(e): return e.type == "boss_groundskeeper")
+	G.state.time = 1250
+	at("residential", 46, 20, "up")
+	var boss = null
+	for e in G.enemies:
+		if e.type == "boss_groundskeeper": boss = e
+	G.enemies = G.enemies.filter(func(e): return e == boss)
+	boss.pos = G.player.pos + Vector2(40, 0)
+	boss.state = "chase"
+	U.update_hud(0.016)
+	var bar: bool = U.boss_box.visible and U.boss_lbl.text == "The Groundskeeper"
+	for i in 40:
+		tick(250)
+		G.state.health = 100.0
+		if boss.pos.distance_to(G.player.pos) > 60: boss.pos = G.player.pos + Vector2(40, 0)
+	var helpers: int = G.enemies.filter(func(e): return e.get("summoned_by", "") == "boss_groundskeeper").size()
+	G.state.health = 100.0
+	if G.enemies.has(boss): kill_now(boss)
+	var won: bool = G.contract_state().done.has("hallowed_ground") and has_or_dropped("grave_digger") and int(G.state.money) >= 1500
+	check("Hallowed Ground: the Groundskeeper appears only at night, has a health bar, raises crawlers, and drops the Grave Digger", not day_boss and boss != null and bar and helpers > 0 and won, "day=%s bar=%s helpers=%d won=%s" % [day_boss, bar, helpers, won])
+	G.enemies.clear()
+	G.state.time = 700
+
+	# a boss inside a building
+	G.take_contract("the_inferno")
+	at("ind_fire", 6, 9, "up")
+	var inf = null
+	for e in G.enemies:
+		if e.type == "boss_inferno": inf = e
+	if inf != null:
+		inf.state = "chase"
+		G.fires.clear()
+		for i in 12:
+			G.player.pos = Vector2(3 * 16 + 8, 6 * 16 + 14)
+			G.player.kb = Vector2.ZERO
+			tick(250)
+			G.state.health = 100.0
+	var trail: bool = not G.fires.is_empty()
+	if inf != null and G.enemies.has(inf): kill_now(inf)
+	check("The Inferno waits in Fire Station 4, leaves fire where it walks, and drops the Firewalkers", inf != null and trail and has_or_dropped("firewalkers"), "trail=%s" % trail)
+	G.enemies.clear()
+	G.state.health = 100.0
+
+	# find: the Twin Oaks journal halves, even in a container searched this week
+	G.take_contract("twin_oaks")
+	at("rv_farmhouse", 6, 9, "up")
+	G.enemies.clear()
+	var dresser = G.map.get_obj(2, 1)
+	dresser.searched = int(G.state.day)
+	W.search(dresser, dresser.loot, "the dresser", 0.0, [1, 1])
+	var half_a: bool = G.count_item("journal_half_a") == 1
+	at("rv_barn", 6, 9, "up")
+	G.enemies.clear()
+	var crate = G.map.get_obj(9, 1)
+	W.search(crate, crate.loot, "the crate", 0.0, [1, 1])
+	check("Twin Oaks: both journal halves turn up (farmhouse dresser, barn crate) and Marisol's reward is The Twins", half_a and G.contract_state().done.has("twin_oaks") and G.count_item("journal_half_a") == 0 and has_or_dropped("the_twins"), "a=%s" % half_a)
+
+	# collect: Appointed Rounds needs 40 letters from homes in the Residential District
+	G.take_contract("appointed_rounds")
+	G.add_item("letter", 38, {"silent": true})
+	at("mh_house1", 6, 9, "up")
+	G.enemies.clear()
+	var tries := 0
+	while not G.contract_state().done.has("appointed_rounds") and tries < 40:
+		tries += 1
+		for k in G.map.objects:
+			var o: Dictionary = G.map.objects[k]
+			if o.type in ["loot_dresser", "loot_cabinet", "loot_desk"]:
+				o.erase("searched")
+				W.search(o, o.loot, "it", 0.0, [1, 1])
+		for d in G.map.drops.duplicate():
+			if d.id == "letter":
+				G.add_item("letter", int(d.qty), {"silent": true})
+				G.map.drops.erase(d)
+		G.check_contracts()
+	check("Appointed Rounds: letters turn up in home containers; at 40 they're delivered for the Appointed Rounds legs", G.contract_state().done.has("appointed_rounds") and G.count_item("letter") < 10 and has_or_dropped("appointed_rounds"), "tries=%d done=%s letters=%d legs=%s" % [tries, G.contract_state().done.has("appointed_rounds"), G.count_item("letter"), has_or_dropped("appointed_rounds")])
+
+	# kill jobs: stealth kills and Stalkers
+	G.take_contract("the_quiet_dojo"); G.take_contract("trophy_season")
+	for i in 25: G.contract_event("kill", {"type": "shambler", "stealth": i % 2 == 0})
+	var dojo_half: bool = not G.contract_state().done.has("the_quiet_dojo")
+	for i in 13: G.contract_event("kill", {"type": "shambler", "stealth": true})
+	for i in 12: G.contract_event("kill", {"type": "stalker"})
+	check("The Quiet Dojo counts only stealth kills; Trophy Season counts only Stalkers", dojo_half and G.contract_state().done.has("the_quiet_dojo") and G.contract_state().done.has("trophy_season") and G.count_item("shadowstep_katana") == 1 and G.count_item("ghost_steps") == 1, "")
+	# a real stealth kill counts too
+	arena()
+	G.take_contract("the_last_sheriff")
+	var before: int = int(G.state.stats.get("stealth_kills", 0))
+	give("kitchen_knife")
+	var sk: Dictionary = foe("shambler", Vector2(14, 0), "wander")
+	sk.dir = "right"; sk.wt = 99.0; sk.wander = Vector2.ZERO
+	G.player.dir = "right"
+	W.use_selected()
+	tick(400)
+	check("Stealth kills are counted (for The Quiet Dojo)", int(G.state.stats.get("stealth_kills", 0)) == before + 1, "%d" % int(G.state.stats.get("stealth_kills", 0)))
+
+	# fishing job
+	start("adventure", 2)
+	for id in Districts.DISTRICTS: G.unlock_region(id, true)
+	G.take_contract("low_tide")
+	at("riverlands", 44, 22, "down")
+	for i in 10: G.contract_event("catch", {"map": "riverlands"})
+	check("Low Tide: 10 fish caught in the Riverlands earn Wren's Fisherman's Waders", G.contract_state().done.has("low_tide") and G.count_item("fishermans_waders") == 1, "")
+
+	# the Overpass: 10 waves
+	G.take_contract("overpass")
+	G.state.time = 700
+	at("residential", 31, 6, "up")
+	G.enemies.clear()
+	G.start_waves("overpass")
+	var waves_seen := 0
+	for step in 200:
+		tick(250)
+		G.state.health = 100.0
+		var hunters: Array = G.enemies.filter(func(e): return e.get("hunt", false))
+		if not hunters.is_empty():
+			waves_seen = max(waves_seen, int(G.event.get("wave", 0)))
+			for e in hunters: kill_now(e)
+		if G.contract_state().done.has("overpass"): break
+	check("Overpass: light the flare and hold the road for 10 waves; the last bus crosses and Cole pays out the Long Goodbye", waves_seen == 10 and G.contract_state().done.has("overpass") and has_or_dropped("long_goodbye") and G.event.is_empty(), "waves=%d" % waves_seen)
+	G.take_contract("overpass")
+	var flare_fail := true
+	G.contract_state().done.erase("overpass"); G.contract_state().active.append("overpass")
+	G.start_waves("overpass")
+	tick(3000)
+	at("town", 28, 20, "down")
+	flare_fail = G.event.is_empty() and G.enemies.is_empty()
+	check("Overpass: leaving during the waves fails the attempt (try again any time)", flare_fail and G.contract_state().active.has("overpass"), "")
+
+	# achievements
+	G.state.stats.sprint_px = 5.2 * 1000.0 * 16.0
+	G.add_item("conspiracy_note", 10, {"silent": true})
+	G.state.stats.meals = 99
+	G.check_achievements()
+	var a1: bool = G.state.achievements.done.has("finish_line") and G.count_item("marathon_racers") == 1 and not G.state.achievements.done.has("cardio")
+	var a2: bool = G.state.achievements.done.has("they_knew") and G.count_item("tinfoil_hat") == 1 and not G.state.achievements.done.has("head_chef")
+	check("Achievements: Finish Line (5 km sprinted) and They Knew (10 notes) award their gear; Head Chef waits for 100 meals", a1 and a2, "%s" % str(G.state.achievements.done))
+	arena()
+	G.state.flags.erase("bitten")
+	var biter: Dictionary = foe("shambler", Vector2(10, 0), "chase")
+	W.cb.player_hurt(biter.pos, 10.0, "bite", biter)
+	G.state.day = 100
+	G.check_achievements()
+	check("Unseen: any bite rules out the achievement", G.state.flags.get("bitten", false) and not G.state.achievements.done.has("unseen"), "")
+	U.open("journal", {"tab": "quests"})
+	var jr: bool = count_nodes(U.overlay_root) > 40
+	U.close_all()
+	check("Journal lists contracts in progress and every achievement with its progress", jr, "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1

@@ -18,6 +18,9 @@ var bars_box: VBoxContainer
 var status_box: HBoxContainer
 var hint_lbl: Label
 var banner_lbl: Label
+var boss_box: VBoxContainer
+var boss_lbl: Label
+var boss_bar: ProgressBar
 var toolbar: HBoxContainer
 var tb_name: Label
 var _last := {}
@@ -479,6 +482,24 @@ func build_hud() -> void:
 	br.add_child(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"))
 	br.add_child(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"))
 	hud.add_child(br)
+	# boss health (top centre, only while a boss is on the map)
+	boss_box = K.vbox(0)
+	boss_box.anchor_left = 0.5; boss_box.anchor_right = 0.5
+	boss_box.offset_left = -80; boss_box.offset_right = 80; boss_box.offset_top = 4
+	boss_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	boss_lbl = K.label("", 7, Color("#fff4dc"))
+	boss_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_lbl.add_theme_constant_override("outline_size", 3)
+	boss_lbl.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02, 0.9))
+	boss_box.add_child(boss_lbl)
+	boss_bar = ProgressBar.new()
+	boss_bar.show_percentage = false
+	boss_bar.custom_minimum_size = Vector2(160, 6)
+	boss_bar.add_theme_stylebox_override("background", K.sb(Color("#2a1c14"), K.OUTLINE, 1, 1, Color(0, 0, 0, 0), 0, 0))
+	boss_bar.add_theme_stylebox_override("fill", K.sb(Color("#b8302a"), Color("#6a1a14"), 1, 1, Color(0, 0, 0, 0), 0, 0))
+	boss_box.add_child(boss_bar)
+	boss_box.visible = false
+	hud.add_child(boss_box)
 	# banner
 	banner_lbl = K.label("", 14, Color("#fff4d0"))
 	banner_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -579,6 +600,22 @@ func update_hud(dt: float) -> void:
 		if toasts[i].t <= 0:
 			toasts[i].node.queue_free()
 			toasts.remove_at(i)
+	# boss health
+	var boss = null
+	for en in Game.enemies:
+		if Data.enemies[en.type].get("boss", false) and en.state != "asleep":
+			boss = en
+			break
+	boss_box.visible = boss != null
+	if boss != null:
+		boss_lbl.text = Data.enemies[boss.type].name
+		boss_bar.max_value = float(boss.max_hp)
+		boss_bar.value = maxf(0.0, float(boss.hp))
+	elif not Game.event.is_empty():
+		boss_box.visible = true
+		boss_lbl.text = "Hold the overpass: wave %d of %d" % [int(Game.event.wave), int(Contracts.get_def(Game.event.id).waves)]
+		boss_bar.max_value = float(Contracts.get_def(Game.event.id).waves)
+		boss_bar.value = float(Game.event.wave) - 1.0
 	# hint and banner
 	var h := hint_text()
 	if hint_lbl.text != h:
@@ -670,6 +707,7 @@ func hint_text() -> String:
 		if o.type in ["car_wreck", "suitcase", "supply_crate"] or od.get("container", false):
 			var nm: String = od.get("name", "")
 			return ("E: Search" + (" " + nm if nm != "" else "") if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
+		if o.type == "overpass_flare": return "E: Light the flare" if Game.event.is_empty() else "Hold the road!"
 		if o.type == "district_gate" and not o.get("open", false):
 			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
@@ -1029,6 +1067,66 @@ func _ov_notices() -> Control:
 		l.custom_minimum_size.x = 290
 		b.add_child(l)
 		v.add_child(b)
+	v.add_child(_close_btn())
+	return pw[0]
+
+# ---------------------------------------------------------------- Cole's contract board
+static func contract_reward_text(c: Dictionary) -> String:
+	var parts := []
+	for it in c.reward.get("items", []):
+		parts.append("[color=%s]%s[/color]" % [Arsenal.rarity_color(Data.items[it].get("rarity", "Normal")), Data.items[it].name])
+	if c.reward.has("money"): parts.append("%d gold" % int(c.reward.money))
+	return ", ".join(parts)
+
+func _ov_contracts() -> Control:
+	var pw := _window("", 390)
+	var v: VBoxContainer = pw[1]
+	v.add_child(_shop_head("cole", Data.npcs.cole.name, "Contract board"))
+	var cs := Game.contract_state()
+	var tab: String = overlay.get("tab", "posted")
+	var tabs := K.hbox(2)
+	var counts := {"posted": Contracts.CONTRACTS.filter(func(c): return Game.contract_available(c)).size(), "active": cs.active.size(), "done": cs.done.size()}
+	for t in [["posted", "Posted"], ["active", "In progress"], ["done", "Done"]]:
+		var tt: String = t[0]
+		var b := K.button("%s (%d)" % [t[1], counts[tt]], func(): overlay.tab = tt; render_overlay(), "small" if tab != tt else "")
+		tabs.add_child(b)
+	v.add_child(tabs)
+	var list := K.vbox(2)
+	var shown := 0
+	for c in Contracts.CONTRACTS:
+		var show := false
+		match tab:
+			"posted": show = Game.contract_available(c)
+			"active": show = cs.active.has(c.id)
+			"done": show = cs.done.has(c.id)
+		if not show: continue
+		shown += 1
+		var b := K.row_box(Color("#fff6e4"))
+		var col := K.vbox(1)
+		var kind_label: String = {"boss": "Boss", "kill": "Hunt", "find": "Search", "collect": "Gather", "fish": "Fishing", "waves": "Defend"}[c.kind]
+		col.add_child(K.rich("[b]%s[/b]  [color=#8a3a2a]%s[/color]  [color=#7a5434]Posted by %s[/color]" % [c.title, kind_label, Data.npcs[c.giver].name.split(" ")[0]], 7))
+		var dl := K.label(c.desc, 6, null, true)
+		dl.custom_minimum_size.x = 330
+		col.add_child(dl)
+		col.add_child(K.rich("[color=#3f7a2c]Reward:[/color] %s" % contract_reward_text(c), 6))
+		if tab == "active":
+			col.add_child(K.rich("[color=#5a2c0e]Progress: %s[/color]" % Game.contract_progress_text(c), 6))
+		if tab == "posted":
+			var cid: String = c.id
+			col.add_child(K.button("Take this contract", func(): Game.take_contract(cid); render_overlay(), "small"))
+		b.add_child(col)
+		list.add_child(b)
+	if tab == "posted":
+		for c in Contracts.CONTRACTS:
+			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c): continue
+			var b2 := K.row_box()
+			b2.modulate = Color(1, 1, 1, 0.6)
+			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]Opens with the %s.[/color]" % [c.title, Districts.DISTRICTS[c.needs].name], 6))
+			list.add_child(b2)
+			shown += 1
+	if shown == 0:
+		list.add_child(K.label({"posted": "Nothing new on the board.", "active": "No contracts in progress. Take one from the Posted list.", "done": "None finished yet."}[tab], 7, K.INK_SOFT))
+	v.add_child(K.scroll(list, 180))
 	v.add_child(_close_btn())
 	return pw[0]
 
@@ -1523,6 +1621,7 @@ func _craft(r: Dictionary) -> void:
 	Game.add_item(r.out, r.qty)
 	if r.station == "stove":
 		Game.add_xp("cooking", 12)
+		Game.state.stats.meals = int(Game.state.stats.get("meals", 0)) + int(r.qty)
 	Sfx.play("eat" if r.station == "stove" else "pick")
 	overlay.err = ""
 	render_overlay()
@@ -1770,7 +1869,7 @@ func gear_info(s: Dictionary) -> String:
 	if d.get("look", "") != "": t += "[i]%s[/i]\n" % d.look
 	if d.get("flavor", "") != "": t += "[color=#6a5a4a][i]%s[/i][/color]\n" % d.flavor
 	elif it.has("gear") and d.get("cosmetic", false): t += "Cosmetic. Changes nothing but how you feel.\n"
-	t += "[color=#8a7a6a]Found: %s[/color]" % d.get("how", "")
+	t += "[color=#8a7a6a]Found: %s[/color]" % it.get("reward_of", d.get("how", ""))
 	return t
 
 ## Descriptive text that isn't meant to do anything by itself.
@@ -1885,6 +1984,36 @@ func _tab_quests() -> Control:
 		var b := K.row_box()
 		b.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [d.title, Game.quest_progress_text(d), d.desc, Data.npcs[d.giver].name, ", ".join(rew)], 6))
 		v.add_child(b)
+	var cs := Game.contract_state()
+	v.add_child(K.label("Contracts (Cole's board at the Combat Guild)", 8, K.WOOD_DARK))
+	if cs.active.is_empty(): v.add_child(K.label("None in progress.", 6, K.INK_SOFT))
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		var b0 := K.row_box()
+		b0.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [c.title, Game.contract_progress_text(c), c.desc, Data.npcs[c.giver].name, contract_reward_text(c)], 6))
+		v.add_child(b0)
+	var ach: Array = Game.state.get("achievements", {}).get("done", [])
+	v.add_child(K.label("Achievements (%d of %d)" % [ach.size(), Contracts.ACHIEVEMENTS.size()], 8, K.WOOD_DARK))
+	for a in Contracts.ACHIEVEMENTS:
+		var b1 := K.row_box()
+		var got: bool = ach.has(a.id)
+		var prog := ""
+		if a.has("todo"):
+			b1.modulate = Color(1, 1, 1, 0.55)
+			prog = "[color=#9a8a7a]Not in the game yet: %s[/color]" % a.todo
+		elif got:
+			prog = "[color=#3f7a2c]Done[/color]"
+		else:
+			var val := Game.achievement_value(a.stat)
+			prog = "%s / %s" % [str(snappedf(val, 0.1)) if a.stat == "sprint_km" else str(int(val)), str(int(a.goal))]
+		var rw: String = Data.items[a.reward].name
+		b1.add_child(K.rich("%s[b]%s[/b]  %s\n%s [color=#7a5434]Reward: [color=%s]%s[/color][/color]" % ["✔ " if got else "", a.title, prog, a.desc, Arsenal.rarity_color(Data.items[a.reward].get("rarity", "Normal")), rw], 6))
+		v.add_child(b1)
+	for ny in Contracts.NOT_YET:
+		var b3 := K.row_box()
+		b3.modulate = Color(1, 1, 1, 0.55)
+		b3.add_child(K.rich("[b]%s[/b]  [color=#9a8a7a]Not in the game yet: %s[/color]\n[color=#7a5434]Reward: %s[/color]" % [ny[0], ny[1], ", ".join(ny[2].map(func(i): return Data.items[i].name))], 6))
+		v.add_child(b3)
 	v.add_child(K.label("Main story", 8, K.WOOD_DARK))
 	for s in Data.story:
 		var b := K.row_box()
@@ -1895,6 +2024,8 @@ func _tab_quests() -> Control:
 	if q.done.is_empty(): v.add_child(K.label("Nothing yet.", 6, K.INK_SOFT))
 	for id in q.done:
 		v.add_child(K.label("✔ " + Game.quest_def(id).title, 6, K.MOSS))
+	for id in cs.done:
+		v.add_child(K.label("✔ Contract: " + Contracts.get_def(id).title, 6, K.MOSS))
 	return K.scroll(v, 186)
 
 func _tab_social() -> Control:

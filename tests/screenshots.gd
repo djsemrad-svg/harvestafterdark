@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "contracts":
+		main.ui.close_all()
+		await contract_shots()
+		get_tree().quit()
+		return
 	if only == "districts":
 		main.ui.close_all()
 		await district_shots()
@@ -129,6 +134,7 @@ func _ready() -> void:
 	Game.change_map("homestead", 29, 11, "up", {"silent": true}); await frames(20); await shot("27_greenhouse_outside")
 	await arsenal_shots()
 	await district_shots()
+	await contract_shots()
 	get_tree().quit()
 
 func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
@@ -269,6 +275,46 @@ func district_shots() -> void:
 		await shot("6%02d_room_%s" % [rooms.find(r), r[0]])
 	Game.state.time = 1300
 	Game.change_map("residential", 30, 22, "down", {"silent": true}); await frames(30); await shot("70_residential_night")
+
+func contract_shots() -> void:
+	Game.state.mode = "adventure"
+	for id in Districts.DISTRICTS: Game.unlock_region(id, true)
+	Game.state.time = 700
+	Game.change_map("guild", 6, 8, "up", {"silent": true}); Game.sync_npcs()
+	main.ui.open("contracts"); await frames(4); await shot("80_contract_board")
+	main.ui.close_all()
+	for c in ["hallowed_ground", "the_briar_king", "crash", "the_juggernaut", "overpass", "the_last_sheriff"]:
+		Game.take_contract(c)
+	main.ui.open("contracts", {"tab": "active"}); await frames(4); await shot("81_contracts_active")
+	main.ui.close_all()
+	var lairs := [["residential", 46, 17, 1250, "boss_groundskeeper"], ["riverlands", 14, 22, 700, "boss_briar_king"], ["industrial", 21, 26, 700, "boss_crash"], ["industrial", 43, 37, 700, "boss_juggernaut"]]
+	var i := 0
+	for L in lairs:
+		Game.state.time = int(L[3])
+		Game.change_map(L[0], L[1], L[2], "right", {"silent": true})
+		var keep := Game.enemies.filter(func(e): return e.type == L[4])
+		Game.enemies = keep
+		for e in keep:
+			e.pos = Game.player.pos + Vector2(44, -6)
+			e.state = "chase"
+			e.hp = float(e.max_hp) * 0.7
+		Game.player.iframes = 99.0
+		await frames(10)
+		await shot("8%d_boss_%s" % [2 + i, L[4]])
+		i += 1
+	Game.state.time = 700
+	Game.change_map("residential", 31, 6, "down", {"silent": true})
+	Game.enemies.clear()
+	Game.start_waves("overpass")
+	Game.player.iframes = 99.0
+	await frames(240)
+	await shot("86_overpass_waves")
+	Game.event = {}
+	Game.enemies.clear()
+	Game.state.stats.sprint_px = 3.1 * 16000.0
+	Game.state.stats.meals = 41
+	main.ui.open("journal", {"tab": "quests"}); await frames(4)
+	await shot("87_journal_contracts")
 
 func frames(n: int) -> void:
 	for i in n:

@@ -623,6 +623,7 @@ var shops := {
 		"name": "Combat Guild", "owner": "cole", "map": "guild", "open": 600, "close": 1320, "closed_days": ["Mon"],
 		"buys": ["ammo", "weapon", "gear"], "daily_sale": false,
 		"stock": [
+			{"service": "contracts", "name": "Contract board", "desc": "", "price": 0},
 			{"service": "bounty", "name": "Bounty board", "desc": "", "price": 0},
 			{"id": "machete", "price": 900}, {"id": "scrap_crossbow", "price": 1400},
 			{"id": "bolts", "price": 6}, {"id": "nail_rounds", "price": 3}, {"id": "buckshot", "price": 12}, {"id": "bandage", "price": 50},
@@ -1005,6 +1006,7 @@ func _init() -> void:
 	Arsenal.register(self)
 	Catalog.register(self)
 	Districts.register(self)
+	Contracts.register(self)
 
 
 func item(id: String) -> Dictionary:

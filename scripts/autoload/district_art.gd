@@ -235,6 +235,12 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			a.R(x, 3, 10, 10, 1, "#c83a2a"); a.R(x, 0, 13, 16, 2, "#8a8680")
 			if v % 2 == 0: a.R(x, 11, 6, 2, 3, "#6a6660")
 			return [a.outline(x, "#1a1a1a"), 0, -1]
+		"overpass_flare":
+			x = a.img(16, 22)
+			a.R(x, 7, 6, 2, 16, "#5e3c1e"); a.R(x, 4, 8, 8, 6, "#8a8a90"); a.R(x, 5, 9, 6, 4, "#5a5a60")
+			a.R(x, 6, 3, 4, 6, "#c83a2a"); a.R(x, 7, 1, 2, 3, "#f0d040")
+			if Game.event.get("id", "") == "overpass": a.R(x, 6, 0, 4, 3, "#ffe080")
+			return [a.outline(x, "#1a1410"), 0, -6]
 		"district_gate":
 			return _gate(a, o, season)
 	return [x, 0, 0]
