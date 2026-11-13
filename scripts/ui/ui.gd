@@ -666,6 +666,9 @@ func hint_text() -> String:
 		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
 		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
+		if o.type == "weapon_bench": return "E: Use Weapon Bench"
+		if o.type in ["car_wreck", "suitcase", "supply_crate"]:
+			return ("E: Search" if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if names.has(o.type): return "E: " + names[o.type]
@@ -796,6 +799,44 @@ func render_overlay() -> void:
 		overlay_root.add_child(body)
 	else:
 		_center(body, overlay_root)
+
+## Weapons and gear that need work, with what each repair costs.
+func _repair_box() -> VBoxContainer:
+	var v := K.vbox(2)
+	v.add_child(K.label("Repairs restore full durability. The closer something is to breaking, the more it costs." + (" In Survivor Mode a broken item is lost, so don't wait too long." if Game.is_survivor() else " Broken items can still be fixed."), 6, K.INK_SOFT, true))
+	var items := Game.repairable_items()
+	if items.is_empty():
+		v.add_child(K.label("Nothing you're carrying or wearing needs repair.", 7))
+	for s in items:
+		var c := Game.repair_cost(s)
+		var row := K.row_box()
+		var rh := K.hbox(4)
+		rh.add_child(K.icon(Art.get_icon(s.id), 16))
+		var md := Game.max_dur(s.id)
+		var nm := K.rich("[b]%s[/b]%s\n%s · %d gold + %s" % [Data.items[s.id].name, " [color=#c83a2a](broken)[/color]" if Game.is_broken(s) else "",
+			"Durability %d/%d" % [Game.stack_dur(s), md], int(c.gold), ", ".join(c.mats.map(func(m): return "%d %s" % [int(m[1]), Data.items[m[0]].name]))], 6)
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.custom_minimum_size.x = 220
+		rh.add_child(nm)
+		var ss: Dictionary = s
+		rh.add_child(K.button("Repair", func():
+			var err := Game.repair_item(ss)
+			overlay.err = err
+			if err == "": toast("Repaired your %s." % Data.items[ss.id].name, ss.id)
+			render_overlay(), "small"))
+		row.add_child(rh)
+		v.add_child(row)
+	return v
+
+func _ov_repair() -> Control:
+	var pw := _window("", 360)
+	var v: VBoxContainer = pw[1]
+	var owner: String = overlay.get("owner", "jo")
+	v.add_child(_shop_head(owner, Data.npcs[owner].name, "Repairs"))
+	v.add_child(K.scroll(_repair_box(), 170))
+	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
+	v.add_child(_close_btn("Done"))
+	return pw[0]
 
 func _window(title: String, w := 300.0) -> Array:
 	var p := K.panel(w)
@@ -1241,7 +1282,7 @@ func _shop_box(shop_id: String) -> Control:
 		var nm := K.label("%s x%d" % [Data.items[s.id].name, s.qty], 6)
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rh.add_child(nm)
-		rh.add_child(K.label(str(Data.items[s.id].price), 6, Color("#6a4a10")))
+		rh.add_child(K.label(str(Game.sell_price(s)), 6, Color("#6a4a10")))
 		rh.add_child(K.button("1", func(): Game.shop_sell(shop_id, idx, 1); render_overlay(), "small"))
 		rh.add_child(K.button("All", func(): Game.shop_sell(shop_id, idx, 999); render_overlay(), "small"))
 		row.add_child(rh)
@@ -1288,7 +1329,7 @@ func _ov_forge() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(_shop_head("ines", "Varga Forge", "Ines Varga · Blacksmith"))
 	var tabs := K.hbox(2)
-	for t in [["geodes", "Crack Geodes"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["shop", "Buy & Sell"]]:
+	for t in [["geodes", "Crack Geodes"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["repair", "Repair"], ["shop", "Buy & Sell"]]:
 		var tid: String = t[0]
 		var b := K.button(t[1], func():
 			overlay.tab = tid
@@ -1401,6 +1442,8 @@ func _ov_forge() -> Control:
 					rh.add_child(b)
 				row.add_child(rh)
 				body.add_child(row)
+		"repair":
+			body.add_child(_repair_box())
 		"shop":
 			body.add_child(_shop_box("forge"))
 	v.add_child(K.scroll(body, 170))
@@ -1413,14 +1456,16 @@ func recipe_unlocked(r: Dictionary) -> bool:
 	if r.unlock.type == "start": return true
 	if r.unlock.type == "skill": return Game.skill_level(r.unlock.skill) >= r.unlock.level
 	if r.unlock.type == "friend": return Game.hearts(r.unlock.npc) >= r.unlock.hearts
+	if r.unlock.type == "has_item": return Game.count_item(r.unlock.item) > 0
 	return false
 
 func unlock_text(r: Dictionary) -> String:
 	if r.unlock.type == "skill": return "Locked: reach %s level %d." % [Data.skills[r.unlock.skill].name, r.unlock.level]
 	if r.unlock.type == "friend": return "Locked: become friends with %s (%d hearts)." % [Data.npcs[r.unlock.npc].name.split(" ")[0], r.unlock.hearts]
+	if r.unlock.type == "has_item": return "Locked: needs a %s in your pack." % Data.items[r.unlock.item].name
 	return "Locked."
 
-const STATION_NAMES := {"stove": "Stove (in your house)", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench"}
+const STATION_NAMES := {"stove": "Stove (in your house)", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench", "weapon_bench": "Weapon Bench"}
 
 func _recipes(station: String, show_all: bool) -> VBoxContainer:
 	var v := K.vbox(2)
@@ -1528,23 +1573,33 @@ func _tab_inventory() -> Control:
 		Game.sort_inventory()
 		overlay.erase("sel"); overlay.erase("pick")
 		render_overlay(), "small"))
-	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inv_size, "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
+	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
 	left.add_child(row)
 	var eq := K.row_box()
 	var eh := K.hbox(6)
 	var face := K.icon(Art.get_char(st.character.look, "down", 0), 16)
 	face.custom_minimum_size = Vector2(24, 48)
 	eh.add_child(face)
-	var weapon = st.inventory.filter(func(x): return x != null and Data.items[x.id].has("weapon"))
-	var look: Dictionary = st.character.look
-	var tools := []
-	for t in Data.tool_defs:
-		if Data.tool_defs[t].upgradable:
-			tools.append(Data.tool_tiers[Game.tool_tier(t)].name + " " + Data.tool_defs[t].name + (" (at forge)" if Game.tool_busy(t) != null else ""))
-	var info := K.label("%s of %s\n%s · %s gold\nEquipment: %s · Outfit: %s%s (change at your mirror)\nTools: %s" % [st.character.name, st.property_name, Balance.modes[st.mode].label, _num(int(st.money)),
-		("%s (Damage %d)" % [Data.items[weapon[0].id].name, Data.items[weapon[0].id].weapon.damage]) if not weapon.is_empty() else "none", look.shirt_style, ", " + look.acc if look.acc != "None" else "", ", ".join(tools)], 6, null, true)
-	info.custom_minimum_size.x = 220
-	eh.add_child(info)
+	# what you're wearing: click a slot to see it or take it off
+	var gv := K.vbox(1)
+	var gslots := K.hbox(2)
+	for slot in Arsenal.SLOTS:
+		var sv := K.vbox(0)
+		var sname: String = slot
+		var es = st.equip.get(slot)
+		var gsl := K.slot(es, func(_b):
+			overlay.erase("pick"); overlay.erase("sel")
+			overlay.eq = sname
+			render_overlay(), 0, overlay.get("eq", "") == slot, false, 20)
+		sv.add_child(gsl)
+		sv.add_child(K.label(Arsenal.SLOT_NAMES[slot], 5, K.INK_SOFT))
+		gslots.add_child(sv)
+	gv.add_child(gslots)
+	var gt := Game.gear_total()
+	var red: float = gt.armor / (gt.armor + Balance.armor.armor_k) * 100.0
+	gv.add_child(K.label("Armor %d (-%d%% damage) · Max health %d · Bite resist %d%%\nSpeed %+d%% · Noise %+d%% · Extra pockets %d" % [int(gt.armor), int(red), int(Game.max_health()), int(gt.bite * 100), int(gt.move * 100), int(gt.noise * 100), int(gt.carry)], 6, null, true))
+	gv.add_child(K.label("Shift: sprint · Ctrl: crouch · V: shove or stomp · R: reload", 5, K.INK_SOFT))
+	eh.add_child(gv)
 	eq.add_child(eh)
 	left.add_child(eq)
 	h.add_child(left)
@@ -1552,7 +1607,12 @@ func _tab_inventory() -> Control:
 	det.custom_minimum_size.x = 150
 	var dv := K.vbox(3)
 	var sel = st.inventory[overlay.sel] if overlay.has("sel") and overlay.sel < st.inventory.size() else null
-	if sel == null:
+	var eq_slot: String = overlay.get("eq", "")
+	if eq_slot != "" and sel == null:
+		sel = st.equip.get(eq_slot)
+	if sel == null and eq_slot != "":
+		dv.add_child(K.label("Nothing worn on your %s. Click clothing or armour in your pack, then Wear." % Arsenal.SLOT_NAMES[eq_slot].to_lower(), 6, K.INK_SOFT, true))
+	elif sel == null:
 		dv.add_child(K.label("Click an item to see details. Click two slots in a row to move or swap them. The top row is your toolbar.", 6, K.INK_SOFT, true))
 	else:
 		var it: Dictionary = Data.items[sel.id]
@@ -1562,7 +1622,10 @@ func _tab_inventory() -> Control:
 		hh.add_child(K.rich("[b]%s[/b]\n[color=%s]%s[/color] · x%d" % [Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
 		hh.get_child(1).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dv.add_child(hh)
-		dv.add_child(K.label(it.desc, 6, null, true))
+		if it.has("weapon") or it.has("gear"):
+			dv.add_child(K.rich(gear_info(sel), 6))
+		else:
+			dv.add_child(K.label(it.desc, 6, null, true))
 		if it.has("tool") and Data.tool_defs[it.tool].upgradable:
 			dv.add_child(K.label(Game.tool_effect_text(it.tool, Game.tool_tier(it.tool)), 6, K.INK_SOFT, true))
 		if it.has("edible"):
@@ -1583,7 +1646,18 @@ func _tab_inventory() -> Control:
 		if Data.recipes.any(func(r): return r.inputs.any(func(p): return Game.matches(p[0], sel.id))): tags.append("[bgcolor=#6a5a4a][color=white] Crafting ingredient [/color][/bgcolor]")
 		dv.add_child(K.rich(" ".join(tags), 5))
 		var br := K.hbox()
-		var sidx: int = overlay.sel
+		var sidx: int = overlay.get("sel", -1)
+		if it.has("gear") and eq_slot != "" and sidx < 0:
+			br.add_child(K.button("Take off", func():
+				Game.unequip(eq_slot)
+				overlay.erase("eq")
+				render_overlay(), "small"))
+		elif it.has("gear"):
+			br.add_child(K.button("Wear", func():
+				Game.equip_from(sidx)
+				overlay.erase("pick"); overlay.erase("sel")
+				overlay.eq = Data.gear[it.id].slot
+				render_overlay(), "small"))
 		if fl.edible:
 			br.add_child(K.button(it.get("use_word", "Drink" if it.get("drink", false) else "Eat"), func():
 				var s2 = Game.state.inventory[sidx]
@@ -1603,7 +1677,65 @@ func _tab_inventory() -> Control:
 	h.add_child(det)
 	return h
 
+## Stats, effects and story for a weapon or piece of gear.
+func gear_info(s: Dictionary) -> String:
+	var it: Dictionary = Data.items[s.id]
+	var t := ""
+	var rar: String = it.get("rarity", "Normal")
+	if it.has("weapon"):
+		var w: Dictionary = it.weapon
+		t += "[color=%s]%s %s %s[/color]\n" % [Arsenal.rarity_color(rar), rar, w.category, w.type]
+		var dmg := "%d" % int(w.damage) + (" x%d" % int(w.projectiles) if int(w.projectiles) > 1 else "")
+		t += "Damage [b]%s[/b] · %s per second · Range %s tiles · Crit %d%%\n" % [dmg, str(snappedf(float(w.aps), 0.01)), str(snappedf(float(w.range), 0.1)), int(w.crit)]
+		var extra := []
+		if float(w.stamina) > 0: extra.append("Energy %s per attack" % str(snappedf(float(w.stamina) * Balance.weapons.stamina_to_energy, 0.1)))
+		extra.append("Noise %d/5" % int(w.noise))
+		if w.ammo != "":
+			var an: Array = Arsenal.ammo_ids(w).map(func(a): return Data.items[a].name)
+			extra.append("Ammo: " + " or ".join(an))
+		if int(w.mag) > 1: extra.append("Loaded %d/%d" % [int(Game.mag_of(s)), int(w.mag)])
+		if float(w.reload) > 0: extra.append("Reload %ss" % str(w.reload))
+		t += " · ".join(extra) + "\n"
+	else:
+		var g: Dictionary = it.gear
+		t += "[color=%s]%s %s (%s)[/color]\n" % [Arsenal.rarity_color(rar), rar, Arsenal.SLOT_NAMES[g.slot], g.weight]
+		if not g.cosmetic:
+			var parts := ["Armor %d" % int(g.armor)]
+			if g.hp: parts.append("Health %+d" % int(g.hp))
+			if g.move: parts.append("Speed %+d%%" % int(g.move * 100))
+			if g.regen: parts.append("Stamina %+d%%" % int(g.regen * 100))
+			if g.bite: parts.append("Bite resist %+d%%" % int(g.bite * 100))
+			if g.noise: parts.append("Noise %+d%%" % int(g.noise * 100))
+			if g.carry: parts.append("Pockets +%d" % int(g.carry))
+			t += " · ".join(parts) + "\n"
+	var md := Game.max_dur(s.id)
+	if md > 0:
+		t += ("[color=#c83a2a][b]Broken.[/b] Repair it at Varga Forge or Mercer Workshop.[/color]\n" if Game.is_broken(s) else "Durability %d/%d\n" % [Game.stack_dur(s), md])
+	var d: Dictionary = it.get("weapon", it.get("gear", {}))
+	var inactive: Array = d.get("inactive", [])
+	for k in [["trait", "Trait"], ["passive", "Passive"], ["ability", "Ability"], ["bonus", "Legendary"]]:
+		var txt: String = d.get(k[0], "")
+		if txt == "" or txt == "Cosmetic only": continue
+		var shown := []
+		for part in txt.split(";"):
+			var pt := part.strip_edges()
+			if pt == "": continue
+			shown.append(("[color=#9a8a7a]%s (not in the game yet)[/color]" % pt) if inactive.has(pt) and not _flavor(pt) else pt)
+		t += "[color=#7a5434]%s:[/color] %s\n" % [k[1], "; ".join(shown)]
+	if d.get("look", "") != "": t += "[i]%s[/i]\n" % d.look
+	if d.get("flavor", "") != "": t += "[color=#6a5a4a][i]%s[/i][/color]\n" % d.flavor
+	elif it.has("gear") and d.get("cosmetic", false): t += "Cosmetic. Changes nothing but how you feel.\n"
+	t += "[color=#8a7a6a]Found: %s[/color]" % d.get("how", "")
+	return t
+
+## Descriptive text that isn't meant to do anything by itself.
+func _flavor(t: String) -> bool:
+	for w in ["pockets", "reach", "plating", "soles", "quiet", "light", "pattern", "rubber", "vest", "suit", "sprinting", "never jams", "sidearm", "firearm", "semi-auto", "handling", "belt-fed", "magazine", "stab", "one-handed", "breaks easily", "plentiful", "camouflage", "denim", "leather", "slippery", "footsteps", "knee armor", "accurate", "mailbag", "stopping", "draw stamina", "thrown as a pair"]:
+		if t.to_lower().contains(w): return true
+	return false
+
 func _inv_click(i: int) -> void:
+	overlay.erase("eq")
 	var inv: Array = Game.state.inventory
 	if overlay.has("pick") and overlay.pick != i:
 		var tmp = inv[i]
@@ -1933,7 +2065,9 @@ func _controls_box() -> Control:
 	var g := GridContainer.new()
 	g.columns = 2
 	for pair in [["Move", "WASD / Arrow keys"], ["Use tool or item", "Space / Left click (hold to charge or cast)"], ["Interact, talk, harvest", "E / Enter / Right click"],
-		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  Q"], ["Eat selected item", "F"], ["Journal / Map / Tasks / Crafting", "Tab or I / M / J / C"], ["Pause", "Esc or P"]]:
+		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  Q"], ["Eat selected item", "F"],
+		["Aim a gun, bow or throw", "Point with the mouse and click (Space fires where you face)"], ["Sprint / Crouch", "Hold Shift / hold Ctrl"],
+		["Shove (stomp if they're down)", "V"], ["Reload", "R"], ["Journal / Map / Tasks / Crafting", "Tab or I / M / J / C"], ["Pause", "Esc or P"]]:
 		g.add_child(K.label(pair[0], 6, K.WOOD_DARK))
 		g.add_child(K.label(pair[1], 6))
 	return g
@@ -1945,7 +2079,9 @@ func _help_box() -> Control:
 		"Selling: drop goods in the trade crate beside your house to sell them overnight, or sell directly at shops during opening hours.",
 		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and gold.",
 		"Fishing: talk to Wren at the river to get a rod. Hold to cast, press when the \"!\" appears, then hold Space to keep the fish inside the green bar.",
-		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them with your club to knock them back. In Survivor Mode a bite reloads your last sleep."]:
+		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them to knock them back. In Survivor Mode a bite reloads your last sleep, unless your gear stops it (see Bite resist).",
+		"Weapons and gear wear out. Repair them at Varga Forge or Mercer Workshop: the closer something is to breaking, the more it costs. In Survivor Mode a broken item is gone for good.",
+		"Noise draws the infected. Guns are loud. Crouch to sneak up on infected that haven't noticed you: a hit from behind does extra damage, and knives kill outright."]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 320
 		v.add_child(l)

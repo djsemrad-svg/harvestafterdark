@@ -225,9 +225,12 @@ func _draw() -> void:
 	for q in Game.particles if Game.screen == "game" else []:
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
 	if Game.screen == "game":
+		for f in Game.fires:
+			var fa: float = clampf(f.t / maxf(f.dur, 0.01), 0.0, 1.0)
+			var fc := Color("#f07a20") if f.kind == "fire" else (Color("#9ad030") if f.kind == "acid" else Color("#b8d890"))
+			draw_circle(f.pos, f.r * (0.85 + 0.1 * sin(anim_t * 9.0)), Color(fc, 0.22 * fa + 0.08))
 		for pr in Game.projectiles:
-			var tail: Vector2 = pr.pos - pr.vel.normalized() * (5.0 if pr.kind == "bolt" else 3.0)
-			draw_line(tail.round(), pr.pos.round(), Color("#c8a060") if pr.kind == "bolt" else Color("#fff0b0"), 1.0)
+			_draw_projectile(pr)
 		for a in Game.arcs:
 			var pts := PackedVector2Array()
 			for i in 6:
@@ -299,9 +302,72 @@ func _draw_char(look: Dictionary, pos: Vector2, dir: String, frame: int, alpha: 
 	var ct: Texture2D = Art.get_char(look, dir, frame)
 	draw_texture(ct, (pos - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), Color(1, 1, 1, alpha))
 
+var _lying_looks := {}
+
 func _draw_enemy(en: Dictionary) -> void:
-	var jx = round(sin(anim_t * 40.0)) if en.state == "telegraph" else 0.0
-	_draw_char(Data.enemies[en.type].look, en.pos + Vector2(jx, 0), en.dir, en.frame, 0.5 if en.flash > 0 else 1.0)
+	var d: Dictionary = Data.enemies[en.type]
+	var jx = round(sin(anim_t * 40.0)) if en.state in ["telegraph", "scream"] else 0.0
+	var look: Dictionary = en.get("look", d.look)
+	if en.state == "down" and look.get("sprite", "") == "zv" and not look.get("lying", false):
+		var key := Art.look_key(look)
+		if not _lying_looks.has(key):
+			var l2: Dictionary = look.duplicate()
+			l2.lying = true
+			_lying_looks[key] = l2
+		look = _lying_looks[key]
+	var alpha := 0.5 if en.flash > 0 else 1.0
+	if d.get("ai", "") == "stalker" and en.state in ["wander", "asleep"] and en.pos.distance_to(Game.player.pos) > 40.0:
+		alpha = 0.22
+	var mod := Color(1, 1, 1, alpha)
+	if en.get("turned", 0.0) > 0: mod = Color(0.6, 1.2, 0.6, alpha)
+	elif en.has("fx") and en.fx.has("burn") and int(anim_t * 8) % 2 == 0: mod = Color(1.3, 0.9, 0.6, alpha)
+	elif en.has("fx") and en.fx.has("corrode"): mod = Color(0.85, 1.15, 0.6, alpha)
+	elif en.state == "stun" and en.get("stunned_fx", 0.0) > 0.5: mod = Color(1.1, 1.1, 1.4, alpha)
+	_shadow(en.pos, 10 * float(look.get("scale", 1.0)))
+	var ct: Texture2D = Art.get_char(look, en.dir, en.frame)
+	draw_texture(ct, (en.pos + Vector2(jx, 0) - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), mod)
+	# health bar once it's been hurt
+	if float(en.hp) < float(en.get("max_hp", d.hp)) and alpha > 0.3:
+		var bw := 14.0
+		var top: Vector2 = en.pos - Vector2(bw / 2, ct.get_height() + 3)
+		draw_rect(Rect2(top.round(), Vector2(bw, 2)), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(top.round(), Vector2(bw * clampf(float(en.hp) / float(en.get("max_hp", d.hp)), 0, 1), 2)), Color("#e04a3a") if not en.get("boss", false) else Color("#e8a020"))
+	if en.state == "asleep" and int(anim_t * 2) % 2 == 0:
+		draw_string(ThemeDB.fallback_font, en.pos + Vector2(4, -20), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1, 0.7))
+
+func _draw_projectile(pr: Dictionary) -> void:
+	var k: String = pr.get("kind", "round")
+	var dirv: Vector2 = pr.vel.normalized() if pr.vel != Vector2.ZERO else Vector2.RIGHT
+	match k:
+		"bolt", "arrow", "harpoon", "javelin":
+			var ln := 7.0 if k != "javelin" else 10.0
+			draw_line((pr.pos - dirv * ln).round(), pr.pos.round(), Color("#a07a48") if k != "harpoon" else Color("#9aa0a8"), 1.0)
+			draw_rect(Rect2(pr.pos.round() - Vector2(0.5, 0.5), Vector2(1, 1)), Color("#d8d8e0"))
+		"stone":
+			draw_rect(Rect2(pr.pos.round() - Vector2(1, 1), Vector2(2, 2)), Color("#b0b0b8"))
+		"knife", "axe", "boomerang":
+			var tex: Texture2D = Art.get_icon(pr.src)
+			draw_set_transform(pr.pos.round(), anim_t * 22.0, Vector2(0.6, 0.6))
+			draw_texture(tex, Vector2(-8, -8))
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		"lob":
+			var t: float = 1.0 - pr.life / maxf(pr.get("max_life", 1.0), 0.01)
+			var up: float = sin(t * PI) * 18.0
+			draw_rect(Rect2(pr.pos.round() - Vector2(1, 1), Vector2(2, 2)), Color(0, 0, 0, 0.3))
+			var tex2: Texture2D = Art.get_icon(pr.src)
+			draw_set_transform((pr.pos - Vector2(0, up)).round(), anim_t * 10.0, Vector2(0.6, 0.6))
+			draw_texture(tex2, Vector2(-8, -8))
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		"acid":
+			draw_circle(pr.pos, 2.0, Color("#a8e040"))
+		"flare":
+			draw_circle(pr.pos, 2.0, Color("#ff5030"))
+			draw_circle(pr.pos, 4.0, Color(1, 0.4, 0.2, 0.25))
+		"pellet":
+			draw_rect(Rect2(pr.pos.round(), Vector2(1, 1)), Color("#fff0b0"))
+		_:
+			var tail: Vector2 = pr.pos - dirv * 4.0
+			draw_line(tail.round(), pr.pos.round(), Color("#fff0b0"), 1.0)
 
 func _draw_drop(d: Dictionary) -> void:
 	var bob: float = d.z if d.z > 0 else sin(anim_t * 4.0 + d.pos.x) * 1.2
@@ -311,8 +377,38 @@ func _draw_drop(d: Dictionary) -> void:
 func _draw_player() -> void:
 	var p: Dictionary = Game.player
 	var blink: bool = p.iframes > 0 and int(anim_t / 0.08) % 2 == 0
-	_draw_char(Game.state.character.look, p.pos, p.dir, p.frame, 0.35 if blink else 1.0)
-	if p.swing != null:
+	if p.get("crouching", false):
+		_shadow(p.pos, 10)
+		var ct: Texture2D = Art.get_char(Game.state.character.look, p.dir, p.frame)
+		draw_set_transform(p.pos.round(), 0, Vector2(1, 0.8))
+		draw_texture(ct, Vector2(-ct.get_width() / 2, -ct.get_height() + 1), Color(1, 1, 1, 0.35 if blink else 1.0))
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	else:
+		_draw_char(Game.state.character.look, p.pos, p.dir, p.frame, 0.35 if blink else 1.0)
+	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0:
+		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
+	# a held gun, bow or chainsaw points where you aim
+	var hs = Game.selected_stack()
+	if p.swing == null and hs != null and Data.weapons.has(hs.id) and Data.weapons[hs.id].mode in ["shoot", "saw"]:
+		var dv: Vector2 = {"up": Vector2(0, -1), "down": Vector2(0, 1), "left": Vector2(-1, 0), "right": Vector2(1, 0)}[p.dir]
+		var hand: Vector2 = p.pos + Vector2(0, -11) + dv * 4.0 + Vector2(0, 1 if p.get("saw_t", 0.0) > 0 and int(anim_t * 30) % 2 == 0 else 0)
+		var kick: float = -2.0 if p.get("shoot_t", 0.0) > 0.08 else 0.0
+		var flipx: bool = p.dir == "left"
+		var ang2: float = 0.0 if p.dir in ["left", "right"] else (PI / 2 if p.dir == "down" else -PI / 2)
+		draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-0.7, 0.7) if flipx else Vector2(0.7, 0.7))
+		draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		if p.get("flash", 0.0) > 0:
+			draw_circle(hand + dv * 9.0, 2.5, Color(1, 0.9, 0.5, 0.9))
+	if p.get("reload") != null:
+		var r: Dictionary = p.reload
+		var bw := 14.0
+		var top: Vector2 = p.pos - Vector2(bw / 2, 36)
+		draw_rect(Rect2(top.round(), Vector2(bw, 2)), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(top.round(), Vector2(bw * clampf(r.t / r.dur, 0, 1), 2)), Color("#e8d070"))
+	if p.swing != null and p.swing.get("shove", false):
+		pass
+	elif p.swing != null:
 		var sw: Dictionary = p.swing
 		var pr: float = clamp(sw.t / sw.dur, 0.0, 1.0)
 		var icon = Art.get_icon(sw.get("weapon", sw.tool), sw.tier)

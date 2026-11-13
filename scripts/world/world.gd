@@ -8,9 +8,14 @@ const TOOLBAR_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, K
 
 var view                # WorldView
 var mouse_inside := true
-var held_use := false   # Space or left mouse held (used by fishing and charging)
+var held_use := false   # Space or left mouse held (used by fishing, charging and automatic weapons)
+var cb: Combat          # attacks, projectiles, damage (combat.gd)
+var inf: Infected       # the infected: looks and behaviour (infected.gd)
+var _last_shift := -10.0
 
 func _ready() -> void:
+	cb = Combat.new(self)
+	inf = Infected.new(self)
 	view = preload("res://scripts/world/world_view.gd").new()
 	view.world = self
 	add_child(view)
@@ -38,6 +43,17 @@ func handle_event(e: InputEvent) -> void:
 				if s != null and Data.items[s.id].has("edible") and can_act(): Game.eat_item(s.id)
 				return
 			KEY_E, KEY_ENTER, KEY_KP_ENTER: interact(false); return
+			KEY_R:
+				var rs = Game.selected_stack()
+				if rs != null and Data.weapons.has(rs.id) and not cb.start_reload(rs) and cb.uses_mag(Data.weapons[rs.id]):
+					if Game.mag_of(rs) < float(Data.weapons[rs.id].mag): Game.toast("No ammo for that.", "", "warn")
+				return
+			KEY_V: cb.shove(); return
+			KEY_SHIFT:
+				# double-tap Shift to dash (with the right shoes)
+				var now := Time.get_ticks_msec() / 1000.0
+				if now - _last_shift < 0.3: dash()
+				_last_shift = now
 			KEY_SPACE: held_use = true; use_pressed(false); return
 		var idx := TOOLBAR_KEYS.find(k)
 		if idx >= 0 and Game.charge == null and (Game.fishing == null or Game.fishing.phase == "result"):
@@ -97,11 +113,12 @@ func step(dt: float) -> void:
 	if not mini:
 		Game.update_npcs(dt)
 		Game.update_animals(dt)
-		update_enemies(dt)
+		inf.update(dt)
 	if Game.overlay_open():
 		return
+	cb.update(dt)
 	update_defenses(dt)
-	update_projectiles(dt)
+	cb.update_projectiles(dt)
 	update_bombs(dt)
 	update_drops(dt)
 	update_particles(dt)
@@ -165,8 +182,7 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	var t := target_tile(from_mouse)
 	if it.has("tool"): use_tool(it.tool, level, t)
 	elif it.has("weapon"):
-		if it.weapon.has("ranged"): fire_ranged(it)
-		else: swing_weapon(it)
+		cb.attack(s, from_mouse)
 	elif it.cat == "seed": plant_at(t, s.id)
 	elif it.has("fert"): apply_fert(t, s.id)
 	elif it.has("bomb"): place_bomb(t, s.id)
@@ -463,10 +479,20 @@ func update_drops(dt: float) -> void:
 			continue
 		var to: Vector2 = (p + Vector2(0, -6)) - d.pos
 		var dist := to.length()
+		if d.get("retrieve", false):
+			# a knife or axe you threw: it goes back into the weapon, not the pack
+			if dist < 12:
+				for st in Game.inv():
+					if st != null and st.id == d.id and Game.mag_of(st) < float(Data.weapons[d.id].mag):
+						st.mag = Game.mag_of(st) + 1
+						break
+				drops.remove_at(i)
+				Sfx.play("pickup")
+			continue
 		if dist < 44 and Game.can_fit(d.id, d.qty):
 			d.pos += to.normalized() * min(150 * dt, dist)
 			if dist < 8:
-				Game.add_item(d.id, d.qty)
+				Game.add_item(d.id, d.qty, {"extra": d.get("extra", {})})
 				drops.remove_at(i)
 				Sfx.play("pickup")
 
@@ -545,6 +571,18 @@ func update_player(dt: float) -> void:
 	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.y += 1
 	dir += test_input
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
+	# sprint (Shift), crouch (Ctrl), grabbed by a Crawler, dash
+	var gfx: Dictionary = Game.gear_total().fx
+	var sprint_key: bool = Input.is_physical_key_pressed(KEY_SHIFT) or test_sprint
+	var crouch_key: bool = Input.is_physical_key_pressed(KEY_CTRL) or test_crouch
+	p.crouching = crouch_key and not sprint_key
+	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0
+	if float(p.get("dash_t", 0.0)) > 0:
+		p.dash_t = float(p.dash_t) - dt
+		move_entity(p, p.dash_v * dt, 5, 6)
+		return
+	if float(p.get("grab", 0.0)) > 0:
+		dir = Vector2.ZERO
 	if Game.fishing != null:
 		if dir != Vector2.ZERO and Game.fishing.phase != "mini":
 			Game.fishing = null
@@ -554,7 +592,23 @@ func update_player(dt: float) -> void:
 	if Game.charge != null:
 		dir = Vector2.ZERO
 	if dir != Vector2.ZERO:
-		move_entity(p, dir.normalized() * Game.player_speed() * dt, 5, 6)
+		var sp: float = Game.player_speed() * cb.speed_mult()
+		if p.sprinting:
+			sp *= Balance.movement.sprint_mult * (1.0 + float(gfx.get("sprint_speed", 0.0)))
+			p.sprint_t = float(p.get("sprint_t", 0.0)) + dt
+			var free: bool = gfx.has("free_sprint") and float(p.sprint_t) <= float(gfx.free_sprint)
+			if not free:
+				var cost: float = Balance.movement.sprint_energy_per_sec * (1.0 + float(gfx.get("sprint_cost", 0.0))) * (1.0 - float(gfx.get("sprint_duration", 0.0))) * clampf(1.0 - Game.gear_total().regen, 0.3, 2.0)
+				Game.state.energy = maxf(0.0, Game.state.energy - cost * dt)
+			Game.state.stats.sprint_px = float(Game.state.stats.get("sprint_px", 0.0)) + sp * dt
+			if gfx.get("sprint_bash", false):
+				for e in Game.enemies:
+					if e.pos.distance_to(p.pos) < 14.0 and e.state != "down": cb.knock_down(e, 1.2)
+		else:
+			p.sprint_t = 0.0
+		if p.crouching:
+			sp *= Balance.movement.crouch_mult
+		move_entity(p, dir.normalized() * sp * dt, 5, 6)
 		if dir.x != 0: p.dir = "left" if dir.x < 0 else "right"
 		elif dir.y != 0: p.dir = "up" if dir.y < 0 else "down"
 		p.walk_t += dt
@@ -590,35 +644,47 @@ func update_player(dt: float) -> void:
 		if o != null and o.type == "ladder_down":
 			Game.change_map("mine", 0, 0, "down", {"floor": Game.map.floor_n + 1})
 
-## Tests set this to walk without a keyboard.
+## Tests set these to walk, sprint and crouch without a keyboard.
 var test_input := Vector2.ZERO
+var test_sprint := false
+var test_crouch := false
+
+## Searching a container or wreck: loot depends on what kind of place it is.
+## Wrecks and suitcases are worth checking again after a week.
+func search(o: Dictionary, tags: Array, what: String, quality := 0.0) -> void:
+	var day := int(Game.state.day)
+	var last := int(o.get("searched", -99))
+	if day - last < Balance.loot.respawn_days:
+		Game.toast("You already searched %s. Maybe in a few days." % what, "", "warn")
+		return
+	o.searched = day
+	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(1, 3), quality)
+	var at: Vector2 = Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 12)
+	if got.is_empty():
+		Game.toast("You search %s. Nothing useful." % what)
+	else:
+		Game.toast("You search %s." % what)
+	for g in got:
+		spawn_drop(g[0], int(g[1]), at)
+	Sfx.play("pick")
+	cb.alert(Game.player.pos, 2 * 16.0)
+
+## Double-tap Shift: a quick burst, if your shoes allow it.
+func dash() -> void:
+	var p: Dictionary = Game.player
+	var gfx: Dictionary = Game.gear_total().fx
+	if not gfx.has("dash") or float(p.get("dash_cd", 0.0)) > 0 or not can_act():
+		return
+	p.dash_cd = float(gfx.dash)
+	p.dash_t = Balance.movement.dash_sec
+	p.dash_v = Vector2(DIRS[p.dir]) * Balance.movement.dash_speed
+	p.iframes = maxf(p.iframes, 0.25)
 
 # ================================================================ combat
-func swing_weapon(it: Dictionary) -> void:
-	Game.player.swing = {"t": 0.0, "dur": Balance.player.swing_sec, "weapon": it.id, "tool": "club", "tier": 0, "applied": false, "apply": _weapon_hit.bind(it)}
-	Sfx.play("swing")
-
-func _weapon_hit(it: Dictionary) -> void:
-	hit_enemies_in_front(it.weapon.damage, it.weapon.knock)
-	var f := facing_tile()
-	var o = Game.map.get_obj(f.x, f.y)
-	if o != null and Data.obj_defs[o.type].get("tool", "") == "any":
-		break_object(o)
-
+## Old-style hit used by a few tests: the nearest infected in front takes damage.
 func hit_enemies_in_front(damage: int, knock: float) -> void:
-	var d: Vector2i = DIRS[Game.player.dir]
-	var hp: Vector2 = Game.player.pos + Vector2(d.x * 14, -6 + d.y * 14)
-	for e in Game.enemies.duplicate():
-		if (e.pos + Vector2(0, -6)).distance_to(hp) < Balance.combat.weapon_hit_range:
-			e.hp -= damage
-			e.flash = 0.15
-			e.vel = Vector2(d) * Balance.combat.knockback * knock * 2.2
-			e.state = "stun"
-			e.t = 0.38
-			Game.floaters.append({"text": "-%d" % damage, "pos": e.pos + Vector2(0, -22), "t": 0.9, "color": Color("#ffd060")})
-			Sfx.play("hit")
-			if e.hp <= 0:
-				kill_enemy(e)
+	for e in cb.melee_targets(20.0, Balance.weapons.cone, 1, Vector2(DIRS[Game.player.dir])):
+		cb.damage(e, damage, Vector2(DIRS[Game.player.dir]) * Balance.combat.knockback * knock * 2.2, {"stun": 0.38})
 
 func kill_enemy(e: Dictionary) -> void:
 	var d: Dictionary = Data.enemies[e.type]
@@ -627,16 +693,18 @@ func kill_enemy(e: Dictionary) -> void:
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+	# rare weapon and gear drops from the spreadsheets
+	for dr in Data.rare_drops.get(e.type, []):
+		if Game.rng.randf() < float(dr[1]):
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
 
-func spawn_enemy(type: String, tx: int, ty: int) -> Dictionary:
-	var e := {"type": type, "pos": Vector2(tx * 16 + 8, ty * 16 + 14), "hp": Data.enemies[type].hp, "state": "wander", "t": 0.0, "dir": "down",
-		"wander": Vector2.ZERO, "wt": 0.0, "vel": Vector2.ZERO, "frame": 0, "walk_t": 0.0, "flash": 0.0, "lunge": Vector2.ZERO}
-	Game.enemies.append(e)
-	return e
+func spawn_enemy(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
+	return inf.spawn(type, tx, ty, opts)
 
 func spawn_map_enemies() -> void:
 	var m: GameMap = Game.map
@@ -658,100 +726,11 @@ func spawn_night_infected() -> void:
 		var y := Game.rng.randi_range(7, m.h - 3)
 		if not m.tile_free(x, y) or abs(x - pt.x) + abs(y - pt.y) < 10:
 			continue
-		spawn_enemy("shambler", x, y)
+		var r := Game.rng.randf()
+		spawn_enemy("runner" if r < 0.2 else ("crawler" if r < 0.3 else ("screamer" if r < 0.36 and int(Game.state.day) > 10 else "shambler")), x, y)
 		placed += 1
 	if placed:
 		Game.toast("Something is moving on the ridge in the dark...", "", "warn")
-
-func update_enemies(dt: float) -> void:
-	var p: Dictionary = Game.player
-	var C: Dictionary = Balance.combat
-	for e in Game.enemies.duplicate():
-		var d: Dictionary = Data.enemies[e.type]
-		var to: Vector2 = p.pos - e.pos
-		var dist = max(to.length(), 0.001)
-		e.flash = max(0.0, e.flash - dt)
-		e.zap = max(0.0, e.get("zap", 0.0) - dt)
-		var mv := Vector2.ZERO
-		if e.get("raider", false) and dist > d.sight and e.state in ["wander", "chase"]:
-			# raiders head for the farmhouse and break through whatever is in the way
-			e.state = "wander"
-			var goal: Vector2 = e.goal
-			var tg: Vector2 = goal - e.pos
-			mv = tg.normalized() * d.wander_speed * 1.3 if tg.length() > 6 else Vector2.ZERO
-			var before: Vector2 = e.pos
-			if mv != Vector2.ZERO:
-				move_entity(e, mv * dt, 4, 5)
-			if before.distance_to(e.pos) < mv.length() * dt * 0.3:
-				raider_push(e, mv, dt)
-			_touch_fences(e, dt)
-			e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
-			e.walk_t += dt
-			e.frame = int(e.walk_t / 0.2) % 4 if mv != Vector2.ZERO else 0
-			if dist < d.sight: e.state = "chase"
-			continue
-		match e.state:
-			"wander":
-				e.wt -= dt
-				if e.wt <= 0:
-					e.wt = 0.9 + Game.rng.randf() * 1.8
-					e.wander = Vector2.ZERO if Game.rng.randf() < 0.4 else Vector2.from_angle(Game.rng.randf() * TAU) * d.wander_speed
-				mv = e.wander
-				if dist < d.sight: e.state = "chase"
-			"chase":
-				if dist > d.sight * 1.7:
-					e.state = "wander"
-				else:
-					mv = to / dist * d.chase_speed
-					if dist < 24:
-						e.state = "telegraph"
-						e.t = C.telegraph_sec
-						e.lunge = to / dist
-			"telegraph":
-				e.t -= dt
-				if e.t <= 0:
-					e.state = "lunge"
-					e.t = C.lunge_sec
-			"lunge":
-				e.t -= dt
-				mv = e.lunge * C.lunge_speed
-				if dist < C.bite_reach and p.iframes <= 0:
-					e.state = "recover"
-					e.t = C.recover_sec
-					bite(e)
-					return
-				if e.t <= 0:
-					e.state = "recover"
-					e.t = C.recover_sec
-			"recover":
-				e.t -= dt
-				if e.t <= 0: e.state = "chase"
-			"stun":
-				e.t -= dt
-				mv = e.vel
-				e.vel *= 0.88
-				if e.t <= 0: e.state = "chase"
-		if mv != Vector2.ZERO:
-			var before2: Vector2 = e.pos
-			move_entity(e, mv * dt, 4, 5)
-			if e.get("raider", false) and e.state == "chase" and before2.distance_to(e.pos) < mv.length() * dt * 0.3:
-				raider_push(e, mv, dt)
-			_touch_fences(e, dt)
-			e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
-			e.walk_t += dt
-			e.frame = int(e.walk_t / 0.2) % 4
-		else:
-			e.frame = 0
-
-func bite(e: Dictionary) -> void:
-	if Game.overlay_open():
-		return
-	if Game.mode_cfg().bites_kill:
-		Game.player_bitten()
-	else:
-		Game.damage_player(Data.enemies[e.type].damage, e.pos, "infected")
-
-
 
 # ================================================================ animals and farm buildings
 func animal_in_front():
@@ -902,48 +881,7 @@ func _touch_fences(e: Dictionary, _dt: float) -> void:
 			return
 
 func damage_enemy(e: Dictionary, dmg: int, push: Vector2) -> void:
-	if not Game.enemies.has(e): return
-	e.hp -= dmg
-	e.flash = 0.15
-	if push != Vector2.ZERO:
-		e.vel = push
-		e.state = "stun"
-		e.t = 0.3
-	Game.floaters.append({"text": "-%d" % dmg, "pos": e.pos + Vector2(0, -30), "t": 0.7, "color": Color("#ffd060")})
-	if e.hp <= 0:
-		kill_enemy(e)
-
-func update_projectiles(dt: float) -> void:
-	for i in range(Game.projectiles.size() - 1, -1, -1):
-		var pr: Dictionary = Game.projectiles[i]
-		pr.pos += pr.vel * dt
-		pr.life -= dt
-		var hit = null
-		for e in Game.enemies:
-			if (e.pos - Vector2(0, 10)).distance_to(pr.pos) < 9:
-				hit = e
-				break
-		if hit != null:
-			damage_enemy(hit, int(pr.dmg), pr.vel.normalized() * (50.0 if pr.kind == "bolt" else 25.0))
-			Game.projectiles.remove_at(i)
-			continue
-		var tx := int(floor(pr.pos.x / 16))
-		var ty := int(floor(pr.pos.y / 16))
-		var blocked: bool = not Game.map.in_bounds(tx, ty) or Art.tile_solid(Game.map.tile_at(tx, ty)) or Game.map.solid_mask[ty * Game.map.w + tx] == 1
-		if pr.life <= 0 or blocked:
-			Game.projectiles.remove_at(i)
-
-func fire_ranged(it: Dictionary) -> void:
-	var r: Dictionary = it.weapon.ranged
-	if Game.count_item(r.ammo) <= 0:
-		Game.toast("You're out of %s. Make more at an Ammo Bench." % Data.items[r.ammo].name, "", "warn")
-		Sfx.play("error")
-		return
-	Game.remove_item(r.ammo, 1)
-	var d: Vector2 = Vector2(DIRS[Game.player.dir])
-	Game.projectiles.append({"pos": Game.player.pos + Vector2(0, -12) + d * 6, "vel": d * r.speed, "dmg": it.weapon.damage, "life": r.range / r.speed, "kind": "bolt"})
-	Game.player.swing = {"t": 0.0, "dur": 0.3, "weapon": it.id, "tool": "club", "tier": 0, "applied": true, "apply": func(): pass}
-	Sfx.play("swing")
+	cb.damage(e, dmg, push, {"kind": "turret"})
 
 func apply_fert(t: Vector2i, id: String) -> void:
 	var sl = Game.map.soil.get(GameMap.k(t.x, t.y))
@@ -990,13 +928,28 @@ func explode(b: Dictionary) -> void:
 				break_object(o)
 	for e in Game.enemies.duplicate():
 		if e.pos.distance_to(c) < r * 16 + 8:
-			damage_enemy(e, 6, (e.pos - c).normalized() * 90)
+			damage_enemy(e, 60, (e.pos - c).normalized() * 90)
 	if Game.player.pos.distance_to(c) < r * 16 + 4:
 		Game.damage_player(Balance.bombs.player_damage, c, "blast")
 	for i in 3:
 		burst(c + Vector2(Game.rng.randf_range(-12, 12), Game.rng.randf_range(-12, 12)), Color("#f0a030") if i == 0 else Color("#5a5048"), 12)
 	Game.shake = 0.35
 	Sfx.play("break")
+
+## Raids grow nastier as the year goes on.
+func raid_type() -> String:
+	var day: int = int(Game.state.day)
+	var table := [["shambler", 8.0], ["lurcher", 3.0]]
+	if day >= 15: table.append_array([["runner", 3.0], ["crawler", 2.0]])
+	if day >= 30: table.append_array([["charred", 1.5], ["spitter", 1.5], ["brute", 0.8]])
+	if day >= 60: table.append_array([["riot", 1.0], ["soldier", 1.0], ["screamer", 0.6], ["stalker", 0.8]])
+	var total := 0.0
+	for t in table: total += t[1]
+	var r := Game.rng.randf() * total
+	for t in table:
+		r -= t[1]
+		if r <= 0: return t[0]
+	return "shambler"
 
 func spawn_raid(n: int) -> void:
 	var m: GameMap = Game.map
@@ -1017,7 +970,7 @@ func spawn_raid(n: int) -> void:
 		if made >= n: break
 		if m.is_solid(t.x, t.y) or m.tile_at(t.x, t.y) == "water": continue
 		if Vector2(t * 16).distance_to(Game.player.pos) < 120: continue
-		var e: Dictionary = spawn_enemy("shambler" if Game.rng.randf() < 0.75 else "lurcher", t.x, t.y)
+		var e: Dictionary = spawn_enemy(raid_type(), t.x, t.y)
 		e.raider = true
 		e.goal = house
 		made += 1
@@ -1334,8 +1287,16 @@ func interact_object(o: Dictionary) -> void:
 			Game.change_map("mine", 0, 0, "down", {"floor": Game.map.floor_n + 1})
 		"mine_lift":
 			Game.ui.open("lift")
-		"car_wreck", "rubble", "sandbags", "barricade", "suitcase", "toppled_sign":
+		"car_wreck":
+			search(o, ["vehicle", "garage"], "the wreck")
+		"suitcase":
+			search(o, ["clothing", "home"], "the suitcase")
+		"supply_crate":
+			search(o, def.loot, "the supply crate", float(o.get("quality", 0.3)))
+		"rubble", "sandbags", "barricade", "toppled_sign":
 			Game.ui.say("", def.get("text", ""))
+		"weapon_bench":
+			Game.ui.open("craft", {"station": "weapon_bench"})
 		"ammo_bench":
 			Game.ui.open("craft", {"station": "ammo_bench"})
 		"hay_hopper":

@@ -120,7 +120,86 @@ func _ready() -> void:
 	Game.state.flags.greenhouse = true
 	Game.change_map("greenhouse", 7, 9, "up", {"silent": true}); await frames(20); await shot("26_room_greenhouse")
 	Game.change_map("homestead", 29, 11, "up", {"silent": true}); await frames(20); await shot("27_greenhouse_outside")
+	await arsenal_shots()
 	get_tree().quit()
+
+func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
+	for y in range(max(1, cy - ry), min(m.h - 1, cy + ry + 1)):
+		for x in range(max(1, cx - rx), min(m.w - 1, cx + rx + 1)):
+			if m.get_obj(x, y) != null: m.remove_obj(x, y)
+			m.set_tile(x, y, "mfloor")
+
+func arsenal_shots() -> void:
+	var W = main.world
+	Game.state.time = 700
+	Game.change_map("mine", 0, 0, "down", {"floor": 2})
+	var m: GameMap = Game.map
+	var cx: int = m.w / 2
+	var cy: int = m.h / 2
+	clear_area(m, cx, cy, 13, 6)
+	Game.player.pos = Vector2(cx * 16 + 8, cy * 16 + 30)
+	Game.player.dir = "up"
+	Game.enemies.clear()
+	m.lights = [{"x": cx, "y": cy, "r": 220}]
+	var types: Array = Data.enemies.keys()
+	for i in types.size():
+		var e: Dictionary = W.spawn_enemy(types[i], 0, 0)
+		e.pos = Vector2((cx - 6) * 16 + (i % 6) * 34, (cy - 3) * 16 + (i / 6) * 40)
+		e.state = "stun"; e.t = 999.0; e.vel = Vector2.ZERO; e.dir = ["down", "right", "left"][i % 3]
+	await frames(4); await shot("28_infected_types")
+	Game.enemies.clear()
+	for i in 12:
+		var e2: Dictionary = W.spawn_enemy("shambler", 0, 0)
+		e2.pos = Vector2((cx - 6) * 16 + (i % 6) * 34, (cy - 3) * 16 + (i / 6) * 40)
+		e2.state = "stun"; e2.t = 999.0; e2.vel = Vector2.ZERO; e2.dir = ["down", "right", "left", "down"][i % 4]
+	await frames(4); await shot("29_shambler_variety")
+	# a fight: assault rifle into a group, a molotov burning, a crawler and a knocked-down shambler
+	Game.enemies.clear()
+	Game.state.inventory[10] = {"id": "assault_rifle", "qty": 1}
+	Game.state.selected = 10
+	Game.add_item("ammo_556", 60, {"silent": true})
+	Game.player.dir = "right"
+	Game.player.pos = Vector2((cx - 6) * 16 + 8, cy * 16 + 14)
+	var pos_list := [Vector2(90, -10), Vector2(110, 14), Vector2(130, -4), Vector2(60, 30)]
+	var kinds := ["runner", "riot", "brute", "crawler"]
+	for i in 4:
+		var e3: Dictionary = W.spawn_enemy(kinds[i], 0, 0)
+		e3.pos = Game.player.pos + pos_list[i]
+		e3.state = "chase"; e3.dir = "left"
+	var d: Dictionary = W.spawn_enemy("shambler", 0, 0)
+	d.pos = Game.player.pos + Vector2(40, -30); d.state = "down"; d.t = 99.0
+	W.cb.add_fire(Game.player.pos + Vector2(100, 30), 26.0, 8.0, 99.0, "fire")
+	W.cb.add_dot(Game.enemies[1], "burn", [4, 99])
+	W.use_selected(0, false)
+	await frames(2)
+	Game.player.cd = 0.0; W.use_selected(0, false)
+	await frames(3)
+	await shot("30_gunfight")
+	Game.enemies.clear(); Game.projectiles.clear(); Game.fires.clear()
+	# gear on, a few weapons in the pack, details open
+	for g in ["military_helmet", "police_vest", "cargo_pants", "combat_boots"]:
+		Game.add_item(g, 1, {"silent": true})
+		for i in Game.inv().size():
+			if Game.inv()[i] != null and Game.inv()[i].id == g:
+				Game.equip_from(i)
+				break
+	for wid in ["katana", "pump_shotgun", "hunting_bow", "comet", "grave_digger", "pistol_9mm"]:
+		Game.add_item(wid, 1, {"silent": true})
+	Game.state.equip.chest.dur = 60
+	Game.inv()[Game.inv().size() - 1] = {"id": "kintsugi", "qty": 1, "dur": 40}
+	main.ui.open("journal", {"tab": "inventory", "sel": 10}); await frames(2); await shot("31_inventory_weapon")
+	var ki := -1
+	for i in Game.inv().size():
+		if Game.inv()[i] != null and Game.inv()[i].id == "grave_digger": ki = i
+	main.ui.overlay.sel = ki; main.ui.render_overlay(); await frames(2); await shot("32_inventory_legendary")
+	main.ui.overlay.erase("sel"); main.ui.overlay.eq = "chest"; main.ui.render_overlay(); await frames(2); await shot("33_inventory_gear")
+	main.ui.close_all()
+	main.ui.open("forge", {"tab": "repair"}); await frames(2); await shot("34_repair")
+	main.ui.close_all()
+	main.ui.open("craft", {"station": "weapon_bench"}); await frames(2); await shot("35_weapon_bench")
+	main.ui.close_all()
+	main.ui.open("shop", {"shop": "guild"}); await frames(2); await shot("36_guild_shop")
+	main.ui.close_all()
 
 func frames(n: int) -> void:
 	for i in n:

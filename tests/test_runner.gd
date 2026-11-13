@@ -343,10 +343,10 @@ func run_all() -> void:
 	e = W.spawn_enemy("shambler", 0, 0)
 	G.player.dir = "right"
 	var xp0: int = G.state.skills.survival.xp
-	for i in 3:
+	for i in 4:
 		e.pos = G.player.pos + Vector2(14, 0)
-		W.hit_enemies_in_front(2, 1)
-	check("Combat: three club hits defeat a shambler and grant survival XP", G.enemies.is_empty() and G.state.skills.survival.xp > xp0, "left=%d" % G.enemies.size())
+		W.hit_enemies_in_front(int(Data.weapons.club.damage), 1)
+	check("Combat: four club hits defeat a shambler and grant survival XP", G.enemies.is_empty() and G.state.skills.survival.xp > xp0, "left=%d" % G.enemies.size())
 
 	# ---------- journal and every window renders
 	var bad_tabs := []
@@ -572,13 +572,13 @@ func run_all() -> void:
 	G.change_map("mountain", 19, 5, "down")
 	check("Mine: lift checkpoint at floor 5 and quest progress for floor 3", mine_q and lift and G.map.id == "mountain", "quest=%s lift=%s" % [mine_q, lift])
 
-	var m10: GameMap = MapBuilder.mine_floor(10, 99, 1, 1)
+	var m10: GameMap = MapBuilder.mine_floor(20, 99, 1, 1)
 	var any_ladder := false
 	var any_sign := false
 	for k in m10.objects:
 		if m10.objects[k].get("has_ladder", false): any_ladder = true
 		if m10.objects[k].type == "sign": any_sign = true
-	check("Mine: floor 10 is the Phase 1 limit (no ladder, cave-in sign)", not any_ladder and any_sign)
+	check("Mine: floor 20 is the current limit (no ladder, cave-in sign)", not any_ladder and any_sign)
 
 	# ---------- forge
 	start("adventure", 2)
@@ -917,7 +917,7 @@ func run_all() -> void:
 	G.player.dir = "right"
 	G.state.selected = 10; W.use_selected(0, false)
 	tick(600)
-	check("Scrap Crossbow fires bolts that hit the infected", G.count_item("bolts") == 4 and (G.enemies.is_empty() or int(e.hp) < int(Data.enemies.shambler.hp)), "hp=%s" % e.get("hp"))
+	check("Scrap Crossbow fires bolts that hit the infected", G.enemies.is_empty() or int(e.hp) < int(Data.enemies.shambler.hp), "hp=%s" % e.get("hp"))
 	G.enemies.clear()
 	var pt2: Vector2i = W.player_tile()
 	for dx in [2, 3]:
@@ -1216,6 +1216,8 @@ func run_all() -> void:
 	check("Night raids: a warning at dusk, then infected arrive at 10 pm if you're home", warned2 and raiders == 3, "raiders=%d" % raiders)
 	Balance.raids.grace_days = 99999
 
+	run_arsenal()
+
 	# ---------- title screens render
 	G.quit_to_title()
 	var bad_title := []
@@ -1228,6 +1230,287 @@ func run_all() -> void:
 		U.render_title()
 		if count_nodes(U.screen_root) < 8: bad_title.append(v)
 	check("Title screens render (main, mode, slots, creator, property, load, settings, help, restore)", bad_title.is_empty(), str(bad_title))
+
+# ---------------------------------------------------------------- weapons, gear and the infected
+func arena(mode := "adventure") -> void:
+	start(mode, 2)
+	Game.change_map("mine", 0, 0, "down", {"floor": 1})
+	Game.enemies.clear()
+	var m: GameMap = Game.map
+	var cx: int = m.w / 2
+	var cy: int = m.h / 2
+	for y in range(cy - 4, cy + 5):
+		for x in range(max(1, cx - 15), min(m.w - 1, cx + 16)):
+			var o = m.get_obj(x, y)
+			if o != null: m.remove_obj(x, y)
+			m.set_tile(x, y, "mfloor")
+	Game.player.pos = Vector2(cx * 16 + 8, cy * 16 + 14)
+	Game.player.dir = "right"
+	Game.player.cd = 0.0
+	Game.player.reload = null
+	Game.map.drops.clear()
+
+func give(id: String, extra := {}) -> Dictionary:
+	var s := {"id": id, "qty": 1}
+	s.merge(extra, true)
+	Game.state.inventory[10] = s
+	Game.state.selected = 10
+	Game.player.cd = 0.0
+	return s
+
+func foe(type: String, offset: Vector2, state := "stun") -> Dictionary:
+	var e: Dictionary = W.spawn_enemy(type, 0, 0)
+	e.pos = Game.player.pos + offset
+	e.state = state
+	e.t = 99.0
+	e.vel = Vector2.ZERO
+	e.dir = "right"
+	return e
+
+func run_arsenal() -> void:
+	var G = Game
+	var bad := []
+	var ids: Array = Data.weapons.keys() + Data.gear.keys() + Arsenal.AMMO.keys() + Arsenal.MATS.keys()
+	for id in ids:
+		var im: Image = Art.icon_image(id, 0)
+		var used := im.get_used_rect()
+		if used.size.x * used.size.y < 12: bad.append(id)
+	check("Arsenal: every weapon, gear, ammo and material item has an icon (%d items)" % ids.size(), bad.is_empty() and Data.weapons.size() >= 130 and Data.gear.size() >= 100, str(bad.slice(0, 8)))
+
+	var bad_e := []
+	var rng := RandomNumberGenerator.new()
+	for t in Data.enemies:
+		for k in 3:
+			var lk: Dictionary = Infected.make_look(t, rng)
+			for d in ["down", "right", "left"]:
+				var ci: Image = Art.char_image(lk, d, 1)
+				if ci == null or ci.get_height() < 10: bad_e.append(t + ":" + d)
+			var ly: Dictionary = lk.duplicate(); ly.lying = true
+			if lk.get("sprite", "") == "zv" and Art.char_image(ly, "left", 0) == null: bad_e.append(t + ":lying")
+	check("Infected: all %d types draw in several looks, standing and knocked down" % Data.enemies.size(), bad_e.is_empty() and Data.enemies.size() >= 12, str(bad_e.slice(0, 6)))
+
+	# stealth kill from behind with a knife
+	arena()
+	give("kitchen_knife")
+	var e: Dictionary = foe("shambler", Vector2(14, 0), "wander")
+	e.wt = 99.0; e.wander = Vector2.ZERO
+	W.use_selected(0, false); tick(400)
+	check("Melee: a knife kills an infected that hasn't noticed you in one stab", G.enemies.is_empty(), "left=%d" % G.enemies.size())
+
+	e = foe("shambler", Vector2(14, 0))
+	G.player.cd = 0.0
+	W.use_selected(0, false); tick(400)
+	check("Melee: an infected that knows you're there takes normal damage", G.enemies.has(e) and float(e.hp) < 45.0 and float(e.hp) > 0, "hp=%s" % e.hp)
+
+	# guns: magazine, noise, reload
+	arena()
+	var gun := give("pistol_9mm")
+	G.add_item("ammo_9mm", 30, {"silent": true})
+	e = foe("shambler", Vector2(60, 0))
+	var far: Dictionary = foe("shambler", Vector2(0, -150), "wander")
+	far.wt = 99.0; far.wander = Vector2.ZERO
+	W.use_selected(0, false); tick(300)
+	var hit_ok: bool = float(e.hp) < 45.0
+	var heard: bool = far.state == "chase"
+	var mag1: int = int(G.mag_of(gun))
+	gun.mag = 0
+	W.cb.start_reload(gun); tick(2000)
+	check("Guns: a 9mm pistol hits, uses its magazine, is heard far away and reloads from your ammo", hit_ok and heard and mag1 == 14 and int(G.mag_of(gun)) == 15 and G.count_item("ammo_9mm") == 15, "hit=%s heard=%s mag=%d after=%d ammo=%d" % [hit_ok, heard, mag1, int(G.mag_of(gun)), G.count_item("ammo_9mm")])
+
+	arena()
+	give("pump_shotgun")
+	G.add_item("buckshot", 10, {"silent": true})
+	W.use_selected(0, false)
+	var pellets: int = G.projectiles.filter(func(p): return p.get("kind", "") == "pellet").size()
+	check("Guns: a pump shotgun fires 8 pellets", pellets == 8, "pellets=%d" % pellets)
+
+	# durability: Survivor loses it, Adventure keeps it broken until repaired
+	arena("survivor")
+	give("frying_pan", {"dur": 1})
+	e = foe("shambler", Vector2(14, 0))
+	W.use_selected(0, false); tick(400)
+	check("Durability (Survivor): a weapon that breaks is gone for good", G.count_item("frying_pan") == 0, "count=%d" % G.count_item("frying_pan"))
+
+	arena()
+	var pan := give("frying_pan", {"dur": 1})
+	e = foe("shambler", Vector2(14, 0))
+	W.use_selected(0, false); tick(400)
+	var hp1: float = float(e.hp)
+	G.player.cd = 0.0
+	W.use_selected(0, false); tick(400)
+	var c_light: Dictionary = G.repair_cost({"id": "frying_pan", "qty": 1, "dur": 200})
+	var c_heavy: Dictionary = G.repair_cost({"id": "frying_pan", "qty": 1, "dur": 20})
+	var c_broken: Dictionary = G.repair_cost(pan)
+	G.state.money = 5000
+	G.add_item("scrap", 40, {"silent": true})
+	var rerr: String = G.repair_item(pan)
+	check("Durability (Adventure): broken weapons stay but can't be used; repairs cost more the closer to breaking", G.is_broken({"id": "x", "broken": true}) and float(e.hp) == hp1 and int(c_light.gold) < int(c_heavy.gold) and int(c_heavy.gold) < int(c_broken.gold) and rerr == "" and not G.is_broken(pan) and G.stack_dur(pan) == 260,
+		"hp %s->%s cost %d<%d<%d err='%s'" % [hp1, e.hp, int(c_light.gold), int(c_heavy.gold), int(c_broken.gold), rerr])
+
+	# gear: armour, pockets, bite protection
+	arena()
+	var src: Vector2 = G.player.pos + Vector2(10, 0)
+	var h0: float = G.state.health
+	W.cb.player_hurt(src, 20.0, "hit", null)
+	var d0: float = h0 - G.state.health
+	G.state.health = 100.0
+	G.add_item("police_vest", 1, {"silent": true}); G.equip_from(idx("police_vest"))
+	G.add_item("military_helmet", 1, {"silent": true}); G.equip_from(idx("military_helmet"))
+	W.cb.player_hurt(src, 20.0, "hit", null)
+	var d1: float = 100.0 - G.state.health
+	check("Gear: armour cuts the damage you take", d1 < d0 and G.state.equip.chest != null and G.state.equip.chest.id == "police_vest", "unarmoured=%.1f armoured=%.1f" % [d0, d1])
+	var size0: int = G.inv().size()
+	G.add_item("hunting_vest", 1, {"silent": true}); G.equip_from(idx("hunting_vest"))
+	var size1: int = G.inv().size()
+	G.unequip("chest")
+	var size2: int = G.inv().size()
+	check("Gear: Carry Slots add pockets to your pack, and taking it off gives them back", size1 == size0 + 2 and size2 == size0 - 2, "%d -> %d -> %d" % [size0, size1, size2])
+
+	arena("survivor")
+	G.add_item("quarantine", 1, {"silent": true}); G.equip_from(idx("quarantine"))
+	e = foe("shambler", Vector2(14, 0), "chase")
+	tick(2500)
+	check("Gear (Survivor): Quarantine stops a bite from turning you", ov() != "death" and G.state.health < G.max_health(), "overlay=%s hp=%.0f" % [ov(), G.state.health])
+	close_all()
+
+	# effects that last
+	arena()
+	e = foe("shambler", Vector2(40, 0))
+	W.cb.add_dot(e, "bleed", [6, 4])
+	tick(2000)
+	var ch: Dictionary = foe("charred", Vector2(-40, 0))
+	W.cb.add_dot(ch, "burn", [6, 4])
+	check("Effects: bleeding hurts over time; Charred can't burn", float(e.hp) <= 36.0 and not ch.get("fx", {}).has("burn"), "hp=%s" % e.hp)
+
+	# thrown weapons
+	arena()
+	give("wooden_boomerang")
+	e = foe("shambler", Vector2(40, 0))
+	W.use_selected(0, false)
+	var out1: int = int(G.player.get("boomerangs", 0))
+	tick(3000)
+	check("Boomerang: hits on the way out and comes back to your hand", out1 == 1 and int(G.player.boomerangs) == 0 and float(e.hp) < 45.0, "out=%d back=%d hp=%s" % [out1, int(G.player.boomerangs), e.hp])
+
+	arena()
+	var tk := give("throwing_knives")
+	W.use_selected(0, false)
+	tick(2000)
+	var after_throw: int = int(G.mag_of(tk))
+	var dr = null
+	for d in G.map.drops:
+		if d.get("retrieve", false): dr = d
+	if dr != null: G.player.pos = dr.pos + Vector2(0, 6)
+	tick(300)
+	check("Throwing knives: thrown knives land on the ground and go back in the set when picked up", after_throw == 4 and dr != null and int(G.mag_of(tk)) == 5, "after=%d now=%d" % [after_throw, int(G.mag_of(tk))])
+
+	arena()
+	var cs := give("chainsaw", {"mag": 3})
+	G.add_item("gasoline", 1, {"silent": true})
+	e = foe("shambler", Vector2(14, 0))
+	W.held_use = true
+	tick(6000)
+	W.held_use = false
+	check("Chainsaw: holding it shreds the infected and burns fuel; a Gasoline Can refills it", not G.enemies.has(e) and G.count_item("gasoline") == 0 and G.mag_of(cs) > 3, "alive=%s gas=%d fuel=%.1f" % [G.enemies.has(e), G.count_item("gasoline"), G.mag_of(cs)])
+
+	arena()
+	give("pipe_bomb")
+	G.state.inventory[10].qty = 2
+	e = foe("shambler", Vector2(198, -12))
+	W.use_selected(0, false)
+	tick(2500)
+	check("Pipe bomb: thrown, it explodes and kills the infected where it lands", not G.enemies.has(e) and G.count_item("pipe_bomb") == 1, "alive=%s" % G.enemies.has(e))
+
+	# the new infected
+	arena()
+	G.state.health = 100.0
+	var sp: Dictionary = foe("spitter", Vector2(80, 0), "chase")
+	var spat := false
+	for i in 40:
+		tick(100)
+		if G.projectiles.any(func(p): return p.get("kind", "") == "acid"): spat = true
+	check("Spitter: keeps its distance and spits acid", spat and G.enemies.has(sp), "health=%.0f" % G.state.health)
+
+	arena()
+	foe("screamer", Vector2(70, 0), "chase")
+	var n_before: int = G.enemies.size()
+	tick(2500)
+	check("Screamer: shrieks, and more infected come", G.enemies.size() >= n_before + 2, "%d -> %d" % [n_before, G.enemies.size()])
+
+	arena()
+	foe("crawler", Vector2(12, 0), "chase")
+	var grabbed := false
+	for i in 40:
+		tick(100)
+		if float(G.player.get("grab", 0.0)) > 0: grabbed = true
+	check("Crawler: grabs your legs and holds you in place", grabbed)
+
+	arena()
+	var old_drops = Data.rare_drops.get("runner", [])
+	Data.rare_drops["runner"] = [["comet", 1.0]]
+	e = foe("runner", Vector2(20, 0))
+	W.cb.damage(e, 999.0, Vector2.ZERO)
+	var got_comet: bool = G.map.drops.any(func(d): return d.id == "comet")
+	Data.rare_drops["runner"] = old_drops
+	check("Rare drops: legendary weapons can drop from the infected (Comet from Runners)", got_comet and old_drops.any(func(x): return x[0] == "comet"))
+
+	# moving: sprint and crouch
+	arena()
+	var p0: Vector2 = G.player.pos
+	walk(Vector2(1, 0), 500)
+	var walked: float = G.player.pos.distance_to(p0)
+	p0 = G.player.pos
+	var en0: float = G.state.energy
+	W.test_sprint = true
+	walk(Vector2(-1, 0), 500)
+	W.test_sprint = false
+	var sprinted: float = G.player.pos.distance_to(p0)
+	W.test_crouch = true
+	tick(50)
+	var dm: float = W.cb.detect_mult()
+	W.test_crouch = false
+	tick(50)
+	check("Moving: sprinting is faster and costs energy; crouching makes you harder to notice", sprinted > walked * 1.3 and G.state.energy < en0 and dm < 0.8, "walk=%.0f sprint=%.0f detect=%.2f" % [walked, sprinted, dm])
+
+	# crafting, loot and shops
+	arena()
+	var rs: Dictionary = {}
+	for r in Data.recipes:
+		if r.out == "makeshift_spear": rs = r
+	for p in rs.get("inputs", []): G.add_item(p[0], int(p[1]), {"silent": true})
+	U.open("craft", {"station": "weapon_bench"}); U._craft(rs); close_all()
+	check("Weapon Bench: crafts the Makeshift Spear from the sheet's recipe", rs.get("station", "") == "weapon_bench" and G.count_item("makeshift_spear") == 1, str(rs.get("inputs", [])))
+
+	var pt: Vector2i = W.player_tile()
+	var crate: Dictionary = G.map.add_obj(pt.x + 1, pt.y, "supply_crate", {"quality": 0.5})
+	G.map.drops.clear()
+	W.interact_object(crate)
+	var n1: int = G.map.drops.size()
+	W.interact_object(crate)
+	var n2: int = G.map.drops.size()
+	check("Loot: a supply crate gives items once, then needs a week", n1 > 0 and n2 == n1, "%d then %d" % [n1, n2])
+
+	var gstock: Array = G.shop_stock("guild").filter(func(x): return x.has("id") and Data.items[x.id].cat in ["weapon", "gear"] and x.id != "machete" and x.id != "scrap_crossbow")
+	var worn: int = G.sell_price({"id": "machete", "qty": 1, "dur": 10})
+	var fresh: int = G.sell_price({"id": "machete", "qty": 1})
+	check("Combat Guild: a changing weekly selection of weapons and gear; worn gear sells for less", gstock.size() == 6 and worn < fresh, "stock=%d worn=%d fresh=%d" % [gstock.size(), worn, fresh])
+
+	var m15: GameMap = MapBuilder.mine_floor(15, 7, 3, 1)
+	var allowed: Array = Data.mine_bands[2].enemies.map(func(x): return x.id)
+	check("Mine: floors 11-20 exist with tougher infected", m15.band.name == "Flooded Works" and m15.spawns.all(func(s): return allowed.has(s.type)) and not m15.spawns.is_empty(), str(m15.spawns.map(func(s): return s.type)))
+
+	# every inventory window renders with weapons and gear in it
+	arena()
+	give("dead_mans_hand")
+	G.add_item("grinning_saint", 1, {"silent": true})
+	U.open("journal", {"tab": "inventory", "sel": 10})
+	var n_inv: int = count_nodes(U.overlay_root)
+	U.overlay.sel = idx("grinning_saint"); U.render_overlay()
+	var n_inv2: int = count_nodes(U.overlay_root)
+	close_all()
+	U.open("repair", {"owner": "jo"})
+	var n_rep: int = count_nodes(U.overlay_root)
+	close_all()
+	check("Interface: weapon and gear details and the repair window render", n_inv > 40 and n_inv2 > 40 and n_rep > 10, "%d %d %d" % [n_inv, n_inv2, n_rep])
 
 func count_nodes(n: Node) -> int:
 	var c := 1

@@ -120,10 +120,66 @@ var combat := {
 	"recover_sec": 0.7,
 }
 
+## Weapons. Stats per weapon live in design/weapons.csv (see tools/build_gear.py).
+var weapons := {
+	"crit_mult": 2.0,             # critical hits do this much damage
+	"stamina_to_energy": 0.15,    # the sheet's Stamina Cost x this = energy per attack
+	"sneak_mult": 1.5,            # any hit on an infected that hasn't noticed you
+	"noise_tiles": 2.8,           # gunshot heard this many tiles away per point of Noise
+	"melee_noise_tiles": 1.0,
+	"reach_px": 6.0,              # added to the weapon's range for melee hits
+	"cone": 0.35,                 # how wide a normal swing is (dot product; lower is wider)
+	"wide_cone": -0.15,
+	"bullet_speed": 520.0, "pellet_speed": 460.0, "arrow_speed": 300.0, "bolt_speed": 340.0,
+	"stone_speed": 260.0, "thrown_speed": 250.0, "boomerang_speed": 210.0, "flare_speed": 240.0,
+	"max_range_tiles": 32.0,      # projectiles stop after this far, whatever the sheet says
+	"hit_radius": 9.0,
+	"chain_tiles": 3.0,
+	"stomp_damage": 30.0,
+	"shove_damage": 4.0,
+	"shove_energy": 2.0,
+	"shove_cooldown": 0.8,
+}
+
+## Achievements that unlock legendary gear.
+var achievements := {
+	"marksman_tiles": 15,         # Marksman: critical kills from at least this far away
+	"marksman_count": 100,
+	"heavy_metal_count": 1000,    # Heavy Metal: chainsaw kills
+}
+
+## Searching wrecks, suitcases and crates.
+var loot := {"respawn_days": 7}
+
+## Moving around.
+var movement := {
+	"sprint_mult": 1.45,
+	"sprint_energy_per_sec": 1.2,
+	"sprint_detect_mult": 1.35,   # infected notice you from farther while you run
+	"crouch_mult": 0.6,
+	"crouch_detect_mult": 0.6,
+	"dash_speed": 260.0, "dash_sec": 0.18,
+}
+
+## Durability repairs (Varga Forge and Mercer Workshop).
+var repair := {
+	"base_pct": 0.05,      # of the item's price, always
+	"wear_pct": 0.45,      # of the price, times wear ^ curve
+	"curve": 1.6,          # above 1: the last stretch before breaking costs the most
+	"broken_pct": 0.4,     # extra for a broken item (Adventure Mode)
+	"min_gold": 10,
+	"units_per_wear": 4,
+	"broken_units": 2,
+	"mats": {"Normal": "scrap", "Rare": "copper_bar", "Epic": "iron_bar", "Legendary": "gold_bar", "Cosmetic": "cloth"},
+}
+
+## Armour: damage taken is multiplied by 1 - armor / (armor + armor_k).
+var armor := {"armor_k": 60.0}
+
 var mining := {
 	"ladder_chance_per_rock": 0.035,
 	"lift_every": 5,
-	"max_floor_phase1": 10,
+	"max_floor_phase1": 20,
 }
 
 var friendship := {

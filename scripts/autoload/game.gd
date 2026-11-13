@@ -34,6 +34,7 @@ var pass_out_lost := 0
 var projectiles := []          # bolts and turret rounds in flight
 var arcs := []                 # arc pylon lightning, drawn briefly
 var bombs := []                # lit charges on the current map
+var fires := []                # burning ground, acid puddles and gas clouds
 var shake := 0.0
 var rng := RandomNumberGenerator.new()
 
@@ -128,6 +129,8 @@ func new_game_state(opts: Dictionary) -> Dictionary:
 		"weather": "sun", "weather_tomorrow": "sun",
 		"flags": {}, "buildings": [], "animals": [], "stats": {"crops_harvested": 0, "fish_caught": 0, "items_shipped": 0, "earned": 0, "infected_defeated": 0, "collapses": 0},
 		"factions": {}, "story": {"chapter": 0},
+		"equip": {"head": null, "chest": null, "legs": null, "feet": null},
+		"loot_seen": {},
 	}
 	for i in st.inv_size:
 		st.inventory.append(null)
@@ -204,9 +207,10 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 		return qty
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
+	var extra: Dictionary = opts.get("extra", {})
 	var left := qty
 	for s in list:
-		if left > 0 and s != null and s.id == id and int(s.qty) < mx:
+		if left > 0 and s != null and s.id == id and int(s.qty) < mx and extra.is_empty() and stack_extras(s).is_empty():
 			var a: int = min(mx - int(s.qty), left)
 			s.qty = int(s.qty) + a
 			left -= a
@@ -216,6 +220,7 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 		if list[i] == null:
 			var a: int = min(mx, left)
 			list[i] = {"id": id, "qty": a}
+			list[i].merge(extra.duplicate(true))
 			left -= a
 	var got := qty - left
 	if got > 0 and not opts.has("list"):
@@ -240,9 +245,12 @@ func remove_from_slot(i: int, qty: int) -> void:
 func sort_inventory() -> void:
 	var tb: int = Balance.inventory.toolbar_size
 	var merged := {}
+	var singles := []   # weapons and gear keep their durability, so they are not merged
 	for i in range(tb, inv().size()):
 		var s = inv()[i]
-		if s != null:
+		if s != null and not stack_extras(s).is_empty():
+			singles.append(s)
+		elif s != null:
 			merged[s.id] = merged.get(s.id, 0) + int(s.qty)
 	var order := Data.categories.keys()
 	var ids := merged.keys()
@@ -253,6 +261,13 @@ func sort_inventory() -> void:
 	for i in range(tb, inv().size()):
 		inv()[i] = null
 	var i := tb
+	singles.sort_custom(func(a, b):
+		var ca := order.find(Data.items[a.id].cat)
+		var cb := order.find(Data.items[b.id].cat)
+		return ca < cb if ca != cb else Data.items[a.id].name < Data.items[b.id].name)
+	for sg in singles:
+		inv()[i] = sg
+		i += 1
 	for id in ids:
 		var q: int = merged[id]
 		while q > 0 and i < inv().size():
@@ -270,6 +285,225 @@ func item_flags(id: String) -> Dictionary:
 		"placeable": it.has("place"), "plantable": it.has("crop") and it.cat == "seed", "tool": it.has("tool"), "weapon": it.has("weapon"),
 		"giftable": not cat.get("protected", false) and it.cat != "placeable",
 	}
+
+# ================================================================ weapons and gear
+## Weapons and gear keep their own data on the stack: "dur" (durability left),
+## "mag" (rounds loaded) and "broken". Missing "dur" means brand new.
+var _gear_cache = null
+
+func stack_extras(s: Dictionary) -> Dictionary:
+	var e := {}
+	for kk in s:
+		if kk != "id" and kk != "qty":
+			e[kk] = s[kk]
+	return e
+
+func max_dur(id: String) -> int:
+	var it: Dictionary = Data.items.get(id, {})
+	if it.has("weapon") and it.weapon.mode != "consumable": return int(it.weapon.dur)
+	if it.has("gear") and not it.gear.cosmetic: return int(it.gear.dur)
+	return 0
+
+func stack_dur(s) -> int:
+	if s == null: return 0
+	var m := max_dur(s.id)
+	return int(s.get("dur", m)) if m > 0 else 0
+
+func is_broken(s) -> bool:
+	return s != null and bool(s.get("broken", false))
+
+func gear_changed() -> void:
+	_gear_cache = null
+
+## Totals from everything you are wearing. Broken gear gives nothing except its pockets.
+func gear_total() -> Dictionary:
+	if _gear_cache != null:
+		return _gear_cache
+	var t := {"armor": 0.0, "hp": 0.0, "move": 0.0, "regen": 0.0, "bite": 0.0, "noise": 0.0, "carry": 0, "fx": {}}
+	if state.is_empty():
+		return t
+	for slot in Arsenal.SLOTS:
+		var s = state.equip.get(slot)
+		if s == null or not Data.gear.has(s.id):
+			continue
+		var g: Dictionary = Data.gear[s.id]
+		t.carry += int(g.carry)
+		if is_broken(s) or g.cosmetic:
+			continue
+		for kk in ["armor", "hp", "move", "regen", "bite", "noise"]:
+			t[kk] += float(g[kk])
+		for kk in g.fx:
+			var v = g.fx[kk]
+			if v is bool: t.fx[kk] = true
+			elif (v is float or v is int) and t.fx.has(kk) and (t.fx[kk] is float or t.fx[kk] is int): t.fx[kk] += v
+			elif not t.fx.has(kk): t.fx[kk] = v
+	_gear_cache = t
+	return t
+
+func max_health() -> float:
+	return float(Balance.player.max_health) + gear_total().hp
+
+## Makes the pack the right size for your pockets. Returns false if items would be lost.
+func apply_carry(extra := -999) -> bool:
+	var carry: int = gear_total().carry if extra == -999 else extra
+	var target := int(state.inv_size) + carry
+	var list := inv()
+	if list.size() > target:
+		# move anything in the slots that would vanish into free slots earlier on
+		for i in range(target, list.size()):
+			if list[i] == null: continue
+			var moved := false
+			for j in range(Balance.inventory.toolbar_size, target):
+				if list[j] == null:
+					list[j] = list[i]
+					list[i] = null
+					moved = true
+					break
+			if not moved:
+				return false
+		while list.size() > target:
+			list.pop_back()
+	while list.size() < target:
+		list.append(null)
+	return true
+
+func equip_from(i: int) -> void:
+	var s = inv()[i]
+	if s == null or not Data.items[s.id].has("gear"):
+		return
+	var slot: String = Data.gear[s.id].slot
+	var old = state.equip.get(slot)
+	state.equip[slot] = s
+	inv()[i] = old
+	gear_changed()
+	if not apply_carry():
+		# the new item has fewer pockets and the pack is full: undo
+		inv()[i] = s
+		state.equip[slot] = old
+		gear_changed()
+		apply_carry()
+		toast("Your pack is too full to swap that. Make room first.", "", "warn")
+		return
+	state.health = min(float(state.health), max_health())
+	Sfx.play("pickup")
+
+func unequip(slot: String) -> bool:
+	var s = state.equip.get(slot)
+	if s == null:
+		return false
+	var carry_after: int = gear_total().carry - int(Data.gear[s.id].carry)
+	var target := int(state.inv_size) + carry_after
+	var free := -1
+	for j in min(target, inv().size()):
+		if inv()[j] == null:
+			free = j
+			break
+	if free < 0:
+		toast("No room in your pack.", "", "warn")
+		return false
+	inv()[free] = s
+	state.equip[slot] = null
+	gear_changed()
+	if not apply_carry():
+		inv()[free] = null
+		state.equip[slot] = s
+		gear_changed()
+		apply_carry()
+		toast("Empty some of those pockets before taking it off.", "", "warn")
+		return false
+	state.health = min(float(state.health), max_health())
+	Sfx.play("pickup")
+	return true
+
+func _remove_stack_ref(s: Dictionary) -> void:
+	var list := inv()
+	for i in list.size():
+		if list[i] != null and is_same(list[i], s):
+			list[i] = null
+			return
+	for slot in Arsenal.SLOTS:
+		if state.equip.get(slot) != null and is_same(state.equip[slot], s):
+			state.equip[slot] = null
+			gear_changed()
+			apply_carry()
+			return
+
+## Wears an item down. At zero it breaks: gone for good in Survivor Mode,
+## unusable until repaired in Adventure Mode.
+func wear_item(s: Dictionary, n := 1) -> void:
+	var m := max_dur(s.id)
+	if m <= 0 or is_broken(s):
+		return
+	var before := stack_dur(s)
+	var d := before - n
+	s.dur = max(d, 0)
+	var nm: String = Data.items[s.id].name
+	if d <= 0:
+		if is_survivor():
+			_remove_stack_ref(s)
+			toast("Your %s broke. It's gone." % nm, s.id, "bad")
+		else:
+			s.broken = true
+			toast("Your %s broke. Repair it at Varga Forge or Mercer Workshop." % nm, s.id, "bad")
+		Sfx.play("error")
+		if Data.items[s.id].has("gear"):
+			gear_changed()
+			state.health = min(float(state.health), max_health())
+	elif before > int(m * 0.15) and d <= int(m * 0.15):
+		toast("Your %s is close to breaking." % nm, s.id, "warn")
+
+## The closer to breaking, the more a repair costs. Broken items cost the most.
+func repair_cost(s: Dictionary) -> Dictionary:
+	var m := max_dur(s.id)
+	if m <= 0:
+		return {}
+	var broken := is_broken(s)
+	var wear: float = 1.0 if broken else 1.0 - float(stack_dur(s)) / float(m)
+	if wear <= 0.0:
+		return {}
+	var it: Dictionary = Data.items[s.id]
+	var price: float = float(it.price)
+	var R: Dictionary = Balance.repair
+	var gold := int(round(price * R.base_pct + price * R.wear_pct * pow(wear, R.curve)))
+	if broken: gold += int(price * R.broken_pct)
+	gold = max(gold, R.min_gold)
+	var rar: String = it.get("rarity", "Normal")
+	var mat: String = R.mats.get(rar, "scrap")
+	if it.has("gear") and rar == "Normal": mat = "cloth"
+	var units = int(ceil(wear * R.units_per_wear)) + (R.broken_units if broken else 0)
+	if mat in ["scrap", "cloth"]: units *= 3
+	return {"gold": gold, "mats": [[mat, units]], "wear": wear}
+
+func repair_item(s: Dictionary) -> String:
+	var c := repair_cost(s)
+	if c.is_empty(): return "Nothing to repair."
+	if int(state.money) < int(c.gold): return "You need %d gold." % int(c.gold)
+	for p in c.mats:
+		if count_item(p[0]) < int(p[1]): return "You need %d %s." % [int(p[1]), Data.items[p[0]].name]
+	state.money = int(state.money) - int(c.gold)
+	for p in c.mats:
+		remove_item(p[0], int(p[1]))
+	s.erase("dur")
+	s.erase("broken")
+	if Data.items[s.id].has("gear"): gear_changed()
+	Sfx.play("buy")
+	return ""
+
+## Every damaged weapon and piece of gear you have on you or are wearing.
+func repairable_items() -> Array:
+	var out := []
+	for s in inv():
+		if s != null and not repair_cost(s).is_empty(): out.append(s)
+	for slot in Arsenal.SLOTS:
+		var s = state.equip.get(slot)
+		if s != null and not repair_cost(s).is_empty(): out.append(s)
+	return out
+
+## Rounds in a weapon's magazine. New weapons come loaded.
+func mag_of(s: Dictionary) -> float:
+	if s.has("mag"):
+		return float(s.mag)
+	return float(Data.weapons[s.id].mag) if Data.weapons.has(s.id) else 0.0
 
 func tool_tier(id: String) -> int:
 	return int(state.tools[id].tier) if state.tools.has(id) else 0
@@ -505,12 +739,14 @@ func build_persistent_maps() -> void:
 					mm.remove_obj(t.x, t.y)
 
 func start_session() -> void:
+	gear_changed()
+	apply_carry()
 	build_persistent_maps()
 	player = {"pos": Vector2.ZERO, "dir": "down", "frame": 0, "walk_t": 0.0, "moving": false, "swing": null, "iframes": 0.0, "kb": Vector2.ZERO}
 	npcs = {}
 	for id in Data.npcs:
 		npcs[id] = {"id": id, "map": "", "pos": Vector2.ZERO, "dir": "down", "path": null, "entry": null, "frame": 0, "walk_t": 0.0}
-	enemies = []; particles = []; floaters = []; projectiles = []; arcs = []; bombs = []
+	enemies = []; particles = []; floaters = []; projectiles = []; arcs = []; bombs = []; fires = []
 	fishing = null; charge = null; paused = false; clock_acc = 0.0; mountain_night_spawned = false
 	screen = "game"
 	change_map("house", 2, 4, "down", {"silent": true})
@@ -548,6 +784,7 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 		quest_event("mine_floor", {"floor": fl})
 	else:
 		m = maps[id]
+	_recover_thrown()
 	map = m
 	player.pos = Vector2(tx * 16 + 8, ty * 16 + 14)
 	player.dir = dir
@@ -557,6 +794,9 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	projectiles = []
 	arcs = []
 	bombs = []
+	fires = []
+	player.reload = null
+	player.boomerangs = 0
 	fishing = null
 	charge = null
 	last_warp_tile = GameMap.k(tx, ty)
@@ -571,6 +811,23 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 		else: label = Data.location_names.get(id, "")
 		if label != "" and ui:
 			ui.banner(label)
+
+## Leaving a map: knives, axes and javelins you threw come back with you.
+func _recover_thrown() -> void:
+	var back := []
+	for pr in projectiles:
+		if pr.has("stack") and pr.get("kind", "") in ["knife", "axe", "javelin"]:
+			back.append(pr.src)
+	if map != null:
+		for d in map.drops:
+			if d.get("retrieve", false):
+				back.append(d.id)
+		map.drops = map.drops.filter(func(d): return not d.get("retrieve", false))
+	for id in back:
+		for s in inv():
+			if s != null and s.id == id and mag_of(s) < float(Data.weapons[id].mag):
+				s.mag = mag_of(s) + 1
+				break
 
 func location_name() -> String:
 	if map == null:
@@ -798,6 +1055,14 @@ func animals_overnight(rep: Dictionary) -> void:
 				cm.add_obj(x, y, "animal_product", {"item": item})
 				made += 1
 				break
+		# chickens shed feathers now and then (used for arrows)
+		if a.type == "chicken" and rng.randf() < 0.3:
+			for tries in 40:
+				var fx2 := rng.randi_range(1, cm.w - 2)
+				var fy2 := rng.randi_range(3, cm.h - 2)
+				if cm.tile_free(fx2, fy2) and not (fx2 == 6 and fy2 >= 8):
+					cm.add_obj(fx2, fy2, "animal_product", {"item": "feather"})
+					break
 		a.last_product = state.day
 	if made > 0: rep.lines.append("Your animals left %d item%s in the coop." % [made, "" if made == 1 else "s"])
 	if hungry > 0: rep.lines.append("%d of your animals went hungry. Fill the hay hopper in the coop." % hungry)
@@ -1223,8 +1488,9 @@ func eat_item(id: String) -> bool:
 		return false
 	var e: Dictionary = it.edible
 	var mult := 1.0 + skill_level("cooking") * 0.05 if it.cat == "cooked" else 1.0
+	if it.cat == "medical": mult += float(gear_total().fx.get("med_bonus", 0.0))
 	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, float(Balance.player.max_energy))
-	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, float(Balance.player.max_health))
+	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, max_health())
 	var parts := []
 	if e.get("energy", 0): parts.append("+%d energy" % round(e.energy * mult))
 	if e.get("hp", 0): parts.append("+%d health" % round(e.hp * mult))
@@ -1587,7 +1853,11 @@ func shop_closed_text(shop_id: String) -> String:
 func shop_stock(shop_id: String) -> Array:
 	var sh: Dictionary = Data.shops[shop_id]
 	var s := season()
-	var list: Array = sh.stock.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
+	var list: Array = []
+	for e0 in sh.stock:
+		if e0.has("rotating"): list.append_array(rotating_stock(e0.rotating, int(e0.count)))
+		else: list.append(e0)
+	list = list.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
 	var sale_idx := -1
 	if sh.daily_sale:
 		var goods := []
@@ -1629,6 +1899,25 @@ func shop_stock(shop_id: String) -> Array:
 		out.append(e)
 	return out
 
+## A shop's changing selection: new picks every Monday.
+func rotating_stock(pool_id: String, n: int) -> Array:
+	var pool: Array = []
+	if pool_id == "guild_arms":
+		for tag in ["police", "military", "sports", "hardware", "wilderness", "gun_store", "farm", "pawn", "construction"]:
+			for id in Data.loot_tags.get(tag, []):
+				if Data.items[id].get("rarity", "") == "Normal" and not pool.has(id) and Data.items[id].cat in ["weapon", "gear"]:
+					pool.append(id)
+	pool.sort()
+	var r := RandomNumberGenerator.new()
+	r.seed = int(state.seed) ^ (int((int(state.day) - 1) / 7) * 7919)
+	var out := []
+	for i in n:
+		if pool.is_empty(): break
+		var id: String = pool[r.randi() % pool.size()]
+		pool.erase(id)
+		out.append({"id": id, "price": int(Data.items[id].price * 2)})
+	return out
+
 func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 	var cost: int = e.final_price * qty
 	if int(state.money) < cost:
@@ -1649,11 +1938,14 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		Sfx.play("coin")
 		toast("Hal will work on the farmhouse tonight.")
 		return ""
+	if e.get("service", "") == "repair":
+		ui.open("repair", {"owner": Data.shops[shop_id].owner})
+		return ""
 	if e.get("service", "") == "treatment":
-		if float(state.health) >= Balance.player.max_health and float(state.energy) >= Balance.player.max_energy * 0.5:
+		if float(state.health) >= max_health() and float(state.energy) >= Balance.player.max_energy * 0.5:
 			return "Elias looks you over. \"You're fine. Go eat something.\""
 		state.money = int(state.money) - cost
-		state.health = float(Balance.player.max_health)
+		state.health = max_health()
 		state.energy = maxf(float(state.energy), Balance.player.max_energy * 0.5)
 		Sfx.play("eat")
 		toast("Elias patches you up. Good as new.")
@@ -1774,14 +2066,26 @@ func next_house_repair() -> Dictionary:
 	return {}
 
 func shop_buys_item(shop_id: String, id: String) -> bool:
-	return item_flags(id).sellable and Data.shops[shop_id].buys.has(Data.items[id].cat)
+	var cat: String = Data.items[id].cat
+	if cat in ["weapon", "gear"]:
+		return Data.shops[shop_id].buys.has(cat) and Data.items[id].price > 0
+	return item_flags(id).sellable and Data.shops[shop_id].buys.has(cat)
+
+## What a shop pays for one of these. Worn weapons and gear fetch less.
+func sell_price(s: Dictionary) -> int:
+	var it: Dictionary = Data.items[s.id]
+	if it.cat in ["weapon", "gear"]:
+		var md := max_dur(s.id)
+		var frac: float = 1.0 if md <= 0 else float(stack_dur(s)) / float(md)
+		return int(it.price * 0.4 * (0.25 + 0.75 * frac)) if not is_broken(s) else int(it.price * 0.05)
+	return int(it.price)
 
 func shop_sell(shop_id: String, slot: int, qty: int) -> void:
 	var s = inv()[slot]
 	if s == null or not shop_buys_item(shop_id, s.id):
 		return
 	qty = min(qty, int(s.qty))
-	var gain: int = Data.items[s.id].price * qty
+	var gain: int = sell_price(s) * qty
 	state.money = int(state.money) + gain
 	state.stats.earned = int(state.stats.earned) + gain
 	remove_from_slot(slot, qty)
@@ -1905,7 +2209,7 @@ func collapse(cause: String) -> void:
 
 func recover_from_collapse() -> void:
 	var cfg := mode_cfg()
-	state.health = round(Balance.player.max_health * cfg.collapse_health_restore)
+	state.health = round(max_health() * cfg.collapse_health_restore)
 	if is_survivor():
 		state.hunger = max(state.hunger, 30.0)
 		state.thirst = max(state.thirst, 30.0)
@@ -1953,13 +2257,13 @@ func end_day(reason: String) -> void:
 	state.time = Balance.time.day_start
 	state.energy = round(Balance.player.max_energy * restore)
 	if is_survivor():
-		state.health = min(float(Balance.player.max_health), state.health + round((Balance.player.max_health - state.health) * 0.6))
+		state.health = min(max_health(), state.health + round((max_health() - state.health) * 0.6))
 		state.hunger = max(0.0, state.hunger - Balance.survival.overnight_hunger_drain)
 		state.thirst = max(0.0, state.thirst - Balance.survival.overnight_thirst_drain)
 		if state.hunger <= 0 or state.thirst <= 0:
 			rep.lines.append("You woke up %s. Eat and drink soon." % ("starving" if state.hunger <= 0 else "parched"))
 	else:
-		state.health = float(Balance.player.max_health)
+		state.health = max_health()
 	state.weather = state.weather_tomorrow
 	state.weather_tomorrow = roll_weather(int(state.day) + 1)
 	roll_raid(int(state.day))

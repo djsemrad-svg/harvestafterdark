@@ -304,7 +304,7 @@ func rock_pal(p) -> Array:
 func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	var t: String = o.type
 	var dd: Dictionary = Data.obj_defs.get(t, {})
-	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "oil_lantern"]:
+	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "weapon_bench", "oil_lantern"]:
 		return _draw_defense(o, season, frame, nb)
 	var v: int = int(o.get("v", 0))
 	var pal: Dictionary = PAL.get(season, PAL.spring)
@@ -515,6 +515,13 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			for i in 10:
 				P(x, 3 + i, 4 + i, "#6e5232"); P(x, 12 - i, 4 + i, "#6e5232")
 			return [outline(x, "#1e1410"), 0, -2]
+		"supply_crate":
+			var opened: bool = int(o.get("searched", -99)) > -99
+			R(x, 1, 5, 14, 10, "#4a5a3a"); R(x, 1, 5, 14, 1, "#6a7a4a"); R(x, 1, 9, 14, 1, "#3a4a2a")
+			R(x, 6, 7, 4, 4, "#e8e0c8"); R(x, 7, 7, 2, 4, "#c83a2a"); R(x, 6, 8, 4, 2, "#c83a2a")
+			if opened: R(x, 1, 3, 14, 2, "#3a4a2a")
+			else: R(x, 1, 4, 14, 1, "#2a3420")
+			return [outline(x, "#121410"), 0, -2]
 		"bench":
 			R(x, 0, 5, 16, 3, "#8a6a40"); R(x, 0, 9, 16, 3, "#9a7a50"); R(x, 1, 12, 2, 3, "#4a4a52"); R(x, 13, 12, 2, 3, "#4a4a52")
 			return [outline(x, "#1e1410"), 0, 0]
@@ -734,6 +741,8 @@ func char_override(look: Dictionary, dir: String, frame: int) -> Image:
 			name = "player_%s_%d.png" % [d, 1 if f == 1 or f == 3 else 0]
 		else:
 			name = "player_%s_%d.png" % [d, f]
+	elif sp == "zv":
+		return infected_variant(look, dir, frame)
 	elif look.get("infected", false):
 		if dir == "down" or dir == "up":
 			name = sp + "_down.png"
@@ -770,6 +779,104 @@ func char_override(look: Dictionary, dir: String, frame: int) -> Image:
 		var bob := Image.create(im.get_width(), im.get_height(), false, Image.FORMAT_RGBA8)
 		bob.blit_rect(im, Rect2i(0, 0, im.get_width(), im.get_height() - 1), Vector2i(0, 1))
 		im = bob
+	return im
+
+## An infected built from one of the atlas bodies, recoloured and dressed for its type.
+func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
+	var b: int = int(look.get("body", 0))
+	var name := ""
+	var flip := false
+	if look.get("lying", false):
+		name = "zv_lying_%d.png" % (b % 4)
+		flip = dir == "right"
+	elif dir == "down" or dir == "up":
+		name = "zv%d_down.png" % b
+	else:
+		name = "zv%d_right_%d.png" % [b, 1 if frame % 4 >= 2 else 0]
+		flip = dir == "left"
+	var tex := override("enemies/" + name)
+	if tex == null:
+		return null
+	var im := tex.get_image()
+	if im.is_compressed(): im.decompress()
+	im.convert(Image.FORMAT_RGBA8)
+	im = recolor_infected(im, look)
+	if flip:
+		im.flip_x()
+	var sc: float = float(look.get("scale", 1.0))
+	if abs(sc - 1.0) > 0.01:
+		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	return im
+
+func recolor_infected(src: Image, look: Dictionary) -> Image:
+	var im := src.duplicate()
+	var W = im.get_width()
+	var H = im.get_height()
+	var lying: bool = look.get("lying", false)
+	var skin := Color(look.get("skin", "#8fa58a"))
+	var shirt := Color(look.get("shirt", "#6a6a7a"))
+	var pants := Color(look.get("pants", "#4a4a40"))
+	var extra: String = look.get("extra", "")
+	var top = H
+	var head_l = W
+	var head_r := 0
+	for y in H:
+		for x in W:
+			var c: Color = im.get_pixel(x, y)
+			if c.a < 0.5: continue
+			if y < top: top = y
+			var h: float = c.h * 360.0
+			var head: bool = (x > W * 0.62) if lying else (y < H * 0.4)
+			var legs: bool = (x < W * 0.38) if lying else (y > H * 0.62)
+			var part := ""
+			if h >= 30 and h <= 115 and c.s > 0.15 and c.v > 0.25:
+				part = "skin"
+			elif not head and h >= 185 and h <= 265 and c.s > 0.12:
+				part = "pants" if legs else "shirt"
+			elif not head and c.s > 0.22 and ((h > 265 and h < 345) or (h >= 12 and h < 30)):
+				part = "shirt"
+			if part == "": continue
+			var t: Color = skin if part == "skin" else (shirt if part == "shirt" else pants)
+			var ref_v: float = 0.55 if part == "skin" else (0.42 if part == "shirt" else 0.3)
+			im.set_pixel(x, y, Color.from_hsv(t.h, clampf(t.s * (0.6 + c.s), 0.0, 1.0), clampf(c.v * t.v / ref_v, 0.0, 1.0), c.a))
+			if head and not lying:
+				head_l = min(head_l, x)
+				head_r = max(head_r, x)
+	if lying or extra == "":
+		return im
+	var hcx := int((head_l + head_r) / 2.0)
+	match extra:
+		"riot", "soldier":
+			var hc := Color("#1c1e26") if extra == "riot" else Color("#4a5630")
+			for y in range(top, min(top + 5, H)):
+				for x in range(head_l, head_r + 1):
+					if im.get_pixel(x, y).a > 0.5 or y == top + 4:
+						im.set_pixel(x, y, hc.lightened(0.15) if y == top else hc)
+			if extra == "riot":
+				for x in range(head_l + 1, head_r):
+					if im.get_pixel(x, min(top + 5, H - 1)).a > 0.5: im.set_pixel(x, min(top + 5, H - 1), Color("#7a9ab8"))
+			# vest over the chest
+			var vest := Color("#262c40") if extra == "riot" else Color("#3e4a2a")
+			for y in range(int(H * 0.42), int(H * 0.6)):
+				for x in W:
+					var c2: Color = im.get_pixel(x, y)
+					if c2.a > 0.5 and abs(x - hcx) <= 4 and c2.v > 0.18:
+						im.set_pixel(x, y, vest.lightened(0.1) if (x + y) % 5 == 0 else vest)
+		"embers":
+			for y in H:
+				for x in W:
+					if im.get_pixel(x, y).a > 0.5 and hash2(x, y, 9) < 0.07:
+						im.set_pixel(x, y, Color("#f08a30") if hash2(x, y, 3) < 0.6 else Color("#ffd060"))
+		"drool":
+			var my = top + 9
+			for k in 3:
+				if my + k < H: im.set_pixel(clampi(hcx, 0, W - 1), my + k, Color("#b8f040"))
+		"mouth":
+			var my2 = top + 8
+			for dy in 2:
+				for dx in [-1, 0]:
+					var xx := clampi(hcx + dx, 0, W - 1)
+					if my2 + dy < H: im.set_pixel(xx, my2 + dy, Color("#2a0606"))
 	return im
 
 ## The atlas farmer wears a red shirt, blue overalls and brown hair. Swap those for the player's choices.
@@ -810,6 +917,8 @@ func look_key(l: Dictionary) -> String:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
 	parts.append(str(l.get("sprite", "")))
+	for k in ["body", "extra", "scale", "lying"]:
+		if l.has(k): parts.append(str(l[k]))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int) -> Image:
@@ -1081,7 +1190,13 @@ func icon_image(id: String, tier: int) -> Image:
 		return oi
 	if it.has("icon") and it.icon.s == "obj":
 		return outline(obj_icon(it.icon.obj), "#1a1414")
-	if it.has("icon"):
+	if it.has("icon") and it.icon.s == "weapon":
+		IconGen.weapon(x, Data.weapons[it.icon.id])
+	elif it.has("icon") and it.icon.s == "gear":
+		IconGen.gear(x, Data.gear[it.icon.id])
+	elif it.has("icon") and (str(it.icon.s).begins_with("a_") or str(it.icon.s).begins_with("m_")):
+		IconGen.small(x, it.icon)
+	elif it.has("icon"):
 		_draw_icon(x, it.icon, tier)
 	else:
 		R(x, 4, 4, 8, 8, "#ff00ff")
@@ -1418,6 +1533,13 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 2, 3, 4, 3, "#4a4a52"); R(x, 3, 2, 2, 1, "#6a6a74")             # vise
 			R(x, 8, 4, 2, 2, "#c83a3a"); R(x, 10, 4, 2, 2, "#c83a3a"); R(x, 8, 4, 4, 1, "#d8b040")   # shells
 			R(x, 4, 12, 6, 3, "#5a6a3e"); P(x, 5, 13, "#d8c040")
+			return [outline(x, "#1a1410"), 0, -1]
+		"weapon_bench":
+			R(x, 0, 6, 16, 3, "#6a5a4a"); R(x, 0, 6, 16, 1, "#8a7a64"); R(x, 1, 9, 2, 7, "#4a3a2a"); R(x, 13, 9, 2, 7, "#4a3a2a"); R(x, 3, 11, 10, 1, "#4a3a2a")
+			R(x, 2, 2, 2, 4, "#5a5a62"); R(x, 1, 2, 4, 1, "#7a7a84")          # grinder
+			_diag(x, 7, 5, 6, 1, "#b0b4bc"); R(x, 6, 4, 2, 2, "#5a3a22")       # a blade on the bench
+			R(x, 11, 2, 4, 1, "#3a3a40"); R(x, 11, 3, 1, 3, "#3a3a40")       # a pistol frame
+			R(x, 4, 12, 7, 3, "#7a3a2a"); P(x, 6, 13, "#d8c040")
 			return [outline(x, "#1a1410"), 0, -1]
 		"recycler":
 			R(x, 3, 3, 10, 12, "#4a7a5a"); R(x, 3, 3, 10, 2, "#5a9a6a"); R(x, 2, 2, 12, 2, "#3a5a44")

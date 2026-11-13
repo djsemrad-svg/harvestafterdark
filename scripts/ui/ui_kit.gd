@@ -191,16 +191,49 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 		var ic := icon(Art.get_icon(stack.id, tier), size - 4)
 		ic.position = Vector2(2, 2)
 		ic.size = Vector2(size - 4, size - 4)
-		if locked or (it.has("tool") and Game.tool_busy(it.tool) != null):
+		if locked or (it.has("tool") and Game.tool_busy(it.tool) != null) or Game.is_broken(stack):
 			ic.modulate = Color(1, 1, 1, 0.35)
 		b.add_child(ic)
+		# rarity corner, durability bar and loaded rounds for weapons and gear
+		var rar: String = it.get("rarity", "")
+		if rar != "" and rar != "Normal":
+			var rc := ColorRect.new()
+			rc.color = Color(Arsenal.rarity_color(rar))
+			rc.size = Vector2(3, 3)
+			rc.position = Vector2(1, 1)
+			rc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(rc)
+		var md := Game.max_dur(stack.id)
+		if md > 0 and (stack.has("dur") or Game.is_broken(stack)):
+			var frac: float = clampf(float(Game.stack_dur(stack)) / float(md), 0.0, 1.0)
+			var bg2 := ColorRect.new()
+			bg2.color = Color(0, 0, 0, 0.5)
+			bg2.size = Vector2(size - 4, 2)
+			bg2.position = Vector2(2, size - 3)
+			bg2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(bg2)
+			var fg := ColorRect.new()
+			fg.color = Color("#e04030") if frac < 0.25 else (Color("#e8c030") if frac < 0.6 else Color("#60c040"))
+			fg.size = Vector2(maxf(1.0, (size - 4) * frac), 2)
+			fg.position = Vector2(2, size - 3)
+			fg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			b.add_child(fg)
+		if Data.weapons.has(stack.id):
+			var wd: Dictionary = Data.weapons[stack.id]
+			if int(wd.mag) > 1 and wd.mode in ["shoot", "throw", "saw"]:
+				var ml := label(str(int(Game.mag_of(stack))), 5, Color("#ffe080"))
+				ml.add_theme_constant_override("outline_size", 2)
+				ml.add_theme_color_override("font_outline_color", Color.BLACK)
+				ml.position = Vector2(size - 4 - 3 * str(int(Game.mag_of(stack))).length(), size - 11)
+				ml.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				b.add_child(ml)
 		if int(stack.qty) > 1:
 			var q := label(str(stack.qty), 6, Color.WHITE)
 			q.add_theme_constant_override("outline_size", 2)
 			q.add_theme_color_override("font_outline_color", Color.BLACK)
 			q.position = Vector2(size - 4 - 4 * str(stack.qty).length(), size - 10)
 			b.add_child(q)
-		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d gold each)" % it.price) + "\n" + it.desc
+		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d gold each)" % it.price) + ("  [BROKEN]" if Game.is_broken(stack) else "") + "\n" + it.desc
 	if on_click != null:
 		b.gui_input.connect(func(ev):
 			if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):

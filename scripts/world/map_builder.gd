@@ -403,6 +403,12 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		var t: Vector2i = tiles[tiles.size() - 3]
 		m.remove_obj(t.x, t.y)
 		m.add_obj(t.x, t.y, "sign", {"text": "The tunnel below has caved in completely. You can hear water and something mechanical far beneath. Heavier equipment will be needed to dig through."})
+	# an old supply crate now and then, more often deeper down
+	if r.randf() < 0.2 + floor_n * 0.02:
+		var cands := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 5)
+		if not cands.is_empty():
+			var ct: Vector2i = cands[r.randi() % cands.size()]
+			m.add_obj(ct.x, ct.y, "supply_crate", {"quality": clampf(floor_n / 20.0, 0.0, 1.0)})
 	var count := r.randi_range(band.enemy_count[0], band.enemy_count[1])
 	var free := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 9)
 	for i in count:

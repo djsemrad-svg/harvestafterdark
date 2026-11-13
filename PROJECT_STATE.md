@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 13, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 101 / 101 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 127 / 127 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -60,6 +60,28 @@ Decisions agreed with Daniel: use his five AI-generated sheets (he made them him
 
 Art still procedural (needs sheets): forge, town hall, houses, ruin, coop, ground tiles, NPC walk frames (neighbours bob instead of walking), and item icons (Daniel is making an icon sheet from the 220-item list; tool tiers will need tier paths added).
 
+### Weapons, gear and the infected (stage 1 of 3, added Nov 13)
+
+Source of truth: Daniel's spreadsheets, exported to `design/weapons.csv` and `design/gear.csv`. My additions are in `design/weapons_added.csv` (starter club and Scrap Crossbow, 17 more melee weapons, hunting bows, 4 boomerangs, and 7 legendaries that only drop rarely from one infected type each). `python3 tools/build_gear.py` turns them into `scripts/autoload/gear_db.gd`. It reads the trait text for effects ("Bleed: 6 dmg/s for 4 s"), so editing the sheet changes the game. `-v` lists phrases the game doesn't act on yet; the inventory shows those greyed as "not in the game yet".
+
+Decisions agreed with Daniel:
+- Durability: in Survivor Mode a broken item is gone; in Adventure Mode it fades and can't be used until repaired. In both, repairs cost more the closer the item is to breaking (Varga Forge Repair tab, Jo's "Repair" service).
+- New places to scavenge (stage 2), legendaries from contracts, bosses, hard achievements and rare drops (stage 3), new infected types now, with room for more and several looks per type.
+
+Built:
+- 131 weapons and 100 gear pieces, about 30 ammo and crafting materials, Weapon Bench (crafting, upgrade kits, upgrades), ammo recipes at the Ammo Bench (gunpowder from coal + saltpeter; feathers from chickens for arrows).
+- Combat (`scripts/world/combat.gd`): attack speed, reach, crits, swing arcs and cleave, stealth kills on infected that haven't noticed you, magazines and reload (R), shotgun pellets, auto fire while held, mouse aiming, thrown weapons you pick back up, boomerangs, chainsaw fuel, Molotovs and pipe bombs, noise that draws infected, bleed/burn/acid, pin, stun, knockdown, chain lightning, execute, decapitate, ricochet, turned infected, and more from the sheet.
+- Gear: Head, Chest, Legs and Feet slots in the inventory. Armor cuts damage, Bonus HP, speed, stamina, Bite Resist (in Survivor Mode it's the chance a bite doesn't kill you), noise, Carry Slots (extra pack slots), and most legendary effects.
+- Player actions: sprint (Shift), crouch (Ctrl), shove or stomp (V), dash (double-tap Shift with the right shoes).
+- Infected (`scripts/world/infected.gd`, `Data.enemies`): Shambler, Lurcher, Runner, Brute, Spitter, Spitter Brute, Charred, Stalker, Riot, Soldier, Screamer, Crawler. Each has its own behaviour. Each spawns with its own look: 7 atlas bodies recoloured by type, plus helmets, vests, embers or drool. Add a type by adding an entry with "ai" and "looks".
+- HP scale: the sheet's damage numbers are used as-is, so infected health went up about 10x (Shambler 45) and turret, fence and bomb damage went up to match.
+- Where things come from until stage 2: Cole's Guild (6 weapons and gear that change every Monday, plus ammo), Brennan's General (basic clothes), Jo (gasoline, saltpeter, duct tape, Weapon Bench), crafting, rare drops, supply crates on mine floors, and searchable car wrecks and suitcases on the Ridge (once a week).
+- Mine floors 11-20: Flooded Works and The Deep, with tougher infected.
+
+Stage 2: Residential District, Industrial District and Riverlands with enterable buildings whose containers use the sheet's "How to Obtain" places (loot tags in `Arsenal`). Stage 3: Cole's contract board, named bosses (Groundskeeper, Juggernaut, Undertaker, Briar King, Crash, Inferno), quest chains and achievements that award the legendaries.
+
+Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`) until Daniel's icon sheet replaces them (see the part 2 item list). Gear isn't drawn on the character yet.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -67,7 +89,8 @@ Art still procedural (needs sheets): forge, town hall, houses, ruin, coop, groun
 - `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader.
 - `tools/atlas_tool.py`, `tools/art_map.py`: sheet cutter and the list of what to cut.
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
-- `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), drawing (`world_view.gd`), colour grade shader.
+- `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
+- `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
 - `scripts/ui/`: interface (`ui.gd`) and theme helpers (`ui_kit.gd`).
 - `tests/`: acceptance tests and a screenshot tool.
 
@@ -98,6 +121,7 @@ Art still procedural (needs sheets): forge, town hall, houses, ruin, coop, groun
    - Gear look: mixed by tier. Low tiers homemade from scrap; top tiers restored military hardware.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
-4. Art: convert Daniel's item icon sheet into `art/icons/`; more sheets for the buildings and tiles listed above.
-5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; mine floors 11-20 with silver and new infected plus a miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
+4. Art: convert Daniel's item icon sheet into `art/icons/` (part 1: 220 items, part 2: 285 new items); more sheets for the buildings and tiles listed above.
+4b. Weapons stage 2 (new places) and stage 3 (contracts, bosses, achievements).
+5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.
