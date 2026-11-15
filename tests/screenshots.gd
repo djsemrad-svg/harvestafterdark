@@ -19,6 +19,35 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "restore":
+		main.ui.close_all()
+		Game.state.time = 1100
+		Game.state.money = 1200
+		Game.add_item("wood", 60, {"silent": true}); Game.add_item("potato", 12, {"silent": true}); Game.add_item("river_chub", 4, {"silent": true})
+		Restoration.give("tavern", 0); Restoration.give("tavern", 3); Restoration.give("tavern", 4)
+		Game.change_map("town", 26, 17, "up", {"silent": true})
+		await frames(10)
+		await shot("30_ledger_square")
+		main.ui.open("restoration"); await frames(4); await shot("31_ledger_open")
+		main.ui.close_all()
+		for pid in ["tavern", "archive"]:
+			Restoration.st()[pid] = {"given": [], "done": true, "ready": true}
+			Restoration.apply_one(Game.maps, pid)
+		Game.change_map("town", 22, 31, "up", {"silent": true})
+		await frames(10)
+		await shot("32_tavern_open")
+		Game.sync_npcs()
+		Game.change_map("tavern", 6, 9, "up", {"silent": true})
+		Game.state.time = 1100; Game.sync_npcs()
+		await frames(10)
+		await shot("33_tavern_inside")
+		Game.add_item("quartz", 1, {"silent": true})
+		Game.change_map("archive", 6, 9, "up", {"silent": true})
+		await frames(6)
+		await shot("34_archive_inside")
+		main.ui.open("museum"); await frames(4); await shot("35_museum")
+		get_tree().quit()
+		return
 	if only == "detail":
 		main.ui.close_all()
 		Game.state.time = 640

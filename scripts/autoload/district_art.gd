@@ -217,6 +217,23 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 					else:
 						a.R(x, 4, 3, 16, 15, leaf); a.R(x, 6, 4, 8, 6, leaf2); a.R(x, 14, 9, 4, 4, leaf2); a.R(x, 3, 8, 2, 6, leaf)
 					return [a.outline(x, "#1a2a14"), -4, -16]
+		"town_ledger":
+			x = a.img(16, 22)
+			a.R(x, 6, 10, 4, 12, "#5e3c1e"); a.R(x, 3, 20, 10, 2, "#5e3c1e")      # a lectern
+			a.R(x, 1, 5, 14, 6, "#7a5236"); a.R(x, 2, 4, 6, 6, "#f0e6cc"); a.R(x, 8, 4, 6, 6, "#e8dcc0")   # an open ledger
+			for i in 3: a.R(x, 3, 5 + i * 2, 4, 1, "#8a7a6a"); a.R(x, 9, 5 + i * 2, 4, 1, "#8a7a6a")
+			a.R(x, 7, 3, 2, 8, "#a83a2a")                                          # ribbon
+			return [a.outline(x, "#1e1410"), 0, -6]
+		"museum_desk":
+			a.R(x, 0, 5, 16, 10, "#7a5636"); a.R(x, 0, 5, 16, 2, "#9a7048"); a.R(x, 5, 2, 6, 4, "#e8dcc0"); a.R(x, 6, 3, 4, 1, "#8a7a6a")
+			return [a.outline(x, "#1e1410"), 0, -2]
+		"display_case":
+			x = a.img(16, 20)
+			a.R(x, 1, 12, 14, 8, "#6a4a2e"); a.R(x, 1, 12, 14, 1, "#8a6a44")
+			a.R(x, 2, 2, 12, 10, Color(0.75, 0.88, 0.95, 0.45)); a.R(x, 2, 2, 12, 1, "#e8f4fc"); a.R(x, 3, 3, 1, 7, "#f4fafe")
+			if Game.state.has("day") and Restoration.museum().size() > int(v) % 6:
+				a.R(x, 6, 7, 4, 4, ["#9a7a5a", "#c890e0", "#b0b8c8", "#d8b080"][int(v) % 4])
+			return [a.outline(x, "#1a1410"), 0, -4]
 		"stolen_goods":
 			x = a.img(16, 20)
 			a.R(x, 1, 8, 7, 11, "#9a7a4a"); a.R(x, 8, 10, 7, 9, "#8a6a40"); a.R(x, 3, 4, 8, 6, "#a88a5a")

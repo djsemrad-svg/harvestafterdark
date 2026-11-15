@@ -230,6 +230,7 @@ static func town(world_seed: int) -> GameMap:
 	for c in [[8, 19], [41, 20], [29, 8]]:
 		m.add_obj(c[0], c[1], "road_crack")
 	m.add_obj(24, 15, "notice_board")
+	m.add_obj(26, 15, "town_ledger", {"anchor": true})
 	for lp in [[22, 14], [34, 14], [22, 22], [34, 22], [10, 21], [45, 21], [6, 17], [50, 17]]:
 		m.add_obj(lp[0], lp[1], "lamp_post")
 	m.add_obj(24, 23, "bench"); m.add_obj(32, 23, "bench")

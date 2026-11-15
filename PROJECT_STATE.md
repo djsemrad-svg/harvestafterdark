@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 15, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 237 / 237 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 245 / 245 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -233,6 +233,18 @@ All in `scripts/world/districts.gd`.
 
 Settings has "Detailed art (preview)", off by default. When on: a richer grass tile (soft patches, fuller tufts), an oak tree built from shaded leaf clumps, and a shading pass on every object, building and character (light from the top left, shadow bottom right, a little texture), plus a shadow under building eaves. All in `art.gd` (`set_detail`, `_grass_hd`, `_oak_hd`, `shade_pass`). Waiting on Daniel to decide whether to take it further.
 
+### Rebuilding Brightwater (added Nov 15)
+
+All in `scripts/world/restoration.gd`. The town's long-term goal, in the spirit of Stardew's Community Center.
+
+- Ruth's Restoration Ledger stands next to the notice board in the town square. It lists five projects and what each still needs. "Give" hands over as much as you're carrying toward one need (lowest quality first for crops and fish). When a project has everything, the crews finish it overnight and the morning report says what opened up. The notice board shows how many are done.
+- Lantern Post Tavern (wood 150, brick 20, glass 10, any 30 crops, any 10 fish, 2,000 gold): the tavern opens. Ruth tends bar 5 pm to 11 pm and sells meals and drinks, with a daily special.
+- Clinic Ward (bandage 10, antiseptic 5, glass bottle 10, cloth 20, 1,500 gold): Dr. Elias stocks Antibiotics, Splints, Painkillers and Sterile Bandages; his treatment is half price.
+- Community Archive (hardwood 30, stone 100, glass 15, any 3 artifacts, 3,000 gold): the Archive opens as a museum. Donate one of each mineral, gem and artifact at the desk; thank-you rewards at 5, 10, 20 and 30 donations. The display cases fill as you donate.
+- Watchtowers (hardwood 40, iron bar 10, rope 5, nails 50, 2,500 gold): lookout towers go up around town. The morning report warns you when a raid (infected or Dry Creek) is coming that night, and each one is 1 smaller.
+- Town Militia (stone 200, steel bar 10, sandbag wall 20, any 5 weapons, 5,000 gold): about 1 in 3 raids on your farm are turned back before they arrive. Sandbags and a militia sign go up at the gates.
+- All five: the town celebrates, pays you 5,000 gold, and every shop in town gives 10% off from then on.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -251,6 +263,7 @@ Settings has "Detailed art (preview)", off by default. When on: a richer grass t
 - `scripts/world/angling.gd`: fish sizes, the Fish Journal and Wren's Bait Shack.
 - `scripts/world/woodland.gd`: tree seeds and regrowth.
 - `scripts/world/deep_mine.gd`: the Foreman, cave pools and mining perks.
+- `scripts/world/restoration.gd`: rebuilding Brightwater (projects, tavern, museum).
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -287,4 +300,6 @@ Settings has "Detailed art (preview)", off by default. When on: a richer grass t
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
 4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Fast food, safehouses and farm raids are done too (Nov 15). Still open from the sheets: swamp fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, map table, ham radio, tool belt, ammo pouch.
 5. Phase 2 is done (Nov 15).
-6. Later phases: residents, factions, hostile settlements.
+6. Done: rebuilding Brightwater (Nov 15).
+7. Ideas agreed as worth doing next: survivors who move into town (rescued in the districts or found by ham radio), a guided first week for new players, and a difficulty pass after playtesting.
+8. Later phases: factions, hostile settlements.

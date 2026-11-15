@@ -787,6 +787,7 @@ func build_persistent_maps() -> void:
 	maps.merge(Halvorsen.all_maps(int(state.seed)))
 	maps.merge(Raiders.all_maps(int(state.seed)))
 	Angling.add_to_town(maps)
+	Restoration.setup(maps)
 	for id in maps:
 		var m: GameMap = maps[id]
 		# a room whose layout changed since this save was made is rebuilt fresh
@@ -2493,6 +2494,8 @@ func check_achievements() -> void:
 # ================================================================ NPCs
 func npc_schedule(id: String) -> Array:
 	var S: Dictionary = Data.npcs[id].schedules
+	if S.has("tavern_open") and Restoration.done("tavern"):
+		return S.tavern_open
 	if S.has(weekday()):
 		return S[weekday()]
 	if S.has("rain") and (state.weather == "rain" or state.weather == "storm"):
@@ -2794,6 +2797,8 @@ func shop_stock(shop_id: String) -> Array:
 	for e0 in sh.stock:
 		if e0.has("rotating"): list.append_array(rotating_stock(e0.rotating, int(e0.count)))
 		else: list.append(e0)
+	if shop_id == "clinic" and Restoration.done("clinic"):
+		list.append_array(Restoration.clinic_stock())
 	list = list.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
 	var sale_idx := -1
 	if sh.daily_sale:
@@ -2840,7 +2845,11 @@ func shop_stock(shop_id: String) -> Array:
 			var where: String = " or ".join(homes.map(func(h): return {"house": "your house", "doghouse": "a doghouse"}.get(h, "a " + h)))
 			e.desc = Data.shops[shop_id].stock[i].desc + (" Room: %d." % room if room > 0 else " You need %s with room first." % where)
 		e.sale = i == sale_idx
+		if shop_id == "clinic" and e.get("service", "") == "treatment" and Restoration.done("clinic"):
+			e.price = int(e.price) / 2
 		e.final_price = int(e.price * 0.75) if e.sale else int(e.price)
+		if state.flags.get("brightwater_lives", false):
+			e.final_price = int(round(e.final_price * Restoration.DISCOUNT))
 		out.append(e)
 	return out
 
@@ -3294,6 +3303,7 @@ func end_day(reason: String) -> void:
 		rep.lines.append("Frost is forecast for tonight. Cover young crops with Frost Cloth.")
 	roll_raid(int(state.day))
 	Raiders.roll_farm_raid(int(state.day))
+	Restoration.after_raid_rolls(rep)
 	var new_season := season()
 	if new_season != prev_season:
 		rep.lines.append("A new season begins: %s!%s" % [new_season.capitalize(), " Happy new year!" if season_index() == 0 else ""])
@@ -3335,6 +3345,7 @@ func end_day(reason: String) -> void:
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
 			overnight_object(maps[mid], o, rep)
 	Woodland.overnight(maps)
+	Restoration.overnight(rep)
 	animals_overnight(rep)
 	conditions_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)

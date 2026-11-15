@@ -1017,6 +1017,7 @@ func _init() -> void:
 	Angling.register(self)
 	Woodland.register(self)
 	DeepMine.register(self)
+	Restoration.register(self)
 
 
 func item(id: String) -> Dictionary:

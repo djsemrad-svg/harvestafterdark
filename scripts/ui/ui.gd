@@ -722,6 +722,8 @@ func hint_text() -> String:
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "stolen_goods": return "E: Search the stolen goods"
+		if o.type == "town_ledger": return "E: Read the restoration ledger"
+		if o.type == "museum_desk": return "E: Donate to the Archive"
 		if names.has(o.type): return "E: " + names[o.type]
 		if o.type == "boulder" or o.type == "big_stump": return Data.obj_defs[o.type].hint
 	var stc = m.structure_at(t.x, t.y)
@@ -1071,12 +1073,87 @@ func _ov_notices() -> Control:
 	pins.append("Coming up: " + ("; ".join(up.map(func(e): return "%s (%s)" % [e.label, e.when])) if not up.is_empty() else "nothing scheduled") + ".")
 	pins.append("From Ruth: \"Infected have been spotted on the ridge after dark. Stay in town at night, or carry something to defend yourself.\"")
 	pins.append("From Ines: \"Bring geodes and ore to the forge. Five ore and one coal makes a bar.\"")
+	var rdone := Restoration.PROJECTS.filter(func(p): return Restoration.done(p.id)).size()
+	pins.append("Rebuilding Brightwater: %d of %d projects finished. Ruth's ledger is right next to this board." % [rdone, Restoration.PROJECTS.size()])
 	for t in pins:
 		var b := K.row_box(Color("#fff6e4"))
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 290
 		b.add_child(l)
 		v.add_child(b)
+	v.add_child(_close_btn())
+	return pw[0]
+
+# ---------------------------------------------------------------- rebuilding Brightwater
+func _ov_restoration() -> Control:
+	var pw := _window("Rebuilding Brightwater", 400)
+	var v: VBoxContainer = pw[1]
+	var n_done := Restoration.PROJECTS.filter(func(p): return Restoration.done(p.id)).size()
+	v.add_child(K.label("Ruth's ledger. Bring what each project needs; when it has everything, the crews finish it overnight. %d of %d done.%s" % [n_done, Restoration.PROJECTS.size(),
+		" Brightwater is alive again: 10% off at every shop." if Game.state.flags.get("brightwater_lives", false) else " Finish all five for a celebration."], 6, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	var list := K.vbox(3)
+	for p in Restoration.PROJECTS:
+		var box := K.row_box(Color("#e8f0d8") if Restoration.done(p.id) else Color("#fff6e4"))
+		var col := K.vbox(1)
+		var state_txt: String = "[color=#3f7a2c]Done[/color]" if Restoration.done(p.id) else ("[color=#c87a1a]Crews finish it tonight[/color]" if Restoration.ready(p.id) else "")
+		col.add_child(K.rich("[b]%s[/b]  [color=#7a5434](%s)[/color]  %s" % [p.name, p.who, state_txt], 7))
+		col.add_child(K.label(p.desc + " Unlocks: " + p.unlock, 6, K.INK_SOFT, true))
+		if not Restoration.done(p.id) and not Restoration.ready(p.id):
+			var g := Restoration.given(p.id)
+			var grid := GridContainer.new()
+			grid.columns = 3
+			for i in p.needs.size():
+				var n: Array = p.needs[i]
+				var full: bool = int(g[i]) >= int(n[1])
+				var have: int = int(Game.state.money) if n[0] == "gold" else Restoration.matching(n).reduce(func(acc, s): return acc + int(Game.state.inventory[s].qty), 0)
+				var lb := K.rich("%s%s: %d/%d[/color]" % ["[color=#3f7a2c]" if full else "[color=#4a2a12]", Restoration.need_name(n), int(g[i]), int(n[1])], 6)
+				lb.custom_minimum_size.x = 120
+				grid.add_child(lb)
+				var hv := K.label("(you have %d)" % have if not full else "", 5, K.INK_SOFT)
+				hv.custom_minimum_size.x = 70
+				grid.add_child(hv)
+				var pid: String = p.id
+				var ii: int = i
+				var btn := K.button("Give", func():
+					var put := Restoration.give(pid, ii)
+					overlay.msg = ("Gave %d %s." % [put, Restoration.need_name(Restoration.project(pid).needs[ii])]) if put > 0 else "You don't have any of that."
+					render_overlay(), "small")
+				btn.disabled = full or have <= 0
+				grid.add_child(btn)
+			col.add_child(grid)
+		box.add_child(col)
+		list.add_child(box)
+	v.add_child(K.scroll(list, 200))
+	v.add_child(_close_btn())
+	return pw[0]
+
+func _ov_museum() -> Control:
+	var pw := _window("Community Archive: donations", 340)
+	var v: VBoxContainer = pw[1]
+	var mus := Restoration.museum()
+	var next := -1
+	for mr in Restoration.MUSEUM_REWARDS:
+		if mus.size() < int(mr[0]): next = int(mr[0]); break
+	v.add_child(K.label("Ruth takes minerals, gems and artifacts for the Archive's cases, one of each. %d donated.%s" % [mus.size(), (" Next thank-you at %d." % next) if next > 0 else ""], 6, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	var list := K.vbox(2)
+	var any := false
+	for i in Game.state.inventory.size():
+		var s = Game.state.inventory[i]
+		if s == null or not Restoration.donatable(s.id) or mus.has(s.id): continue
+		any = true
+		var row := K.hbox(4)
+		row.add_child(K.icon(Art.get_icon(s.id), 16))
+		var nm := K.label(Data.items[s.id].name, 7)
+		nm.custom_minimum_size.x = 200
+		row.add_child(nm)
+		var slot: int = i
+		row.add_child(K.button("Donate", func(): overlay.msg = Restoration.donate(slot); render_overlay(), "small"))
+		list.add_child(row)
+	if not any:
+		list.add_child(K.label("Nothing in your pack the Archive doesn't already have.", 7, K.INK_SOFT, true))
+	v.add_child(K.scroll(list, 150))
 	v.add_child(_close_btn())
 	return pw[0]
 
@@ -2196,7 +2273,10 @@ func _tab_collections() -> Control:
 		cell.tooltip_text = (Data.items[id].name + ": shipped %d" % int(shipped[id])) if shipped.has(id) else "Not shipped yet"
 		sf.add_child(cell)
 	v.add_child(sf)
-	v.add_child(K.label("Museum donations: the Brightwater Community Archive is closed for restoration. Keep your finest finds.", 6, K.INK_SOFT, true))
+	if Restoration.done("archive"):
+		v.add_child(K.label("Museum: %d minerals, gems and artifacts donated to the Community Archive." % Restoration.museum().size(), 6, K.INK_SOFT, true))
+	else:
+		v.add_child(K.label("Museum donations: the Community Archive is closed until it's restored (see Ruth's ledger in the square). Keep your finest finds.", 6, K.INK_SOFT, true))
 	return K.scroll(v, 186)
 
 func _tab_calendar() -> Control:

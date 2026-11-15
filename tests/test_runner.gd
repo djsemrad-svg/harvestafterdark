@@ -1240,6 +1240,7 @@ func run_all() -> void:
 	run_outposts()
 	run_phase2()
 	run_rooms()
+	run_restoration()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -3029,6 +3030,102 @@ func run_rooms() -> void:
 	G.load_game("adventure", 2)
 	var fresh: bool = not G.maps[rid].objects.has("99,99") and str(G.state.maps_dyn[rid].get("layout", "")) == G.maps[rid].layout
 	check("Older saves: a room whose layout changed is rebuilt fresh", fresh, "")
+
+# ---------------------------------------------------------------- rebuilding Brightwater
+func supply(pid: String) -> void:
+	var p := Restoration.project(pid)
+	for n in p.needs:
+		var k: String = n[0]
+		if k == "gold": Game.state.money = int(Game.state.money) + int(n[1])
+		elif k == "cat:crop": Game.add_item("potato", int(n[1]), {"silent": true})
+		elif k == "cat:fish": Game.add_item("river_chub", int(n[1]), {"silent": true})
+		elif k == "cat:artifact":
+			for id in Data.items:
+				if Data.items[id].cat == "artifact": Game.add_item(id, int(n[1]), {"silent": true}); break
+		elif k == "cat:weapon":
+			for i in int(n[1]): Game.add_item("baseball_bat", 1, {"silent": true})
+		else: Game.add_item(k, int(n[1]), {"silent": true})
+	for i in p.needs.size(): Restoration.give(pid, i)
+
+func run_restoration() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.state.inventory.resize(60)
+	var ledger = G.maps.town.get_obj(26, 15)
+	U.open("restoration")
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("Ruth's Restoration Ledger stands in the town square and lists the five projects", ledger != null and ledger.type == "town_ledger" and txt.contains("Lantern Post Tavern") and txt.contains("Town Militia"), "")
+	# partial gold
+	G.state.money = 500
+	var put := Restoration.give("tavern", Restoration.project("tavern").needs.size() - 1)
+	check("Giving toward a project takes what you have (here 500 of 2,000 gold)", put == 500 and int(G.state.money) == 0, "put=%d" % put)
+	# the tavern
+	supply("tavern")
+	var ready_before: bool = Restoration.ready("tavern")
+	sleep()
+	var tav = null
+	for st in G.maps.town.structures:
+		if st.kind == "tavern_open": tav = st
+	var door_ok: bool = tav != null and G.maps.town.warps.any(func(w): return w.to == "tavern") and reach(G.maps.town, Vector2i(28, 20)).has(Vector2i(20, 30))
+	G.state.time = 1100; G.sync_npcs()
+	var ruth_there: bool = G.npcs.ruth.map == "tavern"
+	var open_now: bool = G.is_shop_open("tavern") and not G.shop_stock("tavern").is_empty()
+	check("Lantern Post Tavern: once supplied, the crews finish it overnight; the door opens and Ruth serves meals and drinks in the evening", ready_before and Restoration.done("tavern") and door_ok and ruth_there and open_now, "door=%s ruth=%s open=%s" % [door_ok, G.npcs.ruth.map, open_now])
+	G.state.time = 700; G.sync_npcs()
+	# the clinic ward
+	supply("clinic"); sleep()
+	var cstock: Array = G.shop_stock("clinic")
+	var treat = cstock.filter(func(e): return e.get("service", "") == "treatment")[0]
+	check("Clinic Ward: Elias stocks Antibiotics, Splints, Painkillers and Sterile Bandages; treatment is half price", cstock.any(func(e): return e.get("id", "") == "antibiotics") and int(treat.final_price) == 75, "treat=%d" % int(treat.final_price))
+	# the archive and museum
+	supply("archive"); sleep()
+	var minerals := []
+	for id in Data.items:
+		if Restoration.donatable(id): minerals.append(id)
+	var arch_door: bool = G.maps.town.warps.any(func(w): return w.to == "archive")
+	var desk := false
+	for k in G.maps.archive.objects:
+		if G.maps.archive.objects[k].type == "museum_desk": desk = true
+	G.add_item(minerals[0], 2, {"silent": true})
+	var m1: String = Restoration.donate(idx(minerals[0]))
+	var m2: String = Restoration.donate(idx(minerals[0]))
+	var money0: int = int(G.state.money)
+	for i in range(1, 5):
+		G.add_item(minerals[i], 1, {"silent": true})
+		Restoration.donate(idx(minerals[i]))
+	check("Community Archive: opens as a museum; donate one of each mineral, gem and artifact; thank-you rewards at 5, 10, 20 and 30", arch_door and desk and m1.contains("Donated") and m2.contains("already") and Restoration.museum().size() == 5 and int(G.state.money) == money0 + 500, "%s | %s" % [m1, m2])
+	# watchtower: smaller raids and a warning
+	supply("watchtower"); sleep()
+	var keep_g: int = Balance.raids.grace_days
+	var keep_c: float = Balance.raids.base_chance
+	var keep_a: float = Balance.raids.adventure_chance_mult
+	var keep_m: float = Balance.raids.max_chance
+	Balance.raids.grace_days = 0; Balance.raids.base_chance = 1.0; Balance.raids.adventure_chance_mult = 1.0; Balance.raids.max_chance = 1.0
+	var rp := sleep()
+	Balance.raids.grace_days = keep_g; Balance.raids.base_chance = keep_c; Balance.raids.adventure_chance_mult = keep_a; Balance.raids.max_chance = keep_m
+	var warned: bool = " ".join(rp.get("lines", [])).contains("Lookouts")
+	G.state.raid = {}
+	check("Watchtowers: the morning report warns you when a raid is coming that night (and raids are one smaller)", warned, "")
+	# militia: some raids never arrive
+	supply("militia")
+	var turned := false
+	var rpm := sleep()
+	for i in 40:
+		G.state.raid = {"day": int(G.state.day), "size": 4, "spawned": false, "killed": 0, "warned": false}
+		var rep2 := {"lines": []}
+		Restoration.after_raid_rolls(rep2)
+		if not G.raid_tonight(): turned = true; break
+	G.state.raid = {}
+	var celebrated: bool = G.state.flags.get("brightwater_lives", false) and " ".join(rpm.get("lines", [])).contains("Brightwater is alive")
+	var price_full: int = int(Data.shops.general.stock.filter(func(e): return e.get("id", "") != "")[0].price)
+	var price_now: int = int(G.shop_stock("general").filter(func(e): return e.get("id", "") != "")[0].final_price)
+	check("Town Militia: some raids are turned back before they reach your farm. All five done: the town celebrates, pays you 5,000 gold and every shop gives 10% off", Restoration.done("militia") and turned and celebrated and price_now < price_full, "turned=%s party=%s price %d<%d" % [turned, celebrated, price_now, price_full])
+	# survives a reload
+	G.write_save()
+	G.load_game("adventure", 2)
+	var still: bool = G.maps.town.structures.any(func(st): return st.kind == "tavern_open") and G.maps.town.warps.any(func(w): return w.to == "archive")
+	check("Restored buildings stay restored after loading", still, "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1

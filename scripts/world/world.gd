@@ -1823,6 +1823,10 @@ func interact_object(o: Dictionary) -> void:
 				Game.ui.say("", Game.shop_closed_text(o.shop) if Game.shop_owner_present(o.shop) else "Nobody is behind the counter. " + Game.shop_closed_text(o.shop))
 		"notice_board":
 			Game.ui.open("notices")
+		"town_ledger":
+			Game.ui.open("restoration")
+		"museum_desk":
+			Game.ui.open("museum")
 		"sign":
 			Game.ui.say("", str(o.get("text", "")).replace("$PROPERTY", Game.state.property_name + ". Est. Spring, Year 1."))
 		"forage":
