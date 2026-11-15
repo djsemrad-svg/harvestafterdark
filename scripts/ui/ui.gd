@@ -1940,6 +1940,20 @@ func _tab_skills() -> Control:
 			v.add_child(K.rich(pips, 7))
 			v.add_child(K.label("%d XP%s · Gain by: %s" % [xp, (" · %d to next level" % (nxt - xp)) if lvl < Balance.skills.max_level else " · max level", s.gain], 6, K.INK_SOFT, true))
 			v.add_child(K.label(s.perk, 6, null, true))
+			if id == "mining":
+				for plvl in DeepMine.PERKS:
+					var chosen: String = DeepMine.perks().get(str(plvl), "")
+					if chosen != "":
+						var pk: Dictionary = DeepMine.PERKS[plvl].filter(func(p): return p.id == chosen)[0]
+						v.add_child(K.rich("[color=#3f7a2c]Level %d perk: [b]%s[/b][/color]. %s" % [plvl, pk.name, pk.desc], 6))
+					elif lvl >= plvl:
+						v.add_child(K.rich("[color=#b3392e][b]Choose a level %d perk:[/b][/color]" % plvl, 6))
+						for pk2 in DeepMine.PERKS[plvl]:
+							var pid: String = pk2.id
+							var pl: int = plvl
+							v.add_child(K.button("%s: %s" % [pk2.name, pk2.desc], func(): DeepMine.choose(pl, pid); render_overlay(), "small"))
+					else:
+						v.add_child(K.label("Level %d perk: choose one of %s." % [plvl, " or ".join(DeepMine.PERKS[plvl].map(func(p): return p.name))], 6, K.INK_SOFT, true))
 		box.add_child(v)
 		g.add_child(box)
 	return K.scroll(g, 186)
@@ -2142,6 +2156,27 @@ func _tab_collections() -> Control:
 				cell.tooltip_text = "Not discovered yet"
 			flow_c.add_child(cell)
 		v.add_child(flow_c)
+	# the fish journal: how many of each fish you've landed and your biggest
+	var flog: Dictionary = Game.state.get("fish_log", {}) if Game.state.get("fish_log") is Dictionary else {}
+	v.add_child(K.rich("[b]Fish Journal[/b]  [color=#7a5434]%d/%d species landed[/color]" % [flog.size(), Data.fish.size()], 7))
+	var fj := GridContainer.new()
+	fj.columns = 3
+	var fids: Array = Data.fish.keys()
+	fids.sort_custom(func(a, b): return Data.fish[a].name < Data.fish[b].name)
+	for fid in fids:
+		var row := K.hbox(2)
+		var ic2 := K.icon(Art.get_icon(fid), 12)
+		if not flog.has(fid): ic2.modulate = Color(0, 0, 0, 0.45)
+		row.add_child(ic2)
+		var rng_in := Angling.size_range(fid)
+		var txt2: String = ("%s  x%d, best %s" % [Data.fish[fid].name, int(flog[fid].n), Angling.fmt(float(flog[fid].best))]) if flog.has(fid) else "???"
+		var lb := K.label(txt2, 5, K.INK if flog.has(fid) else K.INK_SOFT)
+		lb.custom_minimum_size.x = 120
+		row.add_child(lb)
+		row.tooltip_text = ("%s: %s to %s" % [Data.fish[fid].name, Angling.fmt(rng_in.x), Angling.fmt(rng_in.y)]) if flog.has(fid) else "Not caught yet"
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		fj.add_child(row)
+	v.add_child(fj)
 	# shipping log: every crop, forage, fish and artisan good you've sent out in the trade crate
 	var ship_ids := []
 	for id in Data.items:

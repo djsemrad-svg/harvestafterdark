@@ -428,6 +428,7 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		if not cands.is_empty():
 			var ct: Vector2i = cands[r.randi() % cands.size()]
 			m.add_obj(ct.x, ct.y, "supply_crate", {"quality": clampf(floor_n / 20.0, 0.0, 1.0)})
+	DeepMine.shape_floor(m, r)
 	var count := r.randi_range(band.enemy_count[0], band.enemy_count[1])
 	var free := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 9)
 	for i in count:

@@ -1237,6 +1237,7 @@ func run_all() -> void:
 	run_halvorsen()
 	run_raiders()
 	run_outposts()
+	run_phase2()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2884,6 +2885,113 @@ func run_outposts() -> void:
 	U.close_all()
 	var got_back: bool = G.state.get("stolen", []).is_empty() and G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone") > iron0
 	check("Whatever they took is piled up at Dry Creek, and you can take it back", got_back and G.maps.dry_creek.get_obj(19, 24) != null, "")
+
+# ---------------------------------------------------------------- phase 2: fish journal, bait shack, trees, the Foreman, perks
+func run_phase2() -> void:
+	var G = Game
+	start("adventure", 2)
+	# sizes and the journal
+	at("town", 14, 32, "down")
+	G.fishing = {"phase": "bite"}
+	W.finish_catch("river_chub")
+	G.fishing = {"phase": "bite"}
+	W.finish_catch("river_chub")
+	var e: Dictionary = G.state.get("fish_log", {}).get("river_chub", {})
+	var rr := Angling.size_range("river_chub")
+	U.open("journal", {"tab": "collections"})
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("Every catch has a size; the Fish Journal (Collections tab) counts each fish and keeps your record", int(e.get("n", 0)) == 2 and float(e.best) >= rr.x and float(e.best) <= rr.y and txt.contains("Fish Journal") and txt.contains("River Chub  x2"), str(e))
+	# Wren's Bait Shack
+	var town: GameMap = G.maps.town
+	var shack_door = null
+	for w in town.warps:
+		if w.to == "baitshack": shack_door = w
+	var seen := reach(town, Vector2i(28, 20))
+	var door_ok: bool = shack_door != null and seen.has(Vector2i(shack_door.x, shack_door.y + 1))
+	while G.weekday() in ["Thu"]: sleep()
+	G.state.time = 660; G.sync_npcs()
+	var stock: Array = G.shop_stock("baitshack").map(func(x): return x.get("id", ""))
+	check("Wren reopened her mom's bait shop on the riverbank (closed Thursdays): bait, tackle, rods and crab pots, and she buys fish", door_ok and G.npcs.wren.map == "baitshack" and stock.has("bait") and stock.has("fishing_rod_bamboo") and stock.has("spinner") and Data.shops.baitshack.buys.has("fish"), "door=%s wren=%s" % [door_ok, G.npcs.wren.map])
+	# trees: seeds, planting, regrowth
+	var keep: float = Balance.trees.seed_chance
+	Balance.trees.seed_chance = 1.0
+	at("homestead", 20, 30)
+	var hm: GameMap = G.maps.homestead
+	clear_tile(hm, 21, 30); clear_tile(hm, 23, 30)
+	hm.add_obj(21, 30, "tree")
+	G.map.drops.clear()
+	W.break_object(hm.get_obj(21, 30))
+	Balance.trees.seed_chance = keep
+	var dropped: bool = G.map.drops.any(func(d): return d.id == "acorn")
+	var stump: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	G.add_item("acorn", 1, {"silent": true})
+	W.place_at(Vector2i(23, 30), "acorn")
+	var sap = hm.get_obj(23, 30)
+	var planted: bool = sap != null and sap.type == "sapling" and sap.kind == "tree"
+	for i in int(Balance.trees.sapling_days): sleep()
+	var grown = hm.get_obj(23, 30)
+	var farm_stump_stays: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	check("Trees: a felled tree can drop an Acorn (or a Pine Cone from a pine); plant it on your farm and it grows into a tree in %d days" % int(Balance.trees.sapling_days), dropped and stump and planted and grown != null and grown.type == "tree" and farm_stump_stays, "drop=%s planted=%s grown=%s" % [dropped, planted, grown.type if grown != null else "none"])
+	# wild stumps sprout
+	var mtn: GameMap = G.maps.mountain
+	var stumps := []
+	for kk in mtn.objects:
+		if mtn.objects[kk].type == "stump": stumps.append(mtn.objects[kk])
+	if stumps.is_empty():
+		var sp: Vector2i = W.free_tile_near(mtn, 10, 20)
+		stumps.append(mtn.add_obj(sp.x, sp.y, "stump"))
+	var st0: Dictionary = stumps[0]
+	var sx: int = int(st0.x); var sy: int = int(st0.y)
+	var keep2: float = Balance.trees.stump_sprout_chance
+	Balance.trees.stump_sprout_chance = 1.0
+	for i in int(Balance.trees.stump_regrow_days): sleep()
+	Balance.trees.stump_sprout_chance = keep2
+	var wild = mtn.get_obj(sx, sy)
+	check("Out in the wild, stumps left alone sprout into saplings again (not on your farm)", wild != null and wild.type in ["sapling", "tree", "pine"], wild.type if wild != null else "none")
+	# the Foreman on floor 10
+	G.change_map("mine", 0, 0, "down", {"floor": 10})
+	var boss = null
+	for en in G.enemies:
+		if en.type == "boss_foreman": boss = en
+	var no_ladder := true
+	for kk in G.map.objects:
+		if G.map.objects[kk].get("has_ladder", false) or G.map.objects[kk].type == "ladder_down": no_ladder = false
+	G.map.drops.clear()
+	if boss != null: W.cb.damage(boss, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var ladder := false
+	for kk in G.map.objects:
+		if G.map.objects[kk].type == "ladder_down": ladder = true
+	var paid: bool = G.map.drops.any(func(d): return d.id == "iron_bar")
+	G.change_map("mine", 0, 0, "down", {"floor": 10})
+	var again: bool = G.enemies.any(func(en): return en.type == "boss_foreman")
+	check("Mine floor 10: the Foreman blocks the way down; putting him down opens a ladder and his strongbox (once); he doesn't come back", boss != null and no_ladder and ladder and paid and not again, "boss=%s ladder=%s paid=%s again=%s" % [boss != null, ladder, paid, again])
+	# cave fishing
+	G.change_map("mine", 0, 0, "down", {"floor": 20})
+	var water := 0
+	for t in range(G.map.w * G.map.h):
+		if G.map.tile_at(t % G.map.w, t / G.map.w) == "water": water += 1
+	var fish := {}
+	for i in 400: fish[W.pick_fish(G.map.fish_zone)] = true
+	var rim_ok := false
+	for t in range(G.map.w * G.map.h):
+		var v := Vector2i(t % G.map.w, t / G.map.w)
+		if G.map.tile_at(v.x, v.y) == "water":
+			for dd in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				if G.map.floor_tiles.has(v + dd): rim_ok = true
+	check("Cave fishing: still pools on some mine floors (always on floor 20) with Cave Blindfish; the Lantern Queen lives in the deepest one", water >= 6 and G.map.fish_zone == "mine" and fish.has("cave_blindfish") and rim_ok and not Data.items.cave_blindfish.has("todo"), "water=%d fish=%s" % [water, fish.keys().slice(0, 4)])
+	# mining perks
+	G.state.skills.mining.xp = int(Balance.skills.xp_table[5])
+	var pend: Array = DeepMine.pending()
+	DeepMine.choose(5, "prospector")
+	G.state.skills.mining.xp = int(Balance.skills.xp_table[10])
+	var cost0: float = G.tool_energy_cost("pickaxe", 4)
+	DeepMine.choose(10, "strongarm")
+	var cost1: float = G.tool_energy_cost("pickaxe", 4)
+	U.open("journal", {"tab": "skills"})
+	var sk := ui_text(U.overlay_root)
+	U.close_all()
+	check("Mining perks: pick one at level 5 and one at level 10 in the Skills tab (Strongarm halves pickaxe energy)", pend == [5] and DeepMine.has_perk("prospector") and DeepMine.has_perk("strongarm") and cost1 < cost0 and sk.contains("Prospector"), "pend=%s cost %.1f > %.1f" % [pend, cost0, cost1])
 
 func count_nodes(n: Node) -> int:
 	var c := 1

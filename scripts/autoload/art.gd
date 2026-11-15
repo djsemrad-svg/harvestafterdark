@@ -1494,6 +1494,8 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 	var d: Dictionary = Data.obj_defs.get(o.type, {})
 	var k := ""
+	if o.type == "sapling":
+		k += "|g%d%s" % [Woodland.stage(o), o.get("kind", "tree")]
 	if o.type == "stolen_goods":
 		k += "|s%s" % (Game.state.get("stolen") is Array and not Game.state.stolen.is_empty())
 	if d.get("barrier", false):

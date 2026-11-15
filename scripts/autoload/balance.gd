@@ -151,7 +151,12 @@ var achievements := {
 }
 
 ## Fruit trees from saplings (item sheet): days to grow up before they fruit.
-var trees := {"grow_days": 28}
+var trees := {"grow_days": 28,
+	"seed_chance": 0.35,         # a felled tree drops an Acorn or Pine Cone
+	"sapling_days": 12,          # a planted seed becomes a full tree
+	"stump_regrow_days": 7,      # wild stumps left this long can sprout again
+	"stump_sprout_chance": 0.3,  # each night after that
+}
 
 ## Searching wrecks, suitcases and crates.
 var loot := {"respawn_days": 7}

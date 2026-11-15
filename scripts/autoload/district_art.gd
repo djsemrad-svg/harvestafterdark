@@ -190,6 +190,33 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			a.R(x, 1, 2, 2, 7, "#6a4a2a"); a.R(x, 21, 2, 2, 7, "#6a4a2a"); a.R(x, 1, 3, 22, 1, "#7a5a36")
 			a.R(x, 3, 4, 18, 4, "#6a6a62"); a.R(x, 6, 5, 4, 2, "#a82a2a")   # sheet-metal shield, a red rag
 			return [a.outline(x, "#1e1410"), -4, -28]
+		"sapling":
+			var pine: bool = o.get("kind", "tree") == "pine"
+			var leaf := "#2f6a42" if pine else "#4a8a3a"
+			var leaf2 := "#3f7a52" if pine else "#62a44a"
+			match Woodland.stage(o):
+				0:
+					a.R(x, 5, 12, 6, 2, "#6a4a2a"); a.R(x, 7, 10, 1, 2, "#5a9a42"); a.P(x, 8, 10, "#7ac05a")
+					return [x, 0, 0]
+				1:
+					a.R(x, 5, 13, 6, 2, "#6a4a2a"); a.R(x, 7, 7, 1, 6, "#6a4a2a"); a.R(x, 5, 6, 3, 2, leaf2); a.R(x, 8, 4, 3, 2, leaf)
+					return [a.outline(x, "#1a2a14"), 0, 0]
+				2:
+					x = a.img(16, 24)
+					a.R(x, 7, 12, 2, 12, "#6a4a2a")
+					if pine:
+						for i in 4: a.R(x, 7 - i, 2 + i * 3, 2 + i * 2, 3, leaf if i % 2 else leaf2)
+					else:
+						a.R(x, 3, 3, 10, 9, leaf); a.R(x, 4, 4, 5, 4, leaf2); a.P(x, 10, 5, leaf2)
+					return [a.outline(x, "#1a2a14"), 0, -8]
+				_:
+					x = a.img(24, 32)
+					a.R(x, 11, 18, 3, 14, "#6a4a2a"); a.R(x, 12, 18, 1, 14, "#5a3a1e")
+					if pine:
+						for i in 5: a.R(x, 11 - i * 2, 2 + i * 3, 3 + i * 4, 4, leaf if i % 2 else leaf2)
+					else:
+						a.R(x, 4, 3, 16, 15, leaf); a.R(x, 6, 4, 8, 6, leaf2); a.R(x, 14, 9, 4, 4, leaf2); a.R(x, 3, 8, 2, 6, leaf)
+					return [a.outline(x, "#1a2a14"), -4, -16]
 		"stolen_goods":
 			x = a.img(16, 20)
 			a.R(x, 1, 8, 7, 11, "#9a7a4a"); a.R(x, 8, 10, 7, 9, "#8a6a40"); a.R(x, 3, 4, 8, 6, "#a88a5a")

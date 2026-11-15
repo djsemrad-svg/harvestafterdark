@@ -603,6 +603,8 @@ func add_xp(id: String, amt: int) -> void:
 	if after > before:
 		toast("%s reached level %d!" % [Data.skills[id].name, after], "", "gold")
 		Sfx.play("levelup")
+		if id == "mining" and not DeepMine.pending().is_empty():
+			toast("A new Mining perk is ready to choose in the Skills tab.", "", "gold")
 
 func toast(text: String, icon := "", style := "") -> void:
 	if ui:
@@ -783,6 +785,7 @@ func build_persistent_maps() -> void:
 	maps.merge(Districts.all_maps(int(state.seed)))
 	maps.merge(Halvorsen.all_maps(int(state.seed)))
 	maps.merge(Raiders.all_maps(int(state.seed)))
+	Angling.add_to_town(maps)
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
@@ -2038,6 +2041,7 @@ func player_speed() -> float:
 func tool_energy_cost(tool: String, levels: int) -> float:
 	var skill: String = Data.tool_defs.get(tool, {}).get("skill", "")
 	var red = 1.0 - skill_level(skill) * Balance.energy.skill_cost_reduction_per_level if skill != "" else 1.0
+	if tool == "pickaxe" and DeepMine.has_perk("strongarm"): red *= 0.5
 	return max(1.0, snappedf(Balance.energy.tool_base_cost * levels * mode_cfg().tool_energy_mult * survival_mult("energy") * red, 0.1))
 
 func can_capacity() -> int:
@@ -3325,6 +3329,7 @@ func end_day(reason: String) -> void:
 			if o.type == "rain_collector":
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
 			overnight_object(maps[mid], o, rep)
+	Woodland.overnight(maps)
 	animals_overnight(rep)
 	conditions_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)

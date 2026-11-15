@@ -1014,6 +1014,9 @@ func _init() -> void:
 	Halvorsen.register(self)
 	Raiders.register(self)
 	Safehouses.register(self)
+	Angling.register(self)
+	Woodland.register(self)
+	DeepMine.register(self)
 
 
 func item(id: String) -> Dictionary:

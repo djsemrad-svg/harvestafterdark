@@ -376,11 +376,14 @@ func break_object(o: Dictionary) -> void:
 		var q := 1
 		if not gem:
 			q += (1 if rng.randf() < 0.4 else 0) + (1 if rng.randf() < Game.skill_level("mining") * 0.04 else 0)
+			if DeepMine.has_perk("prospector") and rng.randf() < 0.25: q += 1
+		elif DeepMine.has_perk("geologist") and rng.randf() < 0.3:
+			q += 1
 		spawn_drop(o.ore, q, c)
 		if not gem and rng.randf() < 0.5:
 			spawn_drop("stone", 1, c)
 	if o.type == "geode_rock":
-		spawn_drop(o.get("geode", "geode"), 1, c)
+		spawn_drop(o.get("geode", "geode"), 2 if DeepMine.has_perk("geologist") and rng.randf() < 0.3 else 1, c)
 	if o.type == "rock" and m.mine:
 		if rng.randf() < 0.008:
 			var keys := Data.artifacts.keys()
@@ -397,8 +400,9 @@ func break_object(o: Dictionary) -> void:
 		Game.add_xp(def.xp[0], def.xp[1])
 	if def.has("becomes"):
 		m.add_obj(ox, oy, def.becomes)
+	Woodland.on_felled(o.type, c, self)
 	if m.mine and o.type in ["rock", "ore_rock", "geode_rock"] and m.floor_n < Balance.mining.max_floor_phase1 and not m.ladder_shown:
-		if o.get("has_ladder", false) or rng.randf() < Balance.mining.ladder_chance_per_rock:
+		if o.get("has_ladder", false) or rng.randf() < Balance.mining.ladder_chance_per_rock * (1.6 if DeepMine.has_perk("excavator") else 1.0):
 			m.add_obj(ox, oy, "ladder_down")
 			m.ladder_shown = true
 			Game.toast("You uncovered a ladder leading down!", "", "gold")
@@ -487,6 +491,11 @@ func place_at(t: Vector2i, id: String) -> void:
 	var extra := {}
 	var pd: Dictionary = Data.obj_defs.get(it.place, {})
 	if it.place == "chest" or pd.has("storage"): extra = {"items": []}
+	if it.has("tree_seed"):
+		if not m.outdoor:
+			Game.toast("Trees need to be planted outside.", id, "warn")
+			return
+		extra = {"kind": it.tree_seed, "g": 0}
 	if it.place == "fruit_tree":
 		extra = {"fruit": it.tree_fruit, "age": 0, "planted": int(Game.state.day)}
 		if not m.outdoor and m.id != "greenhouse":
@@ -939,6 +948,8 @@ func kill_enemy(e: Dictionary) -> void:
 	if d.get("human", false):
 		raider_down(e, d)
 		return
+	if e.type == "boss_foreman":
+		DeepMine.foreman_down(e.pos, self)
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
@@ -1630,6 +1641,7 @@ func pick_fish(zone: String) -> String:
 	var pool := []
 	for id in Data.fish:
 		var d: Dictionary = Data.fish[id]
+		if id == "lantern_queen" and (not Game.map.mine or Game.map.floor_n < int(Balance.mining.max_floor_phase1)): continue
 		if d.locs.has(zone) and d.seasons.has(s) and int(st.time) >= d.time[0] and int(st.time) < d.time[1] and (d.weather == "any" or (d.weather == "rain" and rainy)):
 			pool.append({"id": id, "w": d.w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
@@ -1707,6 +1719,11 @@ func finish_catch(id: String) -> void:
 		Game.quest_event("catch", {"n": 1})
 		Game.contract_event("catch", {"map": Game.map.id})
 		Sfx.play("catch")
+		var size := Angling.roll_size(id)
+		var record := Angling.log_catch(id, size)
+		Game.floaters.append({"text": Angling.fmt(size), "pos": Game.player.pos + Vector2(0, -40), "t": 1.6, "color": Color("#c8f0ff")})
+		if record:
+			Game.toast("New record: %s, %s!" % [Data.items[id].name, Angling.fmt(size)], id, "gold")
 	else:
 		Sfx.play("pickup")
 	var bob: Vector2 = Game.fishing.bob if Game.fishing != null and Game.fishing.has("bob") else Game.player.pos
