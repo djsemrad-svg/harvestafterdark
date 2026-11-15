@@ -249,6 +249,15 @@ var bombs := {
 }
 
 ## Injuries and sickness (scripts/world/injuries.gd, Game "injuries and sickness").
+var raider_raids := {
+	"after_days": 5,            # days after your first visit to Dry Creek before they come for you
+	"chance": 0.07,             # per night (not on nights the infected raid)
+	"adventure_mult": 0.5,
+	"size": [2, 4],
+	"steal_per": 2,             # stacks each raider that gets through carries off
+	"warn_time": 1080,          # 6 pm
+}
+
 var hordes := {
 	"nest_hp": 900,
 	"xp": 200,

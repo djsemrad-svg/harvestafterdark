@@ -143,8 +143,8 @@ const ACHIEVEMENTS := [
 	{"id": "heavy_metal", "title": "Heavy Metal", "desc": "Put down 1,000 infected with any chainsaw.", "stat": "chainsaw", "goal": 1000, "reward": "redline"},
 	{"id": "worthless_fortune", "title": "Worthless Fortune", "desc": "Earn 1,000,000 gold in total.", "stat": "earned", "goal": 1000000, "reward": "gold_sneakers"},
 	{"id": "ghost", "title": "Ghost", "desc": "Destroy a Horde Nest without its horde ever noticing you.", "stat": "ghost_nests", "goal": 1, "reward": "whisper"},
-	{"id": "drive_thru", "title": "Drive-Thru", "desc": "Clear 5 fast food restaurants.", "todo": "Needs fast food restaurants.", "reward": "burger_mascot_suit"},
-	{"id": "comfort_zone", "title": "Comfort Zone", "desc": "Sleep in 50 different safehouses.", "todo": "Needs safehouses.", "reward": "bunny_slippers"},
+	{"id": "drive_thru", "title": "Drive-Thru", "desc": "Clear 5 fast food restaurants: put down every infected inside.", "stat": "fast_food", "goal": 5, "reward": "burger_mascot_suit"},
+	{"id": "comfort_zone", "title": "Comfort Zone", "desc": "Sleep in 25 different safehouses: district buildings you've cleared, using a Sleeping Bag.", "stat": "safehouses", "goal": 25, "reward": "bunny_slippers"},
 ]
 
 ## New quest items: [name, description, icon shape, colour].

@@ -21,7 +21,8 @@ func _ready() -> void:
 	add_child(view)
 
 func on_map_changed() -> void:
-	spawn_map_enemies()
+	if not Game.no_spawn_once:
+		spawn_map_enemies()
 	if view:
 		view.snap_camera()
 
@@ -958,6 +959,7 @@ func kill_enemy(e: Dictionary) -> void:
 		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
+	Game.check_room_cleared()
 
 ## A raider goes down: their own drops (no infected leftovers), and they count as raiders.
 func raider_down(e: Dictionary, d: Dictionary) -> void:
@@ -970,6 +972,7 @@ func raider_down(e: Dictionary, d: Dictionary) -> void:
 			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.raiders_defeated = int(Game.state.stats.get("raiders_defeated", 0)) + 1
+	Game.check_room_cleared()
 	Game.contract_event("kill", {"type": e.type, "stealth": e.get("stealth_killed", false)})
 	if d.get("boss", false):
 		Game.contract_event("boss", {"type": e.type, "at": e.pos})
@@ -1881,6 +1884,8 @@ func interact_object(o: Dictionary) -> void:
 				Game.ui.say("", info + ("" if have > 0 else " You have no coal."))
 		"solar_panel":
 			Game.ui.say("", "Solar Panel. %s It powers devices within %d tiles." % ["Charged from today's sun." if Game.source_supply(o) > 0 else "Too cloudy today to charge.", Balance.power.radius_tiles])
+		"stolen_goods":
+			Raiders.return_stolen()
 		"rain_collector":
 			var w := int(o.get("water", 0))
 			if w <= 0:

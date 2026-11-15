@@ -45,7 +45,126 @@ const ROOM := ["WWWWWWWWWWWWWW", "WGGSQwWWwQSKFW", "W............W", "WNNNNNN..h
 	"W.hTh....RRR.W", "W..z.....RRR.W", "WEE.......z..W", "WOO.U..L...CCW", "WWWWWW..WWWWWW"]
 const LOOK := {"roof": "#3a3430", "roof2": "#2c2824", "wall": "#7a6a5a", "trim": "#2a2018", "sign": "DRY CREEK MC", "windows": 1, "condition": 1, "boarded": true}
 
+## Farm raids: once you've been to Dry Creek, the crew sometimes comes for your
+## supplies at night. They break into chests (never Lockboxes) and pile what
+## they take at their camp, where you can get it back.
+static func roll_farm_raid(for_day: int) -> void:
+	var B: Dictionary = Balance.raider_raids
+	var G = Game
+	G.state.raider_raid = {}
+	var met: int = int(G.state.flags.get("met_raiders_day", -1))
+	if met < 0 or for_day < met + int(B.after_days) or G.raid_tonight():
+		return
+	var chance: float = float(B.chance) * (1.0 if G.is_survivor() else float(B.adventure_mult))
+	if G.rng.randf() < chance:
+		G.state.raider_raid = {"day": for_day, "size": G.rng.randi_range(int(B.size[0]), int(B.size[1])), "warned": false}
+
+static func farm_raid_tonight() -> bool:
+	var r = Game.state.get("raider_raid")
+	return r is Dictionary and int(r.get("day", -1)) == int(Game.state.day)
+
+static func farm_raid_tick() -> void:
+	if not farm_raid_tonight(): return
+	var r: Dictionary = Game.state.raider_raid
+	if int(Game.state.time) >= int(Balance.raider_raids.warn_time) and not r.warned:
+		r.warned = true
+		Game.toast("Engines on the south road. Raiders from Dry Creek are out tonight. Lock up what you can't lose.", "", "bad")
+
+## Every chest on the farm that raiders can open (Lockboxes can't be).
+static func farm_chests() -> Array:
+	var out := []
+	var ids := ["homestead", "house"]
+	for b in Game.state.get("buildings", []): ids.append(b.kind)
+	for mid in ids:
+		if not Game.maps.has(mid): continue
+		for kk in Game.maps[mid].objects:
+			var o: Dictionary = Game.maps[mid].objects[kk]
+			if o.type == "part" or o.type == "lockbox" or not Game.obj_def(o).has("storage"): continue
+			if o.get("items") is Array and o.items.any(func(s): return s != null):
+				out.append(o)
+	return out
+
+static func resolve_farm_raid() -> Array:
+	if not farm_raid_tonight(): return []
+	var B: Dictionary = Balance.raider_raids
+	var G = Game
+	var r: Dictionary = G.state.raider_raid
+	G.state.raider_raid = {}
+	var left: int = int(r.size)
+	var m: GameMap = G.maps.homestead
+	G.start_generators(m)
+	G.compute_power(m)
+	var turret_stops := 0
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		if o.type == "part" or left <= 0: continue
+		var d: Dictionary = G.obj_def(o)
+		if not d.get("turret", false): continue
+		var ok: bool = int(o.get("ammo_n", 0)) >= int(d.ammo_per_kill) if d.has("ammo") else o.get("powered", false)
+		if ok:
+			if d.has("ammo"): o.ammo_n = int(o.ammo_n) - int(d.ammo_per_kill)
+			turret_stops += 1
+			left -= 1
+	var dog_stops := 0
+	for a in G.state.animals:
+		if a.type == "guard_dog" and G.animal_mature(a) and left > 0:
+			dog_stops += 1
+			left -= 1
+	var head := "Raiders from Dry Creek hit your farm last night (%d of them)." % int(r.size)
+	var parts := []
+	if turret_stops > 0: parts.append("your turrets drove off %d" % turret_stops)
+	if dog_stops > 0: parts.append("your dog chased off %d" % dog_stops)
+	var lines := [head + (" " + " and ".join(parts).substr(0, 1).to_upper() + " and ".join(parts).substr(1) + "." if not parts.is_empty() else "")]
+	if left <= 0:
+		lines.append("They left with nothing.")
+		return lines
+	var took := []
+	var chests := farm_chests()
+	for i in left * int(B.steal_per):
+		chests = chests.filter(func(c): return c.items.any(func(s): return s != null))
+		if chests.is_empty(): break
+		var c: Dictionary = chests[G.rng.randi() % chests.size()]
+		var slots := []
+		for j in c.items.size():
+			if c.items[j] != null: slots.append(j)
+		var j2: int = slots[G.rng.randi() % slots.size()]
+		var st: Dictionary = c.items[j2]
+		c.items[j2] = null
+		if not (G.state.get("stolen") is Array): G.state.stolen = []
+		G.state.stolen.append(st)
+		took.append("%s x%d" % [Data.items[st.id].name, int(st.qty)])
+	if took.is_empty():
+		var locked := false
+		for mid in ["homestead", "house"]:
+			for kk in G.maps[mid].objects:
+				if G.maps[mid].objects[kk].type == "lockbox": locked = true
+		lines.append("Your lockboxes held. They found nothing they could carry off." if locked else "They found nothing worth taking.")
+	else:
+		lines.append("They broke into your chests and took: %s. Lockboxes keep things safe from them." % ", ".join(took))
+		lines.append("What they took is piled up at their camp in Dry Creek. You can take it back.")
+	return lines
+
+## The pile of stolen goods at Dry Creek: take back what they took.
+static func return_stolen() -> void:
+	var G = Game
+	var stolen: Array = G.state.get("stolen", []) if G.state.get("stolen") is Array else []
+	if stolen.is_empty():
+		G.ui.say("", "A tarp over crates and sacks. Supplies from farms all over the county. Nothing of yours, right now.")
+		return
+	var back := 0
+	for st in stolen.duplicate():
+		var extra: Dictionary = st.duplicate()
+		extra.erase("id"); extra.erase("qty")
+		var left: int = G.add_item(st.id, int(st.qty), {"silent": true, "extra": extra})
+		if left > 0 and G.world: G.world.spawn_drop(st.id, left, G.player.pos)
+		stolen.erase(st)
+		back += 1
+	G.state.stolen = stolen
+	G.toast("You take back what they stole from you (%d stack%s)." % [back, "" if back == 1 else "s"], "", "gold")
+	Sfx.play("pickup")
+
 static func register(d) -> void:
+	d.obj_defs["stolen_goods"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true, "name": "Stolen Goods"}
 	for id in ENEMIES:
 		var e: Dictionary = ENEMIES[id].duplicate(true)
 		e.look = d.enemies.shambler.look.duplicate(true)
@@ -126,6 +245,7 @@ static func camp(world_seed: int) -> GameMap:
 	m.add_obj(16, 23, "car_wreck", {"w": 2, "loot": ["vehicle", "biker_bar"], "quality": 0.3})
 	m.add_obj(30, 24, "car_wreck", {"w": 2, "loot": ["vehicle", "gun_store"], "quality": 0.3})
 	Districts._place(m, 25, 23, "police_car")
+	m.add_obj(19, 24, "stolen_goods", {"anchor": true})
 	m.add_obj(34, 16, "supply_crate", {"loot": ["biker_bar", "gun_store"], "quality": 0.5})
 	m.add_obj(21, 22, "supply_crate", {"loot": ["biker_bar", "vehicle"], "quality": 0.4})
 	for c in [[33, 23], [34, 23], [24, 14]]:

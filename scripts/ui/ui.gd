@@ -721,6 +721,7 @@ func hint_text() -> String:
 			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
+		if o.type == "stolen_goods": return "E: Search the stolen goods"
 		if names.has(o.type): return "E: " + names[o.type]
 		if o.type == "boulder" or o.type == "big_stump": return Data.obj_defs[o.type].hint
 	var stc = m.structure_at(t.x, t.y)
@@ -1801,6 +1802,7 @@ func _tab_inventory() -> Control:
 		var tags := []
 		if fl.sellable: tags.append("[bgcolor=#a87a10][color=white] Sellable (%d) [/color][/bgcolor]" % it.price)
 		if it.has("treat"): tags.append("[bgcolor=#b03a3a][color=white] Treatment [/color][/bgcolor]")
+		elif it.get("sleep_bag", false): tags.append("[bgcolor=#3a5a8a][color=white] Bedroll [/color][/bgcolor]")
 		elif fl.edible: tags.append("[bgcolor=#c8642a][color=white] Edible [/color][/bgcolor]")
 		if fl.donatable: tags.append("[bgcolor=#7a4aa0][color=white] Collectible [/color][/bgcolor]")
 		if fl.placeable: tags.append("[bgcolor=#4a7a6a][color=white] Placeable [/color][/bgcolor]")

@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 15, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 219 / 219 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 227 / 227 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -61,7 +61,7 @@ Working:
 - 23 crafting stations, each placeable with its own recipe list. Machines take jobs (Grain Mill, Oil Press, Fermentation Barrel, Loom, Still, Dehydrator, Butter Churn, Cheese Press, Compost Bin, Water Purifier, Seed Maker, plus the old ones). Producers make things over time (Bee House, Worm Bin, Mushroom Log, Well). Anvil upgrades tools on the spot with 5 bars.
 - Cooking (63 recipes at the stove, campfire or cookstove) with health, energy and timed buffs (move speed, crit chance, stamina, melee damage, damage reduction, max health, night vision, easier fishing), shown as status badges.
 - 20 new crops, 6 fruit trees (saplings grow in 28 days, fruit in season), 20 new forage items, 20 new fish, crab pots, rods and tackle, ducks and quail in the coop, tin/zinc/lead ores and bronze/brass/steel bars, new gems, minerals and geodes, artifacts, junk and zombie drops, new ammo types, bags that add pack slots, traps and mines, metal gates, concrete walls, crossbow and flame turrets, wind turbine, decoy radio, storage, paths, lights and decorations, dirty water (boil it), Builder's Hammer, Gold Pan, Seed Spreader, Flashlight, scythe upgrades.
-- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory (barn animals, crop quality, pests, frost, crows, the growing bonuses and medical items are now done): swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
+- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory (barn animals, crop quality, pests, frost, crows, the growing bonuses and medical items are now done): swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, map table, ham radio, tool belt, ammo pouch.
 
 ### Weapons, gear and the infected (stage 1 of 3, added Nov 13)
 
@@ -120,7 +120,7 @@ All in `scripts/world/contracts.gd`. Rewards are the items whose "How to Obtain"
 - Quest items for "find" jobs are there even if the container was searched that week.
 - Achievements (listed in the journal with progress): Finish Line (sprint 5 km), Cardio (25 km), Anchor Leg (100 km), Head Chef (100 meals), They Knew (10 conspiracy notes, found while scavenging), Road Work (search 10 different wrecked cars), Marksman (100 critical kills from 15+ tiles), Into the Dark (mine floor 20), Unseen (day 100 without a bite), Heavy Metal (1,000 chainsaw kills), Worthless Fortune (earn 1,000,000 gold).
 - Adapted from the sheet: Marksman uses critical hits for headshots and 15 tiles instead of 40 (the screen is 30 tiles wide); Finish Line had no goal in the sheet, so it's 5 km; Worthless Fortune counts gold earned; Heavy Metal awards the Redline directly.
-- Not in the game yet (shown greyed in the journal): Drive-Thru (fast food restaurants, Burger Mascot Suit) and Comfort Zone (safehouses, Bunny Slippers). Ghost, Clean Room and Showdown at Dry Creek are done (Nov 15, below).
+- Every achievement and contract reward from the sheets is now in the game (Ghost, Clean Room, Showdown at Dry Creek, Drive-Thru and Comfort Zone were added Nov 15, below).
 
 Stage 2 (done above): Residential District, Industrial District and Riverlands with enterable buildings whose containers use the sheet's "How to Obtain" places (loot tags in `Arsenal`). Stage 3: Cole's contract board, named bosses (Groundskeeper, Juggernaut, Undertaker, Briar King, Crash, Inferno), quest chains and achievements that award the legendaries.
 
@@ -203,6 +203,14 @@ All in `scripts/world/raiders.gd`.
 - Cole's "Showdown at Dry Creek": Dutch Calloway (boss, two revolvers, calls his crew). Twin-Hammer Revolver and 1,800 gold.
 - Fix: farm animals no longer get stuck when something grows on the tile they stand on (this was the guard dog test that failed now and then).
 
+### Fast food, safehouses and farm raids by raiders (added Nov 15)
+
+- Five fast food restaurants: Burger Barn and Slice Palace (Residential), Cluck Hut and Taco Rancho (Industrial), Dockside Dogs (Riverlands). Each always has infected inside (kitchen with fryers, counter, booths). Put down every one inside to clear it. Drive-Thru achievement: clear all 5 for the Burger Mascot Suit.
+- Sleeping Bag (`scripts/world/safehouses.gd`): no longer a placeable. Use it (Sleep button or from the hotbar) to sleep where you are, if it's safe: never at home or in the mine, never with infected in the room, and outdoors only with no awake infected within 10 tiles. You wake where you slept the next morning and nothing comes back into that room overnight. The bag isn't used up.
+- Safehouses: any district, lab or Dry Creek building you sleep in. Comfort Zone achievement: 25 different safehouses for the Bunny Slippers. Adapted from the sheet's 50, since the game has about 34 buildings you can enter.
+- Raiders raid the farm (in `Raiders`, numbers in `Balance.raider_raids`): from 5 days after your first visit to Dry Creek, 7% a night (half in Adventure Mode, never on an infected raid night), 2 to 4 raiders, warning at 6 pm. Turrets and guard dogs each stop one. The rest break into chests on the farm, in the farmhouse and farm buildings and take 2 stacks each. Lockboxes can't be opened. Everything they take is piled up at Dry Creek (blue tarp by the south wall), and you can take it back.
+- Older saves: debris under new district buildings is cleared on load.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -216,7 +224,8 @@ All in `scripts/world/raiders.gd`.
 - `scripts/world/injuries.gd`: medical items and condition names.
 - `scripts/world/hordes.gd`: horde nests.
 - `scripts/world/halvorsen.gd`: Halvorsen Biomedical, Lab 6, Hazmat infected.
-- `scripts/world/raiders.gd`: human raiders and Dry Creek.
+- `scripts/world/raiders.gd`: human raiders, Dry Creek and farm raids.
+- `scripts/world/safehouses.gd`: the Sleeping Bag and safehouses.
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -251,6 +260,6 @@ All in `scripts/world/raiders.gd`.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Still open from the sheets: fast food restaurants (Drive-Thru), safehouses (Comfort Zone), raiders raiding the farm (Lockbox), swamp and cave fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Fast food, safehouses and farm raids are done too (Nov 15). Still open from the sheets: swamp and cave fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, map table, ham radio, tool belt, ammo pouch.
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.

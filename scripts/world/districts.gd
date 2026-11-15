@@ -52,6 +52,7 @@ const PROPS := {
 	"server_rack": {"solid": true},
 	"decon_shower": {"solid": true},
 	"lookout": {"solid": true},
+	"fryer": {"solid": true},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -100,6 +101,9 @@ const ROOMS := {
 	"boathouse": [
 		"WWWWWWWWWWWWWW", "WVSVwSSSwYCSOW", "W.....z......W", "W~~~~~~~~..T.W", "W~~~~~~~~..h.W", "W~~~~~~~~....W",
 		"W............W", "WXX.....z..CCW", "WO...........W", "WNNN.....L..SW", "WWWWWW..WWWWWW"],
+	"fastfood": [
+		"WWWWWWWWWWWWWW", "WFKffKwWwKFVKW", "W.....W......W", "W..z..W..C.z.W", "WNNN.NNN.....W", "W..z.......z.W",
+		"W.hTh..hTh...W", "W............W", "W.hTh.z.hTh.zW", "WL.........OOW", "WWWWWW..WWWWWW"],
 	"church": [
 		"WWWWWWWWWWWWWW", "WCw..LTL...wUW", "W.....z......W", "W..BBB..BBB..W", "W............W", "W..BBB..BBB..W",
 		"W............W", "W..BBB..BBB..W", "W....z.......W", "WO..........OW", "WWWWWW..WWWWWW"],
@@ -109,7 +113,7 @@ const LETTERS := {
 	"F": "loot_fridge", "K": "loot_cabinet", "M": "loot_dresser", "Q": "loot_locker", "G": "loot_gun_case", "Y": "loot_toolbox",
 	"U": "loot_desk", "V": "loot_shelf", "C": "loot_crate", "A": "loot_medicine", "q": "fire_truck",
 	"b": "old_bed", "S": "shelf", "T": "table", "h": "chair", "B": "bench", "N": "counter", "O": "barrel", "X": "crate",
-	"L": "lamp", "R": "rug", "I": "cell_bars", "J": "stall_rail", "H": "hay_bale", "E": "tire_stack", "k": "car_wreck",
+	"f": "fryer", "L": "lamp", "R": "rug", "I": "cell_bars", "J": "stall_rail", "H": "hay_bale", "E": "tire_stack", "k": "car_wreck",
 }
 
 ## Outside looks for the buildings (merged into Data.buildings).
@@ -142,6 +146,11 @@ const LOOKS := {
 	"d_ranger": {"roof": "#4a5a3a", "roof2": "#3a482e", "wall": "#8a6a48", "trim": "#3a2a1a", "sign": "RANGER STATION", "windows": 2, "condition": 2, "chimney": true},
 	"d_cabin": {"roof": "#4a3a2a", "roof2": "#3a2c1e", "wall": "#7a5a3a", "trim": "#3a2a1a", "windows": 1, "condition": 1, "chimney": true},
 	"d_farmhouse": {"roof": "#6a4a3a", "roof2": "#54382c", "wall": "#d0c8b0", "trim": "#5a4a3a", "windows": 2, "condition": 1},
+	"d_burger": {"roof": "#8a2a22", "roof2": "#6e2018", "wall": "#e0c890", "trim": "#8a2a22", "sign": "BURGER BARN", "awning": "#d8a828", "windows": 3, "condition": 1},
+	"d_pizza": {"roof": "#3a5a3a", "roof2": "#2c462c", "wall": "#e8dcc8", "trim": "#a83a2a", "sign": "SLICE PALACE", "awning": "#a83a2a", "windows": 3, "condition": 1},
+	"d_chicken": {"roof": "#c8902a", "roof2": "#a87420", "wall": "#e8e0d0", "trim": "#a83a2a", "sign": "CLUCK HUT", "awning": "#c83a2a", "windows": 2, "condition": 1, "boarded": true},
+	"d_taco": {"roof": "#4a7a6a", "roof2": "#3a6254", "wall": "#e8c8a0", "trim": "#c86a2a", "sign": "TACO RANCHO", "awning": "#e8a020", "windows": 2, "condition": 2},
+	"d_hotdog": {"roof": "#3a5a8a", "roof2": "#2c4870", "wall": "#e0e0d8", "trim": "#c83a2a", "sign": "DOCKSIDE DOGS", "awning": "#e8c020", "windows": 2, "condition": 1},
 	"d_lab": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#d8dcd8", "trim": "#3a6a8a", "sign": "HALVORSEN BIOMEDICAL", "windows": 4, "condition": 2},
 	"d_lab6": {"roof": "#4a4e52", "roof2": "#3a3e42", "wall": "#9a9e9a", "trim": "#c8a020", "sign": "LAB 6", "windows": 0, "condition": 3},
 	"d_booth": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#c8ccc8", "trim": "#3a6a8a", "windows": 1, "condition": 1},
@@ -173,6 +182,8 @@ const DISTRICTS := {
 			{"id": "mh_house3", "kind": "d_house_green", "x": 2, "y": 37, "w": 6, "h": 5, "room": "house", "name": "House on Maple Street", "tags": ["home", "farm"], "q": 0.15, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "mh_ruin2", "kind": "d_ruin", "x": 10, "y": 37, "w": 6, "h": 5, "text": "Burned out. Someone's stenciled \"CHECKED\" on the door frame, with a date that's years old."},
 			{"id": "mh_house4", "kind": "d_house_red", "x": 18, "y": 37, "w": 6, "h": 5, "room": "house2", "name": "House on Maple Street", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "mh_burger", "kind": "d_burger", "x": 34, "y": 4, "w": 8, "h": 5, "room": "fastfood", "name": "Burger Barn", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
+			{"id": "mh_pizza", "kind": "d_pizza", "x": 34, "y": 34, "w": 8, "h": 5, "room": "fastfood", "name": "Slice Palace", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["crawler", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "mh_gas", "kind": "d_gas", "x": 35, "y": 27, "w": 8, "h": 5, "room": "shop", "swap": {"G": "F"}, "name": "Quik Gas", "tags": ["vehicle", "kitchen"], "q": 0.2, "foes": [["shambler", 2], ["runner", 1]]},
 		],
 	},
@@ -189,6 +200,8 @@ const DISTRICTS := {
 			{"id": "ind_bar", "kind": "d_bar", "x": 2, "y": 23, "w": 8, "h": 6, "room": "bar", "name": "The Rusty Spoke", "tags": ["biker_bar"], "q": 0.35, "foes": [["shambler", 2], ["runner", 2]]},
 			{"id": "ind_scrap", "kind": "d_scrap_office", "x": 14, "y": 23, "w": 5, "h": 4, "room": "warehouse", "name": "Scrapyard Office", "tags": ["scrapyard", "garage"], "q": 0.3, "foes": [["shambler", 2]]},
 			{"id": "ind_lumber", "kind": "d_lumber_office", "x": 3, "y": 35, "w": 6, "h": 4, "room": "cabin", "swap": {"G": "Y", "F": "C", "M": "C"}, "name": "Lumber Co. Office", "tags": ["lumber", "construction"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "ind_chicken", "kind": "d_chicken", "x": 25, "y": 3, "w": 7, "h": 5, "room": "fastfood", "name": "Cluck Hut", "tags": ["kitchen"], "q": 0.2, "foes": [["charred", 2], ["shambler", 2], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
+			{"id": "ind_taco", "kind": "d_taco", "x": 38, "y": 21, "w": 7, "h": 4, "room": "fastfood", "name": "Taco Rancho", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["brute", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "ind_mill", "kind": "d_mill", "x": 39, "y": 27, "w": 13, "h": 8, "room": "warehouse", "name": "Mill Works", "tags": ["construction", "scrapyard", "hardware"], "q": 0.55, "foes": [["brute", 2], ["charred", 1], ["spitter_brute", 1], ["shambler", 1]]},
 		],
 	},
@@ -203,6 +216,7 @@ const DISTRICTS := {
 			{"id": "rv_bait", "kind": "d_bait", "x": 32, "y": 15, "w": 5, "h": 5, "room": "shop", "swap": {"G": "V"}, "name": "Bait & Tackle", "tags": ["marina", "wilderness"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "rv_marina", "kind": "d_boathouse", "x": 39, "y": 14, "w": 8, "h": 6, "room": "boathouse", "name": "Marina Boathouse", "tags": ["marina"], "q": 0.35, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "rv_ranger", "kind": "d_ranger", "x": 12, "y": 27, "w": 8, "h": 5, "room": "cabin", "name": "Ranger Station", "tags": ["wilderness", "fire_station"], "q": 0.4, "foes": [["stalker", 1], ["shambler", 2]]},
+			{"id": "rv_hotdog", "kind": "d_hotdog", "x": 33, "y": 8, "w": 6, "h": 5, "room": "fastfood", "name": "Dockside Dogs", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["crawler", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "rv_cabin", "kind": "d_cabin", "x": 3, "y": 36, "w": 6, "h": 5, "room": "cabin", "name": "Hunting Cabin", "tags": ["wilderness", "gun_store"], "q": 0.5, "foes": [["stalker", 2], ["shambler", 1]]},
 		],
 	},
@@ -345,7 +359,7 @@ static func interior_rows(district: String, b: Dictionary, rows: Array, letters 
 					m.add_obj(x, y, t, {"w": 2, "loot": ["vehicle", "garage"]})
 				else:
 					_place(m, x, y, t, {"h": 2} if t == "old_bed" else {})
-	m.foes = {"spots": spots, "table": b.get("foes", [["shambler", 1]]), "chance": 0.55, "asleep": 0.45}
+	m.foes = {"spots": spots, "table": b.get("foes", [["shambler", 1]]), "chance": float(b.get("spot_chance", 0.55)), "asleep": 0.45}
 	return m
 
 # ================================================================ outdoor maps

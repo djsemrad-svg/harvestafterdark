@@ -190,6 +190,18 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			a.R(x, 1, 2, 2, 7, "#6a4a2a"); a.R(x, 21, 2, 2, 7, "#6a4a2a"); a.R(x, 1, 3, 22, 1, "#7a5a36")
 			a.R(x, 3, 4, 18, 4, "#6a6a62"); a.R(x, 6, 5, 4, 2, "#a82a2a")   # sheet-metal shield, a red rag
 			return [a.outline(x, "#1e1410"), -4, -28]
+		"stolen_goods":
+			x = a.img(16, 20)
+			a.R(x, 1, 8, 7, 11, "#9a7a4a"); a.R(x, 8, 10, 7, 9, "#8a6a40"); a.R(x, 3, 4, 8, 6, "#a88a5a")
+			a.R(x, 0, 3, 16, 9, "#4a5a7a"); a.R(x, 0, 3, 16, 1, "#5a6a8a"); a.R(x, 2, 11, 2, 3, "#4a5a7a"); a.R(x, 12, 11, 3, 2, "#4a5a7a")   # a blue tarp over it all
+			a.R(x, 6, 2, 1, 3, "#3a3a3a"); a.R(x, 4, 13, 3, 5, "#c8b070")   # a rope, a sack poking out
+			if Game.state.get("stolen") is Array and not Game.state.stolen.is_empty(): a.R(x, 10, 13, 4, 4, "#c83a2a")   # your red chest lid, right there
+			return [a.outline(x, "#1a1410"), 0, -4]
+		"fryer":
+			a.R(x, 1, 3, 14, 12, "#a8acb0"); a.R(x, 1, 3, 14, 1, "#c8ccd0"); a.R(x, 2, 4, 5, 4, "#3a2a14"); a.R(x, 9, 4, 5, 4, "#3a2a14")
+			a.R(x, 3, 1, 3, 4, "#6a6a70"); a.R(x, 10, 1, 3, 4, "#6a6a70"); a.R(x, 4, 0, 1, 2, "#2a2a2a"); a.R(x, 11, 0, 1, 2, "#2a2a2a")
+			a.R(x, 2, 10, 12, 1, "#7a7e82"); a.P(x, 4, 12, "#c83a2a"); a.P(x, 11, 12, "#40c040")
+			return [a.outline(x, "#1a1c1e"), 0, -2]
 		"lab_bench":
 			a.R(x, 0, 5, 16, 3, "#e0e4e0"); a.R(x, 0, 8, 16, 7, "#7a8a9a"); a.R(x, 1, 9, 6, 5, "#6a7a8a"); a.R(x, 9, 9, 6, 5, "#6a7a8a")
 			var gl = ["#90d0e0", "#b8e060", "#e0a060"][v % 3]

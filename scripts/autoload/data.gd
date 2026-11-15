@@ -1013,6 +1013,7 @@ func _init() -> void:
 	Hordes.register(self)
 	Halvorsen.register(self)
 	Raiders.register(self)
+	Safehouses.register(self)
 
 
 func item(id: String) -> Dictionary:

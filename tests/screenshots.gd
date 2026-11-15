@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "outposts":
+		main.ui.close_all()
+		await outpost_shots()
+		get_tree().quit()
+		return
 	if only == "raiders":
 		main.ui.close_all()
 		await raider_shots()
@@ -419,6 +424,44 @@ func crop_shots() -> void:
 	await shot("95_farm_care")
 	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
 	main.ui.close_all()
+
+func outpost_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+	Game.change_map("residential", 37, 11, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(20)
+	await shot("60_burger_barn")
+	Game.change_map("mh_burger", 6, 9, "up", {"silent": true})
+	Game.player.iframes = 999.0
+	await frames(20)
+	await shot("61_burger_inside")
+	Game.enemies.clear()
+	Game.add_item("sleeping_bag", 1, {"silent": true})
+	for i in Game.state.inventory.size():
+		var st = Game.state.inventory[i]
+		if st != null and st.id == "sleeping_bag": main.ui.open("journal", {"tab": "inventory", "sel": i})
+	await frames(6)
+	await shot("62_sleeping_bag")
+	main.ui.close_all()
+	# a raid on the farm
+	Game.change_map("homestead", 20, 30, "down", {"silent": true})
+	var hm: GameMap = Game.maps.homestead
+	hm.remove_obj(18, 27)
+	hm.add_obj(18, 27, "chest", {"items": [{"id": "iron_bar", "qty": 5}, {"id": "wood", "qty": 40}, {"id": "stone", "qty": 20}]})
+	Game.state.flags.met_raiders_day = 1
+	Game.state.raider_raid = {"day": int(Game.state.day), "size": 2, "warned": true}
+	Game.state.time = 1300
+	Game.end_day("sleep")
+	await frames(6)
+	await shot("63_raid_report")
+	main.ui.close_all()
+	Game.change_map("dry_creek", 19, 26, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(10)
+	await shot("64_stolen_goods")
 
 func raider_shots() -> void:
 	Game.state.mode = "adventure"

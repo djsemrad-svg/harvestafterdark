@@ -799,7 +799,7 @@ func build_persistent_maps() -> void:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
 	sync_gates()
 	# older saves: clear anything sitting where a newer building now stands
-	for id in ["homestead", "town"]:
+	for id in ["homestead", "town"] + Districts.DISTRICTS.keys():
 		var mm: GameMap = maps[id]
 		for st in mm.structures:
 			var tiles := []
@@ -875,6 +875,8 @@ func quit_to_title() -> void:
 		ui.show_title()
 
 # ================================================================ maps
+var no_spawn_once := false     # waking in a safehouse: nothing comes back in overnight
+
 func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	var m: GameMap
 	if id == "mine":
@@ -911,8 +913,12 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	charge = null
 	last_warp_tile = GameMap.k(tx, ty)
 	mountain_night_spawned = false
+	no_spawn_once = opts.get("no_spawn", false)
+	if id == "dry_creek" and not state.is_empty() and not state.flags.has("met_raiders_day"):
+		state.flags.met_raiders_day = int(state.day)
 	if world:
 		world.on_map_changed()
+	no_spawn_once = false
 	if not state.is_empty():
 		contract_event("enter", {"map": id})
 	if not opts.get("silent", false):
@@ -983,6 +989,7 @@ func tick10() -> void:
 	if int(state.time) in [Balance.animals.outside_start, Balance.animals.outside_end]:
 		sync_animals()
 	raid_tick()
+	Raiders.farm_raid_tick()
 	if state.time >= Balance.time.pass_out:
 		pass_out()
 
@@ -2038,6 +2045,8 @@ func can_capacity() -> int:
 
 func eat_item(id: String) -> bool:
 	var it: Dictionary = Data.items.get(id, {})
+	if it.get("sleep_bag", false):
+		return use_sleeping_bag()
 	if not it.has("edible") or not remove_item(id, 1):
 		return false
 	var e: Dictionary = it.edible
@@ -2394,8 +2403,49 @@ func achievement_value(stat: String) -> float:
 		"unbitten_day": return 0.0 if state.flags.get("bitten", false) else float(state.day)
 		"chainsaw": return float(st.get("chainsaw_kills", 0))
 		"ghost_nests": return float(st.get("ghost_nests", 0))
+		"fast_food": return float((st.get("fast_food", {}) as Dictionary).size()) if st.get("fast_food") is Dictionary else 0.0
+		"safehouses": return float((st.get("safehouses", {}) as Dictionary).size()) if st.get("safehouses") is Dictionary else 0.0
 		"earned": return float(st.get("earned", 0))
 	return 0.0
+
+# ================================================================ sleeping bag
+## Sleep where you are, if it's safe. Returns true if you went to sleep.
+func use_sleeping_bag() -> bool:
+	if map == null: return false
+	if map.id == "house":
+		toast("Your own bed is right here.", "", "warn")
+		return false
+	if map.id == "mine":
+		toast("Not down here. Something would find you before morning.", "", "warn")
+		return false
+	var p: Vector2 = player.pos
+	var close := enemies.filter(func(e): return float(e.get("turned", 0.0)) <= 0 and not Data.enemies[e.type].get("nest", false) and (map.indoor or (e.pos.distance_to(p) < Safehouses.SAFE_TILES * 16.0 and e.state != "asleep")))
+	if not close.is_empty():
+		toast("It isn't safe to sleep here. %s" % ("Clear the room first." if map.indoor else "Infected are too close."), "", "warn")
+		return false
+	if Safehouses.counts(map):
+		if not (state.stats.get("safehouses") is Dictionary): state.stats.safehouses = {}
+		if not state.stats.safehouses.has(map.id):
+			state.stats.safehouses[map.id] = true
+			toast("New safehouse: %s (%d)" % [Data.location_names.get(map.id, map.id), state.stats.safehouses.size()], "", "gold")
+		check_achievements()
+	var pt := Vector2i(int(p.x / 16), int(p.y / 16))
+	state.flags.wake_at = {"map": map.id, "x": pt.x, "y": pt.y}
+	end_day("sleep")
+	return true
+
+# ================================================================ cleared rooms
+## After a kill: a fast food restaurant with nothing left in it counts as cleared.
+func check_room_cleared() -> void:
+	if map == null or not map.indoor: return
+	var b := Districts.building(map.id)
+	if not b.get("fast_food", false): return
+	if enemies.any(func(e): return float(e.get("turned", 0.0)) <= 0): return
+	if not (state.stats.get("fast_food") is Dictionary): state.stats.fast_food = {}
+	if state.stats.fast_food.has(map.id): return
+	state.stats.fast_food[map.id] = true
+	toast("%s is clear. (%d of 5 restaurants)" % [b.name, state.stats.fast_food.size()], "", "gold")
+	check_achievements()
 
 # ================================================================ horde nests
 func nests() -> Dictionary:
@@ -3211,6 +3261,7 @@ func end_day(reason: String) -> void:
 			rel.points = max(0, int(rel.points) - Balance.friendship.daily_decay)
 	# 0. tonight's raid plays out while you sleep
 	rep.lines.append_array(resolve_raid(maps.homestead))
+	rep.lines.append_array(Raiders.resolve_farm_raid())
 	# 1. advance the day
 	state.day = int(state.day) + 1
 	state.time = Balance.time.day_start
@@ -3233,6 +3284,7 @@ func end_day(reason: String) -> void:
 	if state.frost_night:
 		rep.lines.append("Frost is forecast for tonight. Cover young crops with Frost Cloth.")
 	roll_raid(int(state.day))
+	Raiders.roll_farm_raid(int(state.day))
 	var new_season := season()
 	if new_season != prev_season:
 		rep.lines.append("A new season begins: %s!%s" % [new_season.capitalize(), " Happy new year!" if season_index() == 0 else ""])
@@ -3342,7 +3394,12 @@ func end_day(reason: String) -> void:
 	# 9. report, 10. save, 11. begin the next day
 	state.last_report = rep
 	clock_acc = 0.0
-	change_map("house", 2, 4, "down", {"silent": true})
+	var wake = state.flags.get("wake_at")
+	state.flags.erase("wake_at")
+	if wake is Dictionary and maps.has(str(wake.map)) and reason == "sleep":
+		change_map(str(wake.map), int(wake.x), int(wake.y), "down", {"silent": true, "no_spawn": true})
+	else:
+		change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
 	sync_animals(true)
 	rep.saved = write_save()

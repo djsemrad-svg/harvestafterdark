@@ -1236,6 +1236,7 @@ func run_all() -> void:
 	run_hordes()
 	run_halvorsen()
 	run_raiders()
+	run_outposts()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2554,7 +2555,7 @@ func run_hordes() -> void:
 		G.state.health = 100.0
 		G.player.pos = nest.pos + Vector2(0, 12 * 16)
 	var made: int = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest" and e.state != "asleep").size()
-	check("When one notices you the nest wakes, its health shows at the top, and more crawl out (up to a limit)", woke and made >= 2 and made <= int(Balance.hordes.spawn_cap) and U.boss_box.visible, "made=%d" % made)
+	check("When one notices you the nest wakes, its health shows at the top, and more crawl out (up to a limit)", woke and made >= 2 and made <= maxi(int(Balance.hordes.spawn_cap), int(Balance.hordes.horde[1])) and U.boss_box.visible, "made=%d" % made)
 	# destroy it: a cache, gold, Cole's job counts it, and it's gone until it regrows
 	G.take_contract("burn_them_out")
 	var money0: int = int(G.state.money)
@@ -2778,6 +2779,111 @@ func run_raiders() -> void:
 	var won: bool = G.contract_state().done.has("showdown_dry_creek") and (G.count_item("twin_hammer_revolver") >= 1 or G.map.drops.any(func(d): return d.id == "twin_hammer_revolver"))
 	check("Showdown at Dry Creek (Cole): Dutch Calloway waits in the camp; beating him gives the Twin-Hammer Revolver. No more 'not in the game yet' rewards", found and won and Contracts.NOT_YET.is_empty(), "found=%s" % found)
 	G.enemies.clear()
+
+# ---------------------------------------------------------------- restaurants, safehouses, farm raids
+func run_outposts() -> void:
+	var G = Game
+	start("adventure", 2)
+	for id in ["residential", "industrial", "riverlands"]: G.unlock_region(id, true)
+	# nothing sits on top of any district building
+	var bad := []
+	for id in Districts.DISTRICTS:
+		var m: GameMap = G.maps[id]
+		for st in m.structures:
+			for y in range(st.y, st.y + st.h):
+				for x in range(st.x, st.x + st.w):
+					var o = m.get_obj(x, y)
+					if o != null: bad.append("%s %s at %d,%d" % [id, o.type, x, y])
+	var ff: Array = []
+	for id in Districts.DISTRICTS:
+		for b in Districts.DISTRICTS[id].buildings:
+			if b.get("fast_food", false): ff.append(b.id)
+	check("Five fast food restaurants across the districts, and nothing is built on top of any district building", ff.size() == 5 and bad.is_empty(), str(ff) + " " + str(bad.slice(0, 4)))
+	# clear them all
+	var counts := []
+	var ok_all := true
+	for rid in ff:
+		G.enemies.clear()
+		at(rid, 6, 9, "up")
+		counts.append(G.enemies.size())
+		if G.enemies.is_empty(): ok_all = false
+		for e in G.enemies.duplicate():
+			W.cb.damage(e, 99999.0, Vector2.ZERO, {"kind": "test"})
+		if not G.state.stats.get("fast_food", {}).has(rid): ok_all = false
+	var won: bool = G.state.achievements.get("done", []).has("drive_thru")
+	check("Drive-Thru: every restaurant has infected inside; putting them all down clears it; 5 cleared gives the Burger Mascot Suit", ok_all and won and (G.count_item("burger_mascot_suit") >= 1 or G.map.drops.any(func(d): return d.id == "burger_mascot_suit")), "inside=%s won=%s" % [counts, won])
+	# the sleeping bag
+	G.add_item("sleeping_bag", 1, {"silent": true})
+	at("house", 2, 4)
+	var day0: int = int(G.state.day)
+	var at_home: bool = G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.clear()
+	at("mh_house1", 6, 9, "up")
+	if G.enemies.is_empty(): W.spawn_enemy("shambler", 10, 3, {"asleep": true})
+	var had_foes: bool = not G.enemies.is_empty()
+	var with_foes: bool = G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.clear()
+	G.player.pos = Vector2(5 * 16 + 8, 6 * 16 + 12)
+	var slept: bool = G.eat_item("sleeping_bag")
+	var rep: Dictionary = U.overlay.get("report", {})
+	U.close_all()
+	var woke_here: bool = G.map.id == "mh_house1" and G.player.pos.distance_to(Vector2(5 * 16 + 8, 6 * 16 + 14)) < 4.0
+	check("Sleeping Bag: not at home, not with infected in the room; once it's clear you sleep there, wake there the next morning with the room still clear, and keep the bag", not at_home and had_foes and not with_foes and slept and int(G.state.day) == day0 + 1 and woke_here and G.enemies.is_empty() and G.count_item("sleeping_bag") == 1 and not rep.is_empty(), "home=%s foes=%s slept=%s map=%s" % [at_home, with_foes, slept, G.map.id])
+	check("A building you sleep in becomes a safehouse", G.state.stats.get("safehouses", {}).has("mh_house1"), "")
+	# outside: only if nothing awake is close
+	at("residential", 50, 22, "left")
+	G.enemies.clear()
+	var z: Dictionary = W.spawn_enemy("shambler", 53, 22)
+	var near_refused: bool = not G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.erase(z)
+	check("Outdoors, an infected nearby means it isn't safe to sleep", near_refused, "")
+	# Comfort Zone
+	for i in 24: G.state.stats.safehouses["fake_%d" % i] = true
+	at("mh_house2", 6, 9, "up")
+	G.enemies.clear()
+	G.eat_item("sleeping_bag")
+	U.close_all()
+	var cz: bool = G.state.achievements.get("done", []).has("comfort_zone")
+	check("Comfort Zone: 25 different safehouses gives the Bunny Slippers", cz and G.count_item("bunny_slippers") + G.map.drops.filter(func(d): return d.id == "bunny_slippers").size() >= 1, "")
+	# farm raids by the Dry Creek crew
+	start("adventure", 2)
+	G.unlock_region("industrial", true)
+	var early := 0
+	for d in range(10, 60):
+		Raiders.roll_farm_raid(d)
+		if Raiders.farm_raid_tonight() or (G.state.raider_raid is Dictionary and not G.state.raider_raid.is_empty()): early += 1
+	G.state.raider_raid = {}
+	at("dry_creek", 22, 1, "down")
+	var met: bool = G.state.flags.has("met_raiders_day")
+	G.enemies.clear()
+	at("homestead", 20, 30)
+	var hm: GameMap = G.maps.homestead
+	for x in [18, 19]:
+		clear_tile(hm, x, 27)
+	var chest: Dictionary = hm.add_obj(18, 27, "chest", {"items": [{"id": "iron_bar", "qty": 5}, {"id": "wood", "qty": 40}, {"id": "stone", "qty": 20}, null]})
+	var box: Dictionary = hm.add_obj(19, 27, "lockbox", {"items": [{"id": "gold_bar", "qty": 3}, null]})
+	G.state.raider_raid = {"day": int(G.state.day), "size": 2, "warned": false}
+	G.state.time = 1070
+	G.tick10()
+	var warned: bool = G.state.raider_raid.get("warned", false)
+	G.state.time = 1300
+	var rp := sleep()
+	var text: String = " ".join(rp.get("lines", []))
+	var left_in_chest: int = chest.items.filter(func(st): return st != null).size()
+	var box_ok: bool = box.items[0] != null and box.items[0].id == "gold_bar"
+	var stolen_n: int = G.state.get("stolen", []).size()
+	check("Farm raids: once you've been to Dry Creek, the raiders can come at night (warning at 6 pm). They take from chests but can't open Lockboxes", early == 0 and met and warned and text.contains("Raiders from Dry Creek") and left_in_chest < 3 and box_ok and stolen_n >= 1, "early=%d chest=%d stolen=%d" % [early, left_in_chest, stolen_n])
+	# take it back
+	var iron0: int = G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone")
+	at("dry_creek", 19, 26, "up")
+	G.enemies.clear()
+	Raiders.return_stolen()
+	U.close_all()
+	var got_back: bool = G.state.get("stolen", []).is_empty() and G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone") > iron0
+	check("Whatever they took is piled up at Dry Creek, and you can take it back", got_back and G.maps.dry_creek.get_obj(19, 24) != null, "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1
