@@ -104,10 +104,69 @@ const ROOMS := {
 	"fastfood": [
 		"WWWWWWWWWWWWWW", "WFKffKwWwKFVKW", "W.....W......W", "W..z..W..C.z.W", "WNNN.NNN.....W", "W..z.......z.W",
 		"W.hTh..hTh...W", "W............W", "W.hTh.z.hTh.zW", "WL.........OOW", "WWWWWW..WWWWWW"],
+	"house3": [
+		"WWWWWWWWWWWWWW", "WKFKSwWbMwMbLW", "W.....W......W", "W.hTh.W..z...W", "W..T..W......W", "W.....WWW.WWWW",
+		"W............W", "W.z..RRRR....W", "WS...RRRR..U.W", "WO.....L...z.W", "WWWWWW..WWWWWW"],
+	"house4": [
+		"WWWWWWWWWWWWWW", "WMbwSSWKFKwKSW", "W.....W......W", "W..z..W.hTh..W", "W.....W..T.z.W", "WWW.WWW......W",
+		"W............W", "W..RRR...hTh.W", "WU.RRR.z.....W", "WL.......OO.MW", "WWWWWW..WWWWWW"],
+	"shop2": [
+		"WWWWWWWWWWWWWW", "WVVSwVVSwVVSVW", "W............W", "W.S.S.S.S.S..W", "W.S.S.S.S.SzVW", "W.S.S.S.S.S..W",
+		"W............W", "W.z........z.W", "WNNN....GG.C.W", "WC.....U..L..W", "WWWWWW..WWWWWW"],
 	"church": [
 		"WWWWWWWWWWWWWW", "WCw..LTL...wUW", "W.....z......W", "W..BBB..BBB..W", "W............W", "W..BBB..BBB..W",
 		"W............W", "W..BBB..BBB..W", "W....z.......W", "WO..........OW", "WWWWWW..WWWWWW"],
 }
+
+## Room layouts that can be picked from: a building with "room": "home" gets one
+## of these, chosen by its id, so neighbouring houses differ. To add a layout,
+## add its rows to ROOMS and its name here.
+const ROOM_SETS := {
+	"home": ["house", "house2", "house3", "house4"],
+	"store": ["shop", "shop2"],
+}
+
+## Floor and wall styles per room kind: [floor tile, wall tile]. One is picked per
+## building (by its id). A building can also set "floor" and "wall" itself.
+## Floors: floor, floor_oak, floor_tile, floor_carpet, floor_concrete, floor_lab.
+## Walls: wall, wall_paper, wall_rose, wall_panel, wall_brick, wall_concrete, wall_lab.
+const STYLES := {
+	"house": [["floor", "wall_paper"], ["floor_oak", "wall_rose"], ["floor_carpet", "wall_panel"], ["floor", "wall"], ["floor_oak", "wall_paper"]],
+	"shop": [["floor_tile", "wall"], ["floor_concrete", "wall_brick"], ["floor_tile", "wall_paper"]],
+	"diner": [["floor_tile", "wall_rose"]],
+	"fastfood": [["floor_tile", "wall_brick"], ["floor_tile", "wall_paper"], ["floor_concrete", "wall_rose"]],
+	"police": [["floor_tile", "wall_concrete"]],
+	"gym": [["floor_oak", "wall_brick"]],
+	"garage": [["floor_concrete", "wall_brick"]],
+	"warehouse": [["floor_concrete", "wall_concrete"], ["floor_concrete", "wall_brick"]],
+	"firehouse": [["floor_concrete", "wall_brick"]],
+	"bar": [["floor", "wall_panel"], ["floor_concrete", "wall_panel"]],
+	"cabin": [["floor", "wall_panel"], ["floor_oak", "wall_panel"]],
+	"barn": [["floor", "wall_panel"]],
+	"boathouse": [["floor", "wall_panel"]],
+	"church": [["floor_oak", "wall"]],
+	"lab": [["floor_lab", "wall_lab"]],
+	"vault": [["floor_lab", "wall_concrete"]],
+	"clubhouse": [["floor_concrete", "wall_panel"]],
+}
+const STYLE_OF_ROOM := {"house2": "house", "house3": "house", "house4": "house", "shop2": "shop", "hv_main": "lab", "hv_lab6": "lab", "hv_vault": "vault"}
+
+## Which layout and style a building gets.
+static func pick_layout(b: Dictionary) -> String:
+	var room: String = b.get("room", "")
+	if ROOM_SETS.has(room):
+		var set: Array = ROOM_SETS[room]
+		return set[_h(b.id) % set.size()]
+	return room
+
+static func pick_style(b: Dictionary, layout: String) -> Array:
+	var kind: String = STYLE_OF_ROOM.get(layout, layout)
+	var opts: Array = STYLES.get(kind, [["floor", "wall"]])
+	var st: Array = opts[_h(b.id + "|style") % opts.size()]
+	return [b.get("floor", st[0]), b.get("wall", st[1])]
+
+static func _h(s: String) -> int:
+	return absi(hash(s))
 
 const LETTERS := {
 	"F": "loot_fridge", "K": "loot_cabinet", "M": "loot_dresser", "Q": "loot_locker", "G": "loot_gun_case", "Y": "loot_toolbox",
@@ -167,24 +226,24 @@ const DISTRICTS := {
 		"foes": {"day": [6, 9], "night": [7, 10], "asleep": 0.35, "table": [["shambler", 40], ["lurcher", 18], ["runner", 12], ["crawler", 10], ["spitter", 6], ["screamer", 4], ["stalker", 4], ["riot", 6]]},
 		"fixed_foes": [{"x": 37, "y": 19, "type": "riot", "chance": 0.7}, {"x": 47, "y": 15, "type": "lurcher", "chance": 0.6}],
 		"buildings": [
-			{"id": "mh_house1", "kind": "d_house_blue", "x": 2, "y": 4, "w": 6, "h": 5, "room": "house", "name": "House on Birch Lane", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 3], ["crawler", 1]]},
-			{"id": "mh_house2", "kind": "d_house_yellow", "x": 10, "y": 4, "w": 6, "h": 5, "room": "house2", "name": "House on Birch Lane", "tags": ["home", "sports"], "q": 0.15, "foes": [["shambler", 3], ["lurcher", 1]]},
+			{"id": "mh_house1", "kind": "d_house_blue", "x": 2, "y": 4, "w": 6, "h": 5, "room": "home", "name": "House on Birch Lane", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 3], ["crawler", 1]]},
+			{"id": "mh_house2", "kind": "d_house_yellow", "x": 10, "y": 4, "w": 6, "h": 5, "room": "home", "name": "House on Birch Lane", "tags": ["home", "sports"], "q": 0.15, "foes": [["shambler", 3], ["lurcher", 1]]},
 			{"id": "mh_ruin1", "kind": "d_ruin", "x": 18, "y": 4, "w": 6, "h": 5, "text": "The roof came down years ago. Nothing in there but rot and rafters."},
 			{"id": "mh_diner", "kind": "d_diner", "x": 1, "y": 14, "w": 7, "h": 6, "room": "diner", "name": "Rosie's Diner", "tags": ["kitchen", "home"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1]]},
 			{"id": "mh_pawn", "kind": "d_pawn", "x": 9, "y": 14, "w": 6, "h": 6, "room": "shop", "name": "Gold Pawn", "tags": ["pawn"], "q": 0.35, "foes": [["shambler", 2], ["runner", 1]]},
-			{"id": "mh_guns", "kind": "d_guns", "x": 16, "y": 14, "w": 6, "h": 6, "room": "shop", "name": "Hartley Guns", "tags": ["gun_store", "wilderness"], "q": 0.5, "foes": [["stalker", 1], ["runner", 1], ["shambler", 2]]},
-			{"id": "mh_pharmacy", "kind": "d_pharmacy", "x": 23, "y": 15, "w": 5, "h": 5, "room": "shop", "swap": {"G": "A", "V": "A"}, "name": "Corner Pharmacy", "tags": ["lab", "home"], "q": 0.3, "foes": [["shambler", 2], ["spitter", 1]]},
+			{"id": "mh_guns", "kind": "d_guns", "x": 16, "y": 14, "w": 6, "h": 6, "room": "store", "name": "Hartley Guns", "tags": ["gun_store", "wilderness"], "q": 0.5, "foes": [["stalker", 1], ["runner", 1], ["shambler", 2]]},
+			{"id": "mh_pharmacy", "kind": "d_pharmacy", "x": 23, "y": 15, "w": 5, "h": 5, "room": "store", "swap": {"G": "A", "V": "A"}, "name": "Corner Pharmacy", "tags": ["lab", "home"], "q": 0.3, "foes": [["shambler", 2], ["spitter", 1]]},
 			{"id": "mh_police", "kind": "d_police", "x": 34, "y": 12, "w": 9, "h": 6, "room": "police", "name": "Precinct 9", "tags": ["police"], "q": 0.6, "foes": [["riot", 3], ["shambler", 2], ["runner", 1]]},
 			{"id": "mh_church", "kind": "d_church", "x": 45, "y": 4, "w": 8, "h": 6, "room": "church", "name": "St. Luke's Church", "tags": ["cemetery", "home"], "q": 0.2, "foes": [["shambler", 3], ["screamer", 1]]},
 			{"id": "mh_shed", "kind": "d_shed", "x": 54, "y": 12, "w": 4, "h": 3, "room": "cabin", "swap": {"G": "Y", "F": "C"}, "name": "Groundskeeper's Shed", "tags": ["cemetery", "farm", "hardware"], "q": 0.25, "foes": [["shambler", 2]]},
 			{"id": "mh_school", "kind": "d_school", "x": 2, "y": 27, "w": 12, "h": 7, "room": "gym", "name": "Maple Elementary Gym", "tags": ["sports", "home"], "q": 0.3, "foes": [["shambler", 3], ["runner", 2], ["crawler", 1]]},
-			{"id": "mh_thrift", "kind": "d_thrift", "x": 17, "y": 27, "w": 7, "h": 5, "room": "shop", "swap": {"G": "M", "V": "M"}, "name": "Thrift Store", "tags": ["clothing"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
-			{"id": "mh_house3", "kind": "d_house_green", "x": 2, "y": 37, "w": 6, "h": 5, "room": "house", "name": "House on Maple Street", "tags": ["home", "farm"], "q": 0.15, "foes": [["shambler", 2], ["crawler", 1]]},
+			{"id": "mh_thrift", "kind": "d_thrift", "x": 17, "y": 27, "w": 7, "h": 5, "room": "store", "swap": {"G": "M", "V": "M"}, "name": "Thrift Store", "tags": ["clothing"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "mh_house3", "kind": "d_house_green", "x": 2, "y": 37, "w": 6, "h": 5, "room": "home", "name": "House on Maple Street", "tags": ["home", "farm"], "q": 0.15, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "mh_ruin2", "kind": "d_ruin", "x": 10, "y": 37, "w": 6, "h": 5, "text": "Burned out. Someone's stenciled \"CHECKED\" on the door frame, with a date that's years old."},
-			{"id": "mh_house4", "kind": "d_house_red", "x": 18, "y": 37, "w": 6, "h": 5, "room": "house2", "name": "House on Maple Street", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "mh_house4", "kind": "d_house_red", "x": 18, "y": 37, "w": 6, "h": 5, "room": "home", "name": "House on Maple Street", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "mh_burger", "kind": "d_burger", "x": 34, "y": 4, "w": 8, "h": 5, "room": "fastfood", "name": "Burger Barn", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "mh_pizza", "kind": "d_pizza", "x": 34, "y": 34, "w": 8, "h": 5, "room": "fastfood", "name": "Slice Palace", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["crawler", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
-			{"id": "mh_gas", "kind": "d_gas", "x": 35, "y": 27, "w": 8, "h": 5, "room": "shop", "swap": {"G": "F"}, "name": "Quik Gas", "tags": ["vehicle", "kitchen"], "q": 0.2, "foes": [["shambler", 2], ["runner", 1]]},
+			{"id": "mh_gas", "kind": "d_gas", "x": 35, "y": 27, "w": 8, "h": 5, "room": "store", "swap": {"G": "F"}, "name": "Quik Gas", "tags": ["vehicle", "kitchen"], "q": 0.2, "foes": [["shambler", 2], ["runner", 1]]},
 		],
 	},
 	"industrial": {
@@ -193,7 +252,7 @@ const DISTRICTS := {
 		"foes": {"day": [7, 10], "night": [8, 11], "asleep": 0.3, "table": [["shambler", 24], ["brute", 12], ["charred", 14], ["runner", 14], ["spitter", 10], ["spitter_brute", 4], ["lurcher", 10], ["riot", 4]]},
 		"fixed_foes": [{"x": 54, "y": 17, "type": "soldier", "chance": 0.85}, {"x": 56, "y": 21, "type": "soldier", "chance": 0.7}, {"x": 51, "y": 23, "type": "soldier", "chance": 0.5}, {"x": 46, "y": 37, "type": "brute", "chance": 0.6}],
 		"buildings": [
-			{"id": "ind_hardware", "kind": "d_hardware", "x": 2, "y": 11, "w": 8, "h": 6, "room": "shop", "swap": {"G": "Y"}, "name": "Bolt & Beam Hardware", "tags": ["hardware", "construction"], "q": 0.35, "foes": [["shambler", 2], ["brute", 1]]},
+			{"id": "ind_hardware", "kind": "d_hardware", "x": 2, "y": 11, "w": 8, "h": 6, "room": "store", "swap": {"G": "Y"}, "name": "Bolt & Beam Hardware", "tags": ["hardware", "construction"], "q": 0.35, "foes": [["shambler", 2], ["brute", 1]]},
 			{"id": "ind_garage", "kind": "d_garage", "x": 12, "y": 11, "w": 8, "h": 6, "room": "garage", "name": "Dale's Auto", "tags": ["garage", "vehicle"], "q": 0.35, "foes": [["shambler", 2], ["charred", 1]]},
 			{"id": "ind_fire", "kind": "d_firehouse", "x": 22, "y": 10, "w": 9, "h": 7, "room": "firehouse", "name": "Fire Station 4", "tags": ["fire_station"], "q": 0.4, "foes": [["charred", 2], ["shambler", 1]]},
 			{"id": "ind_warehouse", "kind": "d_warehouse", "x": 35, "y": 6, "w": 11, "h": 8, "room": "warehouse", "name": "Warehouse 3", "tags": ["construction", "hardware"], "q": 0.4, "foes": [["brute", 1], ["shambler", 2], ["spitter", 1]]},
@@ -213,7 +272,7 @@ const DISTRICTS := {
 		"buildings": [
 			{"id": "rv_farmhouse", "kind": "d_farmhouse", "x": 4, "y": 12, "w": 7, "h": 5, "room": "cabin", "swap": {"G": "K"}, "name": "Twin Oaks Farmhouse", "tags": ["farm", "home", "kitchen"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "rv_barn", "kind": "d_barn", "x": 14, "y": 11, "w": 8, "h": 6, "room": "barn", "name": "Twin Oaks Barn", "tags": ["farm"], "q": 0.3, "foes": [["shambler", 2], ["crawler", 1]]},
-			{"id": "rv_bait", "kind": "d_bait", "x": 32, "y": 15, "w": 5, "h": 5, "room": "shop", "swap": {"G": "V"}, "name": "Bait & Tackle", "tags": ["marina", "wilderness"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "rv_bait", "kind": "d_bait", "x": 32, "y": 15, "w": 5, "h": 5, "room": "store", "swap": {"G": "V"}, "name": "Bait & Tackle", "tags": ["marina", "wilderness"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "rv_marina", "kind": "d_boathouse", "x": 39, "y": 14, "w": 8, "h": 6, "room": "boathouse", "name": "Marina Boathouse", "tags": ["marina"], "q": 0.35, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "rv_ranger", "kind": "d_ranger", "x": 12, "y": 27, "w": 8, "h": 5, "room": "cabin", "name": "Ranger Station", "tags": ["wilderness", "fire_station"], "q": 0.4, "foes": [["stalker", 1], ["shambler", 2]]},
 			{"id": "rv_hotdog", "kind": "d_hotdog", "x": 33, "y": 8, "w": 6, "h": 5, "room": "fastfood", "name": "Dockside Dogs", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["crawler", 1]], "fast_food": true, "spot_chance": 1.0},
@@ -322,11 +381,17 @@ static func _place(m: GameMap, x: int, y: int, type: String, extra := {}) -> voi
 
 # ================================================================ rooms
 static func interior(district: String, b: Dictionary) -> GameMap:
-	return interior_rows(district, b, ROOMS[b.room])
+	var lay := pick_layout(b)
+	var m := interior_rows(district, b, ROOMS[lay])
+	m.layout = lay
+	return m
 
 ## Builds a 14 x 11 room from rows of letters (see ROOMS); other places reuse it.
 static func interior_rows(district: String, b: Dictionary, rows: Array, letters := {}) -> GameMap:
-	var m := GameMap.new(b.id, 14, 11, "floor")
+	var style := pick_style(b, str(b.get("room", "")) if not ROOM_SETS.has(str(b.get("room", ""))) else pick_layout(b))
+	var fl: String = style[0]
+	var wl: String = style[1]
+	var m := GameMap.new(b.id, 14, 11, fl)
 	m.indoor = true
 	m.mood = "cold"
 	m.district = district
@@ -339,10 +404,10 @@ static func interior_rows(district: String, b: Dictionary, rows: Array, letters 
 			var ch: String = row[x]
 			if swap.has(ch): ch = swap[ch]
 			if ch == "W":
-				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else "wall")
-				if y == 1: m.set_tile(x, y, "wall")
+				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else wl)
+				if y == 1: m.set_tile(x, y, wl)
 			elif ch == "w":
-				m.set_tile(x, y, "wall")
+				m.set_tile(x, y, wl)
 				m.add_obj(x, y, "window")
 			elif ch == "~":
 				m.set_tile(x, y, "water")

@@ -15,13 +15,21 @@ var PAL := {
 var WATER := {"normal": ["#3a7fc0", "#4a90d0", "#2f6aa8", "#b8e0f8"], "winter": ["#7fa8c8", "#9cc0dc", "#6a94b8", "#eef8fc"]}
 var PINE := ["#163f2a", "#1f5a36", "#2e7a46", "#46985a"]
 
-const TILE_TYPES := ["grass", "dirt", "road", "pave", "sand", "water", "floor", "wall", "walltop", "mfloor", "mwall", "cliff", "bridge", "void", "mfloor2", "mwall2"]
+const TILE_TYPES := ["grass", "dirt", "road", "pave", "sand", "water", "floor", "wall", "walltop", "mfloor", "mwall", "cliff", "bridge", "void", "mfloor2", "mwall2",
+	"floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab",
+	"wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
+## Floor and wall styles for rooms (Districts.STYLES picks them per building).
+const FLOOR_STYLES := ["floor", "floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab"]
+const WALL_STYLES := ["wall", "wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
 var TID := {}
 var TILE_PROPS := {
 	"grass": {"till": true}, "dirt": {"till": true}, "road": {}, "pave": {}, "sand": {},
 	"water": {"solid": true, "water": true}, "floor": {}, "wall": {"solid": true}, "walltop": {"solid": true},
 	"mfloor": {}, "mwall": {"solid": true}, "cliff": {"solid": true}, "bridge": {}, "void": {"solid": true},
 	"mfloor2": {}, "mwall2": {"solid": true},
+	"floor_oak": {}, "floor_tile": {}, "floor_carpet": {}, "floor_concrete": {}, "floor_lab": {},
+	"wall_paper": {"solid": true}, "wall_rose": {"solid": true}, "wall_panel": {"solid": true}, "wall_brick": {"solid": true},
+	"wall_concrete": {"solid": true}, "wall_lab": {"solid": true},
 }
 
 const FONT := {
@@ -234,6 +242,63 @@ func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 				P(x, 6, 5, "#9a8a6a"); P(x, 7, 6, "#9a8a6a"); P(x, 7, 7, "#9a8a6a"); P(x, 8, 8, "#9a8a6a")
 		"walltop":
 			R(x, 0, 0, 16, 16, "#3a2e26"); R(x, 0, 14, 16, 2, "#4a3c30")
+		"floor_oak":
+			R(x, 0, 0, 16, 16, "#b08a5a")
+			for r in 4:
+				R(x, 0, r * 4 + 3, 16, 1, "#94703f")
+				R(x, (r * 5 + v * 3) % 16, r * 4, 1, 3, "#9c7a4a")
+				P(x, (r * 9 + v * 7) % 16, r * 4 + 1, "#c49e6c")
+		"floor_tile":
+			R(x, 0, 0, 16, 16, "#d8d4c8")
+			R(x, 0, 0, 8, 8, "#a8a49a"); R(x, 8, 8, 8, 8, "#a8a49a")
+			R(x, 0, 15, 16, 1, "#8a867c"); R(x, 15, 0, 1, 16, "#8a867c")
+			if v == 2: P(x, 3, 11, "#7a766c"); P(x, 4, 12, "#7a766c")    # a scuff
+		"floor_carpet":
+			R(x, 0, 0, 16, 16, "#6a3a3a")
+			for i in 4:
+				P(x, 2 + i * 4, 2 + (i % 2) * 8, "#8a5242"); P(x, 4 + i * 4, 6 + (i % 2) * 8, "#5a3030")
+			if v == 1: R(x, 5, 9, 4, 2, "#5a3030")    # a worn patch
+		"floor_concrete":
+			R(x, 0, 0, 16, 16, "#8a8a86")
+			for i in 8:
+				P(x, int(hash2(i, s, 1) * 16), int(hash2(i, s, 2) * 16), "#7a7a76" if i % 2 else "#969690")
+			if v == 3:
+				for i in 6: P(x, 3 + i, 8 + i % 2, "#6a6a66")    # a crack
+		"floor_lab":
+			R(x, 0, 0, 16, 16, "#e4e8e8")
+			R(x, 0, 7, 16, 1, "#c8d0d0"); R(x, 7, 0, 1, 16, "#c8d0d0"); R(x, 0, 15, 16, 1, "#c8d0d0"); R(x, 15, 0, 1, 16, "#c8d0d0")
+			if v == 2: R(x, 9, 9, 4, 3, "#a8c8a0")    # an old stain
+		"wall_paper", "wall_rose":
+			var paper := "#8aa890" if type == "wall_paper" else "#c8a0a0"
+			R(x, 0, 0, 16, 16, paper)
+			if type == "wall_paper":
+				for i in range(1, 16, 4): R(x, i, 0, 2, 13, shade(paper, -0.1))
+			else:
+				for i in 4: P(x, 2 + i * 4, 3 + (i % 2) * 5, "#e8c8c8"); P(x, 3 + i * 4, 4 + (i % 2) * 5, "#a87070")
+			R(x, 0, 11, 16, 2, "#e8e0d0")                              # chair rail
+			R(x, 0, 13, 16, 3, "#5a4636"); R(x, 0, 13, 16, 1, "#6e5644")
+			if v == 2: R(x, 10, 2, 3, 6, shade(paper, 0.15))           # a peeled strip
+		"wall_panel":
+			R(x, 0, 0, 16, 16, "#7a5a3a")
+			for i in range(0, 16, 4): R(x, i, 0, 1, 13, "#6a4a2e")
+			R(x, 0, 6, 16, 1, "#8a6a48"); R(x, 0, 13, 16, 3, "#4a3220"); R(x, 0, 13, 16, 1, "#5a4028")
+		"wall_brick":
+			R(x, 0, 0, 16, 16, "#9a5a42")
+			for r in 4:
+				R(x, 0, r * 4 + 3, 16, 1, "#7a4a38")
+				for c in 2: R(x, (c * 8 + (4 if r % 2 else 0)) % 16, r * 4, 1, 3, "#7a4a38")
+			R(x, 0, 13, 16, 3, "#4a3a32")
+			if v == 1: P(x, 5, 5, "#b06a52"); P(x, 12, 9, "#b06a52")
+		"wall_concrete":
+			R(x, 0, 0, 16, 16, "#9a9a96"); R(x, 0, 6, 16, 1, "#8a8a86")
+			for i in 5: P(x, int(hash2(i, s, 3) * 16), int(hash2(i, s, 4) * 12), "#86867f")
+			R(x, 0, 13, 16, 3, "#5a5a56")
+			if v == 3: R(x, 0, 8, 16, 2, "#c8a020")                    # a hazard stripe
+		"wall_lab":
+			R(x, 0, 0, 16, 16, "#d8e0e0")
+			for r in 3: R(x, 0, r * 4 + 3, 16, 1, "#c0cccc")
+			R(x, 7, 0, 1, 13, "#c0cccc")
+			R(x, 0, 13, 16, 3, "#6a7a80")
 		"mfloor", "mfloor2":
 			var deep := type == "mfloor2"
 			R(x, 0, 0, 16, 16, "#4a4654" if deep else "#6a5a4a")

@@ -37,7 +37,7 @@ const ROOMS := {
 		"W.....z......W", "W.z.......z..W", "W............W", "WOO...L....CCW", "WWWWWW..WWWWWW"],
 }
 const LETTERS := {"P": "lab_bench", "D": "specimen_tank", "Z": "server_rack", "y": "decon_shower", "v": "loot_vault"}
-const VAULT := {"id": "hv_vault", "name": "Lab 6: Decontamination Vault", "tags": ["lab", "military"], "q": 0.6, "foes": [["hazmat", 2], ["stalker", 1]]}
+const VAULT := {"id": "hv_vault", "room": "hv_vault", "name": "Lab 6: Decontamination Vault", "tags": ["lab", "military"], "q": 0.6, "foes": [["hazmat", 2], ["stalker", 1]]}
 const LAB_MAPS := ["hv_lab6", "hv_vault"]
 
 ## Infected in hazmat suits. They shrug off acid.

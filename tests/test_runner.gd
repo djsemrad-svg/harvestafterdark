@@ -941,7 +941,8 @@ func run_all() -> void:
 	G.player.pos += Vector2(-48, 0)
 	G.map.remove_obj(pt2.x - 3, pt2.y); G.map.set_tile(pt2.x - 3, pt2.y, "mfloor")
 	tick(2500)
-	check("Pipe Charge explodes and breaks nearby rocks", G.map.get_obj(pt2.x + 3, pt2.y) == null and G.map.get_obj(pc_t.x, pc_t.y) == null)
+	var left_behind = G.map.get_obj(pt2.x + 3, pt2.y)
+	check("Pipe Charge explodes and breaks nearby rocks", (left_behind == null or left_behind.type == "ladder_down") and G.map.get_obj(pc_t.x, pc_t.y) == null)   # a broken rock can reveal a ladder
 
 	# ---------- cooking expansion
 	start("adventure", 2)
@@ -1238,6 +1239,7 @@ func run_all() -> void:
 	run_raiders()
 	run_outposts()
 	run_phase2()
+	run_rooms()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2992,6 +2994,41 @@ func run_phase2() -> void:
 	var sk := ui_text(U.overlay_root)
 	U.close_all()
 	check("Mining perks: pick one at level 5 and one at level 10 in the Skills tab (Strongarm halves pickaxe energy)", pend == [5] and DeepMine.has_perk("prospector") and DeepMine.has_perk("strongarm") and cost1 < cost0 and sk.contains("Prospector"), "pend=%s cost %.1f > %.1f" % [pend, cost0, cost1])
+
+# ---------------------------------------------------------------- room variety
+func run_rooms() -> void:
+	var G = Game
+	start("adventure", 2)
+	# every layout works, whichever building ends up with it
+	var bad := []
+	for lay in Districts.ROOMS:
+		var b := {"id": "test_" + lay, "x": 10, "y": 10, "w": 6, "h": 5, "tags": ["home"], "q": 0.1, "room": lay}
+		var r: GameMap = Districts.interior_rows("residential", b, Districts.ROOMS[lay])
+		var rs := reach(r, Vector2i(6, 9))
+		if not rs.has(Vector2i(6, 10)): bad.append(lay + " exit")
+		for k in r.objects:
+			var o: Dictionary = r.objects[k]
+			if Data.obj_defs.get(o.type, {}).get("container", false) and not reachable(rs, o): bad.append("%s %s at %d,%d" % [lay, o.type, o.x, o.y])
+		for sp in r.foes.spots:
+			if not rs.has(sp): bad.append("%s spot %s" % [lay, sp])
+	check("Every room layout (%d) can be walked: exit, containers and infected spots" % Districts.ROOMS.size(), bad.is_empty(), str(bad.slice(0, 6)))
+	# variety: houses and shops don't all look the same
+	var looks := {}
+	var lays := {}
+	for b in Districts.DISTRICTS.residential.buildings:
+		if b.get("room", "") == "home":
+			var m: GameMap = G.maps[b.id]
+			looks[Art.TILE_TYPES[m.tiles[5 * 14 + 5]] + "/" + Art.TILE_TYPES[m.tiles[1 * 14 + 1]]] = true
+			lays[m.layout] = true
+	check("Room variety: the houses use different layouts and floor and wall styles", lays.size() >= 2 and looks.size() >= 2, "layouts=%s styles=%s" % [lays.keys(), looks.keys()])
+	# older saves: a room whose layout changed is rebuilt instead of keeping misplaced things
+	var rid := "mh_house1"
+	G.state.maps_dyn[rid].layout = "something_old"
+	G.state.maps_dyn[rid].objects["99,99"] = {"type": "rock", "x": 99, "y": 99}
+	G.write_save()
+	G.load_game("adventure", 2)
+	var fresh: bool = not G.maps[rid].objects.has("99,99") and str(G.state.maps_dyn[rid].get("layout", "")) == G.maps[rid].layout
+	check("Older saves: a room whose layout changed is rebuilt fresh", fresh, "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1

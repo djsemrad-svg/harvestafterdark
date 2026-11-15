@@ -788,6 +788,9 @@ func build_persistent_maps() -> void:
 	Angling.add_to_town(maps)
 	for id in maps:
 		var m: GameMap = maps[id]
+		# a room whose layout changed since this save was made is rebuilt fresh
+		if m.layout != "" and state.maps_dyn.has(id) and str(state.maps_dyn[id].get("layout", "")) != m.layout:
+			state.maps_dyn.erase(id)
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
 			var anchors := []
 			for kk in m.objects:
@@ -800,6 +803,7 @@ func build_persistent_maps() -> void:
 			_reconcile(m, anchors)
 		else:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
+		if m.layout != "": state.maps_dyn[id].layout = m.layout
 	sync_gates()
 	# older saves: clear anything sitting where a newer building now stands
 	for id in ["homestead", "town"] + Districts.DISTRICTS.keys():

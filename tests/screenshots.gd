@@ -19,6 +19,15 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "rooms":
+		main.ui.close_all()
+		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:
+			Game.change_map(rid, 6, 9, "up", {"silent": true})
+			Game.enemies.clear()
+			await frames(8)
+			await shot("50_room_" + rid)
+		get_tree().quit()
+		return
 	if only == "outposts":
 		main.ui.close_all()
 		await outpost_shots()
