@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "crops":
+		main.ui.close_all()
+		await crop_shots()
+		get_tree().quit()
+		return
 	if only == "barn":
 		main.ui.close_all()
 		await barn_shots()
@@ -141,6 +146,7 @@ func _ready() -> void:
 	await district_shots()
 	await contract_shots()
 	await barn_shots()
+	await crop_shots()
 	get_tree().quit()
 
 func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
@@ -353,6 +359,45 @@ func barn_shots() -> void:
 	await frames(30)
 	await shot("91_barn_inside")
 	main.ui.open("shop", {"shop": "ranch"}); await frames(4); await shot("92_ranch_animals")
+	main.ui.close_all()
+
+func crop_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 33
+	Game.state.time = 640
+	Game.state.weather = "sun"
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(14, 34):
+		for yy in range(18, 32):
+			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
+			hm.soil.erase(GameMap.k(xx, yy))
+	var crops := ["snapbean", "potato", "tomato", "corn", "melon"]
+	for y in range(21, 28):
+		for x in range(16, 30):
+			if x == 22 or y == 24: continue
+			var cid: String = crops[(x / 3) % crops.size()]
+			if not Data.crops.has(cid): cid = "potato"
+			hm.soil[GameMap.k(x, y)] = {"w": 1 if (x + y) % 3 else 0, "crop": {"id": cid, "g": (x * 3 + y) % 9}, "fixed": true}
+	for x in range(16, 19):
+		hm.soil[GameMap.k(x, 21)].crop = {"id": "snapbean", "g": 99}
+		hm.add_obj(x, 21, "trellis")
+	for k in [GameMap.k(24, 25), GameMap.k(25, 25), GameMap.k(24, 26)]:
+		hm.soil[k].crop.pests = 30
+	for x in range(26, 29):
+		hm.soil[GameMap.k(x, 22)].frost_until = 40
+	hm.add_obj(20, 26, "cold_frame")
+	for y in range(21, 24):
+		for x in range(23, 26):
+			hm.soil[GameMap.k(x, y)].raised = true
+			hm.soil[GameMap.k(x, y)].fert = "quality2"
+	hm.add_obj(22, 24, "scarecrow")
+	Game.change_map("homestead", 22, 29, "up", {"silent": true})
+	Game.state.inventory = []; Game.state.inventory.resize(int(Game.state.inv_size))
+	Game.add_item("potato", 5, {"silent": true}); Game.add_item("potato", 3, {"silent": true, "extra": {"q": 1}}); Game.add_item("potato", 2, {"silent": true, "extra": {"q": 2}})
+	Game.add_item("pest_spray", 3, {"silent": true}); Game.add_item("frost_cloth", 2, {"silent": true}); Game.add_item("quality_fertilizer", 10, {"silent": true})
+	await frames(20)
+	await shot("95_farm_care")
+	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
 	main.ui.close_all()
 
 func frames(n: int) -> void:

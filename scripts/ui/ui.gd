@@ -1764,7 +1764,8 @@ func _tab_inventory() -> Control:
 		var fl := Game.item_flags(sel.id)
 		var hh := K.hbox(4)
 		hh.add_child(K.icon(Art.get_icon(sel.id, Game.tool_tier(it.tool) if it.has("tool") else 0), 24))
-		hh.add_child(K.rich("[b]%s[/b]\n[color=%s]%s[/color] · x%d" % [Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
+		var qn := Game.quality_of(sel)
+		hh.add_child(K.rich("[b]%s%s[/b]\n[color=%s]%s[/color] · x%d" % ["[color=%s]%s[/color] " % [FarmCare.QUALITY_COLOR[qn], FarmCare.QUALITY[qn]] if qn > 0 else "", Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
 		hh.get_child(1).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dv.add_child(hh)
 		if it.has("weapon") or it.has("gear"):

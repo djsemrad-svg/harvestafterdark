@@ -187,6 +187,8 @@ func use_selected(level := 0, from_mouse := false) -> void:
 		cb.attack(s, from_mouse)
 	elif it.cat == "seed": plant_at(t, s.id)
 	elif it.has("fert"): apply_fert(t, s.id)
+	elif it.has("spray"): apply_spray(t, s.id)
+	elif it.has("bed"): make_raised_bed(t, s.id)
 	elif it.has("bomb"): place_bomb(t, s.id)
 	elif it.has("building"): place_building(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
@@ -424,7 +426,7 @@ func plant_at(t: Vector2i, seed_id: String) -> void:
 	if s.get("crop") != null:
 		return
 	var crop_id: String = Data.items[seed_id].crop
-	if m.outdoor and not Data.crops[crop_id].seasons.has(Game.season()):
+	if m.outdoor and not Data.crops[crop_id].seasons.has(Game.season()) and not Game.has_obj_at(m, GameMap.k(t.x, t.y), "cold_frame"):
 		Game.toast("%s won't grow in %s." % [Data.items[seed_id].name, Game.season().capitalize()], seed_id, "warn")
 		return
 	if not Game.remove_item(seed_id, 1):
@@ -438,10 +440,17 @@ func harvest_at(t: Vector2i) -> bool:
 	if s == null or not crop_ready(s.get("crop")):
 		return false
 	var cr: Dictionary = Data.crops[s.crop.id]
-	if not Game.can_fit(s.crop.id, 1):
+	var ql := FarmCare.roll_quality(Game.rng, Game.skill_level("farming"), FarmCare.fert_level(s))
+	var extra := {"q": ql} if ql > 0 else {}
+	var n := 1
+	if FarmCare.CLIMBERS.has(s.crop.id) and Game.has_obj_at(Game.map, GameMap.k(t.x, t.y), "trellis"):
+		n = 2
+	if not Game.can_fit(s.crop.id, n, null, extra):
 		Game.toast("Your inventory is full.", "", "warn")
 		return false
-	Game.add_item(s.crop.id, 1)
+	Game.add_item(s.crop.id, n, {"extra": extra, "silent": ql > 0})
+	if ql > 0:
+		Game.toast("+%d %s %s" % [n, FarmCare.QUALITY[ql], Data.items[s.crop.id].name], s.crop.id, "gold" if ql == 2 else "")
 	Game.add_xp("farming", 6 + int(round(cr.sell / 20.0)))
 	Game.state.stats.crops_harvested = int(Game.state.stats.crops_harvested) + 1
 	Game.quest_event("harvest", {"n": 1})
@@ -463,7 +472,12 @@ func place_at(t: Vector2i, id: String) -> void:
 	if m.id == "house" and not it.place in ["chest", "ammo_bench", "recycler", "smoker", "preserves_jar"] and not Data.obj_defs.get(it.place, {}).get("indoor", false):
 		Game.toast("That belongs outside.", id, "warn")
 		return
-	if not m.tile_free(t.x, t.y):
+	var over_soil: bool = Data.obj_defs.get(it.place, {}).get("over_soil", false)
+	if over_soil:
+		if not m.soil.has(GameMap.k(t.x, t.y)) or m.get_obj(t.x, t.y) != null:
+			Game.toast("Place it on tilled soil.", id, "warn")
+			return
+	elif not m.tile_free(t.x, t.y):
 		Game.toast("Something is in the way.", id, "warn")
 		return
 	if player_tile() == t and Data.obj_defs[it.place].get("solid", false):
@@ -1218,6 +1232,66 @@ func apply_fert(t: Vector2i, id: String) -> void:
 	Game.remove_item(id, 1)
 	burst(Vector2(t.x * 16 + 8, t.y * 16 + 10), Color("#8a6a3a"), 6)
 	Sfx.play("hoe")
+
+## Pest Spray and Frost Cloth cover the crop in front of you and the 8 tiles around it.
+func apply_spray(t: Vector2i, id: String) -> void:
+	var m: GameMap = Game.map
+	var kind: String = Data.items[id].spray
+	var day := int(Game.state.day)
+	var n := 0
+	var cured := 0
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var s = m.soil.get(GameMap.k(t.x + dx, t.y + dy))
+			if s == null: continue
+			n += 1
+			if kind == "pest":
+				s.pest_until = day + int(Balance.crop_care.pest_spray_days)
+				if s.get("crop") != null and s.crop.has("pests"):
+					s.crop.erase("pests")
+					cured += 1
+			else:
+				s.frost_until = day + int(Balance.crop_care.frost_cloth_days)
+	if n == 0:
+		Game.toast("Use it on tilled soil or a crop.", id, "warn")
+		return
+	Game.remove_item(id, 1)
+	burst(Vector2(t.x * 16 + 8, t.y * 16 + 8), Color("#b8e0a0") if kind == "pest" else Color("#f0f4f8"), 10)
+	Sfx.play("water")
+	if kind == "pest":
+		Game.toast("Sprayed %d tiles%s. Pests stay off for %d days." % [n, " and cleared pests from %d crop%s" % [cured, "" if cured == 1 else "s"] if cured > 0 else "", int(Balance.crop_care.pest_spray_days)], id)
+	else:
+		Game.toast("Covered %d tiles. Safe from frost for %d nights." % [n, int(Balance.crop_care.frost_cloth_days)], id)
+
+## A Raised Bed turns a 3 by 3 patch in front of you into permanent raised soil.
+func make_raised_bed(t: Vector2i, id: String) -> void:
+	var m: GameMap = Game.map
+	if not m.farmable:
+		Game.toast("Build it on your farm.", id, "warn")
+		return
+	var d: Vector2i = DIRS[Game.player.dir]
+	var c := t + d     # centre one tile further on, so the bed starts at the tile you face
+	var tiles := []
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var p := Vector2i(c.x + dx, c.y + dy)
+			var kk := GameMap.k(p.x, p.y)
+			var ok: bool = m.in_bounds(p.x, p.y) and not m.solid_mask[p.y * m.w + p.x] and m.get_obj(p.x, p.y) == null and p != player_tile()
+			ok = ok and (m.soil.has(kk) or Art.TILE_PROPS[m.tile_at(p.x, p.y)].get("till", false))
+			if not ok:
+				Game.toast("A raised bed needs a clear 3 by 3 patch of open ground in front of you.", id, "warn")
+				Sfx.play("error")
+				return
+			tiles.append(p)
+	Game.remove_item(id, 1)
+	for p in tiles:
+		var kk2 := GameMap.k(p.x, p.y)
+		if not m.soil.has(kk2):
+			m.soil[kk2] = {"w": 0, "crop": null}
+		m.soil[kk2].raised = true
+	burst(Vector2(c.x * 16 + 8, c.y * 16 + 8), Color("#8a6a40"), 14)
+	Sfx.play("chop")
+	Game.toast("Raised bed built. Crops here grow a little faster and can't be trampled.", id)
 
 func place_bomb(t: Vector2i, id: String) -> void:
 	var m: GameMap = Game.map

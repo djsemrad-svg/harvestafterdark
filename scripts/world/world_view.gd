@@ -165,10 +165,12 @@ func _draw() -> void:
 			var s = m.soil.get(GameMap.k(x, y))
 			if s != null:
 				draw_texture(Art.get_soil(int(s.w) == 1, season), pos)
+				_soil_extras(s, pos)
 	if bd != null:
 		for kk in m.soil:
 			var tt := GameMap.unk(kk)
 			draw_texture(Art.get_soil(int(m.soil[kk].w) == 1, season), Vector2(tt.x * 16, tt.y * 16))
+			_soil_extras(m.soil[kk], Vector2(tt.x * 16, tt.y * 16))
 	var sorted := []
 	for y in range(y0 - 1, min(m.h - 1, y1 + 3) + 1):
 		for x in range(x0 - 2, x1 + 2):
@@ -290,6 +292,22 @@ func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 		var mz := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 2) + Vector2.from_angle(o.get("aim", 0.0)) * 8
 		draw_rect(Rect2(mz.round() - Vector2(1, 1), Vector2(3, 3)), Color("#fff0a0"))
 
+## Raised-bed edging, fertilizer specks and a pest-spray tint on tilled soil.
+func _soil_extras(s: Dictionary, pos: Vector2) -> void:
+	if s.get("raised", false):
+		var wd := Color("#8a6a40")
+		draw_rect(Rect2(pos, Vector2(16, 1)), wd)
+		draw_rect(Rect2(pos + Vector2(0, 15), Vector2(16, 1)), Color("#5e4428"))
+		draw_rect(Rect2(pos, Vector2(1, 16)), wd)
+		draw_rect(Rect2(pos + Vector2(15, 0), Vector2(1, 16)), Color("#5e4428"))
+	var fl := FarmCare.fert_level(s)
+	if fl > 0:
+		var fc := Color("#9ab8e8") if fl == 1 else Color("#f0c850")
+		for i in 4:
+			draw_rect(Rect2(pos + Vector2(3 + (i * 5) % 11, 4 + (i * 7) % 9), Vector2(1, 1)), fc)
+	if int(s.get("pest_until", -1)) >= int(Game.state.get("day", 0)):
+		draw_rect(Rect2(pos + Vector2(1, 1), Vector2(14, 14)), Color(0.6, 0.9, 0.5, 0.12))
+
 func _draw_crop(c: Dictionary, x: int, y: int) -> void:
 	if c.get("dead", false):
 		draw_texture(Art.get_obj({"type": "dead_crop", "v": 0}, "spring").tex, Vector2(x * 16, y * 16))
@@ -299,6 +317,16 @@ func _draw_crop(c: Dictionary, x: int, y: int) -> void:
 	draw_texture(sp.tex, Vector2(x * 16, y * 16 + sp.oy))
 	if stage == 4 and int(anim_t / 0.5) % 2 == 0:
 		draw_rect(Rect2(x * 16 + 13, y * 16 + sp.oy + 2, 1, 1), Color(1, 1, 0.8, 0.9))
+	if c.has("pests"):
+		# little bugs crawling on the leaves
+		for i in 4:
+			var bx := x * 16 + 3 + int(fposmod(i * 4.3 + anim_t * (1.5 + i * 0.3), 10.0))
+			var by := y * 16 + 6 + (i * 3) % 8
+			draw_rect(Rect2(bx, by, 1, 1), Color("#2a2418"))
+	var s = Game.map.soil.get(GameMap.k(x, y)) if Game.map != null else null
+	if s != null and int(s.get("frost_until", -1)) >= int(Game.state.get("day", 0)):
+		draw_rect(Rect2(x * 16 + 1, y * 16 + 2, 14, 12), Color(0.95, 0.97, 1.0, 0.55))
+		draw_rect(Rect2(x * 16 + 1, y * 16 + 2, 14, 1), Color(1, 1, 1, 0.8))
 
 func _shadow(at: Vector2, w: float) -> void:
 	draw_rect(Rect2(round(at.x - w / 2), round(at.y - 1), w, 2), Color(0, 0, 0, 0.22))

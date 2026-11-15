@@ -1008,6 +1008,7 @@ func _init() -> void:
 	Districts.register(self)
 	Contracts.register(self)
 	Livestock.register(self)
+	FarmCare.register(self)
 
 
 func item(id: String) -> Dictionary:

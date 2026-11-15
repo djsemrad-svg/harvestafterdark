@@ -829,6 +829,21 @@ func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) ->
 		"log":
 			R(x, 1, 8, 14, 6, woodd); R(x, 1, 8, 14, 1, wood); R(x, 1, 8, 3, 6, "#c8a070")
 			R(x, 5, 5, 3, 3, "#d8c8b0"); R(x, 10, 6, 3, 2, "#d8c8b0")
+		"trellis":
+			x = img(16, 26)
+			R(x, 2, 2, 2, 24, wood); R(x, 12, 2, 2, 24, wood)
+			for i in 6:
+				R(x, 2, 4 + i * 4, 12, 1, woodd)
+			for i in 5:
+				for j in 3: P(x, 4 + j * 4, 5 + i * 4, "#c8a870")
+			return [outline(x, "#1e140e"), 0, -10]
+		"cold_frame":
+			x = img(16, 18)
+			R(x, 1, 6, 14, 11, Color(0.8, 0.9, 1.0, 0.28)); R(x, 1, 6, 14, 1, Color(1, 1, 1, 0.7))
+			for i in 3: R(x, 2 + i * 5, 3 + i, 4, 1, Color(1, 1, 1, 0.5))
+			R(x, 0, 2, 16, 1, wood); R(x, 0, 2, 1, 15, wood); R(x, 15, 2, 1, 15, wood); R(x, 0, 16, 16, 2, woodd)
+			R(x, 7, 2, 2, 15, Color(0.55, 0.42, 0.25, 0.8))
+			return [x, 0, -2]
 		"doghouse":
 			x = img(20, 22)
 			for i in 7: R(x, 10 - i - 1, 2 + i, 2 * i + 2, 1, "#8a3a2a" if i % 3 else "#6e2a1e")

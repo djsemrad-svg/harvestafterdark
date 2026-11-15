@@ -246,6 +246,21 @@ var bombs := {
 	"player_damage": 15,
 }
 
+## Crop care (scripts/world/farm_care.gd and Game.crop_care_overnight).
+var crop_care := {
+	"grace_days": 28,                # no frost, pests or crows during your first season
+	"frost_chance": 0.3,             # per night in the first 8 days of spring and the last 8 of autumn
+	"frost_kill_seedling": 0.4,      # unprotected seedlings (grown 0-1 days) that die in a frost
+	"pest_chance": {"spring": 0.008, "summer": 0.015, "autumn": 0.01},   # per crop per night
+	"pest_spread": 0.3,              # to each neighbouring crop per night
+	"pest_days_to_kill": 3,
+	"pest_spray_days": 7,
+	"frost_cloth_days": 3,
+	"crow_min_crops": 12,            # crows only bother bigger fields
+	"crow_chance": 0.3,
+	"raised_bonus_chance": 0.1,      # raised beds: about 10% faster
+}
+
 var animals := {
 	"coop_capacity": 8,
 	"hopper_cap": 60,

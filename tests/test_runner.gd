@@ -1224,6 +1224,7 @@ func run_all() -> void:
 	run_districts()
 	run_contracts()
 	run_livestock()
+	run_crop_care()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2186,6 +2187,171 @@ func run_livestock() -> void:
 	for k in ["barn", "hutch"]:
 		if Art.get_building({"kind": k, "x": 1, "y": 1, "w": Livestock.BUILDINGS[k].size[0], "h": Livestock.BUILDINGS[k].size[1], "door_x": 3, "door_y": 4}, "summer", false) == null: bad.append(k)
 	check("Art: every new animal (young and grown, all directions), the barn and the hutch draw", bad.is_empty(), str(bad))
+
+# ---------------------------------------------------------------- crop quality, pests, frost, crows
+func field(m: GameMap, x0: int, y0: int, w: int, h: int, crop: String, g: int) -> Array:
+	var out := []
+	for y in range(y0, y0 + h):
+		for x in range(x0, x0 + w):
+			clear_tile(m, x, y)
+			m.soil[GameMap.k(x, y)] = {"w": 1, "crop": {"id": crop, "g": g}, "fixed": true}
+			out.append(Vector2i(x, y))
+	return out
+
+func run_crop_care() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.state.day = 30
+	var hm: GameMap = G.maps.homestead
+	# the odds
+	var r := RandomNumberGenerator.new(); r.seed = 7
+	var low := [0, 0, 0]; var high := [0, 0, 0]
+	for i in 2000:
+		low[FarmCare.roll_quality(r, 0, 0)] += 1
+		high[FarmCare.roll_quality(r, 10, 2)] += 1
+	check("Crop quality: beginners mostly grow Normal crops; a skilled farmer with Quality Fertilizer gets lots of Gold", low[0] > 1900 and high[2] > 900, "low=%s high=%s" % [low, high])
+	# stacks keep their quality apart
+	G.state.inventory = []
+	G.state.inventory.resize(int(G.state.inv_size))
+	G.add_item("potato", 3, {"silent": true})
+	G.add_item("potato", 2, {"silent": true, "extra": {"q": 1}})
+	G.add_item("potato", 1, {"silent": true, "extra": {"q": 2}})
+	G.add_item("potato", 2, {"silent": true, "extra": {"q": 1}})
+	var stacks = G.inv().filter(func(x): return x != null and x.id == "potato")
+	var silver = stacks.filter(func(x): return G.quality_of(x) == 1)
+	var sp: int = G.sell_price(silver[0]) if not silver.is_empty() else 0
+	var silver_n: int = int(silver[0].qty) if not silver.is_empty() else 0
+	G.remove_item("potato", 4)
+	var left_q = G.inv().filter(func(x): return x != null and x.id == "potato").map(func(x): return [G.quality_of(x), int(x.qty)])
+	G.sort_inventory()
+	var after_sort = G.inv().filter(func(x): return x != null and x.id == "potato").size()
+	check("Quality stacks: Normal, Silver and Gold stay in separate stacks, the lowest is used first, and Silver sells for 25% more", stacks.size() == 3 and silver.size() == 1 and silver_n == 4 and sp == int(Data.items.potato.price * 1.25) and G.count_item("potato") == 4 and str(left_q) == str([[1, 3], [2, 1]]) and after_sort == 2, "stacks=%d left=%s sorted=%d" % [stacks.size(), str(left_q), after_sort])
+	# harvest with fertilizer
+	G.state.skills.farming = {"xp": 999999}
+	var tiles := field(hm, 10, 24, 6, 3, "potato", 99)
+	at("homestead", 10, 28, "up")
+	G.add_item("quality_fertilizer", 1, {"silent": true})
+	select("quality_fertilizer")
+	W.apply_fert(Vector2i(10, 26), "quality_fertilizer")
+	var fert_ok: bool = hm.soil[GameMap.k(10, 26)].get("fert", "") == "quality2"
+	for t in tiles: hm.soil[GameMap.k(t.x, t.y)].fert = "quality2"
+	G.state.inventory = []; G.state.inventory.resize(int(G.state.inv_size))
+	for t in tiles: W.harvest_at(t)
+	var golds: int = G.inv().filter(func(x): return x != null and x.id == "potato" and G.quality_of(x) == 2).reduce(func(a, x): return a + int(x.qty), 0)
+	check("Harvest: with Quality Fertilizer and Farming 10, many crops come out Gold", fert_ok and golds >= 4 and G.count_item("potato") == 18, "golds=%d total=%d" % [golds, G.count_item("potato")])
+	# shipping pays for quality
+	G.state.shipping = [{"id": "potato", "qty": 2, "q": 2}]
+	var m0: int = int(G.state.money)
+	sleep()
+	check("Shipping: Gold crops sell for 50% more", int(G.state.money) - m0 == int(Data.items.potato.price * 1.5) * 2, "got %d" % (int(G.state.money) - m0))
+
+	# pests
+	hm.soil.clear()
+	var pt := field(hm, 10, 24, 3, 1, "potato", 1)
+	var C: Dictionary = Balance.crop_care
+	var keep_chance: Dictionary = C.pest_chance
+	C.pest_chance = {"spring": 0.0, "summer": 0.0, "autumn": 0.0}
+	var c0: Dictionary = hm.soil[GameMap.k(10, 24)].crop
+	c0.pests = int(G.state.day)
+	var spread0: float = C.pest_spread
+	C.pest_spread = 0.0
+	sleep()
+	var stuck: bool = int(c0.g) == 1
+	sleep(); sleep()
+	var died: bool = c0.get("dead", false)
+	var c1: Dictionary = hm.soil[GameMap.k(11, 24)].crop
+	c1.pests = int(G.state.day)
+	G.add_item("pest_spray", 1, {"silent": true})
+	at("homestead", 11, 26, "up")
+	W.apply_spray(Vector2i(11, 24), "pest_spray")
+	C.pest_chance = {"spring": 1.0, "summer": 1.0, "autumn": 1.0}
+	sleep()
+	var protected: bool = not c1.has("pests") and not hm.soil[GameMap.k(12, 24)].crop.has("pests")
+	C.pest_chance = keep_chance
+	C.pest_spread = spread0
+	check("Pests: an infested crop stops growing and dies in 3 days; Pest Spray clears it and keeps pests off nearby crops", stuck and died and protected, "stuck=%s died=%s prot=%s" % [stuck, died, protected])
+
+	# frost
+	hm.soil.clear()
+	var ft := field(hm, 10, 24, 5, 1, "potato", 4)
+	hm.soil[GameMap.k(14, 24)].crop = {"id": "cabbage", "g": 4} if Data.crops.has("cabbage") else {"id": "potato", "g": 4}
+	G.add_item("frost_cloth", 1, {"silent": true})
+	at("homestead", 10, 26, "up")
+	W.apply_spray(Vector2i(9, 24), "frost_cloth")
+	hm.remove_obj(12, 24)
+	hm.add_obj(12, 24, "cold_frame")
+	G.state.frost_night = true
+	sleep()
+	var g_bare: int = int(hm.soil[GameMap.k(13, 24)].crop.g)
+	var g_cloth: int = int(hm.soil[GameMap.k(10, 24)].crop.g)
+	var g_frame: int = int(hm.soil[GameMap.k(12, 24)].crop.g)
+	var g_hardy: int = int(hm.soil[GameMap.k(14, 24)].crop.g)
+	var nights := 0
+	for d in range(1, 400):
+		if G.roll_frost(d): nights += 1
+	var only_edges := true
+	for d in range(1, 400):
+		if G.roll_frost(d) and not ((G.season(d) == "spring" and G.day_of_season(d) <= 8) or (G.season(d) == "autumn" and G.day_of_season(d) >= 21)): only_edges = false
+	check("Frost: sets unprotected crops back; Frost Cloth, a Cold Frame and winter crops are safe; frost only comes early in spring and late in autumn", g_bare == 2 and g_cloth == 5 and g_frame == 5 and g_hardy == 5 and nights > 0 and only_edges, "bare=%d cloth=%d frame=%d hardy=%d nights=%d" % [g_bare, g_cloth, g_frame, g_hardy, nights])
+	G.state.frost_night = false
+
+	# crows and scarecrows
+	hm.soil.clear()
+	field(hm, 10, 24, 5, 3, "potato", 1)
+	var cc: float = C.crow_chance
+	C.crow_chance = 1.0
+	var rep := {"lines": []}
+	G.crop_care_overnight(rep)
+	var eaten: int = 15 - hm.soil.values().filter(func(x): return x.crop != null).size()
+	hm.soil.clear()
+	field(hm, 10, 24, 5, 3, "potato", 1)
+	clear_tile(hm, 12, 28)
+	hm.add_obj(12, 28, "scarecrow")
+	var rep2 := {"lines": []}
+	G.crop_care_overnight(rep2)
+	var eaten2: int = 15 - hm.soil.values().filter(func(x): return x.crop != null).size()
+	C.crow_chance = cc
+	check("Crows eat crops on bigger fields; a Scarecrow within 8 tiles keeps them off", eaten > 0 and eaten2 == 0 and " ".join(rep.lines).contains("Crows"), "eaten=%d with scarecrow=%d" % [eaten, eaten2])
+
+	# trellis, raised bed, cold frame
+	hm.soil.clear()
+	field(hm, 10, 24, 2, 1, "snapbean", 99)
+	clear_tile(hm, 10, 24)
+	hm.soil[GameMap.k(10, 24)] = {"w": 1, "crop": {"id": "snapbean", "g": 99}}
+	G.add_item("trellis", 1, {"silent": true})
+	at("homestead", 10, 25, "up")
+	W.place_at(Vector2i(10, 24), "trellis")
+	G.state.inventory = []; G.state.inventory.resize(int(G.state.inv_size))
+	W.harvest_at(Vector2i(10, 24))
+	var with_trellis: int = G.count_item("snapbean")
+	W.harvest_at(Vector2i(11, 24))
+	check("Trellis: placed on tilled soil, Snap Beans under it give 1 extra", hm.get_obj(10, 24) != null and hm.get_obj(10, 24).type == "trellis" and with_trellis == 2 and G.count_item("snapbean") == 3, "trellis=%d total=%d" % [with_trellis, G.count_item("snapbean")])
+	for yy in range(30, 36):
+		for xx in range(18, 24):
+			clear_tile(hm, xx, yy)
+	G.add_item("raised_bed", 1, {"silent": true})
+	at("homestead", 20, 35, "up")
+	select("raised_bed")
+	W.use_selected(0, false)
+	var raised := hm.soil.values().filter(func(x): return x.get("raised", false)).size()
+	var rk := GameMap.k(20, 33)
+	if hm.soil.has(rk): hm.soil[rk].crop = {"id": "potato", "g": 1}
+	var reach := PackedByteArray(); reach.resize(hm.w * hm.h); reach.fill(1)
+	var tg: Dictionary = G._raid_targets(hm, reach)
+	check("Raised Bed: builds a 3 by 3 raised patch of soil that raiders can't trample", raised == 9 and G.count_item("raised_bed") == 0 and not tg.crops.has(rk), "raised=%d" % raised)
+	# cold frame: grows out of season
+	clear_tile(hm, 26, 30)
+	hm.soil[GameMap.k(26, 30)] = {"w": 1, "crop": null, "fixed": true}
+	hm.add_obj(26, 30, "cold_frame")
+	var off_seed := ""
+	for sid in Data.items:
+		var it2: Dictionary = Data.items[sid]
+		if it2.get("cat", "") == "seed" and it2.has("crop") and Data.crops.has(it2.crop) and not Data.crops[it2.crop].seasons.has(G.season()):
+			off_seed = sid
+			break
+	G.add_item(off_seed, 1, {"silent": true})
+	W.plant_at(Vector2i(26, 30), off_seed)
+	check("Cold Frame: you can plant out of season under it", hm.soil[GameMap.k(26, 30)].crop != null, "seed=%s" % off_seed)
 
 func count_nodes(n: Node) -> int:
 	var c := 1

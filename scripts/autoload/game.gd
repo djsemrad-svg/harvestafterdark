@@ -182,29 +182,45 @@ func count_match(spec: String) -> int:
 			n += int(s.qty)
 	return n
 
+## Uses up items, Normal quality first, then Silver, then Gold.
 func consume_match(spec: String, qty: int) -> bool:
 	var list := inv()
-	for i in list.size():
-		if qty <= 0:
-			break
-		var s = list[i]
-		if s != null and matches(spec, s.id):
-			var take: int = min(qty, int(s.qty))
-			s.qty = int(s.qty) - take
-			qty -= take
-			if s.qty <= 0:
-				list[i] = null
+	for ql in 3:
+		for i in list.size():
+			if qty <= 0:
+				break
+			var s = list[i]
+			if s != null and matches(spec, s.id) and quality_of(s) == ql:
+				var take: int = min(qty, int(s.qty))
+				s.qty = int(s.qty) - take
+				qty -= take
+				if s.qty <= 0:
+					list[i] = null
 	return qty == 0
 
-func can_fit(id: String, qty: int, list = null) -> bool:
+## Crop quality on a stack: 0 Normal, 1 Silver, 2 Gold.
+func quality_of(s) -> int:
+	return int(s.get("q", 0)) if s is Dictionary else 0
+
+func quality_mult(q: int) -> float:
+	return [1.0, 1.25, 1.5][clampi(q, 0, 2)]
+
+## Stacks merge only when their extra data matches; quality alone still stacks.
+func stack_key(e: Dictionary) -> String:
+	if e.is_empty(): return ""
+	if e.size() == 1 and e.has("q"): return "" if int(e.q) == 0 else "q%d" % int(e.q)
+	return "#single"
+
+func can_fit(id: String, qty: int, list = null, extra := {}) -> bool:
 	if list == null:
 		list = inv()
 	var mx: int = Data.items[id].stack
+	var key := stack_key(extra)
 	var room := 0
 	for s in list:
 		if s == null:
 			room += mx
-		elif s.id == id:
+		elif s.id == id and key != "#single" and stack_key(stack_extras(s)) == key:
 			room += mx - int(s.qty)
 		if room >= qty:
 			return true
@@ -220,9 +236,11 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
 	var extra: Dictionary = opts.get("extra", {})
+	if extra.has("q") and int(extra.q) == 0: extra = {}
+	var key := stack_key(extra)
 	var left := qty
 	for s in list:
-		if left > 0 and s != null and s.id == id and int(s.qty) < mx and extra.is_empty() and stack_extras(s).is_empty():
+		if left > 0 and s != null and s.id == id and int(s.qty) < mx and key != "#single" and stack_key(stack_extras(s)) == key:
 			var a: int = min(mx - int(s.qty), left)
 			s.qty = int(s.qty) + a
 			left -= a
@@ -260,16 +278,21 @@ func sort_inventory() -> void:
 	var singles := []   # weapons and gear keep their durability, so they are not merged
 	for i in range(tb, inv().size()):
 		var s = inv()[i]
-		if s != null and not stack_extras(s).is_empty():
+		if s != null and stack_key(stack_extras(s)) == "#single":
 			singles.append(s)
 		elif s != null:
-			merged[s.id] = merged.get(s.id, 0) + int(s.qty)
+			var mk: String = s.id + "|" + str(quality_of(s))
+			merged[mk] = merged.get(mk, 0) + int(s.qty)
 	var order := Data.categories.keys()
 	var ids := merged.keys()
 	ids.sort_custom(func(a, b):
-		var ca := order.find(Data.items[a].cat)
-		var cb := order.find(Data.items[b].cat)
-		return ca < cb if ca != cb else Data.items[a].name < Data.items[b].name)
+		var ia: String = a.split("|")[0]
+		var ib: String = b.split("|")[0]
+		var ca := order.find(Data.items[ia].cat)
+		var cb := order.find(Data.items[ib].cat)
+		if ca != cb: return ca < cb
+		if ia != ib: return Data.items[ia].name < Data.items[ib].name
+		return a < b)
 	for i in range(tb, inv().size()):
 		inv()[i] = null
 	var i := tb
@@ -280,11 +303,14 @@ func sort_inventory() -> void:
 	for sg in singles:
 		inv()[i] = sg
 		i += 1
-	for id in ids:
-		var q: int = merged[id]
+	for mk in ids:
+		var q: int = merged[mk]
+		var id: String = mk.split("|")[0]
+		var ql := int(mk.split("|")[1])
 		while q > 0 and i < inv().size():
 			var a: int = min(q, Data.items[id].stack)
 			inv()[i] = {"id": id, "qty": a}
+			if ql > 0: inv()[i].q = ql
 			i += 1
 			q -= a
 
@@ -925,6 +951,9 @@ func update_clock(dt: float) -> void:
 func tick10() -> void:
 	expire_buffs()
 	check_achievements()
+	if state.get("frost_night", false) and int(state.time) >= 1080 and int(state.flags.get("frost_warned", -1)) != int(state.day):
+		state.flags.frost_warned = int(state.day)
+		toast("It's turning cold. Frost tonight: cover young crops with Frost Cloth.", "frost_cloth", "warn")
 	state.time = int(state.time) + 10
 	survival_tick(10)
 	if state.time == Balance.time.midnight:
@@ -942,6 +971,97 @@ func tick10() -> void:
 		pass_out()
 
 
+
+# ================================================================ crop care: quality, frost, pests, crows
+func has_obj_at(m: GameMap, kk: String, type: String) -> bool:
+	var o = m.objects.get(kk)
+	return o != null and o.type == type
+
+## Frost comes on some nights in the first and last 8 days of spring and autumn.
+func roll_frost(day: int) -> bool:
+	if day <= int(Balance.crop_care.grace_days): return false
+	var sn := season(day)
+	var dos := day_of_season(day)
+	var early: bool = sn == "spring" and dos <= 8
+	var late: bool = sn == "autumn" and dos >= Balance.calendar.days_per_season - 7
+	if not (early or late): return false
+	var r := RandomNumberGenerator.new()
+	r.seed = int(state.seed) * 7919 + day * 104729
+	return r.randf() < Balance.crop_care.frost_chance
+
+## Frost, pests and crows overnight. Returns {"stunted": [crops that don't grow tonight]}.
+func crop_care_overnight(rep: Dictionary) -> Dictionary:
+	var C: Dictionary = Balance.crop_care
+	var day := int(state.day)
+	var stunted := []
+	if day <= int(C.grace_days):
+		return {"stunted": stunted}
+	var frosted := 0
+	var frost_killed := 0
+	var new_pests := 0
+	var pest_killed := 0
+	var crows := 0
+	for id in maps:
+		var m: GameMap = maps[id]
+		if not m.outdoor: continue
+		var scarers := []
+		for ok in m.objects:
+			var so: Dictionary = m.objects[ok]
+			if Data.obj_defs.get(so.type, {}).has("scare"):
+				scarers.append(Vector2(int(so.x), int(so.y)))
+		var growing := []
+		for kk in m.soil.keys():
+			var s: Dictionary = m.soil[kk]
+			var c = s.get("crop")
+			if c == null or c.get("dead", false): continue
+			growing.append(kk)
+			var framed := has_obj_at(m, kk, "cold_frame")
+			# frost: sets crops back two days; seedlings can die
+			if state.get("frost_last_night", false) and not framed and int(s.get("frost_until", -1)) < day and not Data.crops[c.id].seasons.has("winter"):
+				if int(c.g) <= 1 and not c.get("regrown", false) and rng.randf() < C.frost_kill_seedling:
+					c.dead = true
+					frost_killed += 1
+					continue
+				c.g = max(0, int(c.g) - 2)
+				stunted.append(c)
+				frosted += 1
+			# pests: an infested crop stops growing, spreads, and dies after a few days
+			if c.has("pests"):
+				if day - int(c.pests) >= C.pest_days_to_kill:
+					c.dead = true
+					pest_killed += 1
+					continue
+				stunted.append(c)
+				var t := GameMap.unk(kk)
+				for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nk := GameMap.k(t.x + dv.x, t.y + dv.y)
+					var ns = m.soil.get(nk)
+					if ns != null and ns.get("crop") != null and not ns.crop.get("dead", false) and not ns.crop.has("pests") and int(ns.get("pest_until", -1)) < day and rng.randf() < C.pest_spread:
+						ns.crop.pests = day
+						new_pests += 1
+			elif int(s.get("pest_until", -1)) < day and not framed and rng.randf() < float(C.pest_chance.get(season(), 0.0)):
+				c.pests = day
+				new_pests += 1
+		# crows go for unprotected crops on bigger fields
+		if id == "homestead" and growing.size() >= C.crow_min_crops and rng.randf() < C.crow_chance:
+			var targets := growing.filter(func(kk2):
+				var t2 := GameMap.unk(kk2)
+				var cc = m.soil[kk2].get("crop")
+				if cc == null or cc.get("dead", false) or has_obj_at(m, kk2, "cold_frame"): return false
+				return not scarers.any(func(p): return p.distance_to(Vector2(t2)) <= 8.0))
+			targets.shuffle()
+			for i in min(targets.size(), 1 + growing.size() / 30):
+				m.soil[targets[i]].crop = null
+				crows += 1
+	if frosted + frost_killed > 0:
+		rep.lines.append("Frost last night set back %d crop%s%s. Frost Cloth or a Cold Frame protects them." % [frosted + frost_killed, "" if frosted + frost_killed == 1 else "s", " and killed %d seedling%s" % [frost_killed, "" if frost_killed == 1 else "s"] if frost_killed > 0 else ""])
+	if new_pests > 0:
+		rep.lines.append("Pests got into %d crop%s. Pest Spray clears them; untreated crops die in %d days." % [new_pests, "" if new_pests == 1 else "s", int(C.pest_days_to_kill)])
+	if pest_killed > 0:
+		rep.lines.append("Pests killed %d crop%s." % [pest_killed, "" if pest_killed == 1 else "s"])
+	if crows > 0:
+		rep.lines.append("Crows ate %d of your crops. A Scarecrow keeps them off within 8 tiles." % crows)
+	return {"stunted": stunted}
 
 # ================================================================ farm buildings and animals
 ## Coops, barns and hutches (see scripts/world/livestock.gd), plus doghouses and house cats.
@@ -1636,7 +1756,7 @@ func _raid_targets(m: GameMap, reach: PackedByteArray) -> Dictionary:
 	for kk in m.soil:
 		var sl: Dictionary = m.soil[kk]
 		var c = sl.get("crop")
-		if c == null or c.get("dead", false): continue
+		if c == null or c.get("dead", false) or sl.get("raised", false): continue   # raised beds can't be trampled
 		var t := GameMap.unk(kk)
 		if reach[t.y * m.w + t.x] or _next_to_reach(m, reach, t):
 			crops.append(kk)
@@ -2675,7 +2795,7 @@ func sell_price(s: Dictionary) -> int:
 		var md := max_dur(s.id)
 		var frac: float = 1.0 if md <= 0 else float(stack_dur(s)) / float(md)
 		return int(it.price * 0.4 * (0.25 + 0.75 * frac)) if not is_broken(s) else int(it.price * 0.05)
-	return int(it.price)
+	return int(it.price * quality_mult(quality_of(s)))
 
 func shop_sell(shop_id: String, slot: int, qty: int) -> void:
 	var s = inv()[slot]
@@ -2872,29 +2992,39 @@ func end_day(reason: String) -> void:
 		state.health = max_health()
 	state.weather = state.weather_tomorrow
 	state.weather_tomorrow = roll_weather(int(state.day) + 1)
+	state.frost_last_night = state.get("frost_night", false)
+	state.frost_night = roll_frost(int(state.day))
+	if state.frost_night:
+		rep.lines.append("Frost is forecast for tonight. Cover young crops with Frost Cloth.")
 	roll_raid(int(state.day))
 	var new_season := season()
 	if new_season != prev_season:
 		rep.lines.append("A new season begins: %s!%s" % [new_season.capitalize(), " Happy new year!" if season_index() == 0 else ""])
-	# 2. crops
+	# 2. crops (frost, pests and crows are in FarmCare; see crop_care_overnight)
 	var grew := 0
 	var withered := 0
 	var waters: bool = Data.weather_info[state.weather].waters
+	var care := crop_care_overnight(rep)
 	for id in maps:
 		var m: GameMap = maps[id]
 		for kk in m.soil.keys():
 			var s: Dictionary = m.soil[kk]
 			var c = s.get("crop")
 			if c != null and not c.get("dead", false):
-				if m.outdoor and new_season != prev_season and not Data.crops[c.id].seasons.has(new_season):
+				var framed := has_obj_at(m, kk, "cold_frame")
+				if m.outdoor and new_season != prev_season and not Data.crops[c.id].seasons.has(new_season) and not framed:
 					c.dead = true
 					withered += 1
+				elif care.stunted.has(c):
+					pass    # frost-bitten or full of pests: no growth tonight
 				elif int(s.w):
 					c.g = int(c.g) + 1
 					if s.get("fert", "") == "tonic" and rng.randf() < Balance.farming_extra.tonic_bonus_chance:
 						c.g = int(c.g) + 1
+					if s.get("raised", false) and rng.randf() < Balance.crop_care.raised_bonus_chance:
+						c.g = int(c.g) + 1
 					grew += 1
-			elif c == null and not int(s.w) and not s.get("fixed", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
+			elif c == null and not int(s.w) and not s.get("fixed", false) and not s.get("raised", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
 				m.soil.erase(kk)
 				continue
 			var keep: bool = s.get("fert", "") == "mulch" and int(s.w) == 1 and rng.randf() < Balance.farming_extra.mulch_keep_chance
@@ -2941,15 +3071,16 @@ func end_day(reason: String) -> void:
 	for it in state.shipping:
 		if it == null:
 			continue
-		var price: int = Data.items[it.id].price
+		var ql := quality_of(it)
+		var price: int = int(Data.items[it.id].price * quality_mult(ql))
 		var line = null
 		for l in rep.sales:
-			if l.id == it.id: line = l
+			if l.id == it.id and int(l.get("q", 0)) == ql: line = l
 		if line != null:
 			line.qty += int(it.qty)
 			line.total += price * int(it.qty)
 		else:
-			rep.sales.append({"id": it.id, "name": Data.items[it.id].name, "qty": int(it.qty), "price": price, "total": price * int(it.qty)})
+			rep.sales.append({"id": it.id, "q": ql, "name": (FarmCare.QUALITY[ql] + " " if ql > 0 else "") + Data.items[it.id].name, "qty": int(it.qty), "price": price, "total": price * int(it.qty)})
 		state.collections.shipped[it.id] = int(state.collections.shipped.get(it.id, 0)) + int(it.qty)
 		state.stats.items_shipped = int(state.stats.items_shipped) + int(it.qty)
 		shipped += int(it.qty)
