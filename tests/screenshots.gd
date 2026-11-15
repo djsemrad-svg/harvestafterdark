@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "nests":
+		main.ui.close_all()
+		await nest_shots()
+		get_tree().quit()
+		return
 	if only == "injuries":
 		main.ui.close_all()
 		await injury_shots()
@@ -403,6 +408,33 @@ func crop_shots() -> void:
 	await frames(20)
 	await shot("95_farm_care")
 	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
+	main.ui.close_all()
+
+func nest_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 960
+	for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+	Game.change_map("riverlands", 17, 30, "down", {"silent": true})
+	for e in Game.enemies.duplicate():
+		if not e.has("nest_id"): Game.enemies.erase(e)
+	var nest = null
+	for e in Game.enemies:
+		if e.type == "horde_nest": nest = e
+	Game.player.pos = nest.pos + Vector2(-72, -6)
+	Game.state.flags["nest_found_nest_woods"] = true
+	await frames(20)
+	await shot("90_nest_asleep")
+	for e in Game.enemies:
+		if e.has("nest_id") and e.type != "horde_nest": e.state = "chase"
+	nest.hp = float(nest.hp) * 0.6
+	Game.player.iframes = 99.0
+	await frames(4)
+	nest.spawn_t = 0.0
+	await frames(40)
+	await shot("91_nest_awake")
+	Game.enemies.clear()
+	main.ui.open("journal", {"tab": "map"}); await frames(4); await shot("92_nest_map")
 	main.ui.close_all()
 
 func injury_shots() -> void:

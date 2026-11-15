@@ -929,6 +929,9 @@ func kill_enemy(e: Dictionary) -> void:
 	var d: Dictionary = Data.enemies[e.type]
 	Game.enemies.erase(e)
 	burst(e.pos + Vector2(0, -8), Color("#7a8a70"), 12)
+	if d.get("nest", false):
+		nest_destroyed(e)
+		return
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
@@ -949,6 +952,25 @@ func kill_enemy(e: Dictionary) -> void:
 		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
+
+## The nest falls apart: a cache of what the infected dragged in, and the area goes quiet.
+func nest_destroyed(e: Dictionary) -> void:
+	var H: Dictionary = Balance.hordes
+	var N: Dictionary = Hordes.NESTS[e.nest_id]
+	var ghost: bool = not e.get("seen", false)
+	burst(e.pos + Vector2(0, -6), Color("#2a3020"), 24)
+	Game.shake = 0.3
+	Sfx.play("boom")
+	var got := Arsenal.roll_loot(N.tags, Game.rng, Game.rng.randi_range(int(H.cache_rolls[0]), int(H.cache_rolls[1])), float(H.cache_quality))
+	for g in got:
+		spawn_drop(g[0], int(g[1]), e.pos + Vector2(0, -4))
+	var gold := Game.rng.randi_range(int(H.cache_gold[0]), int(H.cache_gold[1]))
+	Game.state.money = int(Game.state.money) + gold
+	Game.toast("The nest collapses. In the junk: %d gold and whatever they dragged in.%s" % [gold, " Not one of them saw you." if ghost else ""], "", "gold")
+	Game.add_xp("survival", int(Data.enemies[e.type].xp))
+	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
+	Game.contract_event("kill", {"type": e.type})
+	Game.clear_nest(e.nest_id, ghost)
 
 func spawn_enemy(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
 	return inf.spawn(type, tx, ty, opts)
@@ -995,6 +1017,7 @@ func spawn_district_foes(m: GameMap) -> void:
 		return
 	spawn_roamers(m, Game.rng.randi_range(int(F.day[0]), int(F.day[1])), F.table, float(F.asleep))
 	spawn_bosses(m)
+	spawn_nests(m)
 	for f in F.get("fixed", []):
 		if Game.rng.randf() < float(f.chance):
 			var t := free_tile_near(m, int(f.x), int(f.y))
@@ -1002,6 +1025,30 @@ func spawn_district_foes(m: GameMap) -> void:
 				spawn_enemy(f.type, t.x, t.y, {"asleep": Game.rng.randf() < 0.3})
 	if int(Game.state.time) >= 1200:
 		spawn_night_infected()
+
+## Horde nests: the nest and its sleeping horde, unless it was destroyed recently.
+func spawn_nests(m: GameMap) -> void:
+	var H: Dictionary = Balance.hordes
+	for id in Hordes.at_map(m.id):
+		if not Game.nest_active(id) or Game.enemies.any(func(o): return o.get("nest_id", "") == id):
+			continue
+		var N: Dictionary = Hordes.NESTS[id]
+		var t := free_tile_near(m, int(N.at[0]), int(N.at[1]))
+		if t.x < 0: continue
+		var nest := spawn_enemy("horde_nest", t.x, t.y)
+		nest.nest_id = id
+		var want := Game.rng.randi_range(int(H.horde[0]), int(H.horde[1]))
+		var placed := 0
+		var r: int = int(H.radius)
+		for tries in 200:
+			if placed >= want: break
+			var x := t.x + Game.rng.randi_range(-r, r)
+			var y := t.y + Game.rng.randi_range(-r, r)
+			if Vector2i(x, y) == t or Vector2(x - t.x, y - t.y).length() < 1.5: continue
+			if not m.tile_free(x, y) or Vector2(Vector2i(x, y) - player_tile()).length() < 10.0: continue
+			var z := spawn_enemy(pick_foe(N.table), x, y, {"asleep": Game.rng.randf() < float(H.asleep)})
+			z.nest_id = id
+			placed += 1
 
 ## Named bosses wait at their lair while you have their contract (night-only ones after 8 pm).
 func spawn_bosses(m: GameMap) -> void:

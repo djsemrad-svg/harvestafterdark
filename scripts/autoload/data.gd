@@ -1010,6 +1010,7 @@ func _init() -> void:
 	Livestock.register(self)
 	FarmCare.register(self)
 	Injuries.register(self)
+	Hordes.register(self)
 
 
 func item(id: String) -> Dictionary:

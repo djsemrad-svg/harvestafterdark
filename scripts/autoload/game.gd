@@ -2365,8 +2365,31 @@ func achievement_value(stat: String) -> float:
 		"deepest": return float(state.mine.deepest)
 		"unbitten_day": return 0.0 if state.flags.get("bitten", false) else float(state.day)
 		"chainsaw": return float(st.get("chainsaw_kills", 0))
+		"ghost_nests": return float(st.get("ghost_nests", 0))
 		"earned": return float(st.get("earned", 0))
 	return 0.0
+
+# ================================================================ horde nests
+func nests() -> Dictionary:
+	if not (state.get("nests") is Dictionary): state.nests = {}
+	return state.nests
+
+## A nest stands unless it was destroyed less than regrow_days ago.
+func nest_active(id: String) -> bool:
+	var n: Dictionary = nests().get(id, {})
+	return not n.has("cleared") or int(state.day) - int(n.cleared) >= int(Balance.hordes.regrow_days)
+
+func nest_regrow_in(id: String) -> int:
+	var n: Dictionary = nests().get(id, {})
+	if not n.has("cleared"): return 0
+	return maxi(0, int(Balance.hordes.regrow_days) - (int(state.day) - int(n.cleared)))
+
+func clear_nest(id: String, ghost: bool) -> void:
+	nests()[id] = {"cleared": int(state.day)}
+	state.stats.nests_cleared = int(state.stats.get("nests_cleared", 0)) + 1
+	if ghost:
+		state.stats.ghost_nests = int(state.stats.get("ghost_nests", 0)) + 1
+	check_achievements()
 
 func check_achievements() -> void:
 	if not (state.get("achievements") is Dictionary): state.achievements = {"done": []}

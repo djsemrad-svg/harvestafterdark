@@ -350,6 +350,7 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 		"residential": _residential(m, r)
 		"industrial": _industrial(m, r)
 		"riverlands": _riverlands(m, r)
+	Hordes.shape_map(m)
 	for b in D.buildings:
 		var dx := _door_x(b)
 		var s := {"kind": b.kind, "x": b.x, "y": b.y, "w": b.w, "h": b.h, "door_x": dx, "door_y": int(b.y) + int(b.h) - 1}

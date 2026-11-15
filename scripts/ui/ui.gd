@@ -603,7 +603,7 @@ func update_hud(dt: float) -> void:
 	# boss health
 	var boss = null
 	for en in Game.enemies:
-		if Data.enemies[en.type].get("boss", false) and en.state != "asleep":
+		if (Data.enemies[en.type].get("boss", false) and en.state != "asleep") or en.get("awake", false):
 			boss = en
 			break
 	boss_box.visible = boss != null
@@ -1978,6 +1978,11 @@ func _tab_map() -> Control:
 	for id in Districts.DISTRICTS:
 		var open: bool = st.unlocked.get(id, false)
 		v.add_child(K.label("%s: %s" % [Districts.DISTRICTS[id].name, "open" if open else how[id]], 6, K.INK_SOFT, true))
+		if open:
+			for nid in Hordes.at_map(id):
+				var N: Dictionary = Hordes.NESTS[nid]
+				var stand: String = "[color=#b3392e]active[/color]" if Game.nest_active(nid) else "[color=#3f7a2c]destroyed[/color], grows back in %d days" % Game.nest_regrow_in(nid)
+				v.add_child(K.rich("   Horde nest in %s: %s" % [N.where, stand], 6))
 	v.custom_minimum_size.x = 170
 	h.add_child(v)
 	return h

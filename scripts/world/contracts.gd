@@ -85,6 +85,9 @@ const CONTRACTS := [
 		"map": "residential", "at": [30, 5], "radius": 9,
 		"desc": "The last school bus out of Maple Heights still runs the Elm Street overpass once a season. Light the flare by the overpass at the north end of Elm Street and hold the road for 10 waves until it's across.",
 		"reward": {"items": ["long_goodbye"], "money": 1500}},
+	{"id": "burn_them_out", "title": "Burn Them Out", "giver": "cole", "kind": "kill", "count": 3, "types": ["horde_nest"], "needs": "residential",
+		"desc": "Every district has a horde nest: a heap of junk and black roots where they sleep in a pile. While it stands, it keeps sending more. Destroy 3 nests (they grow back after a few weeks). Check the Map tab for where they are.",
+		"reward": {"money": 2000}},
 	# ---------------- neighbours' jobs
 	{"id": "twin_oaks", "title": "Twin Oaks", "giver": "marisol", "kind": "find", "needs": "riverlands",
 		"spots": [["journal_half_a", "rv_farmhouse", 2, 1], ["journal_half_b", "rv_barn", 9, 1]], "consume": true,
@@ -125,7 +128,7 @@ const ACHIEVEMENTS := [
 	{"id": "unseen", "title": "Unseen", "desc": "Reach day 100 without ever being bitten.", "stat": "unbitten_day", "goal": 100, "reward": "grinning_saint"},
 	{"id": "heavy_metal", "title": "Heavy Metal", "desc": "Put down 1,000 infected with any chainsaw.", "stat": "chainsaw", "goal": 1000, "reward": "redline"},
 	{"id": "worthless_fortune", "title": "Worthless Fortune", "desc": "Earn 1,000,000 gold in total.", "stat": "earned", "goal": 1000000, "reward": "gold_sneakers"},
-	{"id": "ghost", "title": "Ghost", "desc": "Clear a Horde Nest without being detected.", "todo": "Needs horde nests.", "reward": "whisper"},
+	{"id": "ghost", "title": "Ghost", "desc": "Destroy a Horde Nest without its horde ever noticing you.", "stat": "ghost_nests", "goal": 1, "reward": "whisper"},
 	{"id": "drive_thru", "title": "Drive-Thru", "desc": "Clear 5 fast food restaurants.", "todo": "Needs fast food restaurants.", "reward": "burger_mascot_suit"},
 	{"id": "comfort_zone", "title": "Comfort Zone", "desc": "Sleep in 50 different safehouses.", "todo": "Needs safehouses.", "reward": "bunny_slippers"},
 ]

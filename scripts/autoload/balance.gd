@@ -249,6 +249,21 @@ var bombs := {
 }
 
 ## Injuries and sickness (scripts/world/injuries.gd, Game "injuries and sickness").
+var hordes := {
+	"nest_hp": 900,
+	"xp": 200,
+	"horde": [6, 9],            # infected asleep around a nest when you arrive
+	"asleep": 0.8,
+	"radius": 5,                # tiles around the nest they sleep in
+	"spawn_cd": 6.0,            # seconds between waves once the nest is awake
+	"spawn_n": 2,
+	"spawn_cap": 8,             # most of its own a nest keeps out at once
+	"regrow_days": 21,
+	"cache_rolls": [3, 5],      # things the infected dragged in
+	"cache_quality": 0.45,
+	"cache_gold": [150, 400],
+}
+
 var injuries := {
 	"antiviral_find": 0.03,      # chance per search of the crash site tent or helicopter
 	"bleed_chance": 0.2,             # per hit from the infected that does damage

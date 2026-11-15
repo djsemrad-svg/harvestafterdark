@@ -341,6 +341,9 @@ var _lying_looks := {}
 
 func _draw_enemy(en: Dictionary) -> void:
 	var d: Dictionary = Data.enemies[en.type]
+	if d.get("ai", "") == "nest":
+		_draw_nest(en)
+		return
 	var jx = round(sin(anim_t * 40.0)) if en.state in ["telegraph", "scream"] else 0.0
 	var look: Dictionary = en.get("look", d.look)
 	if en.state == "down" and look.get("sprite", "") == "zv" and not look.get("lying", false):
@@ -369,6 +372,65 @@ func _draw_enemy(en: Dictionary) -> void:
 		draw_rect(Rect2(top.round(), Vector2(bw * clampf(float(en.hp) / float(en.get("max_hp", d.hp)), 0, 1), 2)), Color("#e04a3a") if not en.get("boss", false) else Color("#e8a020"))
 	if en.state == "asleep" and int(anim_t * 2) % 2 == 0:
 		draw_string(ThemeDB.fallback_font, en.pos + Vector2(4, -20), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1, 0.7))
+
+## A horde nest: junk the infected dragged together (a mattress, planks, a cart,
+## tyres, rags) bound up in black, root-like growth with pods that glow faintly.
+func _draw_nest(en: Dictionary) -> void:
+	var c: Vector2 = en.pos.round()
+	var awake: bool = en.get("awake", false)
+	var hurt = en.flash > 0
+	# stain on the ground and roots spreading out
+	_ellipse(c + Vector2(0, -3), Vector2(30, 11), Color(0.07, 0.09, 0.05, 0.55))
+	var root := Color("#1c2218")
+	for i in 9:
+		var a := -PI + i * PI / 8.0 + 0.15 * sin(i * 2.3)
+		var ln = 20.0 + 10.0 * abs(sin(i * 1.7))
+		var mid: Vector2 = c + Vector2(cos(a) * ln * 0.55, sin(a) * ln * 0.2 - 3) + Vector2(0, 2 * sin(i))
+		var tip: Vector2 = c + Vector2(cos(a) * ln, sin(a) * ln * 0.38 - 2)
+		draw_line(c + Vector2(0, -4), mid.round(), root, 2.0)
+		draw_line(mid.round(), tip.round(), root, 1.0)
+	# the junk
+	draw_set_transform(c + Vector2(-9, -9), -0.35, Vector2.ONE)
+	draw_rect(Rect2(-9, -4, 18, 8), Color("#b8ae94"))          # mattress
+	for sx in [-6, -1, 4]:
+		draw_rect(Rect2(sx, -4, 1, 8), Color("#8a7e66"))
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	draw_line(c + Vector2(-16, -2), c + Vector2(4, -18), Color("#6a4a2a"), 2.0)   # planks
+	draw_line(c + Vector2(14, -1), c + Vector2(-2, -20), Color("#5a3e22"), 2.0)
+	draw_rect(Rect2(c + Vector2(6, -14), Vector2(11, 7)), Color("#8a9098"), false, 1.0)   # shopping cart
+	draw_line(c + Vector2(6, -14), c + Vector2(4, -17), Color("#8a9098"), 1.0)
+	draw_circle(c + Vector2(-15, -5), 4.0, Color("#232323"))   # tyres
+	draw_circle(c + Vector2(-15, -5), 1.6, Color("#4a4a4a"))
+	draw_rect(Rect2(c + Vector2(-4, -8), Vector2(7, 4)), Color("#5a4a6a"))   # rags
+	draw_rect(Rect2(c + Vector2(9, -6), Vector2(6, 3)), Color("#6a3a2a"))
+	# black growth over all of it
+	var g := Color("#20261c") if not hurt else Color("#5a5a50")
+	for blob in [[Vector2(0, -12), 10.0], [Vector2(-7, -9), 7.0], [Vector2(8, -10), 7.0], [Vector2(-2, -20), 6.0], [Vector2(4, -6), 6.0]]:
+		draw_circle(c + blob[0], blob[1], g)
+	for i in 5:
+		var vx := -12 + i * 6
+		draw_line(c + Vector2(vx, -2), c + Vector2(vx * 0.5, -18 + abs(vx) * 0.4), Color("#2c3426"), 1.0)
+	# pods: a slow green pulse asleep, a fast orange one awake
+	var speed := 7.0 if awake else 1.6
+	for i in 5:
+		var pp: Vector2 = c + [Vector2(-4, -15), Vector2(5, -18), Vector2(-9, -10), Vector2(9, -9), Vector2(1, -8)][i]
+		var pulse := 0.5 + 0.5 * sin(anim_t * speed + i * 1.3)
+		var col := Color("#b8e048") if not awake else Color("#ff8a3a")
+		draw_circle(pp, 4.0, Color(col.r, col.g, col.b, 0.12 + 0.18 * pulse))
+		_ellipse(pp, Vector2(2.0, 1.5), Color(col.r * 0.7, col.g * 0.7, col.b * 0.7, 1.0))
+		draw_rect(Rect2(pp - Vector2(0.5, 1), Vector2(1, 1)), Color(col.r, col.g, col.b, 0.6 + 0.4 * pulse))
+	if float(en.hp) < float(en.max_hp):
+		var bw := 30.0
+		var top: Vector2 = c - Vector2(bw / 2, 30)
+		draw_rect(Rect2(top, Vector2(bw, 2)), Color(0, 0, 0, 0.6))
+		draw_rect(Rect2(top, Vector2(bw * clampf(float(en.hp) / float(en.max_hp), 0, 1), 2)), Color("#e8a020"))
+
+func _ellipse(at: Vector2, r: Vector2, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 16:
+		var a := i * TAU / 16.0
+		pts.append(at + Vector2(cos(a) * r.x, sin(a) * r.y))
+	draw_colored_polygon(pts, col)
 
 func _draw_projectile(pr: Dictionary) -> void:
 	var k: String = pr.get("kind", "round")

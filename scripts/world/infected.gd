@@ -49,6 +49,8 @@ func spawn(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
 		"wander": Vector2.ZERO, "wt": 0.0, "vel": Vector2.ZERO, "frame": 0, "walk_t": 0.0, "flash": 0.0, "lunge": Vector2.ZERO,
 		"look": make_look(type, Game.rng), "spit_cd": randf_range(0.5, 2.0), "notice": 0.0}
 	if opts.get("asleep", false): e.state = "asleep"
+	if d.get("boss", false) or d.get("nest", false):
+		e.boss = true      # no decapitating, executing or turning these
 	Game.enemies.append(e)
 	return e
 
@@ -82,6 +84,9 @@ func update(dt: float) -> void:
 		if not Game.enemies.has(e):
 			continue
 		e.flash = maxf(0.0, e.flash - dt)
+		if ai == "nest":
+			_nest(e, dt, (p.pos - e.pos).length())
+			continue
 		e.zap = maxf(0.0, e.get("zap", 0.0) - dt)
 		e.alert_t = maxf(0.0, float(e.get("alert_t", 0.0)) - dt)
 		e.spit_cd = maxf(0.0, float(e.get("spit_cd", 0.0)) - dt)
@@ -285,6 +290,47 @@ func _turned(e: Dictionary, dt: float) -> void:
 		_move(e, Vector2.ZERO, dt)
 	else:
 		_move(e, to.normalized() * float(Data.enemies[e.type].chase_speed), dt)
+
+## A horde nest doesn't move. It wakes when one of its horde notices you, or when
+## it's hit while any of them are left; then it keeps sending more until destroyed.
+func _nest(e: Dictionary, dt: float, dist: float) -> void:
+	var H: Dictionary = Balance.hordes
+	var id: String = e.nest_id
+	e.state = "nest"
+	e.walk_t = float(e.get("walk_t", 0.0)) + dt
+	var flag := "nest_found_" + id
+	if dist < 10 * 16.0 and not Game.state.flags.get(flag, false):
+		Game.state.flags[flag] = true
+		Game.toast("A horde nest. They sleep piled around it. If they notice you, more will crawl out until it's destroyed.", "", "warn")
+	var horde := Game.enemies.filter(func(o): return o != e and o.get("nest_id", "") == id and float(o.get("turned", 0.0)) <= 0)
+	if not e.get("awake", false):
+		var noticed := horde.any(func(o): return not (o.state in ["asleep", "wander"]))
+		var hit := float(e.hp) < float(e.max_hp) and not horde.is_empty()
+		if noticed or hit:
+			e.awake = true
+			e.seen = true
+			e.spawn_t = 1.5
+			Game.toast("The nest stirs. More of them are crawling out. Destroy it!", "", "bad")
+			Sfx.play("scream")
+			for o in horde:
+				if o.state in ["asleep", "wander"]: o.state = "chase"
+				o.alert_t = 6.0
+		return
+	e.spawn_t = float(e.get("spawn_t", 0.0)) - dt
+	if float(e.spawn_t) > 0:
+		return
+	e.spawn_t = float(H.spawn_cd)
+	if horde.size() >= int(H.spawn_cap):
+		return
+	var table: Array = Hordes.NESTS[id].table
+	for i in int(H.spawn_n):
+		var a := Game.rng.randf() * TAU
+		var t := Vector2i((e.pos + Vector2.from_angle(a) * 24.0) / 16.0)
+		if Game.map.tile_free(t.x, t.y):
+			var z: Dictionary = spawn(w.pick_foe(table), t.x, t.y)
+			z.nest_id = id
+			z.state = "chase"
+			z.alert_t = 4.0
 
 ## Bosses: call up helpers now and then, and the Inferno leaves fire where it walks.
 func _boss(e: Dictionary, d: Dictionary, dist: float, dt: float) -> void:

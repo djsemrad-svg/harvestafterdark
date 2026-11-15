@@ -1226,6 +1226,7 @@ func run_all() -> void:
 	run_livestock()
 	run_crop_care()
 	run_injuries()
+	run_hordes()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2495,6 +2496,88 @@ func run_injuries() -> void:
 	var effs: Array = G.status_effects()
 	check("Conditions show as red badges on the HUD", effs.any(func(e): return e.id == "cond_fracture" and e.get("bad", false)), "")
 	G.conditions().clear()
+
+func ui_text(root: Node) -> String:
+	var out := ""
+	for n in root.find_children("*", "", true, false):
+		if n is Label or n is RichTextLabel: out += str(n.text) + "\n"
+	return out
+
+# ---------------------------------------------------------------- horde nests
+func nest_on_map(id: String):
+	for e in Game.enemies:
+		if e.type == "horde_nest" and e.get("nest_id", "") == id: return e
+	return null
+
+func run_hordes() -> void:
+	var G = Game
+	start("adventure", 2)
+	for id in ["residential", "industrial", "riverlands"]: G.unlock_region(id, true)
+	# every nest can be reached from its district's entrance
+	var bad := []
+	for id in Hordes.NESTS:
+		var N: Dictionary = Hordes.NESTS[id]
+		var D: Dictionary = Districts.DISTRICTS[N.map]
+		var seen := reach(G.maps[N.map], Vector2i(D.entry[0], D.entry[1]))
+		if not seen.has(Vector2i(N.at[0], N.at[1])): bad.append(id)
+	check("Horde nests: one in each district, and each can be walked to", Hordes.NESTS.size() == 3 and bad.is_empty(), str(bad))
+	# arriving: the nest and its sleeping horde
+	var D2: Dictionary = Districts.DISTRICTS.residential
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	var nest = nest_on_map("nest_park")
+	var horde: Array = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest")
+	var asleep: int = horde.filter(func(e): return e.state == "asleep").size()
+	check("Arriving in the Residential District: the park nest is there with %d infected around it, most asleep" % horde.size(), nest != null and horde.size() >= 6 and asleep >= 3, "horde=%d asleep=%d" % [horde.size(), asleep])
+	# a bosses-and-nests check: these can't be decapitated or turned
+	check("Nests and named bosses are marked as bosses (no decapitate, execute or turn)", nest != null and nest.get("boss", false), "")
+	# one of them notices you: the nest wakes and sends more
+	G.player.pos = nest.pos + Vector2(0, 12 * 16)
+	horde[0].state = "chase"
+	tick(100)
+	var woke: bool = nest.get("awake", false)
+	var before: int = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park").size()
+	for e in G.enemies:
+		if e.get("nest_id", "") == "nest_park" and e.type != "horde_nest" and e.pos.distance_to(G.player.pos) < 120: G.enemies.erase(e)
+	for i in 8:
+		tick(1000)
+		G.state.health = 100.0
+		G.player.pos = nest.pos + Vector2(0, 12 * 16)
+	var made: int = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest" and e.state != "asleep").size()
+	check("When one notices you the nest wakes, its health shows at the top, and more crawl out (up to a limit)", woke and made >= 2 and made <= int(Balance.hordes.spawn_cap) and U.boss_box.visible, "made=%d" % made)
+	# destroy it: a cache, gold, Cole's job counts it, and it's gone until it regrows
+	G.take_contract("burn_them_out")
+	var money0: int = int(G.state.money)
+	G.map.drops.clear()
+	W.cb.damage(nest, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var dropped: int = G.map.drops.size()
+	var prog: int = int(G.contract_state().progress.get("burn_them_out", 0))
+	var no_ghost: bool = not G.state.achievements.get("done", []).has("ghost")
+	G.enemies.clear()
+	at("town", 10, 30)
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	var gone: bool = nest_on_map("nest_park") == null
+	check("Destroying a nest: a cache of loot and gold, it counts for Cole's 'Burn Them Out', no Ghost (they saw you), and it stays gone", dropped >= 3 and int(G.state.money) > money0 and prog == 1 and no_ghost and gone, "drops=%d prog=%d" % [dropped, prog])
+	G.state.day = int(G.state.day) + int(Balance.hordes.regrow_days)
+	G.enemies.clear()
+	at("town", 10, 30)
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	nest = nest_on_map("nest_park")
+	check("A destroyed nest grows back after %d days" % int(Balance.hordes.regrow_days), nest != null, "")
+	# Ghost: put down the whole horde without being noticed, then the nest
+	var quiet: Array = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest")
+	for e in quiet:
+		W.cb.damage(e, 99999.0, Vector2.ZERO, {"kind": "stealth", "silent": true})
+	tick(100)
+	var still_asleep: bool = not nest.get("awake", false)
+	G.map.drops.clear()
+	W.cb.damage(nest, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var ghost: bool = G.state.achievements.get("done", []).has("ghost")
+	check("Ghost: clear the horde without being noticed, then destroy the nest. Reward: Whisper", still_asleep and ghost and (G.count_item("whisper") > 0 or G.map.drops.any(func(d): return d.id == "whisper")), "asleep=%s ghost=%s" % [still_asleep, ghost])
+	# the Map tab lists them
+	U.open("journal", {"tab": "map"})
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("The Map tab shows each district's nest and whether it stands", txt.contains("Horde nest in the overgrown park") and txt.contains("destroyed"), "")
 
 func count_nodes(n: Node) -> int:
 	var c := 1
