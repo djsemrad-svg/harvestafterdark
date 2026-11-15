@@ -221,7 +221,14 @@ func _draw() -> void:
 				var a: Dictionary = it[2][0]
 				var r: Dictionary = it[2][1]
 				var tex: Texture2D = Art.get_animal(a.type, int(a.color), r.dir, int(r.frame), Game.animal_mature(a))
-				draw_texture(tex, (r.pos - Vector2(8, 15)).round())
+				var tl: Vector2 = (r.pos - Vector2(tex.get_width() / 2, tex.get_height() - 1)).round()
+				draw_texture(tex, tl)
+				if a.get("ready", false):
+					# ready for the milk pail or shears
+					var bob = round(sin(anim_t * 4.0))
+					var mk := tl + Vector2(tex.get_width() / 2 - 2, -6 + bob)
+					draw_rect(Rect2(mk, Vector2(5, 5)), Color("#fff8e8"))
+					draw_rect(Rect2(mk + Vector2(1, 1), Vector2(3, 3)), Color("#7ab0e0") if Data.animals[a.type].product != "wool" else Color("#f0ece0"))
 	for q in Game.particles if Game.screen == "game" else []:
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
 	if Game.screen == "game":

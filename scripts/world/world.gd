@@ -356,8 +356,11 @@ func break_object(o: Dictionary) -> void:
 	var c := Vector2(ox * 16 + 8, oy * 16 + 8)
 	var rng: RandomNumberGenerator = Game.rng
 	m.remove_obj(ox, oy)
-	if o.type == "weeds" and Game.has_building("coop") and rng.randf() < Balance.animals.hay_from_weeds_chance:
-		spawn_drop("hay", 1, c)
+	if o.type == "weeds" and not Game.state.get("buildings", []).is_empty():
+		var silo = Game.maps.homestead.objects.values().any(func(q): return q.type == "hay_silo")
+		if rng.randf() < (Balance.animals.silo_hay_chance if silo else Balance.animals.hay_from_weeds_chance):
+			if not Game.store_hay(1):
+				spawn_drop("hay", 1, c)
 	for d in def.get("drops", []):
 		var q := rng.randi_range(d[1], d[2])
 		if d[0] == "wood" and rng.randf() < Game.skill_level("foraging") * 0.05:
@@ -786,6 +789,17 @@ func interact_catalog(o: Dictionary, def: Dictionary) -> void:
 ## Tools from the item sheet.
 func use_gadget(id: String, t: Vector2i) -> void:
 	var m: GameMap = Game.map
+	if id in ["shears", "milk_pail"]:
+		var an = animal_in_front()
+		if an == null:
+			Game.toast("Face a %s and use the %s." % ["sheep" if id == "shears" else "cow or goat", Data.items[id].name], id)
+			return
+		var err := Game.collect_from_animal(an, id)
+		if err != "":
+			Game.toast(err, id, "warn")
+		else:
+			Sfx.play("pickup")
+		return
 	match id:
 		"builders_hammer":
 			var o = m.get_obj(t.x, t.y)
@@ -1074,14 +1088,15 @@ func place_building(t: Vector2i, id: String) -> void:
 		Game.toast("Build it on your farm.", id, "warn")
 		return
 	if not Game.building_fits(Game.map, r):
-		Game.toast("Not enough clear ground. The coop needs a 6 by 4 space with nothing on it, plus room in front of the door.", id, "warn")
+		var bsz: Array = Livestock.BUILDINGS[kind].size
+		Game.toast("Not enough clear ground. The %s needs a %d by %d space with nothing on it, plus room in front of the door." % [Livestock.BUILDINGS[kind].name.to_lower(), bsz[0], bsz[1]], id, "warn")
 		Sfx.play("error")
 		return
 	Game.remove_item(id, 1)
 	Game.build_building(kind, r)
 	burst(Vector2(r.get_center()) * 16, Color("#c8a070"), 16)
 	Sfx.play("chop")
-	Game.toast("Your coop is built! Fill the hay hopper inside, then buy animals from Marisol at Reyes Ranch.", "coop_kit", "gold")
+	Game.toast("Your %s is built! Fill the feeder inside, then buy animals from Marisol at Reyes Ranch." % Livestock.BUILDINGS[kind].name.to_lower(), id, "gold")
 
 # ================================================================ defenses, raids, projectiles and bombs
 var _def_t := 0.0
@@ -1540,13 +1555,13 @@ func interact(from_mouse: bool) -> void:
 		return
 	var t := target_tile(from_mouse)
 	var m: GameMap = Game.map
-	var coop = Game.get_building_rec("coop")
-	if coop != null and m.id == "homestead" and t == Game.animal_door_tile(coop):
-		coop.door_open = not coop.door_open
-		Sfx.play("door")
-		Game.toast("Animal door %s." % ("open: your animals can go out on fair days" if coop.door_open else "closed for the night"))
-		Game.sync_animals()
-		return
+	for coop in Game.state.get("buildings", []):
+		if m.id == "homestead" and t == Game.animal_door_tile(coop):
+			coop.door_open = not coop.door_open
+			Sfx.play("door")
+			Game.toast("%s animal door %s." % [Livestock.BUILDINGS[coop.kind].name, "open: your animals can go out on fair days" if coop.door_open else "closed for the night"])
+			Game.sync_animals()
+			return
 	var s = m.soil.get(GameMap.k(t.x, t.y))
 	if s != null and crop_ready(s.get("crop")):
 		harvest_at(t)
@@ -1639,18 +1654,24 @@ func interact_object(o: Dictionary) -> void:
 		"ammo_bench":
 			Game.ui.open("craft", {"station": "ammo_bench"})
 		"hay_hopper":
-			var b = Game.get_building_rec("coop")
+			var b = Game.get_building_rec(Game.map.id)
 			if b == null: return
-			var have := Game.count_item("hay")
-			var room: int = Balance.animals.hopper_cap - int(b.hay)
-			if have > 0 and room > 0:
-				var n: int = min(have, room)
-				Game.remove_item("hay", n)
-				b.hay = int(b.hay) + n
+			var cap := Game.feeder_cap(b)
+			var added := []
+			for fid in ["hay", "mixed_feed"]:
+				var key := "hay" if fid == "hay" else "feed"
+				var room: int = cap - int(b.hay) - int(b.get("feed", 0))
+				var have := Game.count_item(fid)
+				if have > 0 and room > 0:
+					var n: int = min(have, room)
+					Game.remove_item(fid, n)
+					b[key] = int(b.get(key, 0)) + n
+					added.append("%d %s" % [n, Data.items[fid].name])
+			if not added.is_empty():
 				Sfx.play("pick")
-				Game.toast("Added %d hay. The hopper holds %d of %d." % [n, int(b.hay), Balance.animals.hopper_cap], "hay")
+				Game.toast("Added %s. The feeder holds %d hay and %d mixed feed (room for %d)." % [" and ".join(added), int(b.hay), int(b.get("feed", 0)), cap], "hay")
 			else:
-				Game.toast("Hay hopper: %d of %d. Each animal eats 1 a day.%s" % [int(b.hay), Balance.animals.hopper_cap, " Buy hay from Marisol or scythe weeds." if have == 0 else ""], "hay")
+				Game.toast("Feeder: %d hay, %d mixed feed, room for %d. Each animal eats 1 a day; mixed feed first.%s" % [int(b.hay), int(b.get("feed", 0)), cap, " Buy hay from Marisol or scythe weeds." if Game.count_item("hay") == 0 else ""], "hay")
 		"animal_product":
 			if not Game.can_fit(o.item, 1):
 				Game.toast("Your inventory is full.", "", "warn")

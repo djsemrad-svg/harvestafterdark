@@ -675,15 +675,22 @@ func hint_text() -> String:
 		return "E: " + ("Talk / give %s to " % Data.items[s.id].name if gift else "Talk to ") + Data.npcs[npc].name.split(" ")[0]
 	var an = w.animal_in_front()
 	if an != null:
-		return ("E: Pet %s" % an.name) if int(an.petted_day) != int(Game.state.day) else "%s looks %s" % [an.name, Game.animal_mood(an)]
+		var tool_needed: String = Data.animals[an.type].get("tool", "")
+		var held = Game.selected_stack()
+		if tool_needed != "" and an.get("ready", false) and held != null and held.id == tool_needed:
+			return "Space: Use the %s on %s" % [Data.items[tool_needed].name, an.name]
+		if int(an.petted_day) != int(Game.state.day): return "E: Pet %s" % an.name
+		if tool_needed != "" and an.get("ready", false): return "%s is ready for the %s" % [an.name, Data.items[tool_needed].name]
+		return "%s looks %s" % [an.name, Game.animal_mood(an)]
 	var t: Vector2i = w.target_preview()
 	var m: GameMap = Game.map
-	var coop = Game.get_building_rec("coop")
-	if coop != null and m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
-		return "E: " + ("Close" if coop.door_open else "Open") + " animal door"
+	for coop in Game.state.get("buildings", []):
+		if m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
+			return "E: " + ("Close" if coop.door_open else "Open") + " " + Livestock.BUILDINGS[coop.kind].name.to_lower() + " animal door"
 	var sel_b = Game.selected_stack()
 	if sel_b != null and Data.items[sel_b.id].has("building"):
-		return "Face an open 6 by 4 space and press Space to build (green means it fits)" if m.id == "homestead" else "Take the kit to your farm to build"
+		var bsz: Array = Livestock.BUILDINGS[Data.items[sel_b.id].building].size
+		return "Face an open %d by %d space and press Space to build (green means it fits)" % [bsz[0], bsz[1]] if m.id == "homestead" else "Take the kit to your farm to build"
 	var sl = m.soil.get(GameMap.k(t.x, t.y))
 	if sl != null and w.crop_ready(sl.get("crop")):
 		return "E: Harvest " + Data.crops[sl.crop.id].name
@@ -700,7 +707,9 @@ func hint_text() -> String:
 			if o.type == "rain_collector": return "E: Collect water (%d)" % int(o.get("water", 0))
 			return "E: Load %s (%s)" % [od.name, Data.machines[o.type].hint]
 		if o.type == "generator": return "E: Generator (%d coal)" % int(o.get("fuel", 0))
-		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
+		if o.type == "hay_hopper":
+			var hb = Game.get_building_rec(m.id)
+			return "E: Feeder (%d hay, %d mixed feed)" % [int(hb.hay), int(hb.get("feed", 0))] if hb != null else ""
 		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
 		if o.type == "armory_bench": return "E: Use Armory Bench"
@@ -1194,7 +1203,7 @@ func _ov_name_animal() -> Control:
 func _adopt() -> void:
 	var a := Game.adopt_animal(overlay.kind, str(overlay.name))
 	close()
-	toast("Welcome home, %s! Find them in your coop." % a.name)
+	toast("Welcome home, %s! Find them %s." % [a.name, {"house": "in your house", "doghouse": "by the doghouse"}.get(Livestock.home_of(a), "in your " + Livestock.home_of(a))])
 
 func _ov_appearance() -> Control:
 	if not overlay.has("look"):

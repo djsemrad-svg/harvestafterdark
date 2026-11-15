@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "barn":
+		main.ui.close_all()
+		await barn_shots()
+		get_tree().quit()
+		return
 	if only == "contracts":
 		main.ui.close_all()
 		await contract_shots()
@@ -135,6 +140,7 @@ func _ready() -> void:
 	await arsenal_shots()
 	await district_shots()
 	await contract_shots()
+	await barn_shots()
 	get_tree().quit()
 
 func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
@@ -315,6 +321,39 @@ func contract_shots() -> void:
 	Game.state.stats.meals = 41
 	main.ui.open("journal", {"tab": "quests"}); await frames(4)
 	await shot("87_journal_contracts")
+
+func barn_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.time = 640
+	Game.state.weather = "sun"
+	Game.state.money = 99999
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(14, 34):
+		for yy in range(18, 32):
+			var o = hm.get_obj(xx, yy)
+			if o != null: hm.remove_obj(xx, yy)
+			hm.soil.erase(GameMap.k(xx, yy))
+	Game.build_building("barn", Rect2i(17, 21, 8, 5))
+	Game.build_building("hutch", Rect2i(27, 22, 4, 3))
+	hm.add_obj(14, 24, "doghouse")
+	var kinds := [["cow", "Bessie"], ["cow", "Clover"], ["goat", "Gruff"], ["sheep", "Woolly"], ["pig", "Truffles"], ["barn_cat", "Mittens"], ["guard_dog", "Rex"], ["rabbit", "Thumper"]]
+	for k in kinds:
+		var a: Dictionary = Game.adopt_animal(k[0], k[1])
+		a.born = int(Game.state.day) - 10
+	Game.state.animals[0].ready = true
+	Game.state.animals[3].ready = true
+	Game.get_building_rec("barn").door_open = true
+	Game.sync_animals(true)
+	Game.change_map("homestead", 21, 29, "up", {"silent": true})
+	await frames(30)
+	await shot("90_barn_outside")
+	Game.get_building_rec("barn").door_open = false
+	Game.sync_animals(true)
+	Game.change_map("barn", 6, 8, "up", {"silent": true})
+	await frames(30)
+	await shot("91_barn_inside")
+	main.ui.open("shop", {"shop": "ranch"}); await frames(4); await shot("92_ranch_animals")
+	main.ui.close_all()
 
 func frames(n: int) -> void:
 	for i in n:

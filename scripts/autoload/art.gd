@@ -829,6 +829,15 @@ func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) ->
 		"log":
 			R(x, 1, 8, 14, 6, woodd); R(x, 1, 8, 14, 1, wood); R(x, 1, 8, 3, 6, "#c8a070")
 			R(x, 5, 5, 3, 3, "#d8c8b0"); R(x, 10, 6, 3, 2, "#d8c8b0")
+		"doghouse":
+			x = img(20, 22)
+			for i in 7: R(x, 10 - i - 1, 2 + i, 2 * i + 2, 1, "#8a3a2a" if i % 3 else "#6e2a1e")
+			R(x, 2, 9, 16, 12, "#b8864a"); R(x, 2, 9, 16, 1, "#d0a060")
+			for i in 4: R(x, 2, 11 + i * 3, 16, 1, "#9a6e3a")
+			R(x, 7, 13, 6, 8, "#2a1e16"); R(x, 8, 12, 4, 1, "#2a1e16")
+			R(x, 3, 20, 14, 2, "#7a5432"); R(x, 13, 18, 4, 2, "#c8c8d0")
+			if season == "winter": R(x, 3, 2, 14, 2, "#f4f8fc")
+			return [outline(x, "#1e140e"), -2, -6]
 		"well":
 			R(x, 2, 7, 12, 8, "#8a8a8a"); R(x, 2, 7, 12, 1, "#a8a8a8"); R(x, 4, 9, 8, 3, "#3a5a8a"); R(x, 2, 1, 2, 7, wood); R(x, 12, 1, 2, 7, wood); R(x, 1, 0, 14, 2, "#8a3a2a")
 		"scarecrow":
@@ -1776,7 +1785,71 @@ func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool
 			return out)
 	return cached("an|%s|%d|%s|%d|%s" % [type, color_i, dir, frame, adult], func(): return _draw_animal(type, color_i, dir, frame, adult))
 
+## Cows, goats, sheep, pigs, dogs and cats. Drawn side-on (front and back views reuse it).
+func _draw_big_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	var cols: Array = Data.animals[type].colors
+	var c = cols[color_i % cols.size()]
+	var cd := shade(c, -0.22)
+	var cl := shade(c, 0.12)
+	var hop := frame % 2
+	var W = {"cow": 30, "goat": 24, "sheep": 26, "pig": 26, "guard_dog": 22, "barn_cat": 16}[type]
+	var H = {"cow": 24, "goat": 22, "sheep": 20, "pig": 18, "guard_dog": 18, "barn_cat": 14}[type]
+	var x := img(W, H)
+	var base = H - 1
+	match type:
+		"cow":
+			for lx in [6, 10, 20, 24]: R(x, lx, base - 6 + (hop if lx in [10, 24] else 0), 3, 6 - (hop if lx in [10, 24] else 0), cd)
+			R(x, 5, base - 16, 22, 11, c); R(x, 5, base - 16, 22, 1, cl)
+			if color_i % 3 == 0:
+				R(x, 10, base - 14, 5, 4, "#2a2a2e"); R(x, 18, base - 12, 6, 5, "#2a2a2e"); R(x, 7, base - 9, 3, 3, "#2a2a2e")
+			R(x, 15, base - 6, 5, 2, "#e8a8a8")
+			R(x, 0, base - 20, 7, 8, c); R(x, 0, base - 15, 5, 3, "#e8c8b0"); P(x, 2, base - 18, "#1a1a1a")
+			R(x, 0, base - 22, 1, 3, "#e8e0c8"); R(x, 6, base - 22, 1, 3, "#e8e0c8"); R(x, 6, base - 19, 2, 2, cd)
+			R(x, 27, base - 15, 1, 8, cd); R(x, 27, base - 8, 2, 2, "#2a2a2e")
+		"goat":
+			for lx in [5, 8, 16, 19]: R(x, lx, base - 6 + (hop if lx in [8, 19] else 0), 2, 6 - (hop if lx in [8, 19] else 0), cd)
+			R(x, 4, base - 14, 18, 9, c); R(x, 4, base - 14, 18, 1, cl)
+			R(x, 0, base - 19, 6, 7, c); P(x, 2, base - 17, "#1a1a1a"); R(x, 1, base - 12, 2, 3, cl)   # head and beard
+			R(x, 3, base - 21, 1, 3, "#8a7a5a"); R(x, 4, base - 22, 2, 1, "#8a7a5a")
+			R(x, 6, base - 18, 3, 2, cd); R(x, 22, base - 15, 2, 2, cl)
+		"sheep":
+			for lx in [6, 9, 17, 20]: R(x, lx, base - 5 + (hop if lx in [9, 20] else 0), 2, 5 - (hop if lx in [9, 20] else 0), "#3a3438")
+			R(x, 4, base - 14, 20, 10, c)
+			for i in 9: R(x, 4 + i * 2 + (i % 2), base - 15 - (i % 2), 3, 2, cl)
+			for i in 6: P(x, 6 + i * 3, base - 9 + (i % 2), shade(c, -0.1))
+			R(x, 0, base - 15, 6, 6, "#3a3438"); P(x, 2, base - 13, "#e8e0d0"); R(x, 4, base - 16, 3, 2, c)
+		"pig":
+			for lx in [6, 9, 17, 20]: R(x, lx, base - 4 + (hop if lx in [9, 20] else 0), 3, 4 - (hop if lx in [9, 20] else 0), cd)
+			R(x, 4, base - 13, 20, 10, c); R(x, 4, base - 13, 20, 1, cl); R(x, 6, base - 5, 16, 2, cd)
+			R(x, 0, base - 12, 6, 7, c); R(x, 0, base - 9, 2, 3, "#d88a80"); P(x, 0, base - 8, "#7a4a44"); P(x, 3, base - 11, "#1a1a1a")
+			R(x, 4, base - 14, 2, 2, cd); R(x, 24, base - 12, 2, 1, cd); P(x, 25, base - 13, cd)
+			if color_i % 3 == 1: R(x, 12, base - 11, 5, 4, "#4a3a38")
+		"guard_dog":
+			for lx in [4, 7, 15, 18]: R(x, lx, base - 5 + (hop if lx in [7, 18] else 0), 2, 5 - (hop if lx in [7, 18] else 0), cd)
+			R(x, 4, base - 11, 16, 7, c); R(x, 4, base - 11, 16, 1, cl); R(x, 5, base - 7, 12, 2, "#c8a878" if color_i != 2 else "#e8d8b8")
+			R(x, 0, base - 16, 7, 6, c); R(x, 0, base - 13, 3, 3, cd); P(x, 0, base - 13, "#1a1a1a"); P(x, 3, base - 15, "#1a1a1a")
+			R(x, 4, base - 17, 2, 4, cd)
+			R(x, 20, base - 14 + hop, 2, 5, c)
+			R(x, 5, base - 11, 2, 2, "#c83a2a")   # collar
+		"barn_cat":
+			for lx in [3, 5, 10, 12]: R(x, lx, base - 3 + (hop if lx in [5, 12] else 0), 1, 3 - (hop if lx in [5, 12] else 0), cd)
+			R(x, 3, base - 7, 11, 5, c); R(x, 3, base - 7, 11, 1, cl)
+			R(x, 0, base - 10, 5, 5, c); P(x, 0, base - 11, c); P(x, 4, base - 11, c); P(x, 1, base - 8, "#3a8a3a"); P(x, 3, base - 8, "#3a8a3a")
+			R(x, 14, base - 12 + hop, 1, 6, c); P(x, 15, base - 12 + hop, c)
+			if color_i == 0:
+				for i in 3: R(x, 6 + i * 3, base - 7, 1, 4, cd)
+	if not adult:
+		var small := x.duplicate()
+		small.resize(int(W * 0.7), int(H * 0.7), Image.INTERPOLATE_NEAREST)
+		x = img(W, H)
+		x.blit_rect(small, Rect2i(Vector2i.ZERO, small.get_size()), Vector2i((W - small.get_width()) / 2, H - small.get_height()))
+	if dir == "right":
+		x.flip_x()
+	return outline(x, "#22161a")
+
 func _draw_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	if Data.animals[type].get("big", false) or Data.animals[type].get("pet", false):
+		return _draw_big_animal(type, color_i, dir, frame, adult)
 	var x := img(16, 16)
 	var cols: Array = Data.animals[type].colors
 	var c = cols[color_i % cols.size()]

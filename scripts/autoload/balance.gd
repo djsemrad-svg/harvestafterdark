@@ -260,4 +260,9 @@ var animals := {
 	"hay_from_weeds_chance": 0.5,   # once you own a coop, scything weeds can give hay
 	"open_door_losses_per": 2,      # one animal lost per this many raiders that reach an open coop
 	"outside_start": 540, "outside_end": 1080,
+	"mice_chance": 0.15,            # each night, per feeder with no barn cat on the farm
+	"cat_find_chance": 0.35,        # a barn cat brings a small find
+	"dog_bite": 25,                 # guard dog damage per bite (about once a second)
+	"dog_night_kills": 2,           # raiders each guard dog drives off overnight
+	"silo_hay_chance": 0.75,        # hay from weeds with a Hay Silo on the farm
 }

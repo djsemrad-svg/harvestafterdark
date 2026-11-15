@@ -936,7 +936,7 @@ func _init() -> void:
 		def_item(id, {"name": dd[0], "cat": "cooked", "price": dd[1], "edible": {"hunger": dd[2], "thirst": dd[3], "energy": dd[4], "hp": dd[5]}, "drink": dd[6] == "cup", "desc": dd[8], "icon": {"s": dd[6], "c": dd[7]}})
 
 	# ---- animals and their products
-	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the coop's hopper to feed your animals.", "icon": {"s": "hay"}})
+	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the feeder in your coop, barn or hutch to feed your animals.", "icon": {"s": "hay"}})
 	def_item("egg", {"name": "Egg", "cat": "animal", "price": 50, "edible": {"hunger": 6, "energy": 10, "hp": 1, "thirst": 0}, "desc": "A fresh egg. Better cooked.", "icon": {"s": "egg", "c": "#f4ecd8"}})
 	def_item("large_egg", {"name": "Large Egg", "cat": "animal", "price": 95, "edible": {"hunger": 10, "energy": 16, "hp": 2, "thirst": 0}, "desc": "From a happy, well-fed hen.", "icon": {"s": "egg", "c": "#e8d0a8", "big": true}})
 	def_item("rabbit_fur", {"name": "Rabbit Fur", "cat": "animal", "price": 140, "desc": "Soft and warm. Tan it on a Tanning Rack.", "icon": {"s": "fur", "c": "#c8c0b8"}})
@@ -1007,6 +1007,7 @@ func _init() -> void:
 	Catalog.register(self)
 	Districts.register(self)
 	Contracts.register(self)
+	Livestock.register(self)
 
 
 func item(id: String) -> Dictionary:

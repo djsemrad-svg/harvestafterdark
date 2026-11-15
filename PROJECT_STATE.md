@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 13, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 163 / 163 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 177 / 177 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -61,7 +61,7 @@ Working:
 - 23 crafting stations, each placeable with its own recipe list. Machines take jobs (Grain Mill, Oil Press, Fermentation Barrel, Loom, Still, Dehydrator, Butter Churn, Cheese Press, Compost Bin, Water Purifier, Seed Maker, plus the old ones). Producers make things over time (Bee House, Worm Bin, Mushroom Log, Well). Anvil upgrades tools on the spot with 5 bars.
 - Cooking (63 recipes at the stove, campfire or cookstove) with health, energy and timed buffs (move speed, crit chance, stamina, melee damage, damage reduction, max health, night vision, easier fishing), shown as status badges.
 - 20 new crops, 6 fruit trees (saplings grow in 28 days, fruit in season), 20 new forage items, 20 new fish, crab pots, rods and tackle, ducks and quail in the coop, tin/zinc/lead ores and bronze/brass/steel bars, new gems, minerals and geodes, artifacts, junk and zombie drops, new ammo types, bags that add pack slots, traps and mines, metal gates, concrete walls, crossbow and flame turrets, wind turbine, decoy radio, storage, paths, lights and decorations, dirty water (boil it), Builder's Hammer, Gold Pan, Seed Spreader, Flashlight, scythe upgrades.
-- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory: barn animals (goat, cow, sheep, pig, guard dog, barn cat) and their products, shears and milk pail, barns, hutches and doghouses; crows (scarecrows); crop quality and pests (fertilizers, pest spray, frost cloth); growing bonuses (trellis, raised bed, cold frame); injuries and sickness (antibiotics, splint, antiseptic, antiviral); swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
+- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory (barn animals and their tools are now done): crows (scarecrows); crop quality and pests (fertilizers, pest spray, frost cloth); growing bonuses (trellis, raised bed, cold frame); injuries and sickness (antibiotics, splint, antiseptic, antiviral); swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
 
 ### Weapons, gear and the infected (stage 1 of 3, added Nov 13)
 
@@ -126,6 +126,20 @@ Stage 2 (done above): Residential District, Industrial District and Riverlands w
 
 Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gear isn't drawn on the character yet.
 
+### Barns and large animals (added Nov 14)
+
+All in `scripts/world/livestock.gd`, from the item sheet. The coop code was generalized so every farm building works the same way.
+
+- Buildings from the sheet's kits (crafted at a Workbench): Barn Kit (8 by 5, 8 large animals), Hutch Kit (4 by 3, 6 rabbits), Doghouse (one dog each). Each barn and hutch has an inside with a feeder and its own animal door.
+- New animals at Marisol's: Cow (1,500), Goat (2,500), Sheep (4,000), Pig (8,000), Guard Dog (2,000), Barn Cat (500). A new animal moves into the first of its homes with room (rabbits: coop, then hutch; cats: barn, then the house).
+- Cows (daily) and goats (every other day) are milked with the Milk Pail, sheep (every 3 days) are sheared with Shears. A small mark over an animal shows it's ready. Happy cows give Large Milk.
+- Pigs dig up Truffles on the grass near the barn when its animal door is open (not in winter).
+- Mixed Feed goes in feeders with hay; animals eat it first and make their best product next time. Each Feed Trough inside adds 30 feeder space. With a Hay Silo on the farm, hay from cutting weeds goes straight into a feeder (75% chance per weed).
+- Barn Cat: without one, mice sometimes spoil hay in the barn feeder; a cat also brings a small find most days.
+- Guard Dog: stays by its doghouse, barks when infected come near and goes after them (about 25 damage a second); during overnight raids each dog drives off 2 attackers.
+- Raids: any open animal door (coop, barn or hutch) can cost you animals from that building.
+- Older saves: existing animals stay in the coop.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -135,6 +149,7 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gea
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
 - `scripts/world/contracts.gd`: Cole's board, bosses and achievements.
+- `scripts/world/livestock.gd`: coops, barns, hutches, doghouses and every farm animal.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
 - `scripts/ui/`: interface (`ui.gd`) and theme helpers (`ui_kit.gd`).
@@ -168,6 +183,6 @@ Placeholders: weapon, gear and ammo icons are drawn in code (`icon_gen.gd`). Gea
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Next: the systems the item sheet still needs (barns and large animals, crop quality, injuries and sickness), then horde nests, a lab and human raiders for the remaining rewards.
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals are done (Nov 14). Next: the systems the item sheet still needs (crop quality and pests, crows and scarecrows, injuries and sickness), then horde nests, a lab and human raiders for the remaining rewards.
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.

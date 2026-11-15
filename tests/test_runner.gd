@@ -1088,7 +1088,7 @@ func run_all() -> void:
 	G.state.raid = {"day": G.state.day, "size": 2, "spawned": false, "killed": 0, "warned": true}
 	var rl: Array = G.resolve_raid(G.maps.homestead)
 	Balance.raids.grace_days = 99999
-	check("Raids: animals are safe behind a closed coop door, but an open door costs you", safe_n == 2 and G.state.animals.size() == 1 and " ".join(rl).contains("coop door"), " ".join(rl))
+	check("Raids: animals are safe behind a closed coop door, but an open door costs you", safe_n == 2 and G.state.animals.size() == 1 and " ".join(rl).contains("animal door"), " ".join(rl))
 
 	clear_tile(G.maps.homestead, 30, 33)
 	var rack: Dictionary = G.maps.homestead.add_obj(30, 33, "tanning_rack")
@@ -1223,6 +1223,7 @@ func run_all() -> void:
 	run_items()
 	run_districts()
 	run_contracts()
+	run_livestock()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -1993,6 +1994,198 @@ func run_contracts() -> void:
 	var jr: bool = count_nodes(U.overlay_root) > 40
 	U.close_all()
 	check("Journal lists contracts in progress and every achievement with its progress", jr, "")
+
+# ---------------------------------------------------------------- barns and large animals
+func buy_animal(kind: String, nm := "") -> String:
+	var e: Dictionary = {}
+	for x in Game.shop_stock("ranch"):
+		if x.get("animal", "") == kind: e = x
+	var err: String = Game.shop_buy("ranch", e, 1)
+	if ov() == "name_animal":
+		if nm != "": U.overlay.name = nm
+		U._adopt()
+	return err
+
+func animal_named(nm: String):
+	for a in Game.state.animals:
+		if a.name == nm: return a
+	return null
+
+func face_animal(a: Dictionary) -> void:
+	var r: Dictionary = Game.animals_rt[int(a.uid)]
+	Game.change_map(r.map, 6, 6, "up", {"silent": true})
+	r = Game.animals_rt[int(a.uid)]
+	r.pos = Vector2(6 * 16 + 8, 5 * 16 + 12)
+	r.goal = r.pos
+	for b in Game.state.animals:
+		if b != a and Game.animals_rt.has(int(b.uid)):
+			var rb: Dictionary = Game.animals_rt[int(b.uid)]
+			rb.pos = Vector2(2 * 16 + 8, 8 * 16 + 12); rb.goal = rb.pos
+	Game.player.pos = r.pos + Vector2(0, 12)
+	Game.player.dir = "up"
+
+func run_livestock() -> void:
+	var G = Game
+	start("adventure", 2)
+	while G.weekday() == "Tue": sleep()
+	G.state.time = 600; G.sync_npcs()
+	G.state.money = 50000
+	G.state.weather = "sun"
+	var no_barn: String = buy_animal("cow")
+	# a barn from the kit
+	var hm: GameMap = G.maps.homestead
+	for xx in range(16, 30):
+		for yy in range(20, 30):
+			clear_tile(hm, xx, yy)
+	G.add_item("barn_kit", 1, {"silent": true})
+	at("homestead", 22, 28, "up")
+	select("barn_kit")
+	var rect: Rect2i = G.building_rect("barn", W.facing_tile(), "up")
+	W.use_selected(0, false)
+	var barn = G.get_building_rec("barn")
+	check("Barn Kit: builds an 8 by 5 barn on the farm with a feeder inside; animals need it first", no_barn.contains("barn") and barn != null and rect.size == Vector2i(8, 5) and G.maps.has("barn") and G.maps.barn.objects.values().any(func(o): return o.type == "hay_hopper"), "err=%s rect=%s" % [no_barn, rect])
+	if barn == null: return
+	var e1: String = buy_animal("cow", "Bessie")
+	buy_animal("goat", "Gruff"); buy_animal("sheep", "Woolly"); buy_animal("pig", "Truffles")
+	var cow = animal_named("Bessie")
+	check("Cows, goats, sheep and pigs move into the barn", e1 == "" and cow != null and G.state.animals.all(func(a): return Livestock.home_of(a) == "barn") and G.state.animals.size() == 4, "err=%s" % e1)
+	# feed them and let them grow
+	G.change_map("barn", 6, 6, "up", {"silent": true})
+	G.add_item("hay", 80, {"silent": true})
+	W.interact_object(G.map.get_obj(2, 2))
+	var hay_cap: bool = int(barn.hay) == Balance.animals.hopper_cap
+	for i in 8:
+		barn.hay = 40
+		sleep()
+	var sheep = animal_named("Woolly")
+	var goat = animal_named("Gruff")
+	check("Barn animals grow up and get ready for the milk pail or shears", hay_cap and G.animal_mature(cow) and cow.ready and sheep.ready and goat.ready, "cow=%s sheep=%s goat=%s" % [cow.ready, sheep.ready, goat.ready])
+	# milk and shear
+	G.add_item("milk_pail", 1, {"silent": true}); G.add_item("shears", 1, {"silent": true})
+	face_animal(cow)
+	select("shears")
+	W.use_selected(0, false)
+	var wrong: bool = cow.ready and G.count_item("milk") == 0
+	select("milk_pail")
+	W.use_selected(0, false)
+	var milked: bool = (G.count_item("milk") + G.count_item("large_milk")) == 1 and not cow.ready
+	W.use_selected(0, false)
+	var twice: bool = (G.count_item("milk") + G.count_item("large_milk")) == 1
+	face_animal(sheep)
+	select("shears")
+	W.use_selected(0, false)
+	check("Milk Pail milks a ready cow (once a day), Shears give wool, the wrong tool does nothing", wrong and milked and twice and G.count_item("wool") == 1 and not sheep.ready, "wrong=%s milked=%s twice=%s wool=%d" % [wrong, milked, twice, G.count_item("wool")])
+	# mixed feed makes the best product
+	barn.hay = 0
+	barn.feed = 4
+	cow.friendship = 100
+	sleep()
+	face_animal(cow)
+	select("milk_pail")
+	var lm0: int = G.count_item("large_milk")
+	W.use_selected(0, false)
+	check("Mixed Feed: an animal that eats it gives its best product next time (Large Milk)", G.count_item("large_milk") == lm0 + 1 and int(barn.feed) == 0, "large=%d feed=%d" % [G.count_item("large_milk"), int(barn.feed)])
+	# pigs dig truffles outside
+	barn.hay = 40
+	barn.door_open = true
+	var before := hm.objects.values().filter(func(o): return o.type == "animal_product" and o.item == "truffle").size()
+	sleep()
+	var after := hm.objects.values().filter(func(o): return o.type == "animal_product" and o.item == "truffle").size()
+	barn.door_open = false
+	check("Pigs dig up truffles near the barn when the animal door is open (not in winter)", after > before, "%d -> %d" % [before, after])
+	# feed trough and hay silo
+	var cap0: int = G.feeder_cap(barn)
+	G.maps.barn.add_obj(9, 6, "feed_trough")
+	var cap1: int = G.feeder_cap(barn)
+	clear_tile(hm, 30, 22)
+	hm.add_obj(30, 22, "hay_silo")
+	barn.hay = 0
+	var stored := 0
+	for i in 20:
+		clear_tile(hm, 31, 24)
+		var wd: Dictionary = hm.add_obj(31, 24, "weeds")
+		at("homestead", 31, 25, "up")
+		W.break_object(wd)
+	stored = int(barn.hay)
+	check("Feed Trough adds 30 feeder space; with a Hay Silo, hay from weeds goes straight into the feeder", cap1 == cap0 + 30 and stored >= 8, "cap %d -> %d stored=%d" % [cap0, cap1, stored])
+	# mice without a cat, none with one
+	var mice := false
+	for i in 30:
+		barn.hay = 40
+		var rep := {"lines": []}
+		G.animals_overnight(rep)
+		if " ".join(rep.lines).contains("Mice"): mice = true
+	var cat_err: String = buy_animal("barn_cat", "Mittens")
+	var cat = animal_named("Mittens")
+	var mice2 := false
+	var finds := 0
+	for i in 30:
+		barn.hay = 40
+		var rep2 := {"lines": []}
+		G.animals_overnight(rep2)
+		if " ".join(rep2.lines).contains("Mice"): mice2 = true
+	for o in G.maps.barn.objects.values():
+		if o.type == "animal_product" and o.item in ["feather", "fiber", "copper_ore", "mixed_seeds", "bait", "iron_ore", "conspiracy_note"]: finds += 1
+	check("Barn Cat: lives in the barn, keeps mice out of the hay and brings small finds", cat_err == "" and cat != null and Livestock.home_of(cat) == "barn" and mice and not mice2 and finds > 0, "mice=%s mice2=%s finds=%d" % [mice, mice2, finds])
+	# a full barn sends the next cat into the house
+	buy_animal("cow", "C2"); buy_animal("cow", "C3"); buy_animal("cow", "C4")
+	var cat2_err: String = buy_animal("barn_cat", "Socks")
+	var cat2 = animal_named("Socks")
+	check("A second cat lives in your house when the barn is full", cat2_err == "" and cat2 != null and Livestock.home_of(cat2) == "house" and G.animals_rt[int(cat2.uid)].map == "house", "err=%s" % cat2_err)
+	# guard dog
+	var dog_err: String = buy_animal("guard_dog", "Rex")
+	clear_tile(hm, 12, 24)
+	var dh: Dictionary = hm.add_obj(12, 24, "doghouse")
+	var dog_ok: String = buy_animal("guard_dog", "Rex")
+	var dog = animal_named("Rex")
+	at("homestead", 12, 32, "up")
+	G.enemies.clear()
+	var r_d: Dictionary = G.animals_rt[int(dog.uid)]
+	var near_house: bool = r_d.map == "homestead" and r_d.pos.distance_to(Vector2(12 * 16 + 8, 25 * 16 + 12)) < 24
+	var z: Dictionary = W.spawn_enemy("shambler", 15, 25)
+	z.state = "wander"; z.wt = 99.0; z.wander = Vector2.ZERO
+	var hp0: float = float(z.hp)
+	for i in 16:
+		tick(250)
+		G.state.health = 100.0
+	var bit: bool = not G.enemies.has(z) or float(z.hp) < hp0
+	var barked: bool = G._bark_cd > 0
+	check("Guard Dog: needs a Doghouse, stays by it, barks and goes after infected that come close", dog_err.contains("Doghouse") and dog_ok == "" and near_house and bit and barked, "err=%s near=%s bit=%s" % [dog_err, near_house, bit])
+	Balance.raids.grace_days = 4
+	G.state.raid = {"day": G.state.day, "size": 3, "spawned": false, "killed": 0, "warned": true}
+	var rl: Array = G.resolve_raid(hm)
+	Balance.raids.grace_days = 99999
+	check("Raids: a guard dog drives off attackers overnight", " ".join(rl).contains("dog drove off 2"), " ".join(rl))
+	# hutch: rabbits overflow into it
+	G.add_item("hutch_kit", 1, {"silent": true})
+	for xx in range(27, 34):
+		for yy in range(22, 30):
+			clear_tile(hm, xx, yy)
+	G.animals_rt.clear(); G.sync_animals(true)
+	at("homestead", 29, 28, "up")
+	select("hutch_kit")
+	var hrect: Rect2i = G.building_rect("hutch", W.facing_tile(), "up")
+	W.use_selected(0, false)
+	var r_err: String = buy_animal("rabbit", "Thumper")
+	var bun = animal_named("Thumper")
+	check("Hutch Kit: builds a small hutch, and rabbits live there", G.has_building("hutch") and r_err == "" and bun != null and Livestock.home_of(bun) == "hutch" and G.maps.has("hutch"), "err=%s" % r_err)
+	# save and load, older animals
+	sleep()
+	var snap := JSON.stringify(G.state.animals)
+	G.quit_to_title()
+	G.load_game("adventure", 2)
+	U.close_all()
+	var old := {"type": "rabbit", "name": "Oldie"}
+	check("Save keeps barns, hutches and every animal; animals from older saves live in the coop", JSON.stringify(G.state.animals) == snap and G.maps.has("barn") and G.maps.has("hutch") and Livestock.home_of(old) == "coop", "same=%s barn=%s hutch=%s\n%s\n%s" % [JSON.stringify(G.state.animals) == snap, G.maps.has("barn"), G.maps.has("hutch"), snap.substr(0, 300), JSON.stringify(G.state.animals).substr(0, 300)])
+	var bad := []
+	for k in Livestock.ANIMALS:
+		for adult in [true, false]:
+			for d in ["left", "right", "up", "down"]:
+				var tex: Texture2D = Art.get_animal(k, 1, d, 1, adult)
+				if tex == null or tex.get_image().get_used_rect().size.x < 8: bad.append("%s %s %s" % [k, d, adult])
+	for k in ["barn", "hutch"]:
+		if Art.get_building({"kind": k, "x": 1, "y": 1, "w": Livestock.BUILDINGS[k].size[0], "h": Livestock.BUILDINGS[k].size[1], "door_x": 3, "door_y": 4}, "summer", false) == null: bad.append(k)
+	check("Art: every new animal (young and grown, all directions), the barn and the hutch draw", bad.is_empty(), str(bad))
 
 func count_nodes(n: Node) -> int:
 	var c := 1
