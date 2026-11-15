@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "injuries":
+		main.ui.close_all()
+		await injury_shots()
+		get_tree().quit()
+		return
 	if only == "crops":
 		main.ui.close_all()
 		await crop_shots()
@@ -398,6 +403,25 @@ func crop_shots() -> void:
 	await frames(20)
 	await shot("95_farm_care")
 	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
+	main.ui.close_all()
+
+func injury_shots() -> void:
+	Game.state.day = 40
+	Game.state.time = 840
+	Game.change_map("homestead", 22, 29, "up", {"silent": true})
+	Game.add_condition("bleed", true)
+	Game.add_condition("fracture", true)
+	Game.add_condition("sick", true)
+	Game.conditions().blood_loss = 20
+	Game.state.health = 55.0
+	Game.add_item("bandage", 3, {"silent": true}); Game.add_item("splint", 1, {"silent": true}); Game.add_item("antibiotics", 2, {"silent": true})
+	await frames(40)
+	await shot("97_injuries_hud")
+	main.ui.open("journal", {"tab": "inventory", "sel": 0}); await frames(4)
+	for i in Game.state.inventory.size():
+		var st = Game.state.inventory[i]
+		if st != null and st.id == "splint": main.ui.open("journal", {"tab": "inventory", "sel": i})
+	await frames(4); await shot("98_splint_details")
 	main.ui.close_all()
 
 func frames(n: int) -> void:

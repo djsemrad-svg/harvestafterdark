@@ -78,6 +78,7 @@ var modes := {
 		"collapse_health_restore": 0.35, "collapse_hours_lost": 3,
 		"pass_out_money_pct": 0.10, "pass_out_money_max": 1000,
 		"bonus_reward_mult": 1.25,
+		"injury_mult": 1.0,
 	},
 	"adventure": {
 		"label": "Adventure Mode", "difficulty": "Normal / Relaxed",
@@ -87,6 +88,7 @@ var modes := {
 		"collapse_health_restore": 0.6, "collapse_hours_lost": 2,
 		"pass_out_money_pct": 0.05, "pass_out_money_max": 500,
 		"bonus_reward_mult": 1.0,
+		"injury_mult": 0.5,          # Adventure Mode: injuries and sickness half as often
 	},
 }
 
@@ -244,6 +246,30 @@ var farming_extra := {
 var bombs := {
 	"fuse_sec": 1.8,
 	"player_damage": 15,
+}
+
+## Injuries and sickness (scripts/world/injuries.gd, Game "injuries and sickness").
+var injuries := {
+	"antiviral_find": 0.03,      # chance per search of the crash site tent or helicopter
+	"bleed_chance": 0.2,             # per hit from the infected that does damage
+	"bleed_minutes": 90,             # game minutes before bleeding stops by itself
+	"bleed_tick_sec": 2.5,           # real seconds between 1 health lost
+	"blood_loss_cap": 40,            # max health lost to bleeding, at most
+	"blood_loss_recover": 15,        # back each night
+	"wound_chance": 0.35,            # an uncleaned bleed turns into an infected wound overnight
+	"wound_morning_hp": 10,
+	"wound_energy_mult": 0.75,
+	"wound_heal_days": 7,            # it clears up by itself eventually
+	"fracture_hit": 25.0,            # a single hit this big (after armour) can break a limb
+	"fracture_chance": 0.3,
+	"fracture_speed_mult": 0.7,
+	"fracture_heal_days": 10,
+	"sick_energy_mult": 0.7,
+	"sick_days": 2,
+	"dirty_water_sick": 0.3,
+	"chill_energy_per_10min": 1.0,
+	"chill_sick_after": 120,         # game minutes chilled before you catch a cold
+	"soap_clean": 0.05,
 }
 
 ## Crop care (scripts/world/farm_care.gd and Game.crop_care_overnight).

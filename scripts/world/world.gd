@@ -625,7 +625,9 @@ func update_player(dt: float) -> void:
 	var sprint_key: bool = Input.is_physical_key_pressed(KEY_SHIFT) or test_sprint
 	var crouch_key: bool = Input.is_physical_key_pressed(KEY_CTRL) or test_crouch
 	p.crouching = crouch_key and not sprint_key
-	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0
+	var broken: bool = Game.conditions().has("fracture") and Game.buff("painkillers") <= 0
+	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0 and not broken
+	update_bleeding(dt)
 	if float(p.get("dash_t", 0.0)) > 0:
 		p.dash_t = float(p.dash_t) - dt
 		move_entity(p, p.dash_v * dt, 5, 6)
@@ -722,6 +724,9 @@ func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [
 	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(int(rolls[0]), int(rolls[1])), quality)
 	for extra in Game.contract_collect_roll(tags):
 		got.append([extra, 1])
+	# the medevac crash: a very small chance of an antiviral in the medical supplies
+	if o.type in ["medical_tent", "heli_wreck"] and Game.rng.randf() < float(Balance.injuries.antiviral_find):
+		got.append(["antiviral", 1])
 	if got.is_empty():
 		Game.toast("You search %s. Nothing useful." % what)
 	else:
@@ -947,6 +952,23 @@ func kill_enemy(e: Dictionary) -> void:
 
 func spawn_enemy(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
 	return inf.spawn(type, tx, ty, opts)
+
+## Bleeding costs 1 health every few seconds, and the lost blood lowers max health for a while.
+var _bleed_t := 0.0
+func update_bleeding(dt: float) -> void:
+	var c := Game.conditions()
+	if not c.has("bleed"):
+		return
+	_bleed_t += dt
+	if _bleed_t < float(Balance.injuries.bleed_tick_sec):
+		return
+	_bleed_t = 0.0
+	Game.state.health = maxf(0.0, float(Game.state.health) - 1.0)
+	c.blood_loss = min(int(Balance.injuries.blood_loss_cap), int(c.get("blood_loss", 0)) + 1)
+	Game.state.health = minf(float(Game.state.health), Game.max_health())
+	Game.particles.append({"pos": Game.player.pos + Vector2(Game.rng.randf_range(-3, 3), -8), "vel": Vector2(0, 20), "t": 0.6, "color": Color("#a82020"), "g": 60.0})
+	if Game.state.health <= 0:
+		Game.collapse("bleeding")
 
 func spawn_map_enemies() -> void:
 	var m: GameMap = Game.map
@@ -1681,7 +1703,7 @@ func interact_object(o: Dictionary) -> void:
 				msg = "You drink your fill of cold water. " + msg
 				Game.add_xp("survival", 1)
 			else:
-				st.energy = min(float(Balance.player.max_energy), st.energy + 3)
+				st.energy = min(Game.max_energy(), st.energy + 3)
 				msg = "The water is cold and clean. " + msg
 			Sfx.play("water")
 			Game.toast(msg, "water_bottle")

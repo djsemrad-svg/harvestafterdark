@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 13, 2026)
+## Status (Nov 14, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 187 / 187 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 198 / 198 pass (`godot --headless --path . res://tests/test_runner.tscn`).
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -61,7 +61,7 @@ Working:
 - 23 crafting stations, each placeable with its own recipe list. Machines take jobs (Grain Mill, Oil Press, Fermentation Barrel, Loom, Still, Dehydrator, Butter Churn, Cheese Press, Compost Bin, Water Purifier, Seed Maker, plus the old ones). Producers make things over time (Bee House, Worm Bin, Mushroom Log, Well). Anvil upgrades tools on the spot with 5 bars.
 - Cooking (63 recipes at the stove, campfire or cookstove) with health, energy and timed buffs (move speed, crit chance, stamina, melee damage, damage reduction, max health, night vision, easier fishing), shown as status badges.
 - 20 new crops, 6 fruit trees (saplings grow in 28 days, fruit in season), 20 new forage items, 20 new fish, crab pots, rods and tackle, ducks and quail in the coop, tin/zinc/lead ores and bronze/brass/steel bars, new gems, minerals and geodes, artifacts, junk and zombie drops, new ammo types, bags that add pack slots, traps and mines, metal gates, concrete walls, crossbow and flame turrets, wind turbine, decoy radio, storage, paths, lights and decorations, dirty water (boil it), Builder's Hammer, Gold Pan, Seed Spreader, Flashlight, scythe upgrades.
-- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory (barn animals, crop quality, pests, frost, crows and the growing bonuses are now done): injuries and sickness (antibiotics, splint, antiseptic, antiviral); swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
+- Items whose job needs a system the game doesn't have yet are still in the game but show "Not in the game yet" in the inventory (barn animals, crop quality, pests, frost, crows, the growing bonuses and medical items are now done): swamp and cave fish waters; metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
 
 ### Weapons, gear and the infected (stage 1 of 3, added Nov 13)
 
@@ -153,6 +153,20 @@ Item setup in `scripts/world/farm_care.gd`; overnight rules in `Game.crop_care_o
 - Raised Bed: use it facing open ground to build a permanent 3 by 3 raised patch. About 10% faster growth, and raiders can't trample it.
 - Cold Frame (placed on tilled soil): the crop under it can be planted and grown out of season and is safe from frost and crows.
 
+### Injuries and sickness (added Nov 14)
+
+Item setup in `scripts/world/injuries.gd`; rules in `Game` (`add_condition`, `apply_treatment`, `conditions_tick10`, `conditions_overnight`); numbers in `Balance.injuries`. Adventure Mode halves the chance of every injury.
+
+- Conditions show as red badges next to the health panel.
+- Bleeding: a damaging hit from the infected can start it (20%). You lose 1 health every few seconds and some max health (blood loss, up to 40, 15 comes back each night). It stops by itself after 90 game minutes. Bandage, Herbal Poultice, Sterile Bandage, Suture Kit or Med Kit stops it. If you black out from it, the collapse screen says so.
+- Infected wound: a bleed you didn't clean can turn overnight (35%). Less energy, 10 health lost each morning, clears in 7 days. Antiseptic and the better bandages lower the chance; Soap helps a little. Antibiotics cure it.
+- Broken limb: a single hit of 25+ damage (after armour) can break one (30%). You move at 70% speed and can't sprint. Painkillers or Willow Bark Tea hide the slow for a while; a Splint fixes it; it heals by itself in 10 days.
+- Sickness: from drinking Dirty Water (30%) or from being chilled too long. Energy cap drops to 70% for 2 days. Antibiotics cure it.
+- Chilled: outside on winter nights, away from a fire and without cold resistance. Drains energy; after 2 game hours you can catch a cold.
+- Other medical items: Blood Bag (restores lost max health), Surgery Kit (fixes everything), Vitamins (more energy), Iodine Tablets (clean 5 Dirty Water), Burn Salve (burn resistance). Dr. Elias's clinic treatment cures every condition.
+- Antiviral: a very rare find (3% per search) in the crash site's medical tent and helicopter. In Survivor Mode it's used automatically when a bite breaks the skin: you live, with a fever (sick).
+- Adrenaline Shot: used automatically when you'd collapse; you get back up with 25 health.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -163,6 +177,7 @@ Item setup in `scripts/world/farm_care.gd`; overnight rules in `Game.crop_care_o
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
 - `scripts/world/contracts.gd`: Cole's board, bosses and achievements.
 - `scripts/world/livestock.gd`: coops, barns, hutches, doghouses and every farm animal.
+- `scripts/world/injuries.gd`: medical items and condition names.
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -197,6 +212,6 @@ Item setup in `scripts/world/farm_care.gd`; overnight rules in `Game.crop_care_o
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Next: injuries and sickness from the item sheet, then horde nests, a lab and human raiders for the remaining rewards.
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Next: horde nests, a lab and human raiders for the remaining rewards.
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.

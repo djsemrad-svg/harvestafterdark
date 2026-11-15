@@ -519,7 +519,7 @@ func kill(e: Dictionary, opts: Dictionary) -> void:
 	if opts.get("crit", false) and float(info.get("dist", 0.0)) >= Balance.achievements.marksman_tiles * 16.0:
 		st.long_crit_kills = int(st.get("long_crit_kills", 0)) + 1
 	if fx.has("heal_kill"): heal(float(fx.heal_kill))
-	if fx.has("kill_energy"): Game.state.energy = minf(float(Balance.player.max_energy), Game.state.energy + float(fx.kill_energy))
+	if fx.has("kill_energy"): Game.state.energy = minf(Game.max_energy(), Game.state.energy + float(fx.kill_energy))
 	if fx.has("heal_every"):
 		p.kill_n = int(p.get("kill_n", 0)) + 1
 		if int(p.kill_n) % int(fx.heal_every[0]) == 0: heal(float(fx.heal_every[1]))
@@ -812,7 +812,7 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 	if sprinting: dr += float(gfx.get("sprint_dr", 0.0))
 	dr += Game.buff("damage reduction")
 	dmg *= 1.0 - clampf(dr, 0.0, 0.8)
-	if kind == "fire": dmg *= 1.0 - clampf(float(gfx.get("fire_resist", 0.0)), 0.0, 1.0)
+	if kind == "fire": dmg *= 1.0 - clampf(float(gfx.get("fire_resist", 0.0)) + Game.buff("burn resistance"), 0.0, 1.0)
 	if kind == "acid":
 		dmg *= 1.0 - clampf(float(gfx.get("acid_resist", 0.0)), 0.0, 1.0)
 		if gfx.get("gas_immune", false) and gfx.get("acid_resist", 0.0) >= 1.0: dmg = 0.0
@@ -823,6 +823,7 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 	if dmg <= 0.05:
 		return
 	_wear_gear()
+	Game.injure_from_hit(dmg, kind)
 	var kb_before: Vector2 = p.kb
 	if no_iframes:
 		Game.state.health = maxf(0.0, Game.state.health - dmg)
@@ -912,6 +913,8 @@ func speed_mult() -> float:
 		m += sp
 	if p.has("kill_speed"): m += float(p.kill_speed[0])
 	m += Game.buff("move speed")
+	if Game.conditions().has("fracture") and Game.buff("painkillers") <= 0:
+		m *= float(Balance.injuries.fracture_speed_mult)
 	if float(p.get("wind_t", 0.0)) > 0: m += float(Game.gear_total().fx.second_wind[1]) / 100.0
 	return maxf(0.3, m)
 

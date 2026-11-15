@@ -1225,6 +1225,7 @@ func run_all() -> void:
 	run_contracts()
 	run_livestock()
 	run_crop_care()
+	run_injuries()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2143,13 +2144,18 @@ func run_livestock() -> void:
 	G.enemies.clear()
 	var r_d: Dictionary = G.animals_rt[int(dog.uid)]
 	var near_house: bool = r_d.map == "homestead" and r_d.pos.distance_to(Vector2(12 * 16 + 8, 25 * 16 + 12)) < 24
+	for yy in range(24, 27):
+		for xx in range(13, 17):
+			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
 	var z: Dictionary = W.spawn_enemy("shambler", 15, 25)
 	z.state = "wander"; z.wt = 99.0; z.wander = Vector2.ZERO
 	var hp0: float = float(z.hp)
-	for i in 16:
+	var bit := false
+	for i in 40:
 		tick(250)
 		G.state.health = 100.0
-	var bit: bool = not G.enemies.has(z) or float(z.hp) < hp0
+		bit = not G.enemies.has(z) or float(z.hp) < hp0
+		if bit: break
 	var barked: bool = G._bark_cd > 0
 	check("Guard Dog: needs a Doghouse, stays by it, barks and goes after infected that come close", dog_err.contains("Doghouse") and dog_ok == "" and near_house and bit and barked, "err=%s near=%s bit=%s" % [dog_err, near_house, bit])
 	Balance.raids.grace_days = 4
@@ -2352,6 +2358,143 @@ func run_crop_care() -> void:
 	G.add_item(off_seed, 1, {"silent": true})
 	W.plant_at(Vector2i(26, 30), off_seed)
 	check("Cold Frame: you can plant out of season under it", hm.soil[GameMap.k(26, 30)].crop != null, "seed=%s" % off_seed)
+
+# ---------------------------------------------------------------- injuries and sickness
+func use_med(id: String) -> void:
+	Game.add_item(id, 1, {"silent": true})
+	Game.eat_item(id)
+
+func run_injuries() -> void:
+	var G = Game
+	start("survivor", 2)
+	var I: Dictionary = Balance.injuries
+	var todo := []
+	for id in Data.items:
+		var it: Dictionary = Data.items[id]
+		if it.get("cat", "") == "medical" and it.has("todo"): todo.append(id)
+	check("Every medical item from the sheet does something now", todo.is_empty(), str(todo))
+	# bleeding from a hit, blood loss, bandage
+	arena("survivor")
+	var keep_b: float = I.bleed_chance
+	I.bleed_chance = 2.0
+	var z: Dictionary = foe("shambler", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	W.cb.player_hurt(z.pos, 8.0, "hit", z)
+	I.bleed_chance = keep_b
+	var bleeding: bool = G.conditions().has("bleed")
+	G.enemies.clear()
+	G.state.health = 100.0
+	var hp0: float = G.state.health
+	for i in 20:
+		tick(500)
+	var lost: float = hp0 - float(G.state.health)
+	var mh: float = G.max_health()
+	use_med("bandage")
+	var stopped: bool = not G.conditions().has("bleed")
+	check("Bleeding: a hit from the infected can start it; you lose health over time and max health drops with blood loss; a Bandage stops it", bleeding and lost >= 3 and mh < 100.0 and stopped, "lost=%.1f max=%.1f" % [lost, mh])
+	# the uncleaned wound turns overnight; antibiotics cure it
+	var keep_w: float = I.wound_chance
+	I.wound_chance = 2.0
+	sleep()
+	I.wound_chance = keep_w
+	var infected: bool = G.conditions().has("wound")
+	var e_cap: float = G.max_energy()
+	use_med("antibiotics")
+	check("Infected wound: an uncleaned bleed turns overnight (less energy); Antibiotics cure it", infected and e_cap < float(Balance.player.max_energy) and not G.conditions().has("wound"), "infected=%s cap=%.0f" % [infected, e_cap])
+	# cleaning lowers the risk
+	G.add_condition("bleed", true)
+	use_med("sterile_bandage")
+	var risk: float = float(G.conditions().dirty.risk)
+	use_med("antiseptic")
+	var risk2: float = float(G.conditions().dirty.risk)
+	check("Sterile Bandage and Antiseptic each halve the chance the wound gets infected", not G.conditions().has("bleed") and is_equal_approx(risk, 0.5) and is_equal_approx(risk2, 0.25), "risk=%.2f then %.2f" % [risk, risk2])
+	G.conditions().clear()
+	# broken limb
+	arena("survivor")
+	var keep_f: float = I.fracture_chance
+	I.fracture_chance = 2.0
+	var br: Dictionary = foe("brute", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	W.cb.player_hurt(br.pos, 60.0, "hit", br)
+	I.fracture_chance = keep_f
+	G.enemies.clear()
+	G.state.health = 100.0
+	var broke: bool = G.conditions().has("fracture")
+	var slow: float = W.cb.speed_mult()
+	W.test_sprint = true
+	tick(300)
+	var sprinted: bool = G.player.get("sprinting", false)
+	W.test_sprint = false
+	use_med("painkillers")
+	var slow_pk: float = W.cb.speed_mult()
+	use_med("splint")
+	check("Broken limb: a heavy hit can break one (slower, no sprinting); Painkillers mask it; a Splint fixes it", broke and slow < 0.8 and not sprinted and slow_pk >= 0.95 and not G.conditions().has("fracture"), "broke=%s slow=%.2f sprint=%s pk=%.2f" % [broke, slow, sprinted, slow_pk])
+	# sickness from dirty water passes in a couple of days
+	G.add_condition("sick", true)
+	var sick_cap: float = G.max_energy()
+	sleep(); sleep()
+	check("Sickness: less energy, and it passes after a couple of days", sick_cap < float(Balance.player.max_energy) and not G.conditions().has("sick"), "cap=%.0f" % sick_cap)
+	# chilled on a winter night outside
+	G.state.day = 1
+	while G.season() != "winter":
+		G.state.day = int(G.state.day) + 1
+	G.state.day = int(G.state.day) + 4
+	G.state.time = 1300
+	at("homestead", 12, 30, "down")
+	var en0: float = G.state.energy
+	G.tick10(); G.tick10(); G.tick10()
+	var chilled: bool = G.conditions().has("chilled") and G.state.energy < en0
+	G.add_buff("cold resistance", 1.0, 60)
+	G.tick10()
+	check("Winter nights outside chill you (energy drains) unless you have cold resistance, a fire or a roof", chilled and not G.conditions().has("chilled"), "")
+	G.state.time = 700
+	# blood bag, surgery kit, clinic
+	G.conditions().blood_loss = 30
+	var low_max: float = G.max_health()
+	use_med("blood_bag")
+	var full_max: float = G.max_health()
+	G.add_condition("fracture", true); G.add_condition("sick", true); G.add_condition("bleed", true)
+	use_med("surgery_kit")
+	var all_clear: bool = not G.conditions().has("fracture") and not G.conditions().has("sick") and not G.conditions().has("bleed")
+	G.add_condition("fracture", true)
+	G.state.money = 1000
+	var treat = null
+	for e in G.shop_stock("clinic"):
+		if e.get("service", "") == "treatment": treat = e
+	G.shop_buy("clinic", treat, 1)
+	check("Blood Bag restores lost max health; a Surgery Kit fixes everything; Dr. Elias's treatment does too", low_max <= 70.0 and full_max >= 100.0 and all_clear and G.conditions().is_empty(), "low=%.0f full=%.0f" % [low_max, full_max])
+	# antiviral and adrenaline
+	arena("survivor")
+	G.add_item("antiviral", 1, {"silent": true})
+	var bz: Dictionary = foe("shambler", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	var day_before: int = int(G.state.day)
+	W.cb.player_hurt(bz.pos, 10.0, "bite", bz)
+	var survived: bool = ov() != "death" and G.count_item("antiviral") == 0 and G.conditions().has("sick") and int(G.state.day) == day_before
+	U.close_all()
+	G.add_item("adrenaline_shot", 1, {"silent": true})
+	G.state.health = 5.0
+	G.damage_player(20.0, null, "infected")
+	check("Antiviral: a bite in Survivor Mode doesn't send you back if you carry one (you get a fever); Adrenaline Shot gets you up when you'd collapse", survived and ov() != "collapse" and float(G.state.health) >= 25.0 and G.count_item("adrenaline_shot") == 0, "survived=%s ov=%s hp=%.0f" % [survived, ov(), float(G.state.health)])
+	# the antiviral can turn up at the crash site
+	var keep_a: float = I.antiviral_find
+	I.antiviral_find = 2.0
+	G.unlock_region("riverlands", true)
+	var tent = null
+	G.change_map("riverlands", 30, 34, "up")
+	for k in G.map.objects:
+		if G.map.objects[k].type == "medical_tent": tent = G.map.objects[k]
+	G.map.drops.clear()
+	if tent != null:
+		tent.erase("searched")
+		W.search(tent, ["lab", "military"], "the medical tent")
+	I.antiviral_find = keep_a
+	check("Antiviral: a very rare find in the crash site's medical tent and helicopter", tent != null and G.map.drops.any(func(d): return d.id == "antiviral"), "tent=%s" % (tent != null))
+	# conditions show on the HUD
+	G.add_condition("fracture", true)
+	var effs: Array = G.status_effects()
+	check("Conditions show as red badges on the HUD", effs.any(func(e): return e.id == "cond_fracture" and e.get("bad", false)), "")
+	G.conditions().clear()
 
 func count_nodes(n: Node) -> int:
 	var c := 1

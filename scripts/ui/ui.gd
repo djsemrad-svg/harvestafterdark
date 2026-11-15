@@ -527,7 +527,7 @@ func update_hud(dt: float) -> void:
 	if _last.get("clock") != clock:
 		clock_lbl.text = clock
 		_last.clock = clock
-	var bars := [["Health", st.health, Balance.player.max_health, Color("#d8453a")], ["Energy", st.energy, Balance.player.max_energy, Color("#e8c03a")]]
+	var bars := [["Health", st.health, Game.max_health(), Color("#d8453a")], ["Energy", st.energy, Game.max_energy(), Color("#e8c03a")]]
 	if Game.is_survivor():
 		bars.append(["Hunger", st.hunger, Balance.survival.hunger_max, Color("#d8823a")])
 		bars.append(["Thirst", st.thirst, Balance.survival.thirst_max, Color("#3a90d8")])
@@ -1010,7 +1010,7 @@ func _ov_death() -> Control:
 
 func _ov_collapse() -> Control:
 	var pw := _window("Rescued", 260)
-	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out."}.get(overlay.cause, "You collapsed.")
+	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out.", "bleeding": "You lost too much blood and blacked out."}.get(overlay.cause, "You collapsed.")
 	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d gold along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 240
@@ -1789,10 +1789,12 @@ func _tab_inventory() -> Control:
 			if e.get("hp", 0): parts.append("%d health" % e.hp)
 			if Game.is_survivor() and e.get("hunger", 0): parts.append("%d hunger" % e.hunger)
 			if Game.is_survivor() and e.get("thirst", 0): parts.append("%d thirst" % e.thirst)
-			dv.add_child(K.label("Restores: " + ", ".join(parts), 6, K.INK_SOFT, true))
+			if not parts.is_empty():
+				dv.add_child(K.label("Restores: " + ", ".join(parts), 6, K.INK_SOFT, true))
 		var tags := []
 		if fl.sellable: tags.append("[bgcolor=#a87a10][color=white] Sellable (%d) [/color][/bgcolor]" % it.price)
-		if fl.edible: tags.append("[bgcolor=#c8642a][color=white] Edible [/color][/bgcolor]")
+		if it.has("treat"): tags.append("[bgcolor=#b03a3a][color=white] Treatment [/color][/bgcolor]")
+		elif fl.edible: tags.append("[bgcolor=#c8642a][color=white] Edible [/color][/bgcolor]")
 		if fl.donatable: tags.append("[bgcolor=#7a4aa0][color=white] Collectible [/color][/bgcolor]")
 		if fl.placeable: tags.append("[bgcolor=#4a7a6a][color=white] Placeable [/color][/bgcolor]")
 		if fl.plantable: tags.append("[bgcolor=#3f7a2c][color=white] Plantable [/color][/bgcolor]")

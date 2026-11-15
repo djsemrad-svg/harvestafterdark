@@ -379,7 +379,18 @@ func gear_total() -> Dictionary:
 	return t
 
 func max_health() -> float:
-	return float(Balance.player.max_health) + gear_total().hp + (buff("max hp") if not state.is_empty() else 0.0)
+	if state.is_empty(): return float(Balance.player.max_health)
+	return maxf(10.0, float(Balance.player.max_health) + gear_total().hp + buff("max hp") - float(conditions().get("blood_loss", 0)))
+
+## Energy cap: lower when sick or fighting an infected wound; Vitamins raise it.
+func max_energy() -> float:
+	var m := float(Balance.player.max_energy)
+	if state.is_empty(): return m
+	var c := conditions()
+	var mult := 1.0 + buff("max energy")
+	if c.has("sick"): mult *= float(Balance.injuries.sick_energy_mult)
+	if c.has("wound"): mult *= float(Balance.injuries.wound_energy_mult)
+	return round(m * mult)
 
 ## Makes the pack the right size for your pockets. Returns false if items would be lost.
 func apply_carry(extra := -999) -> bool:
@@ -950,6 +961,7 @@ func update_clock(dt: float) -> void:
 
 func tick10() -> void:
 	expire_buffs()
+	conditions_tick10()
 	check_achievements()
 	if state.get("frost_night", false) and int(state.time) >= 1080 and int(state.flags.get("frost_warned", -1)) != int(state.day):
 		state.flags.frost_warned = int(state.day)
@@ -971,6 +983,153 @@ func tick10() -> void:
 		pass_out()
 
 
+
+# ================================================================ injuries and sickness
+## See scripts/world/injuries.gd for what each condition does and what treats it.
+func conditions() -> Dictionary:
+	if not (state.get("conditions") is Dictionary): state.conditions = {}
+	return state.conditions
+
+func injury_mult() -> float:
+	return float(mode_cfg().get("injury_mult", 1.0))
+
+func add_condition(k: String, silent := false) -> void:
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	match k:
+		"bleed":
+			c.bleed = {"until": abs_min() + int(I.bleed_minutes), "risk": float(c.get("bleed", {}).get("risk", 1.0)) if c.has("bleed") else 1.0}
+			c.dirty = {"risk": 1.0}
+		"wound", "fracture", "sick":
+			if c.has(k): return
+			c[k] = {"day": int(state.day)}
+		"chilled":
+			if c.has(k): return
+			c[k] = {"since": abs_min()}
+	state.energy = minf(float(state.energy), max_energy())
+	if not silent:
+		var msg := {"bleed": "You're bleeding! Bandage it.", "fracture": "Something snaps. Your limb is broken: you'll be slow until you splint it.", "wound": "Your wound is infected.", "sick": "You feel sick.", "chilled": "You're chilled to the bone. Get indoors or near a fire."}
+		toast(msg.get(k, Injuries.NAMES[k]), "", "bad")
+
+func cure_condition(k: String) -> bool:
+	var c := conditions()
+	if k == "blood_loss":
+		var had := int(c.get("blood_loss", 0)) > 0
+		c.erase("blood_loss")
+		return had
+	if c.has(k):
+		c.erase(k)
+		return true
+	return false
+
+## A hit from the infected can start bleeding or break a limb.
+func injure_from_hit(dmg: float, kind: String) -> void:
+	if state.is_empty() or dmg <= 0: return
+	var I: Dictionary = Balance.injuries
+	var m := injury_mult()
+	if kind in ["bite", "hit"] and rng.randf() < float(I.bleed_chance) * m:
+		add_condition("bleed")
+	if kind in ["bite", "hit", "blast"] and dmg >= float(I.fracture_hit) and rng.randf() < float(I.fracture_chance) * m:
+		add_condition("fracture")
+
+## Using a medical item (called from eat_item).
+func apply_treatment(id: String, parts: Array) -> void:
+	var T: Dictionary = Data.items[id].treat
+	var c := conditions()
+	if T.get("stop", false) and cure_condition("bleed"):
+		parts.append("bleeding stopped")
+	if T.has("clean") and c.has("dirty"):
+		c.dirty.risk = float(c.dirty.risk) * float(T.clean)
+		parts.append("wound cleaned")
+	for k in T.get("cure", []):
+		if cure_condition(k):
+			parts.append({"wound": "infection cured", "sick": "you feel better", "fracture": "limb set", "blood_loss": "blood restored"}.get(k, k))
+	if T.get("full", false):
+		c.erase("dirty")
+		state.health = max_health()
+		parts.append("fully healed")
+	if T.has("painkiller"):
+		add_buff("painkillers", 1.0, int(T.painkiller))
+		parts.append("pain dulled for %d min" % int(T.painkiller))
+	if T.get("vitamins", false):
+		add_buff("max energy", 0.1, 1440)
+		parts.append("+10% max energy for a day")
+	if T.get("clean_buff", false):
+		add_buff("clean", float(Balance.injuries.soap_clean), 1440)
+		parts.append("clean for a day")
+	if T.has("burn_resist"):
+		add_buff("burn resistance", 0.5, 60)
+		parts.append("-50% burn damage for an hour")
+	if T.has("purify"):
+		var n: int = min(count_item("dirty_water"), int(T.purify))
+		if n > 0:
+			remove_item("dirty_water", n)
+			add_item("water_bottle", n, {"silent": true})
+			parts.append("purified %d dirty water" % n)
+		else:
+			parts.append("no dirty water to purify")
+
+## Every 10 game minutes: bleeding wears off, winter nights chill you.
+func conditions_tick10() -> void:
+	if state.is_empty() or map == null: return
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	state.energy = minf(float(state.energy), max_energy())
+	if c.has("bleed") and abs_min() >= int(c.bleed.until):
+		c.erase("bleed")
+		toast("The bleeding has stopped by itself. Keep the wound clean.")
+	var t := int(state.time)
+	var cold: bool = season() == "winter" and map.outdoor and (t >= 1080 or t < 420) and buff("cold resistance") <= 0 and not near_fire()
+	if cold:
+		if not c.has("chilled"):
+			add_condition("chilled")
+		state.energy = maxf(0.0, float(state.energy) - float(I.chill_energy_per_10min))
+		if abs_min() - int(c.chilled.since) >= int(I.chill_sick_after) and not c.has("sick") and rng.randf() < 0.1 * injury_mult():
+			add_condition("sick")
+	elif c.has("chilled"):
+		c.erase("chilled")
+		toast("You warm up.")
+
+func near_fire() -> bool:
+	var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var o = map.get_obj(pt.x + dx, pt.y + dy)
+			if o != null and (o.type in ["campfire", "campfire_ring", "fire_pit", "generator"] or Data.obj_defs.get(o.type, {}).get("light", 0) > 0 and Data.obj_defs.get(o.type, {}).get("station", "") == "stove"):
+				return true
+	return false
+
+## Overnight: uncleaned wounds may turn, infections hurt, sickness and breaks heal slowly.
+func conditions_overnight(rep: Dictionary) -> void:
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	var day := int(state.day)
+	c.erase("bleed")
+	c.erase("chilled")
+	if c.has("dirty"):
+		var risk: float = float(I.wound_chance) * float(c.dirty.risk) - buff("clean")
+		if not c.has("wound") and rng.randf() < risk * injury_mult():
+			c.wound = {"day": day}
+			rep.lines.append("Your wound got infected overnight. Antibiotics will clear it.")
+		c.erase("dirty")
+	if c.has("wound"):
+		if day - int(c.wound.day) >= int(I.wound_heal_days):
+			c.erase("wound")
+			rep.lines.append("Your infected wound has finally cleared up on its own.")
+		else:
+			state.health = maxf(10.0, float(state.health) - float(I.wound_morning_hp))
+			rep.lines.append("Your infected wound throbs (-%d health). Antibiotics would clear it." % int(I.wound_morning_hp))
+	if c.has("sick") and day - int(c.sick.day) >= int(I.sick_days):
+		c.erase("sick")
+		rep.lines.append("You feel better today.")
+	if c.has("fracture") and day - int(c.fracture.day) >= int(I.fracture_heal_days):
+		c.erase("fracture")
+		rep.lines.append("Your broken limb has knitted back together.")
+	if int(c.get("blood_loss", 0)) > 0:
+		c.blood_loss = max(0, int(c.blood_loss) - int(I.blood_loss_recover))
+		if int(c.blood_loss) == 0: c.erase("blood_loss")
+	state.health = minf(float(state.health), max_health())
+	state.energy = minf(float(state.energy), max_energy())
 
 # ================================================================ crop care: quality, frost, pests, crows
 func has_obj_at(m: GameMap, kk: String, type: String) -> bool:
@@ -1831,6 +1990,10 @@ func status_effects() -> Array:
 		elif state.hunger <= S.low_threshold: out.append({"id": "hungry", "label": "Hungry", "desc": "Slower movement, tools cost more energy, poorer rest."})
 		if state.thirst <= 0: out.append({"id": "dehydrated", "label": "Dehydrated", "bad": true, "desc": "Much slower, tools cost far more energy. " + g})
 		elif state.thirst <= S.low_threshold: out.append({"id": "thirsty", "label": "Thirsty", "desc": "Slower movement, tools cost more energy, poorer rest."})
+	for k in conditions():
+		if not Injuries.NAMES.has(k): continue      # "dirty" is bookkeeping, not a condition
+		if k == "blood_loss" and int(conditions().blood_loss) <= 0: continue
+		out.append({"id": "cond_" + k, "label": Injuries.NAMES[k], "bad": true, "desc": Injuries.DESC[k] + (" (Painkillers: you're ignoring it for now.)" if k == "fracture" and buff("painkillers") > 0 else "")})
 	if state.energy <= 10: out.append({"id": "exhausted", "label": "Exhausted", "bad": true, "desc": "Too tired for heavy work. Eat or sleep."})
 	if state.time >= Balance.time.midnight: out.append({"id": "tired", "label": "Tired", "desc": "You will pass out at 2:00 am."})
 	return out
@@ -1867,7 +2030,7 @@ func eat_item(id: String) -> bool:
 	var e: Dictionary = it.edible
 	var mult := 1.0 + skill_level("cooking") * 0.05 if it.cat == "cooked" else 1.0
 	if it.cat == "medical": mult += float(gear_total().fx.get("med_bonus", 0.0))
-	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, float(Balance.player.max_energy))
+	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, max_energy())
 	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, max_health())
 	var parts := []
 	if e.get("energy", 0): parts.append("+%d energy" % round(e.energy * mult))
@@ -1889,6 +2052,11 @@ func eat_item(id: String) -> bool:
 	if it.get("dirty", false) and rng.randf() < 0.35:
 		state.health = maxf(1.0, state.health - 8.0)
 		parts.append("your stomach turns (-8 health)")
+		if rng.randf() < float(Balance.injuries.dirty_water_sick) / 0.35 * injury_mult():
+			add_condition("sick", true)
+			parts.append("you feel sick")
+	if it.has("treat"):
+		apply_treatment(id, parts)
 	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + (": " + ", ".join(parts) if not parts.is_empty() else ""), id)
 	Sfx.play("eat")
 	return true
@@ -2609,13 +2777,15 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		ui.open("repair", {"owner": Data.shops[shop_id].owner})
 		return ""
 	if e.get("service", "") == "treatment":
-		if float(state.health) >= max_health() and float(state.energy) >= Balance.player.max_energy * 0.5:
+		if float(state.health) >= max_health() and float(state.energy) >= max_energy() * 0.5 and conditions().is_empty():
 			return "Elias looks you over. \"You're fine. Go eat something.\""
 		state.money = int(state.money) - cost
+		var had := conditions().keys().filter(func(k): return k != "chilled")
+		state.conditions = {}
 		state.health = max_health()
-		state.energy = maxf(float(state.energy), Balance.player.max_energy * 0.5)
+		state.energy = maxf(float(state.energy), max_energy() * 0.5)
 		Sfx.play("eat")
-		toast("Elias patches you up. Good as new.")
+		toast("Elias patches you up%s. Good as new." % (" and treats your " + ", ".join(had.map(func(k): return Injuries.NAMES[k].to_lower())) if not had.is_empty() else ""))
 		return ""
 	if e.get("service", "") == "greenhouse":
 		for m in e.mats:
@@ -2890,6 +3060,14 @@ func forge_upgrade(tool: String) -> String:
 
 # ================================================================ death, collapse, pass out
 func player_bitten() -> void:
+	# an Antiviral in your pack saves you, with a fever
+	if remove_item("antiviral", 1):
+		state.flags.bitten = true
+		add_condition("sick", true)
+		state.health = maxf(1.0, float(state.health) - 20.0)
+		toast("The bite breaks the skin. You jam the Antiviral in your arm. You'll live, but the fever is coming.", "antiviral", "bad")
+		Sfx.play("hurt")
+		return
 	# Survivor Mode: immediately restore the last completed bed save, then explain.
 	Sfx.play("death")
 	fishing = null
@@ -2920,6 +3098,12 @@ func damage_player(amt: float, src = null, cause := "infected") -> void:
 func collapse(cause: String) -> void:
 	if ui.overlay_type() == "collapse":
 		return
+	if not cause in ["starvation", "dehydration"] and remove_item("adrenaline_shot", 1):
+		state.health = 30.0
+		add_buff("move speed", 0.3, 3)
+		toast("Adrenaline! You're back on your feet.", "adrenaline_shot", "gold")
+		Sfx.play("zap")
+		return
 	var cfg := mode_cfg()
 	var lost: int = min(cfg.collapse_money_max, int(state.money * cfg.collapse_money_pct))
 	state.money = int(state.money) - lost
@@ -2932,6 +3116,7 @@ func collapse(cause: String) -> void:
 
 func recover_from_collapse() -> void:
 	var cfg := mode_cfg()
+	conditions().erase("bleed")      # whoever found you bandaged you up
 	state.health = round(max_health() * cfg.collapse_health_restore)
 	if is_survivor():
 		state.hunger = max(state.hunger, 30.0)
@@ -2981,7 +3166,7 @@ func end_day(reason: String) -> void:
 	if state.flags.get("wake_full", false):
 		state.flags.erase("wake_full")
 		restore = 1.0
-	state.energy = round(Balance.player.max_energy * restore)
+	state.energy = round(max_energy() * restore)
 	if is_survivor():
 		state.health = min(max_health(), state.health + round((max_health() - state.health) * 0.6))
 		state.hunger = max(0.0, state.hunger - Balance.survival.overnight_hunger_drain)
@@ -3038,6 +3223,7 @@ func end_day(reason: String) -> void:
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
 			overnight_object(maps[mid], o, rep)
 	animals_overnight(rep)
+	conditions_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)
 	if waters: rep.lines.append("%s today. Your outdoor crops are already watered." % Data.weather_info[state.weather].name)
