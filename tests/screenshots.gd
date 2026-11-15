@@ -19,6 +19,22 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "detail":
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		for pass_on in [false, true]:
+			Art.set_detail(pass_on)
+			Game.change_map("town", 12, 20, "up", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("40_town_" + ("detail" if pass_on else "before"))
+			Game.change_map("homestead", 12, 14, "down", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("41_farm_" + ("detail" if pass_on else "before"))
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:

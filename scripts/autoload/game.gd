@@ -39,7 +39,7 @@ var fires := []                # burning ground, acid puddles and gas clouds
 var shake := 0.0
 var rng := RandomNumberGenerator.new()
 
-var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false}
+var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false}
 
 func _ready() -> void:
 	rng.randomize()
@@ -61,6 +61,7 @@ func save_settings() -> void:
 
 func apply_settings() -> void:
 	Sfx.set_volumes(settings.sfx, settings.music)
+	Art.set_detail(settings.get("detail_art", false))
 	if ui:
 		ui.apply_settings()
 

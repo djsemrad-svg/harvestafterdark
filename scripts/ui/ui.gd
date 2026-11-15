@@ -2264,7 +2264,7 @@ func _settings_box(in_game: bool) -> Control:
 		h.add_child(val)
 		v.add_child(h)
 	v.add_child(K.label("Display and controls", 8, K.WOOD_DARK))
-	for pair in [["large_text", "Larger interface text"], ["high_contrast", "High-contrast interface"], ["show_target", "Show tool target outline"], ["pause_on_blur", "Pause when the window loses focus"]]:
+	for pair in [["large_text", "Larger interface text"], ["high_contrast", "High-contrast interface"], ["show_target", "Show tool target outline"], ["pause_on_blur", "Pause when the window loses focus"], ["detail_art", "Detailed art (preview)"]]:
 		var key: String = pair[0]
 		var cb := CheckBox.new()
 		cb.text = pair[1]

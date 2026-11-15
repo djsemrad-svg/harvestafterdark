@@ -46,6 +46,16 @@ const FONT := {
 
 var _col_cache := {}
 var _tex := {}
+## Detailed art preview (Settings): more shading on everything, plus a richer
+## grass tile and oak tree. Switching clears the picture caches.
+var detail := false
+
+func set_detail(on: bool) -> void:
+	if on == detail:
+		return
+	detail = on
+	_tex.clear()
+	_obj.clear()
 var light_texture: GradientTexture2D
 
 func _init() -> void:
@@ -160,7 +170,115 @@ func tile_solid(t: String) -> bool:
 	return TILE_PROPS[t].get("solid", false)
 
 func get_tile(type: String, season: String, v: int, frame: int = 0) -> ImageTexture:
-	return cached("t|%s|%s|%d|%d" % [type, season, v, frame], func(): return _draw_tile(type, season, v, frame))
+	return cached("t|%s|%s|%d|%d" % [type, season, v, frame], func():
+		if detail and type == "grass" and season != "winter": return _grass_hd(season, v)
+		var im := _draw_tile(type, season, v, frame)
+		if detail and not type in ["water", "walltop", "void"]: im = texture_pass(im, v)
+		return im)
+
+## Detailed grass: soft light and dark patches, clumps of blades with bright tips.
+func _grass_hd(season: String, v: int) -> Image:
+	var x := img(16, 16)
+	var g: Array = (PAL.get(season, PAL.spring) as Dictionary).g
+	R(x, 0, 0, 16, 16, g[0])
+	# soft patches of darker and lighter grass with dithered edges, so tiles blend
+	var blobs := [[int(hash2(v, 1, 31) * 16), int(hash2(v, 2, 31) * 16), 4.5, g[1]], [int(hash2(v, 3, 31) * 16), int(hash2(v, 4, 31) * 16), 3.5, g[2]]]
+	for yy in 16:
+		for xx in 16:
+			for bl in blobs:
+				var ddx: float = min(abs(xx - bl[0]), 16 - abs(xx - bl[0])); var ddy: float = min(abs(yy - bl[1]), 16 - abs(yy - bl[1]))
+				var d := sqrt(ddx * ddx + ddy * ddy)
+				if d < bl[2] - 1.0 or (d < bl[2] + 0.5 and (xx + yy) % 2 == 0):
+					P(x, xx, yy, bl[3])
+	for i in 8:
+		P(x, int(hash2(i, v, 3) * 16), int(hash2(i, v, 7) * 16), g[1 + i % 2])
+	# tufts: a dark base, a mid blade and a bright tip, with a one-pixel shadow
+	var tip := shade(g[2], 0.18)
+	for i in 4:
+		var px := 2 + int(hash2(i, v, 11) * 11); var py := 4 + int(hash2(i, v, 13) * 10)
+		P(x, px - 1, py + 1, g[3].darkened(0.1) if g[3] is Color else col(g[3]).darkened(0.1))
+		P(x, px, py, g[3]); P(x, px + 1, py - 1, g[3]); P(x, px + 2, py, g[3])
+		P(x, px + 1, py - 2, g[2]); P(x, px - 1, py - 1, g[2]); P(x, px + 3, py - 1, g[2])
+		P(x, px + 1, py - 3, tip); P(x, px - 1, py - 2, tip)
+	if season == "spring" and v == 3:
+		P(x, 4, 5, PAL.spring.flower[0]); P(x, 11, 10, PAL.spring.flower[1]); P(x, 7, 12, PAL.spring.flower[2])
+	if season == "summer" and v == 3:
+		P(x, 9, 4, PAL.summer.flower[0]); P(x, 3, 11, PAL.summer.flower[2])
+	if season == "autumn" and v >= 2:
+		P(x, 5, 6, "#c8642a"); P(x, 12, 12, "#e0903a"); P(x, 9, 3, "#d87a3a")
+	return x
+
+## Detailed oak: overlapping leaf clumps, each lit from the top left, over a shaded trunk with roots.
+func _oak_hd(season: String, v: int) -> Image:
+	var x := img(32, 48)
+	var leaf: Array = (PAL.get(season, PAL.spring) as Dictionary).leaf
+	R(x, 13, 26, 6, 19, "#6a4a2e"); R(x, 13, 26, 2, 19, "#8a6a44"); R(x, 17, 26, 2, 19, "#4e3620")
+	for i in 6: P(x, 15 + i % 2, 29 + i * 3, "#4e3620")
+	R(x, 10, 44, 4, 2, "#6a4a2e"); R(x, 18, 44, 5, 2, "#4e3620"); R(x, 9, 45, 2, 1, "#6a4a2e"); R(x, 22, 45, 2, 1, "#4e3620")
+	if v % 2 == 0: R(x, 13, 38, 2, 3, "#5a7a3a")    # a bit of moss
+	# back clumps first, front ones over them; each is lit from the top left
+	var clumps := [[16, 7, 6.5], [9, 12, 6.0], [23, 12, 6.0], [16, 14, 7.5], [6, 20, 5.5], [26, 20, 5.5], [11, 22, 7.0], [21, 22, 7.0], [16, 25, 6.5]]
+	var ramp := [shade(leaf[3], 0.16), leaf[3], leaf[2], leaf[1], leaf[0], col(leaf[0]).darkened(0.25)]
+	for yy in 34:
+		for xx in 32:
+			var hit := -1
+			var tone := 0.0
+			for ci in clumps.size():
+				var c: Array = clumps[ci]
+				var dx: float = xx - c[0]; var dy: float = yy - c[1]
+				var r: float = c[2]
+				var dist := sqrt(dx * dx + dy * dy) / r
+				if dist < 1.0:
+					hit = ci
+					tone = (dx * 0.8 + dy) / r + (yy - 6) * 0.03 + (hash2(xx, yy, v + 61) - 0.5) * 0.18
+					if dist > 0.82 and dy > 0: tone += 0.6          # a dark rim under each clump
+			if hit >= 0:
+				P(x, xx, yy, ramp[clampi(int(round(tone * 1.5 + 2.0)), 0, 5)])
+	for i in 14:
+		var a := hash2(i, v, 71) * TAU
+		var px := 16 + int(cos(a) * (12 + hash2(i, v, 73) * 3)); var py := 16 + int(sin(a) * (13 + hash2(i, v, 75) * 3))
+		if px > 0 and px < 31 and py > 0 and py < 34 and x.get_pixel(px, py).a == 0: P(x, px, py, leaf[1])
+	if season == "spring" and v % 2 == 0:
+		for i in 7:
+			var fx := 6 + int(hash2(i, v, 2) * 20); var fy := 5 + int(hash2(i, v, 3) * 22)
+			if x.get_pixel(fx, fy).a > 0: P(x, fx, fy, (PAL.spring.flower as Array)[1])
+	return x
+
+## A light texture pass for flat tiles: sparse light and dark speckles.
+func texture_pass(src: Image, v: int) -> Image:
+	var im: Image = src.duplicate()
+	for yy in im.get_height():
+		for xx in im.get_width():
+			var c := src.get_pixel(xx, yy)
+			var n := hash2(xx, yy, 83 + v)
+			if n < 0.08: im.set_pixel(xx, yy, c.darkened(0.06))
+			elif n > 0.93: im.set_pixel(xx, yy, c.lightened(0.06))
+	return im
+
+## The shading pass for sprites: light from the top left on every edge, shadow
+## on the bottom right, and a little texture on flat areas. Outlines stay put.
+func shade_pass(src: Image, strength := 1.0) -> Image:
+	var im: Image = src.duplicate()
+	var w = im.get_width(); var h = im.get_height()
+	var edge := func(px, py): return px < 0 or py < 0 or px >= w or py >= h or src.get_pixel(px, py).a < 0.5 or src.get_pixel(px, py).get_luminance() < 0.12
+	for yy in h:
+		for xx in w:
+			var c := src.get_pixel(xx, yy)
+			if c.a < 0.5 or c.get_luminance() < 0.12:
+				continue
+			var f := 0.0
+			if edge.call(xx, yy - 1): f += 0.16
+			if edge.call(xx - 1, yy): f += 0.07
+			if edge.call(xx, yy + 1): f -= 0.15
+			if edge.call(xx + 1, yy): f -= 0.07
+			if f == 0.0:
+				var n := hash2(xx, yy, 91)
+				if n < 0.07: f = -0.06
+				elif n > 0.94: f = 0.06
+			f *= strength
+			if f > 0: im.set_pixel(xx, yy, c.lightened(f))
+			elif f < 0: im.set_pixel(xx, yy, c.darkened(-f))
+	return im
 
 func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 	var x := img(16, 16)
@@ -358,6 +476,11 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 		return ov
 	if not _obj.has(k):
 		var r := _draw_obj(o, season, frame, nb)
+		if detail:
+			if t == "tree" and season != "winter":
+				r = [outline(_oak_hd(season, v), "#1e1a14"), -8, -32]
+			else:
+				r[0] = shade_pass(r[0])
 		_obj[k] = {"tex": to_tex(r[0]), "ox": r[1], "oy": r[2]}
 	return _obj[k]
 
@@ -1019,7 +1142,7 @@ func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
 	return im
 
 func recolor_infected(src: Image, look: Dictionary) -> Image:
-	var im := src.duplicate()
+	var im: Image = src.duplicate()
 	var W = im.get_width()
 	var H = im.get_height()
 	var lying: bool = look.get("lying", false)
@@ -1091,7 +1214,7 @@ func recolor_infected(src: Image, look: Dictionary) -> Image:
 
 ## The atlas farmer wears a red shirt, blue overalls and brown hair. Swap those for the player's choices.
 func recolor_player(src: Image, look: Dictionary) -> Image:
-	var im := src.duplicate()
+	var im: Image = src.duplicate()
 	var targets := {"shirt": Color(look.get("shirt", "#b5442f")), "pants": Color(look.get("pants", "#3f6fb5")), "hair": Color(look.get("hair", "#5a3a22")), "skin": Color(look.get("skin", "#e8b48f"))}
 	var refs := {"shirt": Color("#a83a2c"), "pants": Color("#3a5aa8"), "hair": Color("#5a3a22"), "skin": Color("#e0a878")}
 	for y in im.get_height():
@@ -1153,7 +1276,7 @@ func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 	return im
 
 func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
-	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return char_image(look, dir, frame))
+	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return shade_pass(char_image(look, dir, frame), 0.7) if detail else char_image(look, dir, frame))
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
 func get_portrait(look: Dictionary) -> ImageTexture:
@@ -2020,7 +2143,19 @@ func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
 		return ovb
 	var cond := building_condition(s)
 	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d|%s" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y, s.get("door_open", false)]
-	return cached(k, func(): return _draw_building(s, season, night, cond))
+	return cached(k, func(): return _building_hd(_draw_building(s, season, night, cond), s) if detail else _draw_building(s, season, night, cond))
+
+## Detailed buildings: the shading pass plus a soft shadow under the eaves.
+func _building_hd(src: Image, s: Dictionary) -> Image:
+	var im := shade_pass(src, 0.8)
+	var roof_h := int(round(int(s.h) * 16 * 0.5))
+	for i in 4:
+		var yy := roof_h + 3 + i
+		if yy >= im.get_height(): break
+		for xx in range(3, im.get_width() - 3):
+			var c := im.get_pixel(xx, yy)
+			if c.a > 0.5 and c.get_luminance() > 0.12: im.set_pixel(xx, yy, c.darkened(0.2 - i * 0.05))
+	return im
 
 func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Image:
 	var W: int = s.w * 16

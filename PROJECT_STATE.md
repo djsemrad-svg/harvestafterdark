@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 15, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 227 / 227 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 237 / 237 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -211,6 +211,28 @@ All in `scripts/world/raiders.gd`.
 - Raiders raid the farm (in `Raiders`, numbers in `Balance.raider_raids`): from 5 days after your first visit to Dry Creek, 7% a night (half in Adventure Mode, never on an infected raid night), 2 to 4 raiders, warning at 6 pm. Turrets and guard dogs each stop one. The rest break into chests on the farm, in the farmhouse and farm buildings and take 2 stacks each. Lockboxes can't be opened. Everything they take is piled up at Dry Creek (blue tarp by the south wall), and you can take it back.
 - Older saves: debris under new district buildings is cleared on load.
 
+### Phase 2 finished (added Nov 15)
+
+- Fish sizes and the Fish Journal (`scripts/world/angling.gd`): every fish you land has a size in inches (bigger for pricier fish; Fishing skill nudges it up). The Collections tab has a Fish Journal: how many of each you've caught and your record. A new record gets a toast.
+- Calloway Bait Shack: Wren reopened her mom's bait shop on the riverbank at the east end of town (9 am to 4 pm, closed Thursdays, when she still fishes the ridge lake). Bait, Premium Bait, Crab Pots, Bamboo and Fiberglass Rods and all the tackle. She buys fish.
+- Trees grow back (`scripts/world/woodland.gd`): a felled oak or pine can drop an Acorn or a Pine Cone (35%). Plant it on your farm and it grows through four stages into a full tree in 12 days. Out in the wild (everywhere but your farm), stumps left alone for a week can sprout again.
+- The Foreman (`scripts/world/deep_mine.gd`): mine floor 10 is his. No ladder down appears until he's put down; the first time, his strongbox pays out (copper and iron bars, geodes, pipe charges, coal, Mining XP). He doesn't come back.
+- Cave fishing: some floors from 5 down have a still pool, and floor 20 always does. Cave Blindfish bite there; the Lantern Queen only in the floor 20 pool.
+- Mining perks (Skills tab): at level 5 choose Prospector (25% chance of 1 more ore) or Geologist (30% chance of a second geode or gem); at level 10 choose Excavator (ladders 60% more often) or Strongarm (pickaxe costs half the energy).
+
+### Room variety (added Nov 15)
+
+All in `scripts/world/districts.gd`.
+
+- Floor styles: floor (planks), floor_oak, floor_tile (checker), floor_carpet, floor_concrete, floor_lab. Wall styles: wall, wall_paper (green stripe), wall_rose, wall_panel (wood), wall_brick, wall_concrete, wall_lab.
+- `STYLES` lists the floor and wall pairs each kind of room can use; each building gets one, picked by its id, so neighbours differ. A building can also set "floor" and "wall" itself.
+- `ROOM_SETS` lets a building pick from several layouts: "home" (house, house2, house3, house4) and "store" (shop, shop2). To add a layout: add 11 rows of 14 letters to `ROOMS` (letters are listed above it), then add its name to a set or use it directly as a building's "room". The tests walk every layout to check the exit, containers and infected spots can be reached.
+- Older saves: a room whose layout changed is rebuilt fresh.
+
+### Detailed art preview (Nov 15)
+
+Settings has "Detailed art (preview)", off by default. When on: a richer grass tile (soft patches, fuller tufts), an oak tree built from shaded leaf clumps, and a shading pass on every object, building and character (light from the top left, shadow bottom right, a little texture), plus a shadow under building eaves. All in `art.gd` (`set_detail`, `_grass_hd`, `_oak_hd`, `shade_pass`). Waiting on Daniel to decide whether to take it further.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -226,6 +248,9 @@ All in `scripts/world/raiders.gd`.
 - `scripts/world/halvorsen.gd`: Halvorsen Biomedical, Lab 6, Hazmat infected.
 - `scripts/world/raiders.gd`: human raiders, Dry Creek and farm raids.
 - `scripts/world/safehouses.gd`: the Sleeping Bag and safehouses.
+- `scripts/world/angling.gd`: fish sizes, the Fish Journal and Wren's Bait Shack.
+- `scripts/world/woodland.gd`: tree seeds and regrowth.
+- `scripts/world/deep_mine.gd`: the Foreman, cave pools and mining perks.
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -260,6 +285,6 @@ All in `scripts/world/raiders.gd`.
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Fast food, safehouses and farm raids are done too (Nov 15). Still open from the sheets: swamp and cave fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, map table, ham radio, tool belt, ammo pouch.
-5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Fast food, safehouses and farm raids are done too (Nov 15). Still open from the sheets: swamp fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, map table, ham radio, tool belt, ammo pouch.
+5. Phase 2 is done (Nov 15).
 6. Later phases: residents, factions, hostile settlements.
