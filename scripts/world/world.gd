@@ -935,6 +935,9 @@ func kill_enemy(e: Dictionary) -> void:
 	if d.get("nest", false):
 		nest_destroyed(e)
 		return
+	if d.get("human", false):
+		raider_down(e, d)
+		return
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
@@ -955,6 +958,21 @@ func kill_enemy(e: Dictionary) -> void:
 		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
+
+## A raider goes down: their own drops (no infected leftovers), and they count as raiders.
+func raider_down(e: Dictionary, d: Dictionary) -> void:
+	for dr in d.drops:
+		if Game.rng.randf() < float(dr[1]):
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+	for dr in Data.rare_drops.get(e.type, []):
+		if Game.rng.randf() < float(dr[1]):
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
+	Game.add_xp("survival", d.xp)
+	Game.state.stats.raiders_defeated = int(Game.state.stats.get("raiders_defeated", 0)) + 1
+	Game.contract_event("kill", {"type": e.type, "stealth": e.get("stealth_killed", false)})
+	if d.get("boss", false):
+		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 
 ## The nest falls apart: a cache of what the infected dragged in, and the area goes quiet.
 func nest_destroyed(e: Dictionary) -> void:

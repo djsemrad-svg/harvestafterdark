@@ -783,6 +783,8 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 		Game.floaters.append({"text": "Dodged", "pos": p.pos + Vector2(0, -28), "t": 0.8, "color": Color("#c8e0ff")})
 		p.iframes = 0.4
 		return
+	if kind == "shot" and gfx.has("kevlar"):
+		dmg *= 1.0 - float(gfx.kevlar)
 	var s = held()
 	if s != null and not Game.is_broken(s) and attacker != null:
 		var wfx: Dictionary = Data.weapons[s.id].fx
@@ -805,7 +807,7 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 	elif kind == "bite":
 		dmg *= 1.0 - clampf(g.bite, -0.5, 0.9)
 		Game.state.flags.bitten = true
-	if kind in ["bite", "hit", "blast", "acid"]:
+	if kind in ["bite", "hit", "blast", "acid", "shot"]:
 		dmg *= 1.0 - g.armor / (g.armor + Balance.armor.armor_k)
 	var dr: float = 0.0
 	if s != null and not Game.is_broken(s): dr = float(Data.weapons[s.id].fx.get("dr", 0.0))
@@ -830,7 +832,9 @@ func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes :=
 		Game.floaters.append({"text": "-%d" % int(ceil(dmg)), "pos": p.pos + Vector2(0, -26), "t": 0.6, "color": Color("#ff8040")})
 		if Game.state.health <= 0: Game.collapse(kind)
 	else:
-		Game.damage_player(dmg, src if src != Vector2.ZERO else null, "infected" if kind in ["bite", "hit"] else kind)
+		var cause: String = "infected" if kind in ["bite", "hit"] else kind
+		if attacker != null and Data.enemies[attacker.type].get("human", false): cause = "raiders"
+		Game.damage_player(dmg, src if src != Vector2.ZERO else null, cause)
 	var kbr: float = clampf(float(gfx.get("kb_resist", 0.0)), 0.0, 1.0)
 	if kbr > 0: p.kb = kb_before.lerp(p.kb, 1.0 - kbr)
 	if kind == "bite" and attacker != null and Data.enemies[attacker.type].has("burns"): p.burn = 3.0

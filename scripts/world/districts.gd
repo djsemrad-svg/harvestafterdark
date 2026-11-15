@@ -51,6 +51,7 @@ const PROPS := {
 	"specimen_tank": {"solid": true},
 	"server_rack": {"solid": true},
 	"decon_shower": {"solid": true},
+	"lookout": {"solid": true},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -376,7 +377,7 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 
 static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 	# a ring of trees, then weeds and debris on whatever grass is left
-	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6), Rect2i(30, 43, 3, 1)]}[id]
+	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3), Rect2i(34, 43, 2, 1)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6), Rect2i(30, 43, 3, 1)]}[id]
 	MapBuilder._border(m, r, gaps)
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
@@ -493,6 +494,11 @@ static func _industrial(m: GameMap, r: RandomNumberGenerator) -> void:
 	_place(m, 36, 39, "dumpster")
 	for c in [[33, 23], [36, 22], [53, 33]]:
 		m.add_obj(c[0], c[1], "barrel")
+	# Mill Road runs on south to Dry Creek, where the raiders camp
+	m.warps.append({"x": 34, "y": 43, "w": 2, "h": 1, "to": "dry_creek", "tx": 22, "ty": 1, "dir": "down"})
+	m.clear.append(Rect2i(33, 39, 4, 5))
+	m.purge.append(Rect2i(33, 39, 4, 5))
+	m.add_obj(33, 41, "sign", {"text": "MILL ROAD SOUTH. DRY CREEK 2 MI. Cole's chalk on the post: \"Raiders. These ones shoot back.\"", "anchor": true})
 
 static func _riverlands(m: GameMap, r: RandomNumberGenerator) -> void:
 	m.fill(0, 2, 60, 1, "sand"); m.fill(0, 3, 60, 4, "water"); m.fill(0, 7, 60, 1, "sand")

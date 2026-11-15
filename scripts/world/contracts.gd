@@ -71,6 +71,10 @@ const CONTRACTS := [
 		"map": "riverlands", "at": [11, 22],
 		"desc": "The raider warlord who held Twin Oaks with a crown of rose thorns. The bite got him, but he kept the crown and his men. He spits thorns.",
 		"reward": {"items": ["the_briar_king"], "money": 1700}},
+	{"id": "showdown_dry_creek", "title": "Showdown at Dry Creek", "giver": "cole", "kind": "boss", "boss": "boss_dutch", "needs": "industrial",
+		"map": "dry_creek", "at": [25, 20],
+		"desc": "Dutch Calloway's crew runs Dry Creek, down Mill Road south of the Industrial District. They took the last supply truck the Guild sent through, and the driver. Call Dutch out. He carries two revolvers and doesn't come alone. A Kevlar vest helps.",
+		"reward": {"items": ["twin_hammer_revolver"], "money": 1800}},
 	# ---------------- the Guild's other jobs
 	{"id": "the_quiet_dojo", "title": "The Quiet Dojo", "giver": "cole", "kind": "kill", "count": 25, "stealth": true,
 		"desc": "Cole wants to see patience. Put down 25 infected by stealth: sneak up behind one that hasn't noticed you and strike with a blade.",
@@ -123,7 +127,6 @@ const CONTRACTS := [
 
 ## Rewards whose job needs something the game doesn't have yet. Shown greyed in the journal.
 const NOT_YET := [
-	["Showdown at Dry Creek", "Raider captains (needs human raiders)", ["twin_hammer_revolver"]],
 ]
 
 ## Achievements. "stat" reads Game.achievement_value(); "goal" is the target.

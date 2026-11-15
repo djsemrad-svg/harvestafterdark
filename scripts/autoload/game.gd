@@ -782,6 +782,7 @@ func build_persistent_maps() -> void:
 		maps[b.kind] = Livestock.interior(b)
 	maps.merge(Districts.all_maps(int(state.seed)))
 	maps.merge(Halvorsen.all_maps(int(state.seed)))
+	maps.merge(Raiders.all_maps(int(state.seed)))
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
@@ -1030,7 +1031,7 @@ func injure_from_hit(dmg: float, kind: String) -> void:
 	if state.is_empty() or dmg <= 0: return
 	var I: Dictionary = Balance.injuries
 	var m := injury_mult()
-	if kind in ["bite", "hit"] and rng.randf() < float(I.bleed_chance) * m:
+	if kind in ["bite", "hit", "shot"] and rng.randf() < float(I.bleed_chance) * m:
 		add_condition("bleed")
 	if kind in ["bite", "hit", "blast"] and dmg >= float(I.fracture_hit) and rng.randf() < float(I.fracture_chance) * m:
 		add_condition("fracture")
@@ -1428,11 +1429,20 @@ func update_animals(dt: float) -> void:
 func _walk_animal(a: Dictionary, r: Dictionary, goal: Vector2, step_len: float) -> void:
 	var d: Vector2 = goal - r.pos
 	if d.length() > 2:
-		var np: Vector2 = r.pos + d.normalized() * step_len
-		var tx := int(floor(np.x / 16))
-		var ty := int(floor((np.y - 3) / 16))
-		if map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
-			r.pos = np
+		var step: Vector2 = d.normalized() * step_len
+		# straight there, or slide along whatever is in the way
+		var moved := false
+		var here := Vector2i(int(floor(r.pos.x / 16)), int(floor((r.pos.y - 3) / 16)))
+		for np in [r.pos + step, r.pos + Vector2(step.x, 0), r.pos + Vector2(0, step.y)]:
+			if np == r.pos: continue
+			var tx := int(floor(np.x / 16))
+			var ty := int(floor((np.y - 3) / 16))
+			# the tile it already stands on never blocks it (something may have grown there)
+			if Vector2i(tx, ty) == here or map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
+				r.pos = np
+				moved = true
+				break
+		if moved:
 			r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
 			r.frame = int(Time.get_ticks_msec() / 200) % 2
 		else:

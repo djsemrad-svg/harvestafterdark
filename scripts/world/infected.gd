@@ -12,6 +12,8 @@ func _init(world) -> void:
 ## Builds this infected's own look from its type's "looks" lists, so each one differs.
 static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	var d: Dictionary = Data.enemies[type]
+	if d.get("human", false):
+		return Raiders.make_look(type, rng)
 	var L: Dictionary = d.get("looks", {})
 	var look: Dictionary = d.get("look", {}).duplicate(true)
 	if look.is_empty():
@@ -137,6 +139,8 @@ func update(dt: float) -> void:
 					e.state = "wander"
 				elif ai == "spitter" and dist < float(d.spit.range) and dist > 30.0:
 					mv = _spitter(e, d, to, dist)
+				elif ai == "gunner":
+					mv = _gunner(e, d, to, dist, dt)
 				elif ai == "screamer" and not e.get("screamed", false):
 					e.state = "scream"
 					e.t = 1.1
@@ -206,6 +210,10 @@ func _move(e: Dictionary, mv: Vector2, dt: float) -> void:
 
 func _on_notice(e: Dictionary, d: Dictionary) -> void:
 	e.notice = 0.0
+	if d.get("ai", "") == "gunner":
+		e.spit_cd = maxf(float(e.get("spit_cd", 0.0)), 0.8)   # a moment to aim: your cue to find cover
+		if d.get("human", false) and Game.rng.randf() < 0.5:
+			Game.floaters.append({"text": ["Hey!", "Over there!", "Got one!", "Take 'em!"][Game.rng.randi() % 4], "pos": e.pos + Vector2(0, -34), "t": 1.0, "color": Color("#ffd0a0")})
 	if d.get("ai", "") == "stalker":
 		e.alert_t = 2.0
 
@@ -223,6 +231,38 @@ func _raider(e: Dictionary, dt: float, d: Dictionary) -> void:
 	e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
 	e.walk_t += dt
 	e.frame = int(e.walk_t / 0.2) % 4 if mv != Vector2.ZERO else 0
+
+## Raider gunners keep their distance, strafe and shoot. They reload after a
+## magazine, and the noise draws the infected.
+func _gunner(e: Dictionary, d: Dictionary, to: Vector2, dist: float, dt: float) -> Vector2:
+	var G: Dictionary = d.gun
+	e.dir = (("left" if to.x < 0 else "right") if abs(to.x) > abs(to.y) else ("up" if to.y < 0 else "down"))
+	if not e.has("mag"): e.mag = int(G.mag)
+	if float(e.spit_cd) <= 0 and dist < float(G.range):
+		var n: int = int(G.get("n", 1))
+		for i in n:
+			var ang: float = to.angle() + Game.rng.randf_range(-1.0, 1.0) * float(G.spread) + (i - (n - 1) / 2.0) * 0.12
+			Game.projectiles.append({"pos": e.pos + Vector2(0, -12), "vel": Vector2.from_angle(ang) * float(G.speed), "life": float(G.range) / float(G.speed) + 0.2,
+				"kind": "round", "owner": "enemy", "dmg": float(G.dmg), "hurt": "shot", "hit": []})
+		Sfx.play("shot")
+		w.cb.alert(e.pos, 8 * 16.0)
+		e.mag = int(e.mag) - 1
+		e.spit_cd = float(G.cd)
+		if int(e.mag) <= 0:
+			e.mag = int(G.mag)
+			e.spit_cd = float(G.reload)
+			Game.floaters.append({"text": "Reloading", "pos": e.pos + Vector2(0, -32), "t": 0.8, "color": Color("#ffd0a0")})
+	e.strafe_t = float(e.get("strafe_t", 0.0)) - dt
+	if float(e.strafe_t) <= 0:
+		e.strafe_t = 1.2 + Game.rng.randf() * 1.5
+		e.strafe = 1.0 if Game.rng.randf() < 0.5 else -1.0
+	var sp: float = float(d.chase_speed)
+	var range: float = float(G.range)
+	if dist > range * 0.8:
+		return to / dist * sp
+	if dist < range * 0.4:
+		return -to / dist * sp * 0.8
+	return Vector2(-to.y, to.x) / dist * sp * 0.5 * float(e.get("strafe", 1.0))
 
 ## Spitters keep their distance and lob acid.
 func _spitter(e: Dictionary, d: Dictionary, to: Vector2, dist: float) -> Vector2:
@@ -272,6 +312,9 @@ func _attack_player(e: Dictionary, d: Dictionary, ai: String) -> void:
 	var dmg: float = float(d.damage)
 	if ai == "brute":
 		Game.shake = 0.3
+	if d.get("human", false):
+		w.cb.player_hurt(e.pos, dmg, "hit", e)     # people hit; they don't bite
+		return
 	w.cb.player_hurt(e.pos, dmg, "bite", e)
 	if ai == "brute" and Game.player.has("kb"):
 		Game.player.kb *= 1.8

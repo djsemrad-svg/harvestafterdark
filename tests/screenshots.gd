@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "raiders":
+		main.ui.close_all()
+		await raider_shots()
+		get_tree().quit()
+		return
 	if only == "lab":
 		main.ui.close_all()
 		await lab_shots()
@@ -414,6 +419,27 @@ func crop_shots() -> void:
 	await shot("95_farm_care")
 	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
 	main.ui.close_all()
+
+func raider_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	Game.unlock_region("industrial", true)
+	Game.change_map("dry_creek", 22, 8, "down", {"silent": true})
+	Game.player.pos = Vector2(24 * 16 + 8, 21 * 16 + 8)
+	for e in Game.enemies: e.state = "asleep"
+	await frames(20)
+	await shot("70_dry_creek_camp")
+	Game.player.iframes = 999.0
+	for e in Game.enemies:
+		e.state = "chase"
+		e.spit_cd = 0.0
+	await frames(50)
+	await shot("71_raiders_shooting")
+	Game.change_map("dc_clubhouse", 6, 8, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(10)
+	await shot("72_clubhouse")
 
 func lab_shots() -> void:
 	Game.state.mode = "adventure"

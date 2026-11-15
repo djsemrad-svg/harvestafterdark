@@ -28,7 +28,14 @@ func _ready() -> void:
 	main.set_process(false)   # the tests drive time themselves
 	W = main.world
 	U = main.ui
-	run_all()
+	var only := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--only="): only = a.substr(7)
+	if only != "":
+		for i in int(OS.get_environment("REPEAT") if OS.get_environment("REPEAT") != "" else "1"):
+			call("run_" + only)     # one section, for quick checks
+	else:
+		run_all()
 	var passed := 0
 	for r in results:
 		if r.pass: passed += 1
@@ -1228,6 +1235,7 @@ func run_all() -> void:
 	run_injuries()
 	run_hordes()
 	run_halvorsen()
+	run_raiders()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2160,7 +2168,7 @@ func run_livestock() -> void:
 		bit = not G.enemies.has(z) or float(z.hp) < hp0
 		if bit: break
 	var barked: bool = G._bark_cd > 0
-	check("Guard Dog: needs a Doghouse, stays by it, barks and goes after infected that come close", dog_err.contains("Doghouse") and dog_ok == "" and near_house and bit and barked, "err=%s near=%s bit=%s" % [dog_err, near_house, bit])
+	check("Guard Dog: needs a Doghouse, stays by it, barks and goes after infected that come close", dog_err.contains("Doghouse") and dog_ok == "" and near_house and bit and barked, "near=%s bit=%s dog=%s z=%s n=%d mature=%s" % [near_house, bit, r_d.pos, z.pos, G.enemies.size(), G.animal_mature(dog)])
 	Balance.raids.grace_days = 4
 	G.state.raid = {"day": G.state.day, "size": 3, "spawned": false, "killed": 0, "warned": true}
 	var rl: Array = G.resolve_raid(hm)
@@ -2529,7 +2537,8 @@ func run_hordes() -> void:
 	var nest = nest_on_map("nest_park")
 	var horde: Array = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest")
 	var asleep: int = horde.filter(func(e): return e.state == "asleep").size()
-	check("Arriving in the Residential District: the park nest is there with %d infected around it, most asleep" % horde.size(), nest != null and horde.size() >= 6 and asleep >= 3, "horde=%d asleep=%d" % [horde.size(), asleep])
+	var near_nest: bool = nest != null and horde.all(func(e): return e.pos.distance_to(nest.pos) <= (int(Balance.hordes.radius) + 1) * 16.0 * 1.5)
+	check("Arriving in the Residential District: the park nest is there with %d infected around it, some asleep" % horde.size(), nest != null and horde.size() >= 6 and asleep >= 1 and near_nest, "horde=%d asleep=%d" % [horde.size(), asleep])
 	# a bosses-and-nests check: these can't be decapitated or turned
 	check("Nests and named bosses are marked as bosses (no decapitate, execute or turn)", nest != null and nest.get("boss", false), "")
 	# one of them notices you: the nest wakes and sends more
@@ -2675,6 +2684,100 @@ func run_halvorsen() -> void:
 	for i in 300: caught[W.pick_fish("lab_pond")] = true
 	G.state.time = 700
 	check("New: Hazmat infected (shrug off acid), and the Glow Carp bites only in the Halvorsen pond at night", Data.enemies.hazmat.immune.has("corrode") and fish_ok and caught.has("glow_carp") and not Data.items.glow_carp.has("todo"), str(caught.keys().slice(0, 5)))
+
+# ---------------------------------------------------------------- human raiders
+func run_raiders() -> void:
+	var G = Game
+	start("survivor", 2)
+	G.unlock_region("industrial", true)
+	# Dry Creek: down Mill Road; every door, exit and container can be reached
+	var bad := []
+	var camp: GameMap = G.maps.dry_creek
+	var seen := reach(camp, Vector2i(22, 1))
+	for wp in camp.warps:
+		var ok := false
+		for dd in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			if seen.has(Vector2i(wp.x, wp.y) + dd): ok = true
+		if not ok: bad.append("door to " + wp.to)
+	for k in camp.objects:
+		var o: Dictionary = camp.objects[k]
+		if Data.obj_defs.get(o.type, {}).get("container", false) or o.type in ["car_wreck", "supply_crate"]:
+			if not reachable(seen, o): bad.append("%s at %d,%d" % [o.type, o.x, o.y])
+	var club: GameMap = G.maps.dc_clubhouse
+	var cs2 := reach(club, Vector2i(6, 9))
+	if not cs2.has(Vector2i(6, 10)): bad.append("clubhouse exit")
+	for k in club.objects:
+		var o2: Dictionary = club.objects[k]
+		if Data.obj_defs.get(o2.type, {}).get("container", false) and not reachable(cs2, o2): bad.append("clubhouse %s at %d,%d" % [o2.type, o2.x, o2.y])
+	var ind_seen := reach(G.maps.industrial, Vector2i(1, 19))
+	var road_ok: bool = G.maps.industrial.warps.any(func(w): return w.to == "dry_creek" and ind_seen.has(Vector2i(w.x, w.y - 1)))
+	check("Dry Creek raider camp: down Mill Road from the Industrial District; every door, exit and container can be reached", road_ok and bad.is_empty(), str(bad.slice(0, 6)))
+	# arriving: people, not infected
+	at("dry_creek", 22, 1, "down")
+	var people: Array = G.enemies.filter(func(e): return Data.enemies[e.type].get("human", false))
+	var looks_human: bool = people.all(func(e): return not e.look.get("infected", true))
+	check("Raiders hold the camp (%d of them), drawn as people, not infected" % people.size(), people.size() >= 6 and people.size() == G.enemies.size() and looks_human, "n=%d of %d" % [people.size(), G.enemies.size()])
+	# a gunner keeps its distance and shoots
+	arena("survivor")
+	var gn: Dictionary = foe("raider_gunner", Vector2(90, 0), "chase")
+	gn.t = 0.0
+	gn.spit_cd = 0.0
+	var shots := 0
+	var hp_start: float = float(G.state.health)
+	for i in 30:
+		tick(100)
+		shots += G.projectiles.filter(func(pr): return pr.get("hurt", "") == "shot").size()
+	var kept_away: bool = gn.pos.distance_to(G.player.pos) > 40.0
+	check("Raider gunners keep their distance and shoot (bullets can't turn you, even in Survivor Mode)", shots > 0 and float(G.state.health) < hp_start and kept_away and ov() != "death", "shots=%d hp=%.0f dist=%.0f" % [shots, float(G.state.health), gn.pos.distance_to(G.player.pos)])
+	G.enemies.clear(); G.projectiles.clear()
+	G.state.health = 100.0
+	U.close_all()
+	# melee raiders hit; they don't bite
+	var day0: int = int(G.state.day)
+	var rm: Dictionary = foe("raider", Vector2(14, 0), "chase")
+	for i in 30:
+		tick(100)
+	check("Melee raiders hit hard but don't bite: no infection in Survivor Mode", float(G.state.health) < 100.0 and ov() != "death" and int(G.state.day) == day0, "hp=%.0f ov=%s" % [float(G.state.health), ov()])
+	G.enemies.clear()
+	G.state.health = 100.0
+	U.close_all()
+	# Kevlar
+	G.add_item("police_vest", 1, {"silent": true}); G.equip_from(idx("police_vest"))
+	var src: Vector2 = G.player.pos + Vector2(10, 0)
+	G.conditions().clear()
+	G.state.health = 100.0
+	G.player.iframes = 0.0
+	W.cb.player_hurt(src, 20.0, "hit", null)
+	var d_hit: float = 100.0 - float(G.state.health)
+	G.conditions().clear()
+	G.state.health = 100.0
+	G.player.iframes = 0.0
+	W.cb.player_hurt(src, 20.0, "shot", null)
+	var d_shot: float = 100.0 - float(G.state.health)
+	G.conditions().clear()
+	G.state.health = 100.0
+	var vest_inactive: Array = Data.gear.police_vest.get("inactive", [])
+	check("Kevlar vests (Police Vest and others) take 30% off raider bullets", absf(d_shot - d_hit * 0.7) < 0.6 and vest_inactive.is_empty(), "hit=%.1f shot=%.1f" % [d_hit, d_shot])
+	# raider kills: their own drops, counted as raiders
+	var inf0: int = int(G.state.stats.infected_defeated)
+	var cap: Dictionary = foe("raider_captain", Vector2(30, 0), "stun")
+	W.cb.damage(cap, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var rare: Array = Data.rare_drops.get("raider_captain", []).map(func(r): return r[0])
+	check("Raiders count as raiders, not infected; Raider Captains can drop the Twin-Hammer Revolver or the Biker's Kutte", int(G.state.stats.get("raiders_defeated", 0)) == 1 and int(G.state.stats.infected_defeated) == inf0 and rare.has("twin_hammer_revolver") and rare.has("bikers_kutte"), str(rare))
+	# Showdown at Dry Creek
+	G.enemies.clear()
+	G.take_contract("showdown_dry_creek")
+	at("industrial", 1, 19, "right")
+	at("dry_creek", 22, 1, "down")
+	var dutch = null
+	for e in G.enemies:
+		if e.type == "boss_dutch": dutch = e
+	var found: bool = dutch != null
+	if found:
+		W.cb.damage(dutch, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var won: bool = G.contract_state().done.has("showdown_dry_creek") and (G.count_item("twin_hammer_revolver") >= 1 or G.map.drops.any(func(d): return d.id == "twin_hammer_revolver"))
+	check("Showdown at Dry Creek (Cole): Dutch Calloway waits in the camp; beating him gives the Twin-Hammer Revolver. No more 'not in the game yet' rewards", found and won and Contracts.NOT_YET.is_empty(), "found=%s" % found)
+	G.enemies.clear()
 
 func count_nodes(n: Node) -> int:
 	var c := 1

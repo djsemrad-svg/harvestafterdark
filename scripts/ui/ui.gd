@@ -1010,7 +1010,7 @@ func _ov_death() -> Control:
 
 func _ov_collapse() -> Control:
 	var pw := _window("Rescued", 260)
-	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out.", "bleeding": "You lost too much blood and blacked out."}.get(overlay.cause, "You collapsed.")
+	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out.", "bleeding": "You lost too much blood and blacked out.", "shot": "A raider's bullet put you down.", "raiders": "The raiders beat you down and left you in the dirt."}.get(overlay.cause, "You collapsed.")
 	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d gold along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 240

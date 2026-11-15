@@ -181,6 +181,15 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			if done: a.R(x, 2, 0, 12, 2, "#d84a3a"); a.R(x, 4, 4, 8, 2, "#2a1410")
 			return [a.outline(x, "#1a0e0a"), 0, -2]
 		# ---- props
+		"lookout":
+			x = a.img(24, 44)
+			a.R(x, 3, 12, 2, 32, "#5e3c1e"); a.R(x, 19, 12, 2, 32, "#5e3c1e")
+			for i in 4: a.P(x, 5 + i * 4, 20 + i * 5, "#4a2e16"); a.P(x, 18 - i * 4, 20 + i * 5, "#4a2e16")   # cross braces
+			a.R(x, 9, 14, 6, 30, Color(0, 0, 0, 0)); for i in 8: a.R(x, 10, 16 + i * 3, 4, 1, "#7a5a36")       # ladder rungs
+			a.R(x, 1, 8, 22, 4, "#8a6a40"); a.R(x, 1, 8, 22, 1, "#a8844e")
+			a.R(x, 1, 2, 2, 7, "#6a4a2a"); a.R(x, 21, 2, 2, 7, "#6a4a2a"); a.R(x, 1, 3, 22, 1, "#7a5a36")
+			a.R(x, 3, 4, 18, 4, "#6a6a62"); a.R(x, 6, 5, 4, 2, "#a82a2a")   # sheet-metal shield, a red rag
+			return [a.outline(x, "#1e1410"), -4, -28]
 		"lab_bench":
 			a.R(x, 0, 5, 16, 3, "#e0e4e0"); a.R(x, 0, 8, 16, 7, "#7a8a9a"); a.R(x, 1, 9, 6, 5, "#6a7a8a"); a.R(x, 9, 9, 6, 5, "#6a7a8a")
 			var gl = ["#90d0e0", "#b8e060", "#e0a060"][v % 3]
