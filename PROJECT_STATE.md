@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 14, 2026)
+## Status (Nov 15, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 198 / 198 pass (`godot --headless --path . res://tests/test_runner.tscn`).
+Automated tests: 219 / 219 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -120,7 +120,7 @@ All in `scripts/world/contracts.gd`. Rewards are the items whose "How to Obtain"
 - Quest items for "find" jobs are there even if the container was searched that week.
 - Achievements (listed in the journal with progress): Finish Line (sprint 5 km), Cardio (25 km), Anchor Leg (100 km), Head Chef (100 meals), They Knew (10 conspiracy notes, found while scavenging), Road Work (search 10 different wrecked cars), Marksman (100 critical kills from 15+ tiles), Into the Dark (mine floor 20), Unseen (day 100 without a bite), Heavy Metal (1,000 chainsaw kills), Worthless Fortune (earn 1,000,000 gold).
 - Adapted from the sheet: Marksman uses critical hits for headshots and 15 tiles instead of 40 (the screen is 30 tiles wide); Finish Line had no goal in the sheet, so it's 5 km; Worthless Fortune counts gold earned; Heavy Metal awards the Redline directly.
-- Not in the game yet (shown greyed in the journal): Ghost (needs horde nests, Whisper), Drive-Thru (fast food, Burger Mascot Suit), Comfort Zone (safehouses, Bunny Slippers), Clean Room (Lab 6, Turncoat and Quarantine), Showdown at Dry Creek (human raiders, Twin-Hammer Revolver).
+- Not in the game yet (shown greyed in the journal): Drive-Thru (fast food restaurants, Burger Mascot Suit) and Comfort Zone (safehouses, Bunny Slippers). Ghost, Clean Room and Showdown at Dry Creek are done (Nov 15, below).
 
 Stage 2 (done above): Residential District, Industrial District and Riverlands with enterable buildings whose containers use the sheet's "How to Obtain" places (loot tags in `Arsenal`). Stage 3: Cole's contract board, named bosses (Groundskeeper, Juggernaut, Undertaker, Briar King, Crash, Inferno), quest chains and achievements that award the legendaries.
 
@@ -167,6 +167,42 @@ Item setup in `scripts/world/injuries.gd`; rules in `Game` (`add_condition`, `ap
 - Antiviral: a very rare find (3% per search) in the crash site's medical tent and helicopter. In Survivor Mode it's used automatically when a bite breaks the skin: you live, with a fever (sick).
 - Adrenaline Shot: used automatically when you'd collapse; you get back up with 25 health.
 
+### Horde nests (added Nov 15)
+
+All in `scripts/world/hordes.gd`; numbers in `Balance.hordes`.
+
+- One nest per district: Maple Park (behind the Residential survivor camp), the Foundry lot (north of Foundry Road, Industrial) and the Deep Woods (between the Hunting Cabin and the crash site, Riverlands). The Map tab lists each one and whether it stands.
+- A nest is a heap of junk bound in black, root-like growth with glowing pods. 6 to 9 infected sleep piled around it.
+- If any of them notice you, or you hit the nest while any are left, it wakes: its health bar shows at the top and it sends out 2 more every 6 seconds (8 at most) until destroyed.
+- A destroyed nest drops a cache (3 to 5 finds and 150 to 400 gold) and grows back after 21 days.
+- Ghost achievement (Whisper): put down the whole horde without being noticed, then destroy the nest.
+- Cole's "Burn Them Out": destroy 3 nests for 2,000 gold.
+- Fix: bosses (and nests) are now immune to decapitate, execute and turn, as intended.
+
+### Halvorsen Biomedical and Lab 6 (added Nov 15)
+
+All in `scripts/world/halvorsen.gd`; the contracts are in `Contracts.CONTRACTS`.
+
+- A research campus down the service road south of the Riverlands crash site (the medevac came from here). Main building (security office, labs, lockers), a parking lot, a quarantine line of tents and sandbags, soldier infected guarding Lab 6, and a retention pond.
+- Lab 6: a bunker with a keycard door. Inside: the research wing (specimen tanks, lab benches, holding cells, server racks), with a back door down to the decontamination vault.
+- New infected: Hazmat (white suits, shrug off acid).
+- Glow Carp: only in the Halvorsen pond, at night (it no longer bites in the farm pond). The pond also has the ordinary pond fish.
+- Dr. Elias's Clean Room chain (contracts can now require an earlier one and start the next by themselves):
+  1. Halvorsen: find the Lab Keycard and Dr. Halvorsen's notes in the main building. 600 gold.
+  2. The Vault: get the serum samples from the vault's sealed lockers; the Quarantine suit is in the other one. Pays an Experimental Antiviral and 800 gold.
+  3. Lockdown: taking the serum opens the containment cells. Everything in Lab 6 hunts you until you get outside. Turncoat and 1,500 gold.
+
+### Human raiders (added Nov 15)
+
+All in `scripts/world/raiders.gd`.
+
+- Dry Creek: a raider camp in a dry creek bed, down Mill Road south of the Industrial District. Barricade walls, lookout towers, tents, vehicles, supply crates and the Dry Creek MC clubhouse (gun cases, lockers).
+- Raiders are people, drawn as people. Melee raiders hit (no bites, so no infection in Survivor Mode). Gunners keep their distance, strafe, shoot, and reload after 6 shots; there's a short aim delay when they spot you. Their gunfire draws nearby infected. They count as raiders, not infected, and drop their own things.
+- Raider Captain: tougher gunner; rare drops Twin-Hammer Revolver and Biker's Kutte.
+- Kevlar vests (Police Vest, Reinforced Police Vest) now take 30% off raider bullets. Armour also counts against bullets.
+- Cole's "Showdown at Dry Creek": Dutch Calloway (boss, two revolvers, calls his crew). Twin-Hammer Revolver and 1,800 gold.
+- Fix: farm animals no longer get stuck when something grows on the tile they stand on (this was the guard dog test that failed now and then).
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
@@ -178,6 +214,9 @@ Item setup in `scripts/world/injuries.gd`; rules in `Game` (`add_condition`, `ap
 - `scripts/world/contracts.gd`: Cole's board, bosses and achievements.
 - `scripts/world/livestock.gd`: coops, barns, hutches, doghouses and every farm animal.
 - `scripts/world/injuries.gd`: medical items and condition names.
+- `scripts/world/hordes.gd`: horde nests.
+- `scripts/world/halvorsen.gd`: Halvorsen Biomedical, Lab 6, Hazmat infected.
+- `scripts/world/raiders.gd`: human raiders and Dry Creek.
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -212,6 +251,6 @@ Item setup in `scripts/world/injuries.gd`; rules in `Game` (`add_condition`, `ap
    - Daniel shared the Stardew wiki Crafting and Cooking pages as reference.
 3. Done: crops, fish, friendship events and shipping log (from the Crops, Fish, Friendship and Shipping pages Daniel shared).
 4. Art: Daniel is starting the art over. When new art arrives, drop PNGs into `art/` (the override loader picks them up).
-4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Next: horde nests, a lab and human raiders for the remaining rewards.
+4b. Back to building the game (Daniel's call, Nov 13): weapons stages 2 (districts) and 3 (contracts, bosses, achievements) are done. Barns and large animals, and crop quality with pests, frost and crows, are done (Nov 14). Injuries and sickness are done (Nov 14). Horde nests, Halvorsen Biomedical with Lab 6, and human raiders are done (Nov 15). Still open from the sheets: fast food restaurants (Drive-Thru), safehouses (Comfort Zone), raiders raiding the farm (Lockbox), swamp and cave fishing, metal detector, binoculars, watchtower, fire trench, power cable, battery bank, sleeping bag, map table, ham radio, tool belt, ammo pouch.
 5. Phase 2 remaining: crop quality grades, fruit trees and tree regrowth; a mine miniboss and mining perks; fishing rod tiers, tackle and a fish journal with sizes; Wren's fish shack.
 6. Later phases: residents, factions, hostile settlements.
