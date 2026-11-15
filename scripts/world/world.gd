@@ -677,6 +677,9 @@ func update_player(dt: float) -> void:
 	if Game.last_warp_tile == "":
 		for w in Game.map.warps:
 			if pt.x >= w.x and pt.x < w.x + w.w and pt.y >= w.y and pt.y < w.y + w.h:
+				if w.has("requires") and not Game.state.flags.get(w.requires, false) and w.has("key") and Game.count_item(w.key) > 0:
+					Game.state.flags[w.requires] = true
+					Game.toast("You swipe the %s. The light turns green." % Data.items[w.key].name, w.key, "gold")
 				if w.has("requires") and not Game.state.flags.get(w.requires, false):
 					Game.last_warp_tile = tk
 					var st = Game.map.structure_at(w.x, w.y)
@@ -1014,6 +1017,8 @@ func spawn_district_foes(m: GameMap) -> void:
 			if Game.rng.randf() < float(F.chance):
 				spawn_enemy(pick_foe(F.table), sp.x, sp.y, {"asleep": Game.rng.randf() < float(F.asleep)})
 		spawn_bosses(m)
+		if Halvorsen.LAB_MAPS.has(m.id) and Game.contract_state().active.has("clean_room_3"):
+			spawn_lockdown(m)
 		return
 	spawn_roamers(m, Game.rng.randi_range(int(F.day[0]), int(F.day[1])), F.table, float(F.asleep))
 	spawn_bosses(m)
@@ -1049,6 +1054,23 @@ func spawn_nests(m: GameMap) -> void:
 			var z := spawn_enemy(pick_foe(N.table), x, y, {"asleep": Game.rng.randf() < float(H.asleep)})
 			z.nest_id = id
 			placed += 1
+
+## Lab 6 lockdown: the containment cells are open and everything inside hunts you.
+func spawn_lockdown(m: GameMap) -> void:
+	var table := [["hazmat", 40], ["runner", 25], ["lurcher", 20], ["crawler", 15]]
+	var want := 4 if m.id == "hv_vault" else 6
+	var pt := player_tile()
+	var placed := 0
+	for tries in 300:
+		if placed >= want: break
+		var x := Game.rng.randi_range(1, m.w - 2)
+		var y := Game.rng.randi_range(1, m.h - 2)
+		if not m.tile_free(x, y) or Vector2(x - pt.x, y - pt.y).length() < 4.0: continue
+		var z := spawn_enemy(pick_foe(table), x, y)
+		z.hunt = true
+		z.state = "chase"
+		z.alert_t = 6.0
+		placed += 1
 
 ## Named bosses wait at their lair while you have their contract (night-only ones after 8 pm).
 func spawn_bosses(m: GameMap) -> void:

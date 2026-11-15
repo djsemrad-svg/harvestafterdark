@@ -37,6 +37,7 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 		"mouth": look.hair = "#e8e8e0"; look.eyes = "#ff4040"
 		"embers": look.eyes = "#ff8a20"; look.hair = "#1a1410"
 		"drool": look.eyes = "#c8f040"
+		"hazmat": look.eyes = "#90f060"; look.face = "Plain"
 	look.scale = float(L.get("scale", 1.0))
 	look.lying = L.get("lying", false)
 	return look
@@ -323,7 +324,7 @@ func _nest(e: Dictionary, dt: float, dist: float) -> void:
 	if horde.size() >= int(H.spawn_cap):
 		return
 	var table: Array = Hordes.NESTS[id].table
-	for i in int(H.spawn_n):
+	for i in mini(int(H.spawn_n), int(H.spawn_cap) - horde.size()):
 		var a := Game.rng.randf() * TAU
 		var t := Vector2i((e.pos + Vector2.from_angle(a) * 24.0) / 16.0)
 		if Game.map.tile_free(t.x, t.y):

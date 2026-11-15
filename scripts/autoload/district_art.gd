@@ -169,7 +169,48 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			a.R(x, 2, 11, 30, 1, "#e8d040"); a.R(x, 5, 18, 6, 6, "#1a1a1a"); a.R(x, 36, 18, 6, 6, "#1a1a1a")
 			if done: a.R(x, 14, 9, 8, 7, "#2a1414")
 			return [a.outline(x, "#1a0e0a"), 0, -8]
+		"loot_vault":
+			x = a.img(16, 26)
+			a.R(x, 1, 0, 14, 26, "#c8ccc8"); a.R(x, 1, 0, 14, 2, "#e0e4e0"); a.R(x, 13, 0, 2, 26, "#a8aca8")
+			a.R(x, 3, 4, 9, 6, "#e8c020"); a.R(x, 5, 5, 5, 4, "#2a2a2a"); a.P(x, 7, 6, "#e8c020")   # biohazard plate
+			a.R(x, 10, 13, 3, 4, "#3a3a3a"); a.P(x, 11, 14, "#40e060" if not done else "#e04040")      # keypad
+			if done: a.R(x, 3, 12, 6, 13, "#1a1c1a"); a.R(x, 2, 12, 1, 13, "#e0e4e0")
+			return [a.outline(x, "#1a1c1e"), 0, -10]
+		"biohazard_bin":
+			a.R(x, 3, 3, 10, 12, "#c83a2a"); a.R(x, 2, 2, 12, 2, "#d84a3a"); a.R(x, 5, 7, 6, 4, "#e8c020"); a.R(x, 7, 8, 2, 2, "#2a2a2a")
+			if done: a.R(x, 2, 0, 12, 2, "#d84a3a"); a.R(x, 4, 4, 8, 2, "#2a1410")
+			return [a.outline(x, "#1a0e0a"), 0, -2]
 		# ---- props
+		"lab_bench":
+			a.R(x, 0, 5, 16, 3, "#e0e4e0"); a.R(x, 0, 8, 16, 7, "#7a8a9a"); a.R(x, 1, 9, 6, 5, "#6a7a8a"); a.R(x, 9, 9, 6, 5, "#6a7a8a")
+			var gl = ["#90d0e0", "#b8e060", "#e0a060"][v % 3]
+			a.R(x, 2, 2, 2, 3, gl); a.R(x, 6, 3, 3, 2, "#c8d0d8"); a.R(x, 11, 1, 2, 4, "#c8d0d8"); a.R(x, 11, 3, 2, 2, gl)
+			return [a.outline(x, "#1a1c22"), 0, -2]
+		"specimen_tank":
+			x = a.img(16, 28)
+			a.R(x, 2, 24, 12, 4, "#5a5e62"); a.R(x, 2, 0, 12, 3, "#5a5e62")
+			a.R(x, 3, 3, 10, 21, "#5a8a6a"); a.R(x, 3, 3, 10, 21, Color(0.55, 0.85, 0.6, 0.55))
+			for i in 4: a.P(x, 5 + (i * 3) % 7, 20 - i * 4, "#c8f0d0")   # bubbles
+			if v % 2 == 0:
+				a.R(x, 6, 8, 4, 4, "#3a4a3e"); a.R(x, 5, 12, 6, 7, "#3a4a3e"); a.R(x, 6, 19, 1, 4, "#3a4a3e"); a.R(x, 9, 19, 1, 4, "#3a4a3e")   # a shape inside
+			else:
+				a.R(x, 4, 14, 8, 1, "#3a5a42"); a.R(x, 9, 4, 1, 10, "#e0f0e8")   # cracked, drained
+			a.R(x, 4, 4, 1, 18, "#e0f4e8")
+			return [a.outline(x, "#1a1c1e"), 0, -12]
+		"server_rack":
+			x = a.img(16, 26)
+			a.R(x, 2, 0, 12, 26, "#2a2e34"); a.R(x, 2, 0, 12, 1, "#4a4e54")
+			for i in 7:
+				a.R(x, 3, 2 + i * 3, 10, 2, "#3a3e44")
+				a.P(x, 4, 2 + i * 3, ["#40e060", "#e0a020", "#2a2e34", "#40e060"][(i + v) % 4])
+			return [a.outline(x, "#121418"), 0, -10]
+		"decon_shower":
+			x = a.img(16, 26)
+			a.R(x, 1, 0, 2, 26, "#c8a020"); a.R(x, 13, 0, 2, 26, "#c8a020"); a.R(x, 1, 0, 14, 3, "#c8a020")
+			for i in 3: a.R(x, 4 + i * 3, 3, 1, 2, "#a8b0b8")
+			for i in 6: a.P(x, 4 + (i * 5) % 9, 7 + i * 3, Color(0.6, 0.85, 1.0, 0.6))
+			for i in 4: a.R(x, 1, 4 + i * 6, 2, 3, "#2a2a2a")
+			return [a.outline(x, "#1a1810"), 0, -10]
 		"old_bed":
 			x = a.img(16, 32)
 			a.R(x, 1, 0, 14, 4, "#5a4030"); a.R(x, 1, 4, 14, 26, "#6a4c32"); a.R(x, 2, 4, 12, 24, "#c8c0b0")

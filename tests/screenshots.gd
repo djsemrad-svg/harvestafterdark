@@ -19,6 +19,11 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "lab":
+		main.ui.close_all()
+		await lab_shots()
+		get_tree().quit()
+		return
 	if only == "nests":
 		main.ui.close_all()
 		await nest_shots()
@@ -409,6 +414,35 @@ func crop_shots() -> void:
 	await shot("95_farm_care")
 	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
 	main.ui.close_all()
+
+func lab_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	Game.unlock_region("riverlands", true)
+	Game.change_map("halvorsen", 16, 17, "down", {"silent": true})
+	Game.enemies.clear()
+	Game.player.pos = Vector2(22 * 16 + 8, 17 * 16 + 8)
+	await frames(20)
+	await shot("80_halvorsen_campus")
+	Game.player.pos = Vector2(31 * 16 + 8, 30 * 16 + 8)
+	await frames(10)
+	await shot("81_lab6_outside")
+	Game.state.flags.lab6_open = true
+	Game.change_map("hv_lab6", 6, 8, "up", {"silent": true})
+	Game.player.iframes = 99.0
+	await frames(30)
+	await shot("82_lab6_inside")
+	Game.change_map("hv_vault", 6, 8, "up", {"silent": true})
+	Game.enemies.clear()
+	Game.player.iframes = 99.0
+	await frames(20)
+	await shot("83_vault")
+	Game.change_map("halvorsen", 11, 20, "down", {"silent": true})
+	Game.enemies.clear()
+	Game.state.time = 1320
+	await frames(20)
+	await shot("84_pond_night")
 
 func nest_shots() -> void:
 	Game.state.mode = "adventure"

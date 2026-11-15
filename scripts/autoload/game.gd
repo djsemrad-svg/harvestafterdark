@@ -781,6 +781,7 @@ func build_persistent_maps() -> void:
 		maps.homestead.add_structure(b)
 		maps[b.kind] = Livestock.interior(b)
 	maps.merge(Districts.all_maps(int(state.seed)))
+	maps.merge(Halvorsen.all_maps(int(state.seed)))
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
@@ -911,6 +912,8 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	mountain_night_spawned = false
 	if world:
 		world.on_map_changed()
+	if not state.is_empty():
+		contract_event("enter", {"map": id})
 	if not opts.get("silent", false):
 		Sfx.play("ladder" if id == "mine" else "door")
 		var label := ""
@@ -2193,6 +2196,8 @@ func contract_state() -> Dictionary:
 func contract_available(c: Dictionary) -> bool:
 	var cs := contract_state()
 	if cs.active.has(c.id) or cs.done.has(c.id): return false
+	if c.get("hidden", false): return false          # starts by itself after another job
+	if c.has("after") and not cs.done.has(c.after): return false
 	return not c.has("needs") or state.unlocked.get(c.needs, false)
 
 func take_contract(id: String) -> void:
@@ -2216,6 +2221,7 @@ func contract_progress(c: Dictionary) -> Array:
 			return [n, c.spots.size()]
 		"collect": return [min(count_item(c.item), int(c.count)), int(c.count)]
 		"waves": return [int(cs.progress.get(c.id, 0)), int(c.waves)]
+		"escape": return [1 if cs.done.has(c.id) else 0, 1]
 	return [min(int(cs.progress.get(c.id, 0)), int(c.count)), int(c.count)]
 
 func contract_progress_text(c: Dictionary) -> String:
@@ -2223,6 +2229,7 @@ func contract_progress_text(c: Dictionary) -> String:
 	match c.kind:
 		"boss": return "Not yet" if pr[0] == 0 else "Done"
 		"waves": return "Best: wave %d of %d" % [pr[0], pr[1]]
+		"escape": return "Get out" if pr[0] == 0 else "Done"
 	return "%d / %d" % pr
 
 ## Kills, catches and boss deaths count toward active jobs.
@@ -2240,6 +2247,9 @@ func contract_event(kind: String, data: Dictionary) -> void:
 		elif kind == "boss" and c.kind == "boss" and c.boss == data.type:
 			complete_contract(c, data.get("at", player.pos))
 			continue
+		elif kind == "enter" and c.kind == "escape" and data.map == c.goal:
+			complete_contract(c, player.pos)
+			continue
 		else:
 			continue
 		check_contracts()
@@ -2248,7 +2258,7 @@ func check_contracts() -> void:
 	var cs := contract_state()
 	for id in cs.active.duplicate():
 		var c := Contracts.get_def(id)
-		if c.is_empty() or c.kind in ["boss", "waves"]: continue
+		if c.is_empty() or c.kind in ["boss", "waves", "escape"]: continue
 		var pr := contract_progress(c)
 		if pr[0] >= pr[1]:
 			complete_contract(c, player.pos)
@@ -2263,6 +2273,8 @@ func complete_contract(c: Dictionary, at: Vector2) -> void:
 	if c.kind == "find" and c.get("consume", false):
 		for sp in c.spots:
 			remove_item(sp[0], 1)
+	for it in c.get("consume_items", []):
+		remove_item(it, 1)
 	var r: Dictionary = c.reward
 	var parts := []
 	if r.has("money"):
@@ -2275,6 +2287,12 @@ func complete_contract(c: Dictionary, at: Vector2) -> void:
 	toast("Contract complete: %s (%s)" % [c.title, ", ".join(parts)], "", "gold")
 	Sfx.play("coin")
 	add_xp("survival", 80)
+	if c.has("then") and not cs.done.has(c.then) and not cs.active.has(c.then):
+		cs.active.append(c.then)
+		var nx := Contracts.get_def(c.then)
+		toast(nx.get("start_text", "New contract: " + nx.title), "", "bad")
+		if world and Halvorsen.LAB_MAPS.has(map.id):
+			world.spawn_lockdown(map)
 
 func give_or_drop(id: String, at: Vector2) -> void:
 	var left := add_item(id, 1, {"silent": true})

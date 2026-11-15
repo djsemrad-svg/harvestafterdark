@@ -1127,10 +1127,17 @@ func _ov_contracts() -> Control:
 		list.add_child(b)
 	if tab == "posted":
 		for c in Contracts.CONTRACTS:
-			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c): continue
+			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c) or c.get("hidden", false): continue
+			var why := ""
+			if c.has("needs") and not Game.state.unlocked.get(c.needs, false):
+				why = "Opens with the %s." % Districts.DISTRICTS[c.needs].name
+			elif c.has("after"):
+				why = "After \"%s\"." % Contracts.get_def(c.after).title
+			else:
+				continue
 			var b2 := K.row_box()
 			b2.modulate = Color(1, 1, 1, 0.6)
-			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]Opens with the %s.[/color]" % [c.title, Districts.DISTRICTS[c.needs].name], 6))
+			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]%s[/color]" % [c.title, why], 6))
 			list.add_child(b2)
 			shown += 1
 	if shown == 0:

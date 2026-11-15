@@ -1227,6 +1227,7 @@ func run_all() -> void:
 	run_crop_care()
 	run_injuries()
 	run_hordes()
+	run_halvorsen()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -2150,6 +2151,7 @@ func run_livestock() -> void:
 			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
 	var z: Dictionary = W.spawn_enemy("shambler", 15, 25)
 	z.state = "wander"; z.wt = 99.0; z.wander = Vector2.ZERO
+	z.pin = 999.0     # it stays put, so it can't wander off toward you
 	var hp0: float = float(z.hp)
 	var bit := false
 	for i in 40:
@@ -2578,6 +2580,101 @@ func run_hordes() -> void:
 	var txt := ui_text(U.overlay_root)
 	U.close_all()
 	check("The Map tab shows each district's nest and whether it stands", txt.contains("Horde nest in the overgrown park") and txt.contains("destroyed"), "")
+
+# ---------------------------------------------------------------- Halvorsen Biomedical
+func search_at(map_id: String, x: int, y: int) -> void:
+	var o: Dictionary = Game.maps[map_id].get_obj(x, y)
+	o.erase("searched")
+	W.search(o, o.get("loot", []), "it")
+
+func step_on(x: int, y: int) -> void:
+	Game.player.pos = Vector2(x * 16 + 8, y * 16 + 12)
+	Game.last_warp_tile = ""
+	tick(50)
+	U.close_all()
+	tick(50)
+
+func run_halvorsen() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.unlock_region("riverlands", true)
+	# every door, exit and container on the campus and in its rooms can be reached
+	var bad := []
+	var out: GameMap = G.maps.halvorsen
+	var seen := reach(out, Vector2i(21, 1))
+	for wp in out.warps:
+		var ok := false
+		for dd in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			if seen.has(Vector2i(wp.x, wp.y) + dd): ok = true
+		if not ok: bad.append("door to " + wp.to)
+	for k in out.objects:
+		var o: Dictionary = out.objects[k]
+		if Data.obj_defs.get(o.type, {}).get("container", false) or o.type in ["car_wreck", "supply_crate"]:
+			if not reachable(seen, o): bad.append("%s at %d,%d" % [o.type, o.x, o.y])
+	for rid in ["hv_main", "hv_lab6", "hv_vault"]:
+		var r: GameMap = G.maps[rid]
+		var rs := reach(r, Vector2i(6, 9))
+		if not rs.has(Vector2i(6, 10)): bad.append(rid + " exit")
+		for k in r.objects:
+			var o2: Dictionary = r.objects[k]
+			if Data.obj_defs.get(o2.type, {}).get("container", false) and not reachable(rs, o2): bad.append("%s %s at %d,%d" % [rid, o2.type, o2.x, o2.y])
+		if rid == "hv_lab6" and not rs.has(Vector2i(6, 2)): bad.append("vault door")
+	var riv: GameMap = G.maps.riverlands
+	var to_hv: bool = riv.warps.any(func(w): return w.to == "halvorsen")
+	check("Halvorsen Biomedical: down the service road from the Riverlands crash site; every door, exit and container can be reached", to_hv and bad.is_empty(), str(bad.slice(0, 6)))
+	# Lab 6 is locked until you have the keycard
+	at("halvorsen", 32, 30, "up")
+	G.enemies.clear()
+	step_on(32, 27)
+	var locked: bool = G.map.id == "halvorsen"
+	G.enemies.clear()
+	# Clean Room 1: the keycard and the notes in the main building
+	var c1 := Contracts.get_def("clean_room_1")
+	var avail1: bool = G.contract_available(c1)
+	var avail2_early: bool = G.contract_available(Contracts.get_def("clean_room_2"))
+	G.take_contract("clean_room_1")
+	at("hv_main", 6, 9, "up")
+	G.enemies.clear()
+	var money0: int = int(G.state.money)
+	search_at("hv_main", 2, 3)
+	search_at("hv_main", 5, 1)
+	for d in G.map.drops.duplicate():
+		if d.id in ["lab_keycard", "halvorsen_notes"]: G.add_item(d.id, 1, {"silent": true}); G.map.drops.erase(d)
+	var done1: bool = G.contract_state().done.has("clean_room_1")
+	check("Clean Room 1 (Dr. Elias): find the Lab 6 keycard and Halvorsen's notes in the main building; the next job opens after it", avail1 and not avail2_early and done1 and G.count_item("lab_keycard") >= 1 and G.count_item("halvorsen_notes") == 0 and int(G.state.money) > money0, "done=%s key=%d" % [done1, G.count_item("lab_keycard")])
+	# the keycard opens Lab 6
+	at("halvorsen", 32, 30, "up")
+	G.enemies.clear()
+	step_on(32, 27)
+	check("Lab 6 stays locked without the keycard, and the keycard opens it", locked and G.map.id == "hv_lab6" and G.state.flags.get("lab6_open", false), "map=%s" % G.map.id)
+	G.enemies.clear()
+	step_on(6, 1)
+	var in_vault: bool = G.map.id == "hv_vault"
+	# Clean Room 2: the serum and the Quarantine suit in the vault, then lockdown
+	G.take_contract("clean_room_2")
+	G.enemies.clear()
+	G.player.pos = Vector2(6 * 16 + 8, 8 * 16 + 12)
+	search_at("hv_vault", 1, 1)
+	search_at("hv_vault", 12, 1)
+	for d in G.map.drops.duplicate():
+		if d.id in ["serum_sample", "quarantine", "antiviral"]: G.add_item(d.id, 1, {"silent": true}); G.map.drops.erase(d)
+	var cs: Dictionary = G.contract_state()
+	var hunters: int = G.enemies.filter(func(e): return e.get("hunt", false)).size()
+	check("Clean Room 2: the back door of Lab 6 leads to the vault; the serum and the Quarantine suit are in its sealed lockers; Elias pays with an Antiviral; taking them starts the lockdown", in_vault and cs.done.has("clean_room_2") and G.count_item("quarantine") >= 1 and G.count_item("antiviral") >= 1 and G.count_item("serum_sample") == 0 and cs.active.has("clean_room_3") and hunters >= 3, "vault=%s hunters=%d" % [in_vault, hunters])
+	# Clean Room 3: everything in Lab 6 hunts you until you get outside
+	G.enemies.clear()
+	at("hv_lab6", 6, 2, "down")
+	var hunters2: int = G.enemies.filter(func(e): return e.get("hunt", false)).size()
+	G.enemies.clear()
+	at("halvorsen", 32, 28, "down")
+	check("Clean Room 3, Lockdown: the research wing is full of hunters; getting outside finishes it and gives the Turncoat", hunters2 >= 5 and cs.done.has("clean_room_3") and (G.count_item("turncoat") >= 1 or G.map.drops.any(func(d): return d.id == "turncoat")), "hunters=%d" % hunters2)
+	# hazmat infected and the glow carp
+	var fish_ok: bool = Data.fish.glow_carp.locs.has("lab_pond") and not Data.fish.glow_carp.locs.has("pond") and G.maps.halvorsen.fish_zone == "lab_pond"
+	G.state.time = 1300
+	var caught := {}
+	for i in 300: caught[W.pick_fish("lab_pond")] = true
+	G.state.time = 700
+	check("New: Hazmat infected (shrug off acid), and the Glow Carp bites only in the Halvorsen pond at night", Data.enemies.hazmat.immune.has("corrode") and fish_ok and caught.has("glow_carp") and not Data.items.glow_carp.has("todo"), str(caught.keys().slice(0, 5)))
 
 func count_nodes(n: Node) -> int:
 	var c := 1

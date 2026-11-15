@@ -89,6 +89,18 @@ const CONTRACTS := [
 		"desc": "Every district has a horde nest: a heap of junk and black roots where they sleep in a pile. While it stands, it keeps sending more. Destroy 3 nests (they grow back after a few weeks). Check the Map tab for where they are.",
 		"reward": {"money": 2000}},
 	# ---------------- neighbours' jobs
+	{"id": "clean_room_1", "title": "Clean Room: Halvorsen", "giver": "elias", "kind": "find", "needs": "riverlands",
+		"spots": [["lab_keycard", "hv_main", 2, 3], ["halvorsen_notes", "hv_main", 5, 1]], "consume": false, "consume_items": ["halvorsen_notes"],
+		"desc": "Dr. Elias trained under Dr. Halvorsen. The medevac that crashed in the Riverlands came from her lab, down the service road south of the crash site. Find her notes in the main building and a keycard for Lab 6 (Security keeps them).",
+		"reward": {"money": 600}},
+	{"id": "clean_room_2", "title": "Clean Room: The Vault", "giver": "elias", "kind": "find", "after": "clean_room_1", "needs": "riverlands",
+		"spots": [["serum_sample", "hv_vault", 1, 1], ["quarantine", "hv_vault", 12, 1]], "consume": false, "consume_items": ["serum_sample"], "then": "clean_room_3",
+		"desc": "Halvorsen's notes say her last batch of serum is in Lab 6's decontamination vault, behind the research wing. Use the keycard and get the serum samples out of the sealed lockers. Elias says whatever you do, be ready to run.",
+		"reward": {"items": ["antiviral"], "money": 800}},
+	{"id": "clean_room_3", "title": "Clean Room: Lockdown", "giver": "elias", "kind": "escape", "goal": "halvorsen", "hidden": true,
+		"start_text": "LOCKDOWN. Opening the vault tripped the alarm, and the containment cells are open. Get out of Lab 6!",
+		"desc": "Taking the serum tripped Lab 6's lockdown. The containment cells are open and everything inside is hunting you. Get out of Lab 6 alive.",
+		"reward": {"items": ["turncoat"], "money": 1500}},
 	{"id": "twin_oaks", "title": "Twin Oaks", "giver": "marisol", "kind": "find", "needs": "riverlands",
 		"spots": [["journal_half_a", "rv_farmhouse", 2, 1], ["journal_half_b", "rv_barn", 9, 1]], "consume": true,
 		"desc": "Marisol knew the Morrow sisters who ran Twin Oaks farm. Each kept half of a journal. Find both halves: one in the farmhouse, one in the barn.",
@@ -111,7 +123,6 @@ const CONTRACTS := [
 
 ## Rewards whose job needs something the game doesn't have yet. Shown greyed in the journal.
 const NOT_YET := [
-	["Clean Room", "Escape Lab 6 at Halvorsen Biomedical (needs a lab to explore)", ["turncoat", "quarantine"]],
 	["Showdown at Dry Creek", "Raider captains (needs human raiders)", ["twin_hammer_revolver"]],
 ]
 

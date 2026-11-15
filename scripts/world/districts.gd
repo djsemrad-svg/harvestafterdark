@@ -28,6 +28,8 @@ const CONTAINERS := {
 	"medical_tent": {"name": "Field Hospital Tent", "what": "the medical tent", "tags": ["lab", "military"], "rolls": [1, 3], "w": 2, "quality": 0.5},
 	"heli_wreck": {"name": "Crashed Helicopter", "what": "the helicopter", "tags": ["military"], "rolls": [2, 3], "w": 3, "h": 2, "quality": 0.7},
 	"fire_truck": {"name": "Fire Engine", "what": "the fire engine", "tags": ["fire_station"], "rolls": [1, 3], "w": 3},
+	"loot_vault": {"name": "Sealed Locker", "what": "the sealed locker", "tags": ["lab", "military"], "rolls": [1, 2], "quality": 0.4},
+	"biohazard_bin": {"name": "Biohazard Bin", "what": "the biohazard bin", "tags": ["lab"], "rolls": [1, 1]},
 }
 
 ## Props that only look the part.
@@ -45,6 +47,10 @@ const PROPS := {
 	"jersey_barrier": {"solid": true},
 	"rail_fence": {"solid": true},
 	"overpass_flare": {"solid": true},
+	"lab_bench": {"solid": true},
+	"specimen_tank": {"solid": true},
+	"server_rack": {"solid": true},
+	"decon_shower": {"solid": true},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -135,6 +141,9 @@ const LOOKS := {
 	"d_ranger": {"roof": "#4a5a3a", "roof2": "#3a482e", "wall": "#8a6a48", "trim": "#3a2a1a", "sign": "RANGER STATION", "windows": 2, "condition": 2, "chimney": true},
 	"d_cabin": {"roof": "#4a3a2a", "roof2": "#3a2c1e", "wall": "#7a5a3a", "trim": "#3a2a1a", "windows": 1, "condition": 1, "chimney": true},
 	"d_farmhouse": {"roof": "#6a4a3a", "roof2": "#54382c", "wall": "#d0c8b0", "trim": "#5a4a3a", "windows": 2, "condition": 1},
+	"d_lab": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#d8dcd8", "trim": "#3a6a8a", "sign": "HALVORSEN BIOMEDICAL", "windows": 4, "condition": 2},
+	"d_lab6": {"roof": "#4a4e52", "roof2": "#3a3e42", "wall": "#9a9e9a", "trim": "#c8a020", "sign": "LAB 6", "windows": 0, "condition": 3},
+	"d_booth": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#c8ccc8", "trim": "#3a6a8a", "windows": 1, "condition": 1},
 	"d_barn": {"roof": "#5a3a2a", "roof2": "#462c1e", "wall": "#a83a2a", "trim": "#e0d8c8", "sign": "TWIN OAKS", "windows": 1, "condition": 2},
 }
 
@@ -298,7 +307,10 @@ static func _place(m: GameMap, x: int, y: int, type: String, extra := {}) -> voi
 
 # ================================================================ rooms
 static func interior(district: String, b: Dictionary) -> GameMap:
-	var rows: Array = ROOMS[b.room]
+	return interior_rows(district, b, ROOMS[b.room])
+
+## Builds a 14 x 11 room from rows of letters (see ROOMS); other places reuse it.
+static func interior_rows(district: String, b: Dictionary, rows: Array, letters := {}) -> GameMap:
 	var m := GameMap.new(b.id, 14, 11, "floor")
 	m.indoor = true
 	m.mood = "cold"
@@ -324,8 +336,8 @@ static func interior(district: String, b: Dictionary) -> GameMap:
 			elif ch == ".":
 				if y == rows.size() - 1:
 					m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": district, "tx": door_x, "ty": int(b.y) + int(b.h), "dir": "down", "door": true})
-			elif LETTERS.has(ch):
-				var t: String = LETTERS[ch]
+			elif letters.has(ch) or LETTERS.has(ch):
+				var t: String = letters.get(ch, LETTERS.get(ch, ""))
 				if CONTAINERS.has(t):
 					_container(m, x, y, t, b.tags, float(b.q))
 				elif t == "car_wreck":
@@ -364,7 +376,7 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 
 static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 	# a ring of trees, then weeds and debris on whatever grass is left
-	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6)]}[id]
+	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6), Rect2i(30, 43, 3, 1)]}[id]
 	MapBuilder._border(m, r, gaps)
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
@@ -531,3 +543,9 @@ static func _riverlands(m: GameMap, r: RandomNumberGenerator) -> void:
 	for c in [[29, 12], [27, 24]]:
 		m.add_obj(c[0], c[1], "car_wreck", {"w": 2})
 	_place(m, 35, 20, "dumpster")
+	# the service road south to Halvorsen Biomedical, where the medevac took off
+	m.fill(30, 33, 3, 11, "dirt")
+	m.warps.append({"x": 30, "y": 43, "w": 3, "h": 1, "to": "halvorsen", "tx": 21, "ty": 1, "dir": "down"})
+	m.clear.append(Rect2i(29, 33, 5, 11))
+	m.purge.append(Rect2i(29, 33, 5, 11))
+	m.add_obj(33, 40, "sign", {"text": "HALVORSEN BIOMEDICAL, 1 MI. SERVICE ROAD. Someone added in marker: \"the chopper came from here\"", "anchor": true})

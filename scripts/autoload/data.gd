@@ -1011,6 +1011,7 @@ func _init() -> void:
 	FarmCare.register(self)
 	Injuries.register(self)
 	Hordes.register(self)
+	Halvorsen.register(self)
 
 
 func item(id: String) -> Dictionary:
