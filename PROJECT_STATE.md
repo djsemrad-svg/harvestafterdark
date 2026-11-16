@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 15, 2026)
+## Status (Nov 16, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 245 / 245 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 254 / 254 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -245,11 +245,24 @@ All in `scripts/world/restoration.gd`. The town's long-term goal, in the spirit 
 - Town Militia (stone 200, steel bar 10, sandbag wall 20, any 5 weapons, 5,000 gold): about 1 in 3 raids on your farm are turned back before they arrive. Sandbags and a militia sign go up at the gates.
 - All five: the town celebrates, pays you 5,000 gold, and every shop in town gives 10% off from then on.
 
+### Asset pack art (added Nov 16)
+
+Daniel uploaded asset packs and asked to use everything that fits, especially PostApocalypse (minus its characters, which are too small). Licences don't matter: the game is for his own use. `tools/import_packs.py <unzipped packs folder> art` rebuilds `art/` (about 185 files). Packs used: PostApocalypse (TheLazyStone), Free Pixel Food (alexkovacsart), Kyrise's RPG icons, GunsPack (greenpixels).
+
+- Ground: grass (spring Green, summer Dark-Green, autumn Bleak-Yellow warmed a little), road and dirt from the pack. Winter grass, sidewalk paving, sand, water, floors and walls are still code-drawn.
+- Trees, pines, bushes, weeds, stumps, twigs, rocks from the pack in every season; winter trees are the pack's trees with snow added by the import script.
+- Props and wrecks: cars, dumpsters (lid closes when searched), barrels, fridges, street lights, tires, scrap, rubble, supply crates.
+- New objects (in `Districts.CONTAINERS` / `PROPS`, placed by `Districts._dress`): school bus, shipping containers, motorcycles (also at Dry Creek), hydrants, trash cans and vending machines (both searchable), cones, stop signs, shopping carts, trash bags, and wild bushes (any tool clears one for fiber). Only new games get them; old saves keep their objects.
+- Icons: 17 crops, 13 foods and drinks, all gems and metal bars (recoloured from one ingot), wood, plank, bone, candle, cotton, quartz, 10 gun ammo types, bandage, first aid kits, canned beans.
+- Not used: GunsPack guns (rifles are 32 to 48 px wide, icons are 16x16), Guns Update (clashes), Pixel Crawler and Farm RPG (wrong style), Modern Interiors free (only 4 characters).
+- Override names: `tiles/<type>[_<season>][_<v>].png`, `objects/<type>[_<season>][_<v>].png`, `objects/<type>_open.png` for searched containers (otherwise a dimmed copy), `trees/tree|tree2|pine_<season>.png`.
+- Daniel's "Art Still Needed" doc lists what's left with sizes. He's buying the full Modern Interiors pack for its 16x32 character generator.
+
 ## Code layout
 
 - `scripts/autoload/balance.gd`: every tunable number.
 - `scripts/autoload/data.gd`: all content (items, crops, fish, NPCs, quests, shops, buildings). Content lives in GDScript dictionaries instead of Resource files so it is easy to read and edit in one place.
-- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader (empty for now).
+- `scripts/autoload/art.gd`: procedural pixel art (tiles, objects, 16x32 characters, icons, buildings), plus the `res://art/` override loader (filled from Daniel's asset packs by `tools/import_packs.py`).
 - `scripts/autoload/catalog.gd`: the item sheet. `items_db.gd` is generated from `design/items.csv` by `tools/build_items.py`.
 - `scripts/autoload/game.gd`: game state and rules. `sfx.gd`: synthesized sound.
 - `scripts/world/`: maps (`game_map.gd`, `map_builder.gd`), world actions (`world.gd`), combat (`combat.gd`), the infected (`infected.gd`), drawing (`world_view.gd`), colour grade shader.
@@ -273,7 +286,7 @@ All in `scripts/world/restoration.gd`. The town's long-term goal, in the spirit 
 ## Visual direction (agreed with Daniel)
 
 - Currency is gold (renamed from scrip on Nov 13).
-- Art is code-drawn for now; Daniel is redoing the art from scratch.
+- Outdoor art and many icons come from the PostApocalypse pack and matching icon packs (Nov 16); characters, buildings, interiors and most icons are still code-drawn.
 
 - Stardew-like 16-bit look, adapted to a small community in an outbreak.
 - Colour mood: warm and saturated in safe areas, greyer and colder in dangerous ones (mine, ridge, ruins). Done with a per-map grade (`GameMap.mood`).
