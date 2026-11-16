@@ -30,6 +30,10 @@ const CONTAINERS := {
 	"fire_truck": {"name": "Fire Engine", "what": "the fire engine", "tags": ["fire_station"], "rolls": [1, 3], "w": 3},
 	"loot_vault": {"name": "Sealed Locker", "what": "the sealed locker", "tags": ["lab", "military"], "rolls": [1, 2], "quality": 0.4},
 	"biohazard_bin": {"name": "Biohazard Bin", "what": "the biohazard bin", "tags": ["lab"], "rolls": [1, 1]},
+	"trash_can": {"name": "Trash Can", "what": "the trash can", "tags": ["home", "kitchen"], "rolls": [1, 1]},
+	"vending_machine": {"name": "Vending Machine", "what": "the vending machine", "tags": ["kitchen"], "rolls": [1, 2]},
+	"bus_wreck": {"name": "Wrecked Bus", "what": "the bus", "tags": ["vehicle", "home"], "rolls": [1, 2], "w": 4, "h": 2},
+	"shipping_container": {"name": "Shipping Container", "what": "the shipping container", "tags": ["hardware", "scrapyard"], "rolls": [1, 2], "w": 3},
 }
 
 ## Props that only look the part.
@@ -53,6 +57,12 @@ const PROPS := {
 	"decon_shower": {"solid": true},
 	"lookout": {"solid": true},
 	"fryer": {"solid": true},
+	"hydrant": {"solid": true},
+	"traffic_cone": {"solid": true},
+	"stop_sign": {"solid": true},
+	"shopping_cart": {"solid": true},
+	"motorcycle_wreck": {"solid": true},
+	"trash_bags": {"solid": false},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -303,6 +313,8 @@ static func register(d) -> void:
 		od2.fixture = true
 		od2.district_art = true
 		d.obj_defs[t] = od2
+	# bushes grow wild in the districts: any tool clears one, for a little fiber
+	d.obj_defs["bush"] = {"solid": true, "hp": 2, "tool": "any", "drops": [["fiber", 1, 2]], "xp": ["foraging", 1], "name": "Bush"}
 	d.obj_defs["district_gate"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true}
 	for id in DISTRICTS:
 		var D: Dictionary = DISTRICTS[id]
@@ -451,8 +463,73 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 		else:
 			s.text = b.text
 		m.add_structure(s)
+	_dress(m, r, id)
 	_scatter(m, r, id)
 	return m
+
+## True if a w x h thing can stand at x,y: every tile free and not in front of a door or on a warp.
+static func _fits(m: GameMap, x: int, y: int, w: int, h: int, allow_clear: bool) -> bool:
+	for dy in h:
+		for dx in w:
+			var tx := x + dx
+			var ty := y + dy
+			if not m.tile_free(tx, ty) or (not allow_clear and m.is_clear(tx, ty)):
+				return false
+			for s in m.structures:
+				if s.has("door_x") and absi(tx - int(s.door_x)) <= 1 and ty - int(s.door_y) >= 0 and ty - int(s.door_y) <= 2:
+					return false
+			for wp in m.warps:
+				if Rect2i(int(wp.x) - 1, int(wp.y) - 1, int(wp.get("w", 1)) + 2, int(wp.get("h", 1)) + 2).has_point(Vector2i(tx, ty)):
+					return false
+	return true
+
+## Puts a thing at the first free spot near cx,cy (searching outwards). Returns false if none fits.
+static func _near(m: GameMap, cx: int, cy: int, type: String, allow_clear := false, radius := 4) -> bool:
+	var w: int = int(CONTAINERS.get(type, PROPS.get(type, {})).get("w", 1))
+	var h: int = int(CONTAINERS.get(type, PROPS.get(type, {})).get("h", 1))
+	for rr in radius + 1:
+		for dy in range(-rr, rr + 1):
+			for dx in range(-rr, rr + 1):
+				if maxi(absi(dx), absi(dy)) != rr: continue
+				if _fits(m, cx + dx, cy + dy, w, h, allow_clear):
+					_place(m, cx + dx, cy + dy, type)
+					return true
+	return false
+
+## Street dressing from the post-apocalypse art: hydrants, bins and bags along the sidewalks,
+## then a few bigger wrecks placed by hand.
+static func _dress(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
+	for y in range(1, m.h - 1):
+		for x in range(1, m.w - 1):
+			if m.tile_at(x, y) != "pave": continue
+			var by_road := false
+			for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				if m.tile_at(x + d.x, y + d.y) == "road": by_road = true
+			if not by_road or r.randf() > 0.07 or not _fits(m, x, y, 1, 1, true): continue
+			var pick := r.randf()
+			_place(m, x, y, "hydrant" if pick < 0.3 else ("trash_can" if pick < 0.6 else ("trash_bags" if pick < 0.85 else "traffic_cone")))
+	match id:
+		"residential":
+			_near(m, 42, 26, "vending_machine", true)            # the gas station
+			_near(m, 34, 26, "trash_can", true)
+			_near(m, 28, 25, "stop_sign", true); _near(m, 32, 19, "stop_sign", true)
+			_near(m, 7, 35, "bus_wreck", true, 3)                         # the school bus, never made it out of the schoolyard
+			for c in [[35, 21], [39, 17], [44, 17]]:
+				_near(m, c[0], c[1], "traffic_cone", true, 2)
+			_near(m, 14, 26, "shopping_cart", true, 3)
+			_near(m, 50, 26, "motorcycle_wreck", false, 3)
+		"industrial":
+			for c in [[35, 15], [43, 15], [38, 36], [49, 36]]:
+				_near(m, c[0], c[1], "shipping_container", true, 1)  # the loading area and the mill yard
+			for c in [[52, 17], [54, 21], [49, 21]]:
+				_near(m, c[0], c[1], "traffic_cone", true, 2)        # the checkpoint
+			_near(m, 4, 25, "bus_wreck")
+			_near(m, 40, 15, "vending_machine", true)
+			_near(m, 25, 33, "motorcycle_wreck", true, 3)
+		"riverlands":
+			_near(m, 36, 22, "trash_can", true, 3)
+			_near(m, 33, 19, "vending_machine", true, 3)         # the marina
+			_near(m, 26, 10, "motorcycle_wreck", true, 3)
 
 static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 	# a ring of trees, then weeds and debris on whatever grass is left
@@ -473,6 +550,7 @@ static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 			elif v < trees + weeds: m.add_obj(x, y, "weeds")
 			elif v < trees + weeds + 0.03: m.add_obj(x, y, "twig")
 			elif v < trees + weeds + 0.045: m.add_obj(x, y, "rock")
+			elif v < trees + weeds + 0.07: m.add_obj(x, y, "bush")
 	# cracks and weeds pushing through the old roads
 	for i in 40:
 		var x := r.randi_range(1, m.w - 2)

@@ -48,6 +48,32 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "packs":
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		var dps: int = Balance.calendar.days_per_season
+		var spots := [["town", 12, 20], ["homestead", 12, 14], ["residential", 40, 23], ["residential", 8, 31], ["industrial", 44, 30], ["industrial", 22, 25], ["riverlands", 30, 14], ["dry_creek", 25, 21]]
+		for i in spots.size():
+			var sp: Array = spots[i]
+			Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("60_%d_%s" % [i, sp[0]])
+		for id in ["apple", "corn", "tomato", "potato", "pumpkin", "cheese", "egg", "fried_egg", "bread_loaf", "ruby", "emerald", "diamond", "iron_bar", "copper_bar", "gold_bar", "ammo_9mm", "buckshot", "ammo_556", "bandage", "med_kit", "canned_beans", "wood", "plank", "bone", "parsnip", "kale", "river_chub", "stone"]:
+			Game.add_item(id, 3, {"silent": true})
+		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("62_inventory")
+		main.ui.close_all()
+		for si in 4:
+			Game.state.day = 1 + si * dps + 3
+			Art._tex.clear(); Art._obj.clear(); Art._ovobj.clear()
+			for sp in [["homestead", 12, 14], ["residential", 8, 22]]:
+				Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+				Game.enemies.clear()
+				await frames(10)
+				await shot("61_%s_%s" % [Game.season(), sp[0]])
+		get_tree().quit()
+		return
 	if only == "detail":
 		main.ui.close_all()
 		Game.state.time = 640

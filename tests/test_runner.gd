@@ -1241,6 +1241,7 @@ func run_all() -> void:
 	run_phase2()
 	run_rooms()
 	run_restoration()
+	run_packart()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -3132,3 +3133,61 @@ func count_nodes(n: Node) -> int:
 	for ch in n.get_children():
 		c += count_nodes(ch)
 	return c
+
+
+func _count(m, t: String) -> int:
+	return m.objects.values().filter(func(o): return o.type == t and not o.has("part_of")).size()
+
+func run_packart() -> void:
+	var G = Game
+	start("adventure", 2)
+	# art files from the asset packs are picked up by name
+	var tree: Dictionary = Art.get_obj({"type": "tree", "v": 0, "x": 0, "y": 0}, "spring", 0)
+	var tw: int = tree.tex.get_width()
+	var car0: Dictionary = Art.get_obj({"type": "car_wreck", "v": 0, "w": 2, "x": 0, "y": 0}, "spring", 0)
+	var car1: Dictionary = Art.get_obj({"type": "car_wreck", "v": 1, "w": 2, "x": 1, "y": 0}, "spring", 0)
+	check("Trees, wrecks and other things use the post-apocalypse pack's art, with a different car for each variant", Art.has_override("trees/tree_spring.png") and tw == Art.override("trees/tree_spring.png").get_width() and car0.tex != car1.tex, "tree w=%d" % tw)
+	var g_spring: Image = Art.get_tile("grass", "spring", 0).get_image()
+	var g_autumn: Image = Art.get_tile("grass", "autumn", 0).get_image()
+	var own: Image = Art.override("tiles/grass_spring_0.png").get_image()
+	check("Grass, road and dirt tiles come from the pack and change with the season", g_spring.get_pixel(5, 5) == own.get_pixel(5, 5) and g_spring.get_pixel(5, 5) != g_autumn.get_pixel(5, 5), "")
+	var winter_tree: Dictionary = Art.get_obj({"type": "tree", "v": 0, "x": 0, "y": 0}, "winter", 0)
+	check("Winter trees are snowy versions of the pack's trees", winter_tree.tex.get_width() == Art.override("trees/tree_winter.png").get_width(), "")
+	# a searched container shows its opened picture, or a dimmed copy when it has none
+	var dump := {"type": "dumpster", "v": 0, "w": 2, "x": 3, "y": 3}
+	var closed: Dictionary = Art.get_obj(dump, "spring", 0)
+	dump.searched = int(G.state.day)
+	var opened: Dictionary = Art.get_obj(dump, "spring", 0)
+	var fr := {"type": "loot_fridge", "v": 0, "x": 5, "y": 3}
+	var f0: Image = Art.get_obj(fr, "spring", 0).tex.get_image()
+	fr.searched = int(G.state.day)
+	var f1: Image = Art.get_obj(fr, "spring", 0).tex.get_image()
+	var c0 := f0.get_pixel(8, 14); var c1 := f1.get_pixel(8, 14)
+	check("Searched things look searched: the dumpster lid closes, a fridge goes dim", closed.tex != opened.tex and c1.get_luminance() < c0.get_luminance(), "%s -> %s" % [c0, c1])
+	# icons
+	var ic: Image = Art.get_icon("tomato").get_image()
+	check("Crop, food, gem, bar, ammo and first-aid icons come from the packs (16x16)", Art.has_override("icons/tomato.png") and ic.get_width() == 16 and ic.get_height() == 16 and Art.has_override("icons/iron_bar.png") and Art.has_override("icons/ammo_9mm.png") and Art.has_override("icons/med_kit.png"), "")
+	# new street props in the districts
+	var res = G.maps.residential
+	var ind = G.maps.industrial
+	var dc = G.maps.dry_creek
+	var street := 0
+	for t in ["hydrant", "trash_can", "trash_bags", "traffic_cone"]:
+		street += _count(res, t)
+	check("The districts have new wreckage: a school bus, shipping containers, biker motorcycles, a vending machine", _count(res, "bus_wreck") == 1 and _count(ind, "shipping_container") >= 3 and _count(dc, "motorcycle_wreck") >= 2 and _count(res, "vending_machine") == 1, "bus=%d cont=%d moto=%d vend=%d" % [_count(res, "bus_wreck"), _count(ind, "shipping_container"), _count(dc, "motorcycle_wreck"), _count(res, "vending_machine")])
+	check("Hydrants, trash cans, bags and cones line the sidewalks, and bushes grow wild", street >= 6 and _count(res, "bush") >= 5, "street=%d bushes=%d" % [street, _count(res, "bush")])
+	# a trash can can be searched
+	var can = null
+	for o in res.objects.values():
+		if o.type == "trash_can": can = o; break
+	var before := int(G.state.get("stats", {}).get("searched", 0))
+	if can != null:
+		G.change_map("residential", int(can.x), int(can.y) + 1, "up", {"silent": true})
+		W.interact_object(can)
+	check("Trash cans and vending machines can be searched like other containers", can != null and int(can.get("searched", -99)) == int(G.state.day), str(can))
+	# every new prop is drawn from the pack, never the fallback
+	var missing := []
+	for t in ["hydrant", "traffic_cone", "stop_sign", "shopping_cart", "motorcycle_wreck", "trash_bags", "trash_can", "vending_machine", "bus_wreck", "shipping_container", "bush"]:
+		for season in ["spring", "summer", "autumn", "winter"]:
+			if Art.obj_override({"type": t, "v": 0, "x": 0, "y": 0}, season).is_empty(): missing.append(t + "/" + season)
+	check("Every new prop has art in every season", missing.is_empty(), str(missing))

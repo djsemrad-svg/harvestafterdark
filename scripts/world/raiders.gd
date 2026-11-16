@@ -248,6 +248,8 @@ static func camp(world_seed: int) -> GameMap:
 	m.add_obj(19, 24, "stolen_goods", {"anchor": true})
 	m.add_obj(34, 16, "supply_crate", {"loot": ["biker_bar", "gun_store"], "quality": 0.5})
 	m.add_obj(21, 22, "supply_crate", {"loot": ["biker_bar", "vehicle"], "quality": 0.4})
+	for c in [[23, 21], [33, 22], [26, 26]]:
+		Districts._near(m, c[0], c[1], "motorcycle_wreck", true, 2)    # the bikers' rides, stripped for parts
 	for c in [[33, 23], [34, 23], [24, 14]]:
 		m.add_obj(c[0], c[1], "barrel")
 	MapBuilder._border(m, r, [Rect2i(22, 0, 2, 1)])

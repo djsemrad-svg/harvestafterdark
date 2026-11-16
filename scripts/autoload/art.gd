@@ -171,6 +171,8 @@ func tile_solid(t: String) -> bool:
 
 func get_tile(type: String, season: String, v: int, frame: int = 0) -> ImageTexture:
 	return cached("t|%s|%s|%d|%d" % [type, season, v, frame], func():
+		var ot := tile_override(type, season, v)
+		if ot != null: return ot
 		if detail and type == "grass" and season != "winter": return _grass_hd(season, v)
 		var im := _draw_tile(type, season, v, frame)
 		if detail and not type in ["water", "walltop", "void"]: im = texture_pass(im, v)
@@ -895,27 +897,71 @@ func override(path: String) -> Texture2D:
 func has_override(path: String) -> bool:
 	return override(path) != null
 
+## Ground tiles with hand-made art: tiles/<type>_<season>_<v>.png, tiles/<type>_<v>.png,
+## tiles/<type>_<season>.png or tiles/<type>.png, first one found wins. Returns null when there is none.
+func tile_override(type: String, season: String, v: int) -> Image:
+	for p in ["tiles/%s_%s_%d.png" % [type, season, v], "tiles/%s_%d.png" % [type, v], "tiles/%s_%s.png" % [type, season], "tiles/%s.png" % type]:
+		var tex := override(p)
+		if tex != null:
+			var im: Image = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			return im
+	return null
+
+var _ovobj := {}
+
 ## Objects that have hand-made art. Returns {} when there is none.
+## Looks for objects/<type>_<season>_<v>.png, then <type>_<v>, <type>_<season>, <type>.
+## A searched container uses <type>_open.png if there is one, or a dimmed copy of its art.
 func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var t: String = o.type
 	var d: Dictionary = Data.obj_defs.get(t, {})
 	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
 		return {}
-	var v: int = int(o.get("v", 0))
-	var name := ""
-	match t:
-		"tree": name = "trees/%s_%s.png" % ["tree" if v % 2 == 0 else "tree2", season]
-		"pine": name = "trees/pine.png"
-		"rock": name = "objects/rock.png" if v % 2 == 0 else "objects/rock2.png"
-		_: name = "objects/%s.png" % t
 	if t == "rock" and o.get("palette", "field") != "field":
 		return {}
-	var tex := override(name)
-	if tex == null:
-		return {}
-	var fw: int = int(o.get("w", 1))
-	var fh: int = int(o.get("h", 1))
-	return {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+	var v: int = int(o.get("v", 0)) % 4
+	var searched: bool = (d.get("container", false) or t in ["supply_crate", "car_wreck"]) and DistrictArt.searched(o)
+	var key := "%s|%s|%d|%s|%d|%d" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1))]
+	if _ovobj.has(key):
+		return _ovobj[key]
+	var names: Array = []
+	match t:
+		"tree":
+			var tn := "tree" if v % 2 == 0 else "tree2"
+			names = ["trees/%s_%s.png" % [tn, season], "trees/tree_%s.png" % season]
+		"pine": names = ["trees/pine_%s.png" % season, "trees/pine.png"]
+		"rock": names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
+		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
+	var tex: Texture2D = null
+	if searched:
+		tex = override("objects/%s_open.png" % t)
+	var dim := false
+	for n in names:
+		if tex != null: break
+		tex = override(n)
+		dim = searched and tex != null
+	var res := {}
+	if tex != null:
+		if dim:
+			# no "opened" picture: show the same art a little darker and greyer, so searched things read as done
+			# (a copy: get_image() can hand back the texture's own image)
+			var im: Image = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			for yy in im.get_height():
+				for xx in im.get_width():
+					var c := im.get_pixel(xx, yy)
+					if c.a > 0:
+						var g := c.get_luminance()
+						im.set_pixel(xx, yy, Color(lerp(c.r, g, 0.45) * 0.72, lerp(c.g, g, 0.45) * 0.72, lerp(c.b, g, 0.45) * 0.72, c.a))
+			tex = ImageTexture.create_from_image(im)
+		var fw: int = int(o.get("w", 1))
+		var fh: int = int(o.get("h", 1))
+		res = {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+	_ovobj[key] = res
+	return res
 
 ## People and infected drawn from the sprite sheets. look.sprite names them.
 func char_override(look: Dictionary, dir: String, frame: int) -> Image:
