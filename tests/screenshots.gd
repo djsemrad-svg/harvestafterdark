@@ -147,6 +147,27 @@ func _ready() -> void:
 		main.ui.open("death", {"checkpoint": "Monday, Spring 1"}); await frames(4); await shot("77_death")
 		get_tree().quit()
 		return
+	if only == "weapons":
+		main.ui.close_all()
+		Game.state.time = 1000
+		Game.state.weather = "sun"
+		var wp := ["assault_rifle", "pump_shotgun", "pistol_9mm", "crossbow", "recurve_bow", "smg_45", "machete", "baseball_bat", "fire_axe", "katana", "nail_bat", "sledgehammer",
+			"revolver_357", "sniper_50", "double_barrel_shotgun", "kukri", "pitchfork", "hatchet", "thunderclap", "dead_mans_hand", "acid_etched_assault_rifle", "kitchen_knife", "scythe", "throwing_knives"]
+		for i in wp.size():
+			Game.state.inventory[i] = null
+		for id in wp:
+			Game.add_item(id, 1, {"silent": true})
+		var spt := MapScale.t("town", 26, 20)
+		Game.change_map("town", spt.x, spt.y, "right", {"silent": true})
+		Game.enemies.clear()
+		for i in 4:
+			Game.state.selected = i
+			Game.player.dir = ["right", "left", "down", "right"][i]
+			await frames(6)
+			await shot("80_held_%d" % i)
+		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("81_weapons_inventory")
+		get_tree().quit()
+		return
 	if only == "packs":
 		main.ui.close_all()
 		Game.state.time = 640

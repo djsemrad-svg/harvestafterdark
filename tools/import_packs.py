@@ -653,3 +653,145 @@ if os.path.isfile(MIUI):
         if b:
             save(t.crop((0, b[1], 16, b[3])), "ui/emote_%s.png" % name)
     print("ui: emotes", len(EMOTE))
+
+
+# ---------------------------------------------------------------- weapons (Full_pack guns, The Ultimate Pixel Sword Pack)
+# Icons are 16x16 on the diagonal (handle or grip bottom-left, tip or muzzle top-right), like the tools.
+# Guns, bows and crossbows also get a "held" picture pointing right, drawn in the player's hands when aiming.
+GUNS = os.path.join(SRC, "Gun_Full_pack")
+SWORDS = os.path.join(SRC, "UltimateSwordPack", "TheUltimateSwordPack_0.png")
+if os.path.isdir(GUNS) and os.path.isfile(SWORDS):
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import pixel_icons as PI
+    import numpy as np
+    _gsheets = {}
+
+    def gun_sheet(n):
+        if n not in _gsheets:
+            cs = PI.comps(os.path.join(GUNS, "%d.png" % n))
+            cs.sort(key=lambda c: (c[0][0] // 40, c[0][1]))
+            _gsheets[n] = cs
+        return _gsheets[n]
+
+    def gun(i, cw=0):
+        """Gun i of the plain sheet; cw picks one of the pack's 34 colour versions (same gun, other finish)."""
+        (px, py), base = gun_sheet(0)[i]
+        if cw:
+            for (qx, qy), im in gun_sheet(cw):
+                if abs(qx - px) <= 3 and abs(qy - py) <= 3 and abs(im.width - base.width) <= 2 and abs(im.height - base.height) <= 2:
+                    return im
+        return base
+
+    swords = PI.comps(SWORDS)
+    swords.sort(key=lambda c: (c[0][1] // 40, c[0][0]))
+    sword = lambda i: swords[i][1]
+
+    def tint_part(im, want, part="metal"):
+        """Recolour the steel (grey) or the wood (brown) of a weapon, keeping its shading."""
+        a = np.array(im).astype(float)
+        rgb = a[:, :, :3]
+        mx, mn = rgb.max(-1), rgb.min(-1)
+        sat = (mx - mn) / np.maximum(mx, 1)
+        lum = 0.3 * rgb[:, :, 0] + 0.59 * rgb[:, :, 1] + 0.11 * rgb[:, :, 2]
+        op = a[:, :, 3] > 0
+        if part == "metal":
+            sel = op & (sat < 0.2) & (lum > 70)
+        elif part == "wood":
+            sel = op & (sat >= 0.25) & (rgb[:, :, 0] > rgb[:, :, 2] + 20) & (lum > 50)
+        else:
+            sel = op & (lum > 45)
+        if not sel.any():
+            return im
+        w = np.array(hexrgb(want), float)
+        k = lum[sel] / max(lum[sel].mean(), 1)
+        a[sel, :3] = np.clip(w[None, :] * k[:, None], 0, 255)
+        return Image.fromarray(a.astype(np.uint8))
+
+    def held_gun(im, maxw=22):
+        oc = PI.outline_colour(im)
+        if im.width <= maxw:
+            return im
+        a = np.array(im).astype(int)
+        m = a[:, :, 3] > 0
+        isout = m & (np.abs(a[:, :, :3] - np.array(oc)).sum(-1) <= 30)
+        a[isout, 3] = 0
+        core = Image.fromarray(a.astype(np.uint8))
+        core = core.crop(core.getbbox())
+        k = (maxw - 2) / core.width
+        sm = PI.shrink(core, maxw - 2, max(2, round(core.height * k)), cover=0.25, reoutline=False)
+        r = Image.new("RGBA", (sm.width + 2, sm.height + 2), (0, 0, 0, 0))
+        r.alpha_composite(sm, (1, 1))
+        return PI.add_outline(r, oc)
+
+    def fit_h(im, h):
+        if im.height <= h:
+            return im
+        return PI.shrink(im, max(1, round(im.width * h / im.height)), h, cover=0.25, reoutline=False)
+
+    # weapon id: (gun index, colour version) ; colour versions only for upgraded and legendary guns
+    GUN = {"pistol_22": (153, 0), "pistol_9mm": (145, 0), "pistol_45": (160, 0), "match_grade_9mm_pistol": (157, 0),
+           "revolver_357": (150, 0), "tuned_357_revolver": (158, 0), "twin_hammer_revolver": (180, 1), "dead_mans_hand": (155, 18),
+           "flare_gun": (151, 0), "cinderheart": (151, 22),
+           "compact_smg": (10, 0), "extended_compact_smg": (11, 0), "smg_45": (8, 0), "shock_trooper_smg": (13, 10),
+           "sawed_off_shotgun": (55, 0), "double_barrel_shotgun": (56, 0), "polished_double_barrel": (56, 18), "last_rites": (56, 21),
+           "pump_shotgun": (52, 0), "ported_pump_shotgun": (51, 0), "dragons_breath_pump": (52, 16),
+           "rifle_22": (36, 0), "match_grade_22_rifle": (36, 6), "lever_action_rifle": (33, 0), "smooth_lever_action": (33, 1),
+           "bolt_action_rifle": (34, 0), "scoped_bolt_action_rifle": (90, 0), "deadeye_bolt_action": (90, 29),
+           "carbine": (61, 0), "battle_rifle": (63, 0), "assault_rifle": (58, 0), "custom_assault_rifle": (59, 0), "acid_etched_assault_rifle": (58, 5),
+           "light_machine_gun": (85, 0), "tuned_light_machine_gun": (86, 0), "turncoat": (85, 11),
+           "sniper_50": (89, 0), "long_goodbye": (89, 6)}
+    n = 0
+    for wid, (gi, cw) in GUN.items():
+        sp = gun(gi, cw)
+        save(PI.icon16(sp, 45), "icons/%s.png" % wid)
+        save(held_gun(sp), "held/%s.png" % wid)
+        n += 1
+    # weapon id: (sword pack index, tint) ; tint = (colour, "metal" | "wood" | "all")
+    SW = {"kitchen_knife": (0, None), "combat_knife": (47, None), "honed_combat_knife": (47, ("#d8e4ec", "metal")), "bayonet": (1, None),
+          "meat_cleaver": (41, None), "machete": (45, None), "tempered_machete": (45, ("#b8c8d8", "metal")), "serrated_machete": (56, None),
+          "kukri": (18, None), "honed_kukri": (18, ("#d8e4ec", "metal")), "hush": (18, ("#2a2a30", "metal")),
+          "katana": (25, None), "tempered_katana": (25, ("#c8d8e8", "metal")), "shadowstep_katana": (24, ("#34343e", "metal")), "kintsugi": (24, ("#2a2830", "metal")),
+          "sickle": (19, None), "scythe": (159, None), "balanced_scythe": (159, ("#c8d8e8", "metal")), "gleaner": (158, ("#d8c070", "metal")), "last_harvest": (159, ("#e8f0f4", "metal")),
+          "hatchet": (104, None), "balanced_hatchet": (104, ("#c8d8e8", "metal")), "throwing_axe": (106, None), "the_twins": (106, ("#b83a2a", "metal")),
+          "fire_axe": (105, ("#c8382a", "metal")), "heavy_fire_axe": (105, ("#a82a20", "metal")), "headsmans_axe": (109, None),
+          "splitting_maul": (127, None), "sledgehammer": (128, None), "reinforced_sledgehammer": (128, ("#9aa8b8", "metal")),
+          "shieldbreaker": (128, ("#3a4a6a", "metal")), "thunderclap": (128, ("#4a8ad8", "metal")), "claw_hammer": (130, None), "ice_axe": (147, None),
+          "baseball_bat": (63, None), "weighted_baseball_bat": (63, ("#8a5a30", "wood")), "club": (64, None), "nail_bat": (65, None),
+          "barbed_wire_bat": (66, None), "rebar_club": (99, ("#6a5a4a", "wood")),
+          "makeshift_spear": (152, None), "javelin": (150, None), "fishing_spear": (165, None), "pitchfork": (161, None),
+          "throwing_knives": (47, None), "balanced_throwing_knives": (47, ("#d8e4ec", "metal")), "venom_throwing_knives": (47, ("#6ab040", "metal"))}
+    for wid, (si, tint) in SW.items():
+        sp = sword(si)
+        if tint:
+            sp = tint_part(sp, *tint)
+        save(PI.icon16(sp, -45), "icons/%s.png" % wid)
+        n += 1
+    # bows and crossbows: icon on the diagonal, held picture facing right
+    BOW = {"recurve_bow": (198, None), "laminated_recurve_bow": (202, None), "hunting_bow": (197, None), "ash_hunting_bow": (207, None),
+           "compound_bow": (205, None), "tuned_compound_bow": (199, None), "hunters_compound_bow": (205, ("#4a5a3a", "wood")), "whisper": (206, ("#e8e0d0", "wood"))}
+    for wid, (si, tint) in BOW.items():
+        sp = sword(si)
+        if tint:
+            sp = tint_part(sp, *tint)
+        save(PI.icon16(sp.transpose(Image.FLIP_LEFT_RIGHT), -45), "icons/%s.png" % wid)
+        save(fit_h(sp.transpose(Image.FLIP_LEFT_RIGHT), 18), "held/%s.png" % wid)
+        n += 1
+    XBOW = {"crossbow": (180, None), "hand_crossbow": (177, None), "scrap_crossbow": (178, None), "waxed_rail_crossbow": (180, ("#c89850", "wood")),
+            "repeating_crossbow": (182, None), "iron_psalm": (179, ("#3a3a40", "wood"))}
+    for wid, (si, tint) in XBOW.items():
+        sp = sword(si)
+        if tint:
+            sp = tint_part(sp, *tint)
+        save(PI.icon16(sp, -45), "icons/%s.png" % wid)
+        side = sp.rotate(-90, expand=True)
+        save(held_gun(side, 18), "held/%s.png" % wid)
+        n += 1
+    # arrows and bolts
+    AMMO = {"arrow": (213, None), "broadhead_arrow": (216, None), "fire_arrow": (213, ("#e8782a", "metal")), "bolts": (215, None), "explosive_bolt": (215, ("#c83a2a", "metal"))}
+    for wid, (si, tint) in AMMO.items():
+        sp = sword(si)
+        if tint:
+            sp = tint_part(sp, *tint)
+        save(PI.icon16(sp, -45), "icons/%s.png" % wid)
+        n += 1
+    print("weapons:", n)

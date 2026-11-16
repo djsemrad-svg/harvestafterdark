@@ -525,8 +525,14 @@ func _draw_player() -> void:
 		var kick: float = -2.0 if p.get("shoot_t", 0.0) > 0.08 else 0.0
 		var flipx: bool = p.dir == "left"
 		var ang2: float = 0.0 if p.dir in ["left", "right"] else (PI / 2 if p.dir == "down" else -PI / 2)
-		draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-0.7, 0.7) if flipx else Vector2(0.7, 0.7))
-		draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
+		var held := Art.override("held/%s.png" % hs.id)
+		if held != null:
+			# pack weapons have a side-on picture pointing right
+			draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-1, 1) if flipx else Vector2.ONE)
+			draw_texture(held, Vector2(-3, -roundf(held.get_height() / 2.0)))
+		else:
+			draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-0.7, 0.7) if flipx else Vector2(0.7, 0.7))
+			draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		if p.get("flash", 0.0) > 0:
 			draw_circle(hand + dv * 9.0, 2.5, Color(1, 0.9, 0.5, 0.9))

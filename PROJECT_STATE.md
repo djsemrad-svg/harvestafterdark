@@ -298,6 +298,16 @@ From Sunnyside World and the Hollow Dolphin fishing icons.
 - Modern Interiors emotes (`art/ui/emote_<id>.png`, `Game.emote(entity, id, secs)`): red "!" when an infected notices you (yellow for raiders), a "Z" bubble over sleepers, heart / dots / angry after gifts, heart when petting an animal.
 - Daniel's "Art Still Needed" doc was rewritten as a streamlined list of everything still drawn in code (about 700 icons, 158 objects, 12 tile kinds, 5 buildings, animals and effects).
 
+### Weapon art (added Nov 16)
+
+From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimate Pixel Sword Pack. 99 of 131 weapons and 5 arrow and bolt ammo types.
+
+- `tools/pixel_icons.py`: cuts sprites out of the sheets, shrinks without losing thin parts (barrels), lays them on the diagonal and re-outlines them. Icons are 16x16, grip or handle bottom-left, like the tools.
+- Guns: `GUN` in the importer maps each weapon id to a gun on sheet 0 plus a colour version for upgraded and legendary guns (for example Acid-Etched Assault Rifle = the assault rifle on the acid-green sheet). If a colour version can't be matched, the plain gun is used.
+- Melee, bows, crossbows: `SW`, `BOW`, `XBOW`, `AMMO` map to the sword pack, with a recolour of the steel or wood for upgrades and legendaries.
+- Guns, bows and crossbows also get `art/held/<id>.png`, a side-on picture (at most 22 wide) drawn in the player's hands when aiming. Weapons without one still use the small icon.
+- Still code-drawn (32): crowbars, golf club, baton, lead pipes, tire iron, pipe wrench, shovel and Grave Digger, chainsaw and Redline, frying pan, hockey stick, garden rake, brass knuckles and Brute Force, riot shield, slingshots, boomerangs, nail guns, speargun, Molotov, pipe bomb.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
