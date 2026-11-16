@@ -19,8 +19,9 @@ const HAIR_STYLE := {"Short": "01", "Long": "04", "Ponytail": "11", "Curly": "13
 const SHIRT_STYLE := {"T-Shirt": "01", "Jacket": "05", "Hoodie": "13", "Overalls": "19", "Vest": "02"}
 const ACC := {"Cap": "04_Snapback", "Beanie": "11_Beanie", "Glasses": "15_Glasses", "Bandana": "07_Bataclava"}
 ## Extra infected looks, as accessories and outfits.
-const EXTRA := {"riot": {"acc": "06_Policeman_Hat"}, "soldier": {"acc": "11_Beanie", "acc_color": "#4a5630"},
-	"hazmat": {"acc": "17_Medical_Mask", "outfit": "08"}}
+## Outfits 40+ and accessories 20-28 come from the Modern Exteriors add-ons (soldier, firefighter, worker...).
+const EXTRA := {"riot": {"acc": "06_Policeman_Hat"}, "soldier": {"acc": "27_Soldier_Helmet", "outfit": "40"},
+	"hazmat": {"acc": "17_Medical_Mask", "outfit": "08"}, "embers": {"outfit": "41"}, "worker": {"acc": "20_Worker_Helmet", "outfit": "40"}}
 
 static var _index = null
 static var _sheets := {}

@@ -83,7 +83,13 @@
   "19_Party_Cone_01": "#e63f38",
   "19_Party_Cone_02": "#cf3f75",
   "19_Party_Cone_03": "#4aaed9",
-  "19_Party_Cone_04": "#c4e1ee"
+  "19_Party_Cone_04": "#c4e1ee",
+  "20_Worker_Helmet_01": "#ed931e",
+  "21_Worker_Jacket_01": "#ed931e",
+  "22_Scout_Snapback_01": "#728459",
+  "26_Postman_Hat_01": "#89bcc6",
+  "27_Soldier_Helmet_01": "#676d4f",
+  "28_General_Hat_01": "#676d4f"
  },
  "body": {
   "01": "#bf8b78",
@@ -439,6 +445,13 @@
   "32_05": "#683f3d",
   "33_01": "#fdf8ec",
   "33_02": "#e7f8ec",
-  "33_03": "#e7e5ec"
+  "33_03": "#e7e5ec",
+  "40_01": "#5c4e4f",
+  "41_01": "#9e2b42",
+  "42_01": "#676d4f",
+  "43_01": "#bad2e0",
+  "44_01": "#b18a74",
+  "44_02": "#b18a74",
+  "44_03": "#b18a74"
  }
 }

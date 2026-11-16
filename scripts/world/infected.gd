@@ -34,7 +34,7 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	look.pants = pick.call(L.get("pants", [look.pants]))
 	look.extra = L.get("extra", "")
 	match look.extra:
-		"riot": look.acc = "Cap"; look.acc_color = "#1c1e26"; look.shirt_style = "Vest"
+		"riot", "worker": look.acc = "Cap"; look.acc_color = "#1c1e26"; look.shirt_style = "Vest"
 		"soldier": look.acc = "Cap"; look.acc_color = "#4a5630"; look.shirt_style = "Jacket"
 		"mouth": look.hair = "#e8e8e0"; look.eyes = "#ff4040"
 		"embers": look.eyes = "#ff8a20"; look.hair = "#1a1410"

@@ -268,6 +268,20 @@ if os.path.isdir(CG):
             key = f[len(prefix):-4]
             save(im, "characters/mi/%s/%s.png" % (part, key))
             index[part][key] = main_colour(im)
+    # add-ons from Modern Exteriors: work and uniform outfits and hats
+    AD = os.path.join(SRC, "modernexteriors-win", "Modern_Exteriors_16x16", "Character_Generator_Addons_16x16")
+    ADDONS = {"outfit": {"40_01": "Outfit_Soldier", "41_01": "Outfit_Firefighter", "42_01": "Outfit_Military_General",
+                         "43_01": "Outfit_Postman", "44_01": "Outfit_Scout_16x16_1", "44_02": "Outfit_Scout_16x16_2", "44_03": "Outfit_Scout_16x16_3"},
+              "acc": {"20_Worker_Helmet_01": "Accessory_20_Worker_Helmet", "21_Worker_Jacket_01": "Accessory_21_Worker_Jacket",
+                      "22_Scout_Snapback_01": "Accessory_22_Scout_Snapback", "26_Postman_Hat_01": "Accessory_26_Postman_Hat_and_Bag",
+                      "27_Soldier_Helmet_01": "Accessory_27_Soldier_Helmet", "28_General_Hat_01": "Accessory_28_Military_General_Hat"}}
+    if os.path.isdir(AD):
+        for part, m in ADDONS.items():
+            for key, fname in m.items():
+                f = os.path.join(AD, fname + ("" if fname.endswith(("_1", "_2", "_3")) else "_16x16") + ".png")
+                im = Image.open(f).convert("RGBA").crop((0, 0, 896, 96))
+                save(im, "characters/mi/%s/%s.png" % (part, key))
+                index[part][key] = main_colour(im)
     p = os.path.join(OUT, "characters", "mi", "index.json")
     with open(p, "w") as fh:
         json.dump(index, fh, indent=1, sort_keys=True)

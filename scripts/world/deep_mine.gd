@@ -12,7 +12,7 @@ const FOREMAN := {"name": "The Foreman", "boss": true, "hp": 1200, "wander_speed
 	"ai": "brute", "armor": 0.3, "armor_front": 0.5, "knock_immune": true, "telegraph": 0.8, "no_stealth_kill": true,
 	"summon": {"type": "crawler", "n": 2, "cd": 15.0, "max": 5, "say": "The Foreman stamps. Rubble shifts, and his crew crawls out of it."},
 	"looks": {"skin": ["#7a8a6a"], "shirt": ["#e88a20"], "pants": ["#3a4a6a"], "hair": ["#2a2420"], "hair_style": ["Buzz"], "shirt_style": ["Vest"],
-		"bodies": [6], "scale": 1.6, "extra": "riot"},
+		"bodies": [6], "scale": 1.6, "extra": "worker"},
 	"drops": [["coal", 1.0]]}
 const STRONGBOX := [["copper_bar", 8], ["iron_bar", 4], ["geode", 3], ["pipe_charge", 3], ["coal", 10]]
 

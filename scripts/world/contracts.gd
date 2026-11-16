@@ -27,7 +27,7 @@ const BOSSES := {
 		"drops": [["cloth", 1.0]]},
 	"boss_juggernaut": {"name": "The Juggernaut", "boss": true, "hp": 2000, "wander_speed": 10.0, "chase_speed": 26.0, "sight": 130.0, "damage": 50, "xp": 260,
 		"ai": "brute", "armor": 0.4, "armor_front": 0.7, "knock_immune": true, "telegraph": 1.0, "no_stealth_kill": true, "zaps": true,
-		"looks": {"skin": ["#7a8a5a"], "shirt": ["#e0a020"], "pants": ["#2a2a30"], "hair": ["#2a2a2a"], "hair_style": ["Buzz"], "shirt_style": ["Vest"], "bodies": [6], "scale": 1.7, "extra": "riot"},
+		"looks": {"skin": ["#7a8a5a"], "shirt": ["#e0a020"], "pants": ["#2a2a30"], "hair": ["#2a2a2a"], "hair_style": ["Buzz"], "shirt_style": ["Vest"], "bodies": [6], "scale": 1.7, "extra": "worker"},
 		"drops": [["copper_wire", 1.0], ["car_battery", 0.5]]},
 	"boss_crash": {"name": "Crash", "boss": true, "hp": 1600, "wander_speed": 14.0, "chase_speed": 48.0, "sight": 150.0, "damage": 45, "xp": 240,
 		"ai": "brute", "armor": 0.3, "knock_immune": true, "telegraph": 0.7, "no_stealth_kill": true,
