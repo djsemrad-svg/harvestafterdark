@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 16, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 254 / 254 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 261 / 261 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -257,6 +257,24 @@ Daniel uploaded asset packs and asked to use everything that fits, especially Po
 - Not used: GunsPack guns (rifles are 32 to 48 px wide, icons are 16x16), Guns Update (clashes), Pixel Crawler and Farm RPG (wrong style), Modern Interiors free (only 4 characters).
 - Override names: `tiles/<type>[_<season>][_<v>].png`, `objects/<type>[_<season>][_<v>].png`, `objects/<type>_open.png` for searched containers (otherwise a dimmed copy), `trees/tree|tree2|pine_<season>.png`.
 - Daniel's "Art Still Needed" doc lists what's left with sizes. He's buying the full Modern Interiors pack for its 16x32 character generator.
+
+### People and interiors from Modern Interiors (added Nov 16)
+
+Daniel bought Modern Interiors (full) and Modern Exteriors (LimeZu). Unzipped copies are in `/home/claude/packs/` during a session; `tools/import_packs.py` rebuilds `art/` from them.
+
+- `scripts/autoload/mi_chars.gd` (MiChars): people are stacked from generator part sheets in `art/characters/mi/<part>/<key>.png` (body, eyes, outfit, hair, acc; only the still, idle and walk rows are kept). `index.json` lists each part's main colour. A look can name parts (`mi_hair "13_05"`, `mi_outfit`, `mi_acc`, or `mi_hair_style` + hair colour, `mi_outfit_style` + `mi_outfit_color`, `mi_acc_style` + `mi_acc_color`); otherwise the older keys (skin, hair_style, shirt_style, shirt, acc, face) are matched to the nearest parts. Skin is always recoloured to the look's skin hex. Walk uses 4 of the 6 frames ([0,1,3,4]).
+- Infected: same people, skin recoloured, eyes glowing, clothes faded. Extras: riot = police hat, soldier = soldier uniform and helmet, embers = firefighter gear, worker (Juggernaut, Foreman) = worker helmet, hazmat = mask and white outfit. Outfits 40-44 and accessories 20-28 are the Modern Exteriors add-ons.
+- Neighbours have hand-picked parts in `Data.npcs[..].look`. Raiders get dark beanies instead of ball caps.
+- Character creator shows the generator options when the parts are installed.
+- Interiors: Room Builder floors and walls (`tiles/floor_*`, `tiles/wall_*`) and 21 furniture pieces cut from the shadowless theme sheets (boxes in the importer).
+- Not used: Fantasy Battlers (front-view JRPG monsters), Fungus Cave (chibi RPG Maker style), Cozy Fae base (different style), Modern Interiors RPG Maker copy (duplicate).
+
+### Next: bigger buildings (decided Nov 16)
+
+Modern Exteriors buildings are 2 to 3 times the game's footprints (a pack house is about 160x150 to 290x255 px; a game house is 96x80). Daniel chose to enlarge the maps so buildings use the pack's real sizes. Plan:
+1. Pick a pack building for each of the ~58 building kinds (Complete_Singles has whole buildings: houses, Post Apocalyptic House 1/2, police station, fire station, hardware store, markets, school, hospital, hotel, military dormitory and hangar, chapel, greenhouse; modular shop floors for the rest). Record each one's size in tiles and its door column.
+2. Re-lay out each outdoor map around the new footprints: town, homestead, mountain (mine), the three districts, Halvorsen, Dry Creek. Building interiors stay 14x11.
+3. Update everything that names a map coordinate: NPC schedules, warps, signs, quests and contracts, fixed infected, nests, tests.
 
 ## Code layout
 
