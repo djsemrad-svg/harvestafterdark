@@ -1,16 +1,18 @@
 {
  "archive": {
-  "door": 88,
+  "door": 32,
   "h": 187,
+  "sw": 175,
   "w": 176
  },
  "archive_open": {
-  "door": 88,
+  "door": 32,
   "h": 187,
+  "sw": 175,
   "w": 176
  },
  "baitshack": {
-  "door": 46,
+  "door": 40,
   "h": 86,
   "w": 92
  },
@@ -20,22 +22,23 @@
   "w": 128
  },
  "d_bait": {
-  "door": 46,
+  "door": 40,
   "h": 86,
   "w": 92
  },
  "d_bar": {
-  "door": 88,
+  "door": 32,
   "h": 187,
+  "sw": 175,
   "w": 176
  },
  "d_boathouse": {
-  "door": 78,
+  "door": 40,
   "h": 90,
   "w": 156
  },
  "d_booth": {
-  "door": 39,
+  "door": 24,
   "h": 78,
   "w": 79
  },
@@ -45,7 +48,7 @@
   "w": 112
  },
  "d_cabin": {
-  "door": 62,
+  "door": 42,
   "h": 120,
   "w": 124
  },
@@ -60,8 +63,14 @@
   "w": 80
  },
  "d_clubhouse": {
-  "door": 141,
+  "base": 208,
+  "door": 48,
   "h": 255,
+  "over": [
+   71,
+   265
+  ],
+  "sw": 266,
   "w": 282
  },
  "d_diner": {
@@ -70,13 +79,15 @@
   "w": 112
  },
  "d_farmhouse": {
-  "door": 124,
+  "door": 145,
   "h": 224,
+  "sw": 236,
   "w": 248
  },
  "d_firehouse": {
-  "door": 125,
+  "door": 46,
   "h": 229,
+  "sw": 249,
   "w": 251
  },
  "d_garage": {
@@ -90,67 +101,70 @@
   "w": 112
  },
  "d_guns": {
-  "door": 40,
+  "door": 24,
   "h": 119,
   "w": 80
  },
  "d_hardware": {
-  "door": 64,
+  "door": 40,
   "h": 142,
   "w": 128
  },
  "d_hotdog": {
-  "door": 40,
+  "door": 24,
   "h": 122,
   "w": 80
  },
  "d_house_blue": {
-  "door": 102,
+  "door": 124,
   "h": 145,
   "w": 205
  },
  "d_house_green": {
-  "door": 103,
+  "door": 123,
   "h": 145,
   "w": 207
  },
  "d_house_red": {
-  "door": 102,
+  "door": 124,
   "h": 145,
   "w": 205
  },
  "d_house_yellow": {
-  "door": 103,
+  "door": 123,
   "h": 145,
   "w": 207
  },
  "d_lab": {
-  "door": 216,
+  "door": 65,
   "h": 329,
+  "sw": 429,
   "w": 432
  },
  "d_lab6": {
-  "door": 63,
+  "door": 67,
   "h": 181,
+  "sw": 124,
   "w": 127
  },
  "d_lumber_office": {
-  "door": 62,
+  "door": 40,
   "h": 90,
   "w": 124
  },
  "d_mill": {
-  "door": 88,
+  "door": 77,
   "h": 201,
+  "sw": 167,
   "w": 176
  },
  "d_pawn": {
-  "door": 40,
+  "door": 24,
   "h": 119,
   "w": 80
  },
  "d_pharmacy": {
-  "door": 40,
+  "door": 24,
   "h": 119,
   "w": 80
  },
@@ -165,12 +179,12 @@
   "w": 112
  },
  "d_ranger": {
-  "door": 78,
+  "door": 42,
   "h": 120,
   "w": 156
  },
  "d_ruin": {
-  "door": 103,
+  "door": 123,
   "h": 145,
   "w": 207
  },
@@ -185,7 +199,7 @@
   "w": 71
  },
  "d_shed": {
-  "door": 43,
+  "door": 68,
   "h": 96,
   "w": 86
  },
@@ -200,18 +214,20 @@
   "w": 112
  },
  "d_warehouse": {
-  "door": 88,
+  "door": 77,
   "h": 201,
+  "sw": 167,
   "w": 176
  },
  "farmhouse": {
-  "door": 102,
+  "door": 124,
   "h": 145,
   "w": 205
  },
  "forge": {
-  "door": 88,
+  "door": 32,
   "h": 142,
+  "sw": 175,
   "w": 176
  },
  "greenhouse": {
@@ -220,52 +236,59 @@
   "w": 120
  },
  "guild": {
-  "door": 88,
+  "door": 33,
   "h": 186,
+  "sw": 175,
   "w": 176
  },
  "house_a": {
-  "door": 78,
+  "door": 42,
   "h": 120,
   "w": 156
  },
  "house_b": {
-  "door": 78,
+  "door": 42,
   "h": 119,
   "w": 156
  },
  "ranch": {
-  "door": 141,
+  "base": 208,
+  "door": 48,
   "h": 255,
+  "over": [
+   71,
+   265
+  ],
+  "sw": 266,
   "w": 282
  },
  "ruin": {
-  "door": 103,
+  "door": 123,
   "h": 145,
   "w": 207
  },
  "store": {
-  "door": 141,
+  "door": 138,
   "h": 179,
   "w": 283
  },
  "tavern": {
-  "door": 141,
+  "door": 45,
   "h": 251,
   "w": 283
  },
  "tavern_open": {
-  "door": 141,
+  "door": 45,
   "h": 251,
   "w": 283
  },
  "townhall": {
-  "door": 104,
+  "door": 55,
   "h": 240,
   "w": 208
  },
  "workshop": {
-  "door": 64,
+  "door": 40,
   "h": 142,
   "w": 128
  }

@@ -211,7 +211,14 @@ func _draw() -> void:
 		for d in m.drops:
 			sorted.append([d.pos.y, 5, d])
 		sorted.append([Game.player.pos.y, 6, Game.player])
-	sorted.sort_custom(func(a, b): return a[0] < b[0])
+	# ties (things on the same row, like a stand of trees) are broken left to right, so overlapping
+	# neighbours always draw in the same order instead of swapping as the camera moves
+	sorted.sort_custom(func(a, b):
+		if a[0] != b[0]: return a[0] < b[0]
+		var ta := _tie(a)
+		var tb := _tie(b)
+		if ta != tb: return ta < tb
+		return a[1] < b[1])
 	for it in sorted:
 		match it[1]:
 			0: _draw_obj(it[2], m, e)
@@ -220,7 +227,8 @@ func _draw() -> void:
 				var bt: Texture2D = Art.get_building(it[2], season, night)
 				var bst: Dictionary = it[2]
 				var bx: float = float(bst.art_x) if bst.has("art_x") and Art.building_override(bst) != null else bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2
-				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height()))
+				var drop: int = int(bst.get("art_drop", 0)) if bst.has("art_x") and Art.building_override(bst) != null else 0
+				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height() + drop))
 			3:
 				_draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
 				_draw_emote(it[2], 32)
@@ -387,6 +395,13 @@ func _draw_enemy(en: Dictionary) -> void:
 		elif en.state == "asleep" and not en.has("emote") and int(anim_t * 2) % 2 == 0:
 			draw_string(ThemeDB.fallback_font, en.pos + Vector2(4, -20), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1, 0.7))
 		_draw_emote(en, ct.get_height())
+
+func _tie(it: Array) -> float:
+	match int(it[1]):
+		0, 2: return float(it[2].x) * 16.0
+		1: return float(it[2][1]) * 16.0
+		7: return float(it[2][1].pos.x)
+	return float(it[2].pos.x) if it[2] is Dictionary and it[2].has("pos") else 0.0
 
 ## Draws (and counts down) an emote set with Game.emote().
 func _draw_emote(ent: Dictionary, h: float) -> void:

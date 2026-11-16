@@ -103,7 +103,7 @@ static func _variant(part: String, style: String, n: int) -> String:
 	return ks[(maxi(n, 1) - 1) % ks.size()]
 
 ## Character creator rows: key -> options. Skin, eyes and hair colour are swatches; the rest step through.
-static func creator_options() -> Dictionary:
+static func creator_options(look := {}) -> Dictionary:
 	var hair_cols := []
 	for k in keys("hair", "01_"): hair_cols.append(str(index().hair[k]))
 	var eye_cols := []
@@ -126,9 +126,10 @@ static func creator_options() -> Dictionary:
 		"mi_hair_style": styles.call("hair"),
 		"hair": hair_cols,
 		"mi_outfit_style": styles.call("outfit"),
-		"mi_outfit_color": nums.call(10),
+		# colours: only as many as the chosen outfit or accessory comes in
+		"mi_outfit_color": nums.call(maxi(1, keys("outfit", str(look.get("mi_outfit_style", "01")) + "_").size()) if not look.is_empty() else 10),
 		"mi_acc_style": accs,
-		"mi_acc_color": nums.call(6),
+		"mi_acc_color": nums.call(maxi(1, keys("acc", str(look.get("mi_acc_style", "")) + "_").size()) if not look.is_empty() and str(look.get("mi_acc_style", "None")) != "None" else (1 if not look.is_empty() else 6)),
 	}
 
 const LABELS := {"skin": "Skin tone", "eyes": "Eye color", "mi_hair_style": "Hair style", "hair": "Hair color",

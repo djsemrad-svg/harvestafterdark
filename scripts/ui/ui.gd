@@ -282,7 +282,10 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 	var look_lbls: Dictionary = Data.look_labels
 	if MiChars.available():
 		MiChars.complete(look)
-		look_opts = MiChars.creator_options()
+		look_opts = MiChars.creator_options(look)
+		# a colour past what the chosen style comes in snaps back to the first
+		for ck in ["mi_outfit_color", "mi_acc_color"]:
+			if not look_opts[ck].has(str(look.get(ck, "1"))): look[ck] = "1"
 		look_lbls = MiChars.LABELS
 	pvv.add_child(K.button("Randomize", func():
 		for kk in look_opts:

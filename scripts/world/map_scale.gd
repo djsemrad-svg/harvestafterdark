@@ -10,7 +10,7 @@ extends RefCounted
 
 const SCALED := {"town": 2, "residential": 2, "industrial": 2, "riverlands": 2, "halvorsen": 2, "dry_creek": 2}
 ## Bump when the layout of the scaled maps changes, so older saves rebuild their outdoor objects.
-const VERSION := 1
+const VERSION := 2      # 2: buildings line up on their real doors
 
 ## Sprinkled again after scaling: [chance for each of the 4 tiles of a design tile].
 const NATURE := {"tree": 0.45, "pine": 0.45, "weeds": 0.8, "twig": 0.4, "rock": 0.4, "bush": 0.5, "stump": 0.3,
@@ -40,10 +40,16 @@ static func fit_to_art(n: Dictionary, s: int) -> void:
 	var door_px: int = int(n.door_x) * 16 + s * 8              # middle of the (s tiles wide) door
 	var left: int = door_px - int(meta.door)
 	var bottom: int = int(n.y) + int(n.h)
+	var base: int = int(meta.get("base", meta.h))     # the ground line at the door
 	n.art_x = left
 	n.x = int(floor(left / 16.0))
-	n.w = int(ceil((left + int(meta.w)) / 16.0)) - int(n.x)
-	n.h = int(ceil(int(meta.h) / 16.0))
+	n.w = int(ceil((left + int(meta.get("sw", meta.w))) / 16.0)) - int(n.x)
+	n.h = int(ceil(base / 16.0))
+	if base < int(meta.h):
+		# a porch drawn below the door's ground line hangs in front of the footprint
+		n.art_drop = int(meta.h) - base
+		if meta.has("over"):
+			n.over = [left + int(meta.over[0]), left + int(meta.over[1])]
 	n.y = maxi(0, bottom - int(n.h))
 	n.h = bottom - int(n.y)
 
@@ -80,6 +86,14 @@ static func upscale(src: GameMap) -> GameMap:
 		n.x = bx0; n.y = by0
 		door_tiles[GameMap.k(int(st.get("door_x", -1)), int(st.get("door_y", -1)))] = true
 		m.add_structure(n)
+		if n.has("over"):
+			# the hanging porch is solid ground the player walks around
+			var ox0: int = int(floor(float(n.over[0]) / 16.0)); var ox1: int = int(floor(float(n.over[1]) / 16.0))
+			var oy0: int = int(n.y) + int(n.h)
+			for yy in range(oy0, mini(m.h, oy0 + int(ceil(float(n.art_drop) / 16.0)))):
+				for xx in range(maxi(0, ox0), mini(m.w, ox1 + 1)):
+					if xx >= int(n.door_x) and xx < int(n.door_x) + s: continue
+					m.solid_mask[yy * m.w + xx] = 1
 		if n.has("warp"):
 			# the door covers the whole 2x2 block of its design tile, so it is as wide as the building's door
 			for wp in m.warps:

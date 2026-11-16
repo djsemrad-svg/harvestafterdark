@@ -3225,6 +3225,30 @@ func run_packart() -> void:
 	look2.mi_hair_style = "13"; look2.mi_outfit_style = "08"; look2.mi_outfit_color = "2"; look2.mi_acc_style = "15_Glasses"
 	var p2: Dictionary = MiChars.parts(look2)
 	check("The character creator offers the generator's hair styles, outfits and accessories", opts.mi_hair_style.size() >= 29 and opts.mi_outfit_style.size() >= 33 and p2.hair.begins_with("13_") and p2.outfit == "08_02" and p2.acc.begins_with("15_Glasses"), str(p2))
+	# what the creator's arrows change must change the drawn character (the picture cache keys on it)
+	var look3: Dictionary = Data.default_look.duplicate(true)
+	MiChars.complete(look3)
+	var changed := []
+	for kk in ["mi_hair_style", "mi_outfit_style", "mi_outfit_color", "mi_acc_style"]:
+		var img_a: Image = Art.get_char(look3, "down", 0).get_image()
+		var o: Array = MiChars.creator_options(look3)[kk]
+		look3[kk] = o[(o.find(look3[kk]) + 1) % o.size()]
+		var img_b: Image = Art.get_char(look3, "down", 0).get_image()
+		if img_a.get_data() != img_b.get_data(): changed.append(kk)
+	check("Creator arrows change the character on screen (hair, outfit, outfit colour, accessory)", changed.size() == 4, str(changed))
+	# buildings sit on their pictures' real doors: none overlap, and every door has open ground in front
+	var bclash := []
+	for mid in ["town", "residential", "industrial", "riverlands", "halvorsen", "dry_creek"]:
+		var bm = G.maps.get(mid)
+		if bm == null: continue
+		var S: Array = bm.structures
+		for i in S.size():
+			var a = S[i]
+			for j in range(i + 1, S.size()):
+				var b = S[j]
+				if a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h: bclash.append("%s/%s overlap %s" % [mid, a.kind, b.kind])
+			if a.has("door_x") and bm.is_solid(int(a.door_x), int(a.y) + int(a.h)): bclash.append("%s/%s door blocked" % [mid, a.kind])
+	check("Buildings don't overlap and every door has open ground in front", bclash.is_empty(), str(bclash))
 	var pt: Image = Art.get_portrait(Data.npcs.hal.look).get_image()
 	check("Portraits frame the generator people's heads", pt.get_used_rect().size.y >= 12, str(pt.get_used_rect()))
 	# interiors

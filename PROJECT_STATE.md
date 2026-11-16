@@ -312,6 +312,12 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 
 64 item icons (`PROP_ICONS` in the importer): bags, boots, chests, canned food, jars (honey, pickles, kimchi), teas and drinks, stews, medicine bottles, sprays, frying pan (on the diagonal like the weapons), milk pail, a few forage plants and fruit (pear, plum, bluebell berry, moonbloom). The storage chest, large chest and lockbox also use the pack's chests on the farm. All muted a little to fit the darker art.
 
+### Fixes from Daniel's playtest (Nov 16)
+
+- Character creator: hair style, outfit and accessory arrows now change the character (the picture cache ignored those keys). Colour arrows only offer as many colours as the chosen outfit or accessory has.
+- Buildings line up on their pictures' real doors (`DOOR` in the importer; it was always the middle). Reyes Ranch's door is its left steps; the porch below them hangs in front and is solid (`BASE`, `art_drop`, `over`). Footprints stop at the solid part of a picture, not its shadow. A test checks no buildings overlap and every door has open ground in front. Older saves rebuild outdoor maps once more (`MapScale.VERSION` 2).
+- Trees no longer swap places in dense stands: things on the same row are drawn left to right in a fixed order (the sort wasn't stable). `tests/screenshots.gd --only=treeshift` slides the view through a forest and counts changed pixels.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

@@ -168,6 +168,87 @@ func _ready() -> void:
 		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("81_weapons_inventory")
 		get_tree().quit()
 		return
+	if only == "doors":
+		# stand just below each building's door, then walk in
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		var picks := {"town": ["ranch", "tavern", "store", "forge", "guild", "townhall", "clinic", "workshop", "archive"], "residential": ["d_diner", "d_police", "d_church", "d_school"], "industrial": ["d_firehouse", "d_bar", "d_warehouse"]}
+		for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+		var n := 0
+		for mid in picks:
+			for st in Game.maps[mid].structures:
+				if not picks[mid].has(st.kind) or not st.has("door_x"): continue
+				Game.change_map(mid, int(st.door_x), int(st.y) + int(st.h) + 2, "up", {"silent": true})
+				Game.enemies.clear()
+				await frames(8)
+				await shot("85_%02d_%s" % [n, st.kind])
+				# walk up into the door
+				var before: String = Game.map.id
+				var said := ""
+				for f in 90:
+					Game.player.pos += Vector2(0, -1.0)
+					main.world.step(1.0 / 60.0)
+					await get_tree().process_frame
+					if Game.map.id != before: break
+					if main.ui.overlay_open():
+						said = "message"
+						break
+				print("DOOR %s %s -> %s %s" % [mid, st.kind, Game.map.id, said])
+				main.ui.close_all()
+				n += 1
+		get_tree().quit()
+		return
+	if only == "treeshift":
+		# draws a dense stand of trees, steps one tile right, and checks the scene just slid over:
+		# nothing in it may change apart from the shift (trees used to swap draw order)
+		main.ui.close_all()
+		Game.state.time = 1000
+		Game.state.weather = "sun"
+		var tmap := "riverlands"
+		Game.unlock_region("riverlands", true)
+		var m = Game.maps[tmap]
+		var best := Vector2i(10, 10)
+		var best_n := -1
+		for y in range(10, m.h - 10):
+			for x in range(18, m.w - 24):
+				var n := 0
+				for dy in range(-3, 4):
+					for dx in range(-6, 7):
+						var o = m.objects.get(GameMap.k(x + dx, y + dy))
+						if o != null and o.type in ["tree", "tree2", "pine"]: n += 1
+				if n > best_n: best_n = n; best = Vector2i(x, y)
+		var diffs := []
+		Game.change_map(tmap, best.x, best.y, "right", {"silent": true})
+		Game.enemies.clear()
+		await frames(180)     # let the map's colour grade settle
+		for step in 8:
+			Game.enemies.clear()
+			main.world.view.snap_camera()
+			await frames(4)
+			await RenderingServer.frame_post_draw
+			var cam0: Vector2 = main.world.view.cam.position
+			var a: Image = get_viewport().get_texture().get_image()
+			Game.player.pos += Vector2(16, 0)
+			main.world.view.snap_camera()
+			await frames(4)
+			await RenderingServer.frame_post_draw
+			var cam1: Vector2 = main.world.view.cam.position
+			var b: Image = get_viewport().get_texture().get_image()
+			var k: int = a.get_width() / 480
+			var dx := int((cam1.x - cam0.x) * k)
+			var bad := 0
+			for y in range(270, a.get_height() - 220, 3):
+				for x in range(10, a.get_width() - 10 - dx, 3):
+					if abs(x - a.get_width() / 2) < 90 and abs(y - a.get_height() / 2) < 120: continue
+					if a.get_pixel(x + dx, y) != b.get_pixel(x, y): bad += 1
+			diffs.append(bad)
+			if bad > 0 and not FileAccess.file_exists("/tmp/ts_a.png"):
+				a.save_png("/tmp/ts_a.png"); b.save_png("/tmp/ts_b.png")
+				print("TREESHIFT saved step ", step, " dx=", dx)
+		print("TREESHIFT trees=%d at=%s changed pixels per step=%s" % [best_n, best, diffs])
+		get_tree().quit()
+		return
 	if only == "packs":
 		main.ui.close_all()
 		Game.state.time = 640

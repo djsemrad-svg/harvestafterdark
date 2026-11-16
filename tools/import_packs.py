@@ -372,6 +372,16 @@ if os.path.isdir(ME):
         "d_lab": S % ("Hotel_and_Hospital", "Hospital_1"), "d_lab6": "23_MIlitary_Base_16x16_Bunker.png",
         "d_booth": S % ("Police_Station", "Parking_Booth_2"), "d_clubhouse": A % "Country_House_No_Banisters",
     }
+    # where each picture's door (or the foot of its steps) is, in pixels from the left; default the middle
+    DOOR = {"archive": 32, "archive_open": 32, "d_bar": 32, "forge": 32, "guild": 33, "baitshack": 40, "d_bait": 40,
+            "d_boathouse": 40, "d_booth": 24, "d_cabin": 42, "d_clubhouse": 48, "ranch": 48, "d_farmhouse": 145, "d_firehouse": 46,
+            "d_guns": 24, "d_hotdog": 24, "d_pawn": 24, "d_pharmacy": 24, "d_hardware": 40, "workshop": 40,
+            "d_house_blue": 124, "d_house_red": 124, "farmhouse": 124, "d_house_green": 123, "d_house_yellow": 123, "d_ruin": 123, "ruin": 123,
+            "d_lab": 65, "d_lab6": 67, "d_lumber_office": 40, "d_mill": 77, "d_warehouse": 77, "d_ranger": 42, "house_a": 42, "house_b": 42,
+            "d_scrap_office": 35, "d_shed": 68, "store": 138, "tavern": 45, "tavern_open": 45, "townhall": 55}
+    # pictures whose steps end above the picture's bottom edge: the ground line at the door, in pixels from the top.
+    # Whatever is drawn below it (a porch) hangs in front and is solid.
+    BASE = {"ranch": 208, "d_clubhouse": 208}
     meta = {}
     for kind, f in BUILDINGS.items():
         p = os.path.join(ME, f)
@@ -380,7 +390,19 @@ if os.path.isdir(ME):
             continue
         im = load(p)
         save(im, "buildings/%s.png" % kind)
-        meta[kind] = {"w": im.width, "h": im.height, "door": im.width // 2}
+        meta[kind] = {"w": im.width, "h": im.height, "door": DOOR.get(kind, im.width // 2)}
+        # the soft shadow some pictures carry on their right isn't wall: the footprint stops at the solid part
+        al = im.split()[3].point(lambda a: 255 if a > 200 else 0)
+        sb = al.getbbox()
+        if sb and sb[2] < im.width:
+            meta[kind]["sw"] = sb[2]
+        if kind in BASE:
+            b = BASE[kind]
+            px = im.load()
+            xs = [x for x in range(im.width) for y in range(b + 4, im.height) if px[x, y][3] > 200]
+            meta[kind]["base"] = b
+            if xs:
+                meta[kind]["over"] = [min(xs), max(xs)]
     with open(os.path.join(OUT, "buildings", "index.json"), "w") as fh:
         json.dump(meta, fh, indent=1, sort_keys=True)
     written.append("buildings/index.json")

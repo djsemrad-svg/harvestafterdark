@@ -1301,7 +1301,7 @@ func look_key(l: Dictionary) -> String:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
 	parts.append(str(l.get("sprite", "")))
-	for k in ["body", "extra", "scale", "lying", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc"]:
+	for k in ["body", "extra", "scale", "lying", "raider", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc", "mi_hair_style", "mi_outfit_style", "mi_outfit_color", "mi_acc_style", "mi_acc_color"]:
 		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)
 
@@ -2236,7 +2236,7 @@ func building_art(s: Dictionary, season: String) -> Texture2D:
 			var meta: Dictionary = MapScale.building_meta().get(str(s.kind), {})
 			var tw := text_px_width(B.sign) + 6
 			var sx: int = clampi(int(meta.get("door", W / 2)) - tw / 2, 1, maxi(1, W - tw - 1))
-			var sy := maxi(1, H - 40)
+			var sy := maxi(1, int(meta.get("base", H)) - 40)
 			R(im, sx, sy, tw, 9, "#5a4430"); R(im, sx + 1, sy + 1, tw - 2, 7, "#c8a47a" if cond >= 2 else "#a89478")
 			draw_text_px(im, B.sign, sx + 3, sy + 2, "#3a2a1a")
 		if winter:
