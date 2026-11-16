@@ -78,6 +78,7 @@ var modes := {
 		"collapse_health_restore": 0.35, "collapse_hours_lost": 3,
 		"pass_out_money_pct": 0.10, "pass_out_money_max": 1000,
 		"bonus_reward_mult": 1.25,
+		"injury_mult": 1.0,
 	},
 	"adventure": {
 		"label": "Adventure Mode", "difficulty": "Normal / Relaxed",
@@ -87,6 +88,7 @@ var modes := {
 		"collapse_health_restore": 0.6, "collapse_hours_lost": 2,
 		"pass_out_money_pct": 0.05, "pass_out_money_max": 500,
 		"bonus_reward_mult": 1.0,
+		"injury_mult": 0.5,          # Adventure Mode: injuries and sickness half as often
 	},
 }
 
@@ -149,7 +151,12 @@ var achievements := {
 }
 
 ## Fruit trees from saplings (item sheet): days to grow up before they fruit.
-var trees := {"grow_days": 28}
+var trees := {"grow_days": 28,
+	"seed_chance": 0.35,         # a felled tree drops an Acorn or Pine Cone
+	"sapling_days": 12,          # a planted seed becomes a full tree
+	"stump_regrow_days": 7,      # wild stumps left this long can sprout again
+	"stump_sprout_chance": 0.3,  # each night after that
+}
 
 ## Searching wrecks, suitcases and crates.
 var loot := {"respawn_days": 7}
@@ -246,6 +253,69 @@ var bombs := {
 	"player_damage": 15,
 }
 
+## Injuries and sickness (scripts/world/injuries.gd, Game "injuries and sickness").
+var raider_raids := {
+	"after_days": 5,            # days after your first visit to Dry Creek before they come for you
+	"chance": 0.07,             # per night (not on nights the infected raid)
+	"adventure_mult": 0.5,
+	"size": [2, 4],
+	"steal_per": 2,             # stacks each raider that gets through carries off
+	"warn_time": 1080,          # 6 pm
+}
+
+var hordes := {
+	"nest_hp": 900,
+	"xp": 200,
+	"horde": [6, 9],            # infected asleep around a nest when you arrive
+	"asleep": 0.8,
+	"radius": 5,                # tiles around the nest they sleep in
+	"spawn_cd": 6.0,            # seconds between waves once the nest is awake
+	"spawn_n": 2,
+	"spawn_cap": 8,             # most of its own a nest keeps out at once
+	"regrow_days": 21,
+	"cache_rolls": [3, 5],      # things the infected dragged in
+	"cache_quality": 0.45,
+	"cache_gold": [150, 400],
+}
+
+var injuries := {
+	"antiviral_find": 0.03,      # chance per search of the crash site tent or helicopter
+	"bleed_chance": 0.2,             # per hit from the infected that does damage
+	"bleed_minutes": 90,             # game minutes before bleeding stops by itself
+	"bleed_tick_sec": 2.5,           # real seconds between 1 health lost
+	"blood_loss_cap": 40,            # max health lost to bleeding, at most
+	"blood_loss_recover": 15,        # back each night
+	"wound_chance": 0.35,            # an uncleaned bleed turns into an infected wound overnight
+	"wound_morning_hp": 10,
+	"wound_energy_mult": 0.75,
+	"wound_heal_days": 7,            # it clears up by itself eventually
+	"fracture_hit": 25.0,            # a single hit this big (after armour) can break a limb
+	"fracture_chance": 0.3,
+	"fracture_speed_mult": 0.7,
+	"fracture_heal_days": 10,
+	"sick_energy_mult": 0.7,
+	"sick_days": 2,
+	"dirty_water_sick": 0.3,
+	"chill_energy_per_10min": 1.0,
+	"chill_sick_after": 120,         # game minutes chilled before you catch a cold
+	"soap_clean": 0.05,
+}
+
+## Crop care (scripts/world/farm_care.gd and Game.crop_care_overnight).
+var crop_care := {
+	"grace_days": 28,                # no frost, pests or crows during your first season
+	"frost_chance": 0.3,             # per night in the first 8 days of spring and the last 8 of autumn
+	"frost_kill_seedling": 0.4,      # unprotected seedlings (grown 0-1 days) that die in a frost
+	"pest_chance": {"spring": 0.008, "summer": 0.015, "autumn": 0.01},   # per crop per night
+	"pest_spread": 0.3,              # to each neighbouring crop per night
+	"pest_days_to_kill": 3,
+	"pest_spray_days": 7,
+	"frost_cloth_days": 3,
+	"crow_min_crops": 12,            # crows only bother bigger fields
+	"crow_chance": 0.3,
+	"raised_bonus_chance": 0.1,      # raised beds: about 10% faster
+}
+
 var animals := {
 	"coop_capacity": 8,
 	"hopper_cap": 60,
@@ -260,4 +330,9 @@ var animals := {
 	"hay_from_weeds_chance": 0.5,   # once you own a coop, scything weeds can give hay
 	"open_door_losses_per": 2,      # one animal lost per this many raiders that reach an open coop
 	"outside_start": 540, "outside_end": 1080,
+	"mice_chance": 0.15,            # each night, per feeder with no barn cat on the farm
+	"cat_find_chance": 0.35,        # a barn cat brings a small find
+	"dog_bite": 25,                 # guard dog damage per bite (about once a second)
+	"dog_night_kills": 2,           # raiders each guard dog drives off overnight
+	"silo_hay_chance": 0.75,        # hay from weeds with a Hay Silo on the farm
 }

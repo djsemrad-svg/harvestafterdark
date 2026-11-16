@@ -230,6 +230,7 @@ static func town(world_seed: int) -> GameMap:
 	for c in [[8, 19], [41, 20], [29, 8]]:
 		m.add_obj(c[0], c[1], "road_crack")
 	m.add_obj(24, 15, "notice_board")
+	m.add_obj(26, 15, "town_ledger", {"anchor": true})
 	for lp in [[22, 14], [34, 14], [22, 22], [34, 22], [10, 21], [45, 21], [6, 17], [50, 17]]:
 		m.add_obj(lp[0], lp[1], "lamp_post")
 	m.add_obj(24, 23, "bench"); m.add_obj(32, 23, "bench")
@@ -428,6 +429,7 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		if not cands.is_empty():
 			var ct: Vector2i = cands[r.randi() % cands.size()]
 			m.add_obj(ct.x, ct.y, "supply_crate", {"quality": clampf(floor_n / 20.0, 0.0, 1.0)})
+	DeepMine.shape_floor(m, r)
 	var count := r.randi_range(band.enemy_count[0], band.enemy_count[1])
 	var free := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 9)
 	for i in count:

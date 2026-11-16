@@ -19,6 +19,166 @@ func _ready() -> void:
 	main.ui.flow = {"view": "mode"}; main.ui.render_title(); await shot("02_mode")
 	main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}; main.ui.render_title(); await shot("03_create")
 	Game.new_game({"mode": "survivor", "slot": 1, "name": "Dana", "look": Data.default_look.duplicate(true), "property_name": "Second Spring"})
+	if only == "restore":
+		main.ui.close_all()
+		Game.state.time = 1100
+		Game.state.money = 1200
+		Game.add_item("wood", 60, {"silent": true}); Game.add_item("potato", 12, {"silent": true}); Game.add_item("river_chub", 4, {"silent": true})
+		Restoration.give("tavern", 0); Restoration.give("tavern", 3); Restoration.give("tavern", 4)
+		Game.change_map("town", 26, 17, "up", {"silent": true})
+		await frames(10)
+		await shot("30_ledger_square")
+		main.ui.open("restoration"); await frames(4); await shot("31_ledger_open")
+		main.ui.close_all()
+		for pid in ["tavern", "archive"]:
+			Restoration.st()[pid] = {"given": [], "done": true, "ready": true}
+			Restoration.apply_one(Game.maps, pid)
+		Game.change_map("town", 22, 31, "up", {"silent": true})
+		await frames(10)
+		await shot("32_tavern_open")
+		Game.sync_npcs()
+		Game.change_map("tavern", 6, 9, "up", {"silent": true})
+		Game.state.time = 1100; Game.sync_npcs()
+		await frames(10)
+		await shot("33_tavern_inside")
+		Game.add_item("quartz", 1, {"silent": true})
+		Game.change_map("archive", 6, 9, "up", {"silent": true})
+		await frames(6)
+		await shot("34_archive_inside")
+		main.ui.open("museum"); await frames(4); await shot("35_museum")
+		get_tree().quit()
+		return
+	if only == "people":
+		main.ui.close_all()
+		var outd := "/home/claude/packs_review/people/"
+		DirAccess.make_dir_recursive_absolute(outd)
+		for npc in Data.npcs:
+			for d in ["down", "right", "up"]:
+				Art.char_image(Data.npcs[npc].look, d, 0).save_png(outd + "npc_%s_%s.png" % [npc, d])
+			Art.get_portrait(Data.npcs[npc].look).get_image().save_png(outd + "portrait_%s.png" % npc)
+		for t in Data.enemies:
+			if Data.enemies[t].get("nest", false): continue
+			for k in 3:
+				Art.char_image(Infected.make_look(t, Game.rng), "down", 0).save_png(outd + "enemy_%s_%d.png" % [t, k])
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}
+		Game.screen = "title"; main.ui.render_title(); await frames(4); await shot("63_creator")
+		Game.screen = "game"; main.ui.close_all()
+		Game.change_map("town", 26, 17, "up", {"silent": true})
+		Game.state.time = 700; Game.sync_npcs()
+		# line up every neighbour in the square for a group shot
+		var i := 0
+		for n in Game.npcs.values():
+			n.pos = Game.player.pos + Vector2(-80 + i * 22, 30)
+			n.dir = "down"
+			i += 1
+		await frames(6); await shot("64_neighbours")
+		Game.change_map("residential", 30, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Game.player.iframes = 999.0
+		var types := ["shambler", "lurcher", "runner", "brute", "spitter", "charred", "stalker", "riot", "soldier", "screamer", "crawler", "hazmat", "raider", "raider_gunner", "raider_captain"]
+		for j in types.size():
+			var e: Dictionary = main.world.spawn_enemy(types[j], 0, 0)
+			e.pos = Game.player.pos + Vector2(-140 + (j % 8) * 40, -40 + (j / 8) * 56)
+			e.state = "asleep"; e.dir = "down"
+		await frames(6); await shot("65_infected_lineup")
+		Game.enemies.clear()
+		var bi := 0
+		for b in ["boss_groundskeeper", "boss_undertaker", "boss_juggernaut", "boss_crash", "boss_inferno", "boss_briar_king", "boss_dutch", "boss_foreman"]:
+			var e2: Dictionary = main.world.spawn_enemy(b, 0, 0)
+			e2.pos = Game.player.pos + Vector2(-150 + bi * 42, 20)
+			e2.state = "asleep"; e2.dir = "down"
+			bi += 1
+		await frames(6); await shot("66_bosses")
+		get_tree().quit()
+		return
+	if only == "packs":
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		var dps: int = Balance.calendar.days_per_season
+		var spots := [["town", 12, 20], ["homestead", 12, 14], ["residential", 40, 23], ["residential", 8, 31], ["industrial", 44, 30], ["industrial", 22, 25], ["riverlands", 30, 14], ["dry_creek", 25, 21]]
+		for i in spots.size():
+			var sp: Array = spots[i]
+			Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("60_%d_%s" % [i, sp[0]])
+		for id in ["apple", "corn", "tomato", "potato", "pumpkin", "cheese", "egg", "fried_egg", "bread_loaf", "ruby", "emerald", "diamond", "iron_bar", "copper_bar", "gold_bar", "ammo_9mm", "buckshot", "ammo_556", "bandage", "med_kit", "canned_beans", "wood", "plank", "bone", "parsnip", "kale", "river_chub", "stone"]:
+			Game.add_item(id, 3, {"silent": true})
+		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("62_inventory")
+		main.ui.close_all()
+		for si in 4:
+			Game.state.day = 1 + si * dps + 3
+			Art._tex.clear(); Art._obj.clear(); Art._ovobj.clear()
+			for sp in [["homestead", 12, 14], ["residential", 8, 22]]:
+				Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+				Game.enemies.clear()
+				await frames(10)
+				await shot("61_%s_%s" % [Game.season(), sp[0]])
+		get_tree().quit()
+		return
+	if only == "detail":
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		for pass_on in [false, true]:
+			Art.set_detail(pass_on)
+			Game.change_map("town", 12, 20, "up", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("40_town_" + ("detail" if pass_on else "before"))
+			Game.change_map("homestead", 12, 14, "down", {"silent": true})
+			Game.enemies.clear()
+			await frames(10)
+			await shot("41_farm_" + ("detail" if pass_on else "before"))
+		get_tree().quit()
+		return
+	if only == "rooms":
+		main.ui.close_all()
+		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:
+			Game.change_map(rid, 6, 9, "up", {"silent": true})
+			Game.enemies.clear()
+			await frames(8)
+			await shot("50_room_" + rid)
+		get_tree().quit()
+		return
+	if only == "outposts":
+		main.ui.close_all()
+		await outpost_shots()
+		get_tree().quit()
+		return
+	if only == "raiders":
+		main.ui.close_all()
+		await raider_shots()
+		get_tree().quit()
+		return
+	if only == "lab":
+		main.ui.close_all()
+		await lab_shots()
+		get_tree().quit()
+		return
+	if only == "nests":
+		main.ui.close_all()
+		await nest_shots()
+		get_tree().quit()
+		return
+	if only == "injuries":
+		main.ui.close_all()
+		await injury_shots()
+		get_tree().quit()
+		return
+	if only == "crops":
+		main.ui.close_all()
+		await crop_shots()
+		get_tree().quit()
+		return
+	if only == "barn":
+		main.ui.close_all()
+		await barn_shots()
+		get_tree().quit()
+		return
 	if only == "contracts":
 		main.ui.close_all()
 		await contract_shots()
@@ -135,6 +295,8 @@ func _ready() -> void:
 	await arsenal_shots()
 	await district_shots()
 	await contract_shots()
+	await barn_shots()
+	await crop_shots()
 	get_tree().quit()
 
 func clear_area(m: GameMap, cx: int, cy: int, rx: int, ry: int) -> void:
@@ -315,6 +477,212 @@ func contract_shots() -> void:
 	Game.state.stats.meals = 41
 	main.ui.open("journal", {"tab": "quests"}); await frames(4)
 	await shot("87_journal_contracts")
+
+func barn_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.time = 640
+	Game.state.weather = "sun"
+	Game.state.money = 99999
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(14, 34):
+		for yy in range(18, 32):
+			var o = hm.get_obj(xx, yy)
+			if o != null: hm.remove_obj(xx, yy)
+			hm.soil.erase(GameMap.k(xx, yy))
+	Game.build_building("barn", Rect2i(17, 21, 8, 5))
+	Game.build_building("hutch", Rect2i(27, 22, 4, 3))
+	hm.add_obj(14, 24, "doghouse")
+	var kinds := [["cow", "Bessie"], ["cow", "Clover"], ["goat", "Gruff"], ["sheep", "Woolly"], ["pig", "Truffles"], ["barn_cat", "Mittens"], ["guard_dog", "Rex"], ["rabbit", "Thumper"]]
+	for k in kinds:
+		var a: Dictionary = Game.adopt_animal(k[0], k[1])
+		a.born = int(Game.state.day) - 10
+	Game.state.animals[0].ready = true
+	Game.state.animals[3].ready = true
+	Game.get_building_rec("barn").door_open = true
+	Game.sync_animals(true)
+	Game.change_map("homestead", 21, 29, "up", {"silent": true})
+	await frames(30)
+	await shot("90_barn_outside")
+	Game.get_building_rec("barn").door_open = false
+	Game.sync_animals(true)
+	Game.change_map("barn", 6, 8, "up", {"silent": true})
+	await frames(30)
+	await shot("91_barn_inside")
+	main.ui.open("shop", {"shop": "ranch"}); await frames(4); await shot("92_ranch_animals")
+	main.ui.close_all()
+
+func crop_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 33
+	Game.state.time = 640
+	Game.state.weather = "sun"
+	var hm: GameMap = Game.maps.homestead
+	for xx in range(14, 34):
+		for yy in range(18, 32):
+			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
+			hm.soil.erase(GameMap.k(xx, yy))
+	var crops := ["snapbean", "potato", "tomato", "corn", "melon"]
+	for y in range(21, 28):
+		for x in range(16, 30):
+			if x == 22 or y == 24: continue
+			var cid: String = crops[(x / 3) % crops.size()]
+			if not Data.crops.has(cid): cid = "potato"
+			hm.soil[GameMap.k(x, y)] = {"w": 1 if (x + y) % 3 else 0, "crop": {"id": cid, "g": (x * 3 + y) % 9}, "fixed": true}
+	for x in range(16, 19):
+		hm.soil[GameMap.k(x, 21)].crop = {"id": "snapbean", "g": 99}
+		hm.add_obj(x, 21, "trellis")
+	for k in [GameMap.k(24, 25), GameMap.k(25, 25), GameMap.k(24, 26)]:
+		hm.soil[k].crop.pests = 30
+	for x in range(26, 29):
+		hm.soil[GameMap.k(x, 22)].frost_until = 40
+	hm.add_obj(20, 26, "cold_frame")
+	for y in range(21, 24):
+		for x in range(23, 26):
+			hm.soil[GameMap.k(x, y)].raised = true
+			hm.soil[GameMap.k(x, y)].fert = "quality2"
+	hm.add_obj(22, 24, "scarecrow")
+	Game.change_map("homestead", 22, 29, "up", {"silent": true})
+	Game.state.inventory = []; Game.state.inventory.resize(int(Game.state.inv_size))
+	Game.add_item("potato", 5, {"silent": true}); Game.add_item("potato", 3, {"silent": true, "extra": {"q": 1}}); Game.add_item("potato", 2, {"silent": true, "extra": {"q": 2}})
+	Game.add_item("pest_spray", 3, {"silent": true}); Game.add_item("frost_cloth", 2, {"silent": true}); Game.add_item("quality_fertilizer", 10, {"silent": true})
+	await frames(20)
+	await shot("95_farm_care")
+	main.ui.open("journal", {"tab": "inventory", "sel": 13}); await frames(4); await shot("96_quality_inventory")
+	main.ui.close_all()
+
+func outpost_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+	Game.change_map("residential", 37, 11, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(20)
+	await shot("60_burger_barn")
+	Game.change_map("mh_burger", 6, 9, "up", {"silent": true})
+	Game.player.iframes = 999.0
+	await frames(20)
+	await shot("61_burger_inside")
+	Game.enemies.clear()
+	Game.add_item("sleeping_bag", 1, {"silent": true})
+	for i in Game.state.inventory.size():
+		var st = Game.state.inventory[i]
+		if st != null and st.id == "sleeping_bag": main.ui.open("journal", {"tab": "inventory", "sel": i})
+	await frames(6)
+	await shot("62_sleeping_bag")
+	main.ui.close_all()
+	# a raid on the farm
+	Game.change_map("homestead", 20, 30, "down", {"silent": true})
+	var hm: GameMap = Game.maps.homestead
+	hm.remove_obj(18, 27)
+	hm.add_obj(18, 27, "chest", {"items": [{"id": "iron_bar", "qty": 5}, {"id": "wood", "qty": 40}, {"id": "stone", "qty": 20}]})
+	Game.state.flags.met_raiders_day = 1
+	Game.state.raider_raid = {"day": int(Game.state.day), "size": 2, "warned": true}
+	Game.state.time = 1300
+	Game.end_day("sleep")
+	await frames(6)
+	await shot("63_raid_report")
+	main.ui.close_all()
+	Game.change_map("dry_creek", 19, 26, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(10)
+	await shot("64_stolen_goods")
+
+func raider_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	Game.unlock_region("industrial", true)
+	Game.change_map("dry_creek", 22, 8, "down", {"silent": true})
+	Game.player.pos = Vector2(24 * 16 + 8, 21 * 16 + 8)
+	for e in Game.enemies: e.state = "asleep"
+	await frames(20)
+	await shot("70_dry_creek_camp")
+	Game.player.iframes = 999.0
+	for e in Game.enemies:
+		e.state = "chase"
+		e.spit_cd = 0.0
+	await frames(50)
+	await shot("71_raiders_shooting")
+	Game.change_map("dc_clubhouse", 6, 8, "up", {"silent": true})
+	Game.enemies.clear()
+	await frames(10)
+	await shot("72_clubhouse")
+
+func lab_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 1000
+	Game.unlock_region("riverlands", true)
+	Game.change_map("halvorsen", 16, 17, "down", {"silent": true})
+	Game.enemies.clear()
+	Game.player.pos = Vector2(22 * 16 + 8, 17 * 16 + 8)
+	await frames(20)
+	await shot("80_halvorsen_campus")
+	Game.player.pos = Vector2(31 * 16 + 8, 30 * 16 + 8)
+	await frames(10)
+	await shot("81_lab6_outside")
+	Game.state.flags.lab6_open = true
+	Game.change_map("hv_lab6", 6, 8, "up", {"silent": true})
+	Game.player.iframes = 99.0
+	await frames(30)
+	await shot("82_lab6_inside")
+	Game.change_map("hv_vault", 6, 8, "up", {"silent": true})
+	Game.enemies.clear()
+	Game.player.iframes = 99.0
+	await frames(20)
+	await shot("83_vault")
+	Game.change_map("halvorsen", 11, 20, "down", {"silent": true})
+	Game.enemies.clear()
+	Game.state.time = 1320
+	await frames(20)
+	await shot("84_pond_night")
+
+func nest_shots() -> void:
+	Game.state.mode = "adventure"
+	Game.state.day = 40
+	Game.state.time = 960
+	for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+	Game.change_map("riverlands", 17, 30, "down", {"silent": true})
+	for e in Game.enemies.duplicate():
+		if not e.has("nest_id"): Game.enemies.erase(e)
+	var nest = null
+	for e in Game.enemies:
+		if e.type == "horde_nest": nest = e
+	Game.player.pos = nest.pos + Vector2(-72, -6)
+	Game.state.flags["nest_found_nest_woods"] = true
+	await frames(20)
+	await shot("90_nest_asleep")
+	for e in Game.enemies:
+		if e.has("nest_id") and e.type != "horde_nest": e.state = "chase"
+	nest.hp = float(nest.hp) * 0.6
+	Game.player.iframes = 99.0
+	await frames(4)
+	nest.spawn_t = 0.0
+	await frames(40)
+	await shot("91_nest_awake")
+	Game.enemies.clear()
+	main.ui.open("journal", {"tab": "map"}); await frames(4); await shot("92_nest_map")
+	main.ui.close_all()
+
+func injury_shots() -> void:
+	Game.state.day = 40
+	Game.state.time = 840
+	Game.change_map("homestead", 22, 29, "up", {"silent": true})
+	Game.add_condition("bleed", true)
+	Game.add_condition("fracture", true)
+	Game.add_condition("sick", true)
+	Game.conditions().blood_loss = 20
+	Game.state.health = 55.0
+	Game.add_item("bandage", 3, {"silent": true}); Game.add_item("splint", 1, {"silent": true}); Game.add_item("antibiotics", 2, {"silent": true})
+	await frames(40)
+	await shot("97_injuries_hud")
+	main.ui.open("journal", {"tab": "inventory", "sel": 0}); await frames(4)
+	for i in Game.state.inventory.size():
+		var st = Game.state.inventory[i]
+		if st != null and st.id == "splint": main.ui.open("journal", {"tab": "inventory", "sel": i})
+	await frames(4); await shot("98_splint_details")
+	main.ui.close_all()
 
 func frames(n: int) -> void:
 	for i in n:

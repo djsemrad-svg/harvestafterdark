@@ -21,7 +21,8 @@ func _ready() -> void:
 	add_child(view)
 
 func on_map_changed() -> void:
-	spawn_map_enemies()
+	if not Game.no_spawn_once:
+		spawn_map_enemies()
 	if view:
 		view.snap_camera()
 
@@ -187,6 +188,8 @@ func use_selected(level := 0, from_mouse := false) -> void:
 		cb.attack(s, from_mouse)
 	elif it.cat == "seed": plant_at(t, s.id)
 	elif it.has("fert"): apply_fert(t, s.id)
+	elif it.has("spray"): apply_spray(t, s.id)
+	elif it.has("bed"): make_raised_bed(t, s.id)
 	elif it.has("bomb"): place_bomb(t, s.id)
 	elif it.has("building"): place_building(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
@@ -356,8 +359,11 @@ func break_object(o: Dictionary) -> void:
 	var c := Vector2(ox * 16 + 8, oy * 16 + 8)
 	var rng: RandomNumberGenerator = Game.rng
 	m.remove_obj(ox, oy)
-	if o.type == "weeds" and Game.has_building("coop") and rng.randf() < Balance.animals.hay_from_weeds_chance:
-		spawn_drop("hay", 1, c)
+	if o.type == "weeds" and not Game.state.get("buildings", []).is_empty():
+		var silo = Game.maps.homestead.objects.values().any(func(q): return q.type == "hay_silo")
+		if rng.randf() < (Balance.animals.silo_hay_chance if silo else Balance.animals.hay_from_weeds_chance):
+			if not Game.store_hay(1):
+				spawn_drop("hay", 1, c)
 	for d in def.get("drops", []):
 		var q := rng.randi_range(d[1], d[2])
 		if d[0] == "wood" and rng.randf() < Game.skill_level("foraging") * 0.05:
@@ -370,11 +376,14 @@ func break_object(o: Dictionary) -> void:
 		var q := 1
 		if not gem:
 			q += (1 if rng.randf() < 0.4 else 0) + (1 if rng.randf() < Game.skill_level("mining") * 0.04 else 0)
+			if DeepMine.has_perk("prospector") and rng.randf() < 0.25: q += 1
+		elif DeepMine.has_perk("geologist") and rng.randf() < 0.3:
+			q += 1
 		spawn_drop(o.ore, q, c)
 		if not gem and rng.randf() < 0.5:
 			spawn_drop("stone", 1, c)
 	if o.type == "geode_rock":
-		spawn_drop(o.get("geode", "geode"), 1, c)
+		spawn_drop(o.get("geode", "geode"), 2 if DeepMine.has_perk("geologist") and rng.randf() < 0.3 else 1, c)
 	if o.type == "rock" and m.mine:
 		if rng.randf() < 0.008:
 			var keys := Data.artifacts.keys()
@@ -391,8 +400,9 @@ func break_object(o: Dictionary) -> void:
 		Game.add_xp(def.xp[0], def.xp[1])
 	if def.has("becomes"):
 		m.add_obj(ox, oy, def.becomes)
+	Woodland.on_felled(o.type, c, self)
 	if m.mine and o.type in ["rock", "ore_rock", "geode_rock"] and m.floor_n < Balance.mining.max_floor_phase1 and not m.ladder_shown:
-		if o.get("has_ladder", false) or rng.randf() < Balance.mining.ladder_chance_per_rock:
+		if o.get("has_ladder", false) or rng.randf() < Balance.mining.ladder_chance_per_rock * (1.6 if DeepMine.has_perk("excavator") else 1.0):
 			m.add_obj(ox, oy, "ladder_down")
 			m.ladder_shown = true
 			Game.toast("You uncovered a ladder leading down!", "", "gold")
@@ -421,7 +431,7 @@ func plant_at(t: Vector2i, seed_id: String) -> void:
 	if s.get("crop") != null:
 		return
 	var crop_id: String = Data.items[seed_id].crop
-	if m.outdoor and not Data.crops[crop_id].seasons.has(Game.season()):
+	if m.outdoor and not Data.crops[crop_id].seasons.has(Game.season()) and not Game.has_obj_at(m, GameMap.k(t.x, t.y), "cold_frame"):
 		Game.toast("%s won't grow in %s." % [Data.items[seed_id].name, Game.season().capitalize()], seed_id, "warn")
 		return
 	if not Game.remove_item(seed_id, 1):
@@ -435,10 +445,17 @@ func harvest_at(t: Vector2i) -> bool:
 	if s == null or not crop_ready(s.get("crop")):
 		return false
 	var cr: Dictionary = Data.crops[s.crop.id]
-	if not Game.can_fit(s.crop.id, 1):
+	var ql := FarmCare.roll_quality(Game.rng, Game.skill_level("farming"), FarmCare.fert_level(s))
+	var extra := {"q": ql} if ql > 0 else {}
+	var n := 1
+	if FarmCare.CLIMBERS.has(s.crop.id) and Game.has_obj_at(Game.map, GameMap.k(t.x, t.y), "trellis"):
+		n = 2
+	if not Game.can_fit(s.crop.id, n, null, extra):
 		Game.toast("Your inventory is full.", "", "warn")
 		return false
-	Game.add_item(s.crop.id, 1)
+	Game.add_item(s.crop.id, n, {"extra": extra, "silent": ql > 0})
+	if ql > 0:
+		Game.toast("+%d %s %s" % [n, FarmCare.QUALITY[ql], Data.items[s.crop.id].name], s.crop.id, "gold" if ql == 2 else "")
 	Game.add_xp("farming", 6 + int(round(cr.sell / 20.0)))
 	Game.state.stats.crops_harvested = int(Game.state.stats.crops_harvested) + 1
 	Game.quest_event("harvest", {"n": 1})
@@ -460,7 +477,12 @@ func place_at(t: Vector2i, id: String) -> void:
 	if m.id == "house" and not it.place in ["chest", "ammo_bench", "recycler", "smoker", "preserves_jar"] and not Data.obj_defs.get(it.place, {}).get("indoor", false):
 		Game.toast("That belongs outside.", id, "warn")
 		return
-	if not m.tile_free(t.x, t.y):
+	var over_soil: bool = Data.obj_defs.get(it.place, {}).get("over_soil", false)
+	if over_soil:
+		if not m.soil.has(GameMap.k(t.x, t.y)) or m.get_obj(t.x, t.y) != null:
+			Game.toast("Place it on tilled soil.", id, "warn")
+			return
+	elif not m.tile_free(t.x, t.y):
 		Game.toast("Something is in the way.", id, "warn")
 		return
 	if player_tile() == t and Data.obj_defs[it.place].get("solid", false):
@@ -469,6 +491,11 @@ func place_at(t: Vector2i, id: String) -> void:
 	var extra := {}
 	var pd: Dictionary = Data.obj_defs.get(it.place, {})
 	if it.place == "chest" or pd.has("storage"): extra = {"items": []}
+	if it.has("tree_seed"):
+		if not m.outdoor:
+			Game.toast("Trees need to be planted outside.", id, "warn")
+			return
+		extra = {"kind": it.tree_seed, "g": 0}
 	if it.place == "fruit_tree":
 		extra = {"fruit": it.tree_fruit, "age": 0, "planted": int(Game.state.day)}
 		if not m.outdoor and m.id != "greenhouse":
@@ -608,7 +635,9 @@ func update_player(dt: float) -> void:
 	var sprint_key: bool = Input.is_physical_key_pressed(KEY_SHIFT) or test_sprint
 	var crouch_key: bool = Input.is_physical_key_pressed(KEY_CTRL) or test_crouch
 	p.crouching = crouch_key and not sprint_key
-	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0
+	var broken: bool = Game.conditions().has("fracture") and Game.buff("painkillers") <= 0
+	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0 and not broken
+	update_bleeding(dt)
 	if float(p.get("dash_t", 0.0)) > 0:
 		p.dash_t = float(p.dash_t) - dt
 		move_entity(p, p.dash_v * dt, 5, 6)
@@ -658,6 +687,9 @@ func update_player(dt: float) -> void:
 	if Game.last_warp_tile == "":
 		for w in Game.map.warps:
 			if pt.x >= w.x and pt.x < w.x + w.w and pt.y >= w.y and pt.y < w.y + w.h:
+				if w.has("requires") and not Game.state.flags.get(w.requires, false) and w.has("key") and Game.count_item(w.key) > 0:
+					Game.state.flags[w.requires] = true
+					Game.toast("You swipe the %s. The light turns green." % Data.items[w.key].name, w.key, "gold")
 				if w.has("requires") and not Game.state.flags.get(w.requires, false):
 					Game.last_warp_tile = tk
 					var st = Game.map.structure_at(w.x, w.y)
@@ -705,6 +737,9 @@ func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [
 	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(int(rolls[0]), int(rolls[1])), quality)
 	for extra in Game.contract_collect_roll(tags):
 		got.append([extra, 1])
+	# the medevac crash: a very small chance of an antiviral in the medical supplies
+	if o.type in ["medical_tent", "heli_wreck"] and Game.rng.randf() < float(Balance.injuries.antiviral_find):
+		got.append(["antiviral", 1])
 	if got.is_empty():
 		Game.toast("You search %s. Nothing useful." % what)
 	else:
@@ -786,6 +821,17 @@ func interact_catalog(o: Dictionary, def: Dictionary) -> void:
 ## Tools from the item sheet.
 func use_gadget(id: String, t: Vector2i) -> void:
 	var m: GameMap = Game.map
+	if id in ["shears", "milk_pail"]:
+		var an = animal_in_front()
+		if an == null:
+			Game.toast("Face a %s and use the %s." % ["sheep" if id == "shears" else "cow or goat", Data.items[id].name], id)
+			return
+		var err := Game.collect_from_animal(an, id)
+		if err != "":
+			Game.toast(err, id, "warn")
+		else:
+			Sfx.play("pickup")
+		return
 	match id:
 		"builders_hammer":
 			var o = m.get_obj(t.x, t.y)
@@ -896,6 +942,14 @@ func kill_enemy(e: Dictionary) -> void:
 	var d: Dictionary = Data.enemies[e.type]
 	Game.enemies.erase(e)
 	burst(e.pos + Vector2(0, -8), Color("#7a8a70"), 12)
+	if d.get("nest", false):
+		nest_destroyed(e)
+		return
+	if d.get("human", false):
+		raider_down(e, d)
+		return
+	if e.type == "boss_foreman":
+		DeepMine.foreman_down(e.pos, self)
 	for dr in d.drops:
 		if Game.rng.randf() < dr[1]:
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
@@ -916,9 +970,62 @@ func kill_enemy(e: Dictionary) -> void:
 		Game.contract_event("boss", {"type": e.type, "at": e.pos})
 	if e.get("raider", false) and Game.raid_tonight():
 		Game.state.raid.killed = int(Game.state.raid.killed) + 1
+	Game.check_room_cleared()
+
+## A raider goes down: their own drops (no infected leftovers), and they count as raiders.
+func raider_down(e: Dictionary, d: Dictionary) -> void:
+	for dr in d.drops:
+		if Game.rng.randf() < float(dr[1]):
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+	for dr in Data.rare_drops.get(e.type, []):
+		if Game.rng.randf() < float(dr[1]):
+			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
+			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
+	Game.add_xp("survival", d.xp)
+	Game.state.stats.raiders_defeated = int(Game.state.stats.get("raiders_defeated", 0)) + 1
+	Game.check_room_cleared()
+	Game.contract_event("kill", {"type": e.type, "stealth": e.get("stealth_killed", false)})
+	if d.get("boss", false):
+		Game.contract_event("boss", {"type": e.type, "at": e.pos})
+
+## The nest falls apart: a cache of what the infected dragged in, and the area goes quiet.
+func nest_destroyed(e: Dictionary) -> void:
+	var H: Dictionary = Balance.hordes
+	var N: Dictionary = Hordes.NESTS[e.nest_id]
+	var ghost: bool = not e.get("seen", false)
+	burst(e.pos + Vector2(0, -6), Color("#2a3020"), 24)
+	Game.shake = 0.3
+	Sfx.play("boom")
+	var got := Arsenal.roll_loot(N.tags, Game.rng, Game.rng.randi_range(int(H.cache_rolls[0]), int(H.cache_rolls[1])), float(H.cache_quality))
+	for g in got:
+		spawn_drop(g[0], int(g[1]), e.pos + Vector2(0, -4))
+	var gold := Game.rng.randi_range(int(H.cache_gold[0]), int(H.cache_gold[1]))
+	Game.state.money = int(Game.state.money) + gold
+	Game.toast("The nest collapses. In the junk: %d gold and whatever they dragged in.%s" % [gold, " Not one of them saw you." if ghost else ""], "", "gold")
+	Game.add_xp("survival", int(Data.enemies[e.type].xp))
+	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
+	Game.contract_event("kill", {"type": e.type})
+	Game.clear_nest(e.nest_id, ghost)
 
 func spawn_enemy(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
 	return inf.spawn(type, tx, ty, opts)
+
+## Bleeding costs 1 health every few seconds, and the lost blood lowers max health for a while.
+var _bleed_t := 0.0
+func update_bleeding(dt: float) -> void:
+	var c := Game.conditions()
+	if not c.has("bleed"):
+		return
+	_bleed_t += dt
+	if _bleed_t < float(Balance.injuries.bleed_tick_sec):
+		return
+	_bleed_t = 0.0
+	Game.state.health = maxf(0.0, float(Game.state.health) - 1.0)
+	c.blood_loss = min(int(Balance.injuries.blood_loss_cap), int(c.get("blood_loss", 0)) + 1)
+	Game.state.health = minf(float(Game.state.health), Game.max_health())
+	Game.particles.append({"pos": Game.player.pos + Vector2(Game.rng.randf_range(-3, 3), -8), "vel": Vector2(0, 20), "t": 0.6, "color": Color("#a82020"), "g": 60.0})
+	if Game.state.health <= 0:
+		Game.collapse("bleeding")
 
 func spawn_map_enemies() -> void:
 	var m: GameMap = Game.map
@@ -942,9 +1049,12 @@ func spawn_district_foes(m: GameMap) -> void:
 			if Game.rng.randf() < float(F.chance):
 				spawn_enemy(pick_foe(F.table), sp.x, sp.y, {"asleep": Game.rng.randf() < float(F.asleep)})
 		spawn_bosses(m)
+		if Halvorsen.LAB_MAPS.has(m.id) and Game.contract_state().active.has("clean_room_3"):
+			spawn_lockdown(m)
 		return
 	spawn_roamers(m, Game.rng.randi_range(int(F.day[0]), int(F.day[1])), F.table, float(F.asleep))
 	spawn_bosses(m)
+	spawn_nests(m)
 	for f in F.get("fixed", []):
 		if Game.rng.randf() < float(f.chance):
 			var t := free_tile_near(m, int(f.x), int(f.y))
@@ -952,6 +1062,47 @@ func spawn_district_foes(m: GameMap) -> void:
 				spawn_enemy(f.type, t.x, t.y, {"asleep": Game.rng.randf() < 0.3})
 	if int(Game.state.time) >= 1200:
 		spawn_night_infected()
+
+## Horde nests: the nest and its sleeping horde, unless it was destroyed recently.
+func spawn_nests(m: GameMap) -> void:
+	var H: Dictionary = Balance.hordes
+	for id in Hordes.at_map(m.id):
+		if not Game.nest_active(id) or Game.enemies.any(func(o): return o.get("nest_id", "") == id):
+			continue
+		var N: Dictionary = Hordes.NESTS[id]
+		var t := free_tile_near(m, int(N.at[0]), int(N.at[1]))
+		if t.x < 0: continue
+		var nest := spawn_enemy("horde_nest", t.x, t.y)
+		nest.nest_id = id
+		var want := Game.rng.randi_range(int(H.horde[0]), int(H.horde[1]))
+		var placed := 0
+		var r: int = int(H.radius)
+		for tries in 200:
+			if placed >= want: break
+			var x := t.x + Game.rng.randi_range(-r, r)
+			var y := t.y + Game.rng.randi_range(-r, r)
+			if Vector2i(x, y) == t or Vector2(x - t.x, y - t.y).length() < 1.5: continue
+			if not m.tile_free(x, y) or Vector2(Vector2i(x, y) - player_tile()).length() < 10.0: continue
+			var z := spawn_enemy(pick_foe(N.table), x, y, {"asleep": Game.rng.randf() < float(H.asleep)})
+			z.nest_id = id
+			placed += 1
+
+## Lab 6 lockdown: the containment cells are open and everything inside hunts you.
+func spawn_lockdown(m: GameMap) -> void:
+	var table := [["hazmat", 40], ["runner", 25], ["lurcher", 20], ["crawler", 15]]
+	var want := 4 if m.id == "hv_vault" else 6
+	var pt := player_tile()
+	var placed := 0
+	for tries in 300:
+		if placed >= want: break
+		var x := Game.rng.randi_range(1, m.w - 2)
+		var y := Game.rng.randi_range(1, m.h - 2)
+		if not m.tile_free(x, y) or Vector2(x - pt.x, y - pt.y).length() < 4.0: continue
+		var z := spawn_enemy(pick_foe(table), x, y)
+		z.hunt = true
+		z.state = "chase"
+		z.alert_t = 6.0
+		placed += 1
 
 ## Named bosses wait at their lair while you have their contract (night-only ones after 8 pm).
 func spawn_bosses(m: GameMap) -> void:
@@ -1074,14 +1225,15 @@ func place_building(t: Vector2i, id: String) -> void:
 		Game.toast("Build it on your farm.", id, "warn")
 		return
 	if not Game.building_fits(Game.map, r):
-		Game.toast("Not enough clear ground. The coop needs a 6 by 4 space with nothing on it, plus room in front of the door.", id, "warn")
+		var bsz: Array = Livestock.BUILDINGS[kind].size
+		Game.toast("Not enough clear ground. The %s needs a %d by %d space with nothing on it, plus room in front of the door." % [Livestock.BUILDINGS[kind].name.to_lower(), bsz[0], bsz[1]], id, "warn")
 		Sfx.play("error")
 		return
 	Game.remove_item(id, 1)
 	Game.build_building(kind, r)
 	burst(Vector2(r.get_center()) * 16, Color("#c8a070"), 16)
 	Sfx.play("chop")
-	Game.toast("Your coop is built! Fill the hay hopper inside, then buy animals from Marisol at Reyes Ranch.", "coop_kit", "gold")
+	Game.toast("Your %s is built! Fill the feeder inside, then buy animals from Marisol at Reyes Ranch." % Livestock.BUILDINGS[kind].name.to_lower(), id, "gold")
 
 # ================================================================ defenses, raids, projectiles and bombs
 var _def_t := 0.0
@@ -1203,6 +1355,66 @@ func apply_fert(t: Vector2i, id: String) -> void:
 	Game.remove_item(id, 1)
 	burst(Vector2(t.x * 16 + 8, t.y * 16 + 10), Color("#8a6a3a"), 6)
 	Sfx.play("hoe")
+
+## Pest Spray and Frost Cloth cover the crop in front of you and the 8 tiles around it.
+func apply_spray(t: Vector2i, id: String) -> void:
+	var m: GameMap = Game.map
+	var kind: String = Data.items[id].spray
+	var day := int(Game.state.day)
+	var n := 0
+	var cured := 0
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var s = m.soil.get(GameMap.k(t.x + dx, t.y + dy))
+			if s == null: continue
+			n += 1
+			if kind == "pest":
+				s.pest_until = day + int(Balance.crop_care.pest_spray_days)
+				if s.get("crop") != null and s.crop.has("pests"):
+					s.crop.erase("pests")
+					cured += 1
+			else:
+				s.frost_until = day + int(Balance.crop_care.frost_cloth_days)
+	if n == 0:
+		Game.toast("Use it on tilled soil or a crop.", id, "warn")
+		return
+	Game.remove_item(id, 1)
+	burst(Vector2(t.x * 16 + 8, t.y * 16 + 8), Color("#b8e0a0") if kind == "pest" else Color("#f0f4f8"), 10)
+	Sfx.play("water")
+	if kind == "pest":
+		Game.toast("Sprayed %d tiles%s. Pests stay off for %d days." % [n, " and cleared pests from %d crop%s" % [cured, "" if cured == 1 else "s"] if cured > 0 else "", int(Balance.crop_care.pest_spray_days)], id)
+	else:
+		Game.toast("Covered %d tiles. Safe from frost for %d nights." % [n, int(Balance.crop_care.frost_cloth_days)], id)
+
+## A Raised Bed turns a 3 by 3 patch in front of you into permanent raised soil.
+func make_raised_bed(t: Vector2i, id: String) -> void:
+	var m: GameMap = Game.map
+	if not m.farmable:
+		Game.toast("Build it on your farm.", id, "warn")
+		return
+	var d: Vector2i = DIRS[Game.player.dir]
+	var c := t + d     # centre one tile further on, so the bed starts at the tile you face
+	var tiles := []
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var p := Vector2i(c.x + dx, c.y + dy)
+			var kk := GameMap.k(p.x, p.y)
+			var ok: bool = m.in_bounds(p.x, p.y) and not m.solid_mask[p.y * m.w + p.x] and m.get_obj(p.x, p.y) == null and p != player_tile()
+			ok = ok and (m.soil.has(kk) or Art.TILE_PROPS[m.tile_at(p.x, p.y)].get("till", false))
+			if not ok:
+				Game.toast("A raised bed needs a clear 3 by 3 patch of open ground in front of you.", id, "warn")
+				Sfx.play("error")
+				return
+			tiles.append(p)
+	Game.remove_item(id, 1)
+	for p in tiles:
+		var kk2 := GameMap.k(p.x, p.y)
+		if not m.soil.has(kk2):
+			m.soil[kk2] = {"w": 0, "crop": null}
+		m.soil[kk2].raised = true
+	burst(Vector2(c.x * 16 + 8, c.y * 16 + 8), Color("#8a6a40"), 14)
+	Sfx.play("chop")
+	Game.toast("Raised bed built. Crops here grow a little faster and can't be trampled.", id)
 
 func place_bomb(t: Vector2i, id: String) -> void:
 	var m: GameMap = Game.map
@@ -1429,6 +1641,7 @@ func pick_fish(zone: String) -> String:
 	var pool := []
 	for id in Data.fish:
 		var d: Dictionary = Data.fish[id]
+		if id == "lantern_queen" and (not Game.map.mine or Game.map.floor_n < int(Balance.mining.max_floor_phase1)): continue
 		if d.locs.has(zone) and d.seasons.has(s) and int(st.time) >= d.time[0] and int(st.time) < d.time[1] and (d.weather == "any" or (d.weather == "rain" and rainy)):
 			pool.append({"id": id, "w": d.w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
@@ -1506,6 +1719,11 @@ func finish_catch(id: String) -> void:
 		Game.quest_event("catch", {"n": 1})
 		Game.contract_event("catch", {"map": Game.map.id})
 		Sfx.play("catch")
+		var size := Angling.roll_size(id)
+		var record := Angling.log_catch(id, size)
+		Game.floaters.append({"text": Angling.fmt(size), "pos": Game.player.pos + Vector2(0, -40), "t": 1.6, "color": Color("#c8f0ff")})
+		if record:
+			Game.toast("New record: %s, %s!" % [Data.items[id].name, Angling.fmt(size)], id, "gold")
 	else:
 		Sfx.play("pickup")
 	var bob: Vector2 = Game.fishing.bob if Game.fishing != null and Game.fishing.has("bob") else Game.player.pos
@@ -1540,13 +1758,13 @@ func interact(from_mouse: bool) -> void:
 		return
 	var t := target_tile(from_mouse)
 	var m: GameMap = Game.map
-	var coop = Game.get_building_rec("coop")
-	if coop != null and m.id == "homestead" and t == Game.animal_door_tile(coop):
-		coop.door_open = not coop.door_open
-		Sfx.play("door")
-		Game.toast("Animal door %s." % ("open: your animals can go out on fair days" if coop.door_open else "closed for the night"))
-		Game.sync_animals()
-		return
+	for coop in Game.state.get("buildings", []):
+		if m.id == "homestead" and t == Game.animal_door_tile(coop):
+			coop.door_open = not coop.door_open
+			Sfx.play("door")
+			Game.toast("%s animal door %s." % [Livestock.BUILDINGS[coop.kind].name, "open: your animals can go out on fair days" if coop.door_open else "closed for the night"])
+			Game.sync_animals()
+			return
 	var s = m.soil.get(GameMap.k(t.x, t.y))
 	if s != null and crop_ready(s.get("crop")):
 		harvest_at(t)
@@ -1592,7 +1810,7 @@ func interact_object(o: Dictionary) -> void:
 				msg = "You drink your fill of cold water. " + msg
 				Game.add_xp("survival", 1)
 			else:
-				st.energy = min(float(Balance.player.max_energy), st.energy + 3)
+				st.energy = min(Game.max_energy(), st.energy + 3)
 				msg = "The water is cold and clean. " + msg
 			Sfx.play("water")
 			Game.toast(msg, "water_bottle")
@@ -1605,6 +1823,10 @@ func interact_object(o: Dictionary) -> void:
 				Game.ui.say("", Game.shop_closed_text(o.shop) if Game.shop_owner_present(o.shop) else "Nobody is behind the counter. " + Game.shop_closed_text(o.shop))
 		"notice_board":
 			Game.ui.open("notices")
+		"town_ledger":
+			Game.ui.open("restoration")
+		"museum_desk":
+			Game.ui.open("museum")
 		"sign":
 			Game.ui.say("", str(o.get("text", "")).replace("$PROPERTY", Game.state.property_name + ". Est. Spring, Year 1."))
 		"forage":
@@ -1639,18 +1861,24 @@ func interact_object(o: Dictionary) -> void:
 		"ammo_bench":
 			Game.ui.open("craft", {"station": "ammo_bench"})
 		"hay_hopper":
-			var b = Game.get_building_rec("coop")
+			var b = Game.get_building_rec(Game.map.id)
 			if b == null: return
-			var have := Game.count_item("hay")
-			var room: int = Balance.animals.hopper_cap - int(b.hay)
-			if have > 0 and room > 0:
-				var n: int = min(have, room)
-				Game.remove_item("hay", n)
-				b.hay = int(b.hay) + n
+			var cap := Game.feeder_cap(b)
+			var added := []
+			for fid in ["hay", "mixed_feed"]:
+				var key := "hay" if fid == "hay" else "feed"
+				var room: int = cap - int(b.hay) - int(b.get("feed", 0))
+				var have := Game.count_item(fid)
+				if have > 0 and room > 0:
+					var n: int = min(have, room)
+					Game.remove_item(fid, n)
+					b[key] = int(b.get(key, 0)) + n
+					added.append("%d %s" % [n, Data.items[fid].name])
+			if not added.is_empty():
 				Sfx.play("pick")
-				Game.toast("Added %d hay. The hopper holds %d of %d." % [n, int(b.hay), Balance.animals.hopper_cap], "hay")
+				Game.toast("Added %s. The feeder holds %d hay and %d mixed feed (room for %d)." % [" and ".join(added), int(b.hay), int(b.get("feed", 0)), cap], "hay")
 			else:
-				Game.toast("Hay hopper: %d of %d. Each animal eats 1 a day.%s" % [int(b.hay), Balance.animals.hopper_cap, " Buy hay from Marisol or scythe weeds." if have == 0 else ""], "hay")
+				Game.toast("Feeder: %d hay, %d mixed feed, room for %d. Each animal eats 1 a day; mixed feed first.%s" % [int(b.hay), int(b.get("feed", 0)), cap, " Buy hay from Marisol or scythe weeds." if Game.count_item("hay") == 0 else ""], "hay")
 		"animal_product":
 			if not Game.can_fit(o.item, 1):
 				Game.toast("Your inventory is full.", "", "warn")
@@ -1677,6 +1905,8 @@ func interact_object(o: Dictionary) -> void:
 				Game.ui.say("", info + ("" if have > 0 else " You have no coal."))
 		"solar_panel":
 			Game.ui.say("", "Solar Panel. %s It powers devices within %d tiles." % ["Charged from today's sun." if Game.source_supply(o) > 0 else "Too cloudy today to charge.", Balance.power.radius_tiles])
+		"stolen_goods":
+			Raiders.return_stolen()
 		"rain_collector":
 			var w := int(o.get("water", 0))
 			if w <= 0:

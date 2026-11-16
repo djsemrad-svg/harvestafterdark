@@ -27,7 +27,7 @@ const BOSSES := {
 		"drops": [["cloth", 1.0]]},
 	"boss_juggernaut": {"name": "The Juggernaut", "boss": true, "hp": 2000, "wander_speed": 10.0, "chase_speed": 26.0, "sight": 130.0, "damage": 50, "xp": 260,
 		"ai": "brute", "armor": 0.4, "armor_front": 0.7, "knock_immune": true, "telegraph": 1.0, "no_stealth_kill": true, "zaps": true,
-		"looks": {"skin": ["#7a8a5a"], "shirt": ["#e0a020"], "pants": ["#2a2a30"], "hair": ["#2a2a2a"], "hair_style": ["Buzz"], "shirt_style": ["Vest"], "bodies": [6], "scale": 1.7, "extra": "riot"},
+		"looks": {"skin": ["#7a8a5a"], "shirt": ["#e0a020"], "pants": ["#2a2a30"], "hair": ["#2a2a2a"], "hair_style": ["Buzz"], "shirt_style": ["Vest"], "bodies": [6], "scale": 1.7, "extra": "worker"},
 		"drops": [["copper_wire", 1.0], ["car_battery", 0.5]]},
 	"boss_crash": {"name": "Crash", "boss": true, "hp": 1600, "wander_speed": 14.0, "chase_speed": 48.0, "sight": 150.0, "damage": 45, "xp": 240,
 		"ai": "brute", "armor": 0.3, "knock_immune": true, "telegraph": 0.7, "no_stealth_kill": true,
@@ -71,6 +71,10 @@ const CONTRACTS := [
 		"map": "riverlands", "at": [11, 22],
 		"desc": "The raider warlord who held Twin Oaks with a crown of rose thorns. The bite got him, but he kept the crown and his men. He spits thorns.",
 		"reward": {"items": ["the_briar_king"], "money": 1700}},
+	{"id": "showdown_dry_creek", "title": "Showdown at Dry Creek", "giver": "cole", "kind": "boss", "boss": "boss_dutch", "needs": "industrial",
+		"map": "dry_creek", "at": [25, 20],
+		"desc": "Dutch Calloway's crew runs Dry Creek, down Mill Road south of the Industrial District. They took the last supply truck the Guild sent through, and the driver. Call Dutch out. He carries two revolvers and doesn't come alone. A Kevlar vest helps.",
+		"reward": {"items": ["twin_hammer_revolver"], "money": 1800}},
 	# ---------------- the Guild's other jobs
 	{"id": "the_quiet_dojo", "title": "The Quiet Dojo", "giver": "cole", "kind": "kill", "count": 25, "stealth": true,
 		"desc": "Cole wants to see patience. Put down 25 infected by stealth: sneak up behind one that hasn't noticed you and strike with a blade.",
@@ -85,7 +89,22 @@ const CONTRACTS := [
 		"map": "residential", "at": [30, 5], "radius": 9,
 		"desc": "The last school bus out of Maple Heights still runs the Elm Street overpass once a season. Light the flare by the overpass at the north end of Elm Street and hold the road for 10 waves until it's across.",
 		"reward": {"items": ["long_goodbye"], "money": 1500}},
+	{"id": "burn_them_out", "title": "Burn Them Out", "giver": "cole", "kind": "kill", "count": 3, "types": ["horde_nest"], "needs": "residential",
+		"desc": "Every district has a horde nest: a heap of junk and black roots where they sleep in a pile. While it stands, it keeps sending more. Destroy 3 nests (they grow back after a few weeks). Check the Map tab for where they are.",
+		"reward": {"money": 2000}},
 	# ---------------- neighbours' jobs
+	{"id": "clean_room_1", "title": "Clean Room: Halvorsen", "giver": "elias", "kind": "find", "needs": "riverlands",
+		"spots": [["lab_keycard", "hv_main", 2, 3], ["halvorsen_notes", "hv_main", 5, 1]], "consume": false, "consume_items": ["halvorsen_notes"],
+		"desc": "Dr. Elias trained under Dr. Halvorsen. The medevac that crashed in the Riverlands came from her lab, down the service road south of the crash site. Find her notes in the main building and a keycard for Lab 6 (Security keeps them).",
+		"reward": {"money": 600}},
+	{"id": "clean_room_2", "title": "Clean Room: The Vault", "giver": "elias", "kind": "find", "after": "clean_room_1", "needs": "riverlands",
+		"spots": [["serum_sample", "hv_vault", 1, 1], ["quarantine", "hv_vault", 12, 1]], "consume": false, "consume_items": ["serum_sample"], "then": "clean_room_3",
+		"desc": "Halvorsen's notes say her last batch of serum is in Lab 6's decontamination vault, behind the research wing. Use the keycard and get the serum samples out of the sealed lockers. Elias says whatever you do, be ready to run.",
+		"reward": {"items": ["antiviral"], "money": 800}},
+	{"id": "clean_room_3", "title": "Clean Room: Lockdown", "giver": "elias", "kind": "escape", "goal": "halvorsen", "hidden": true,
+		"start_text": "LOCKDOWN. Opening the vault tripped the alarm, and the containment cells are open. Get out of Lab 6!",
+		"desc": "Taking the serum tripped Lab 6's lockdown. The containment cells are open and everything inside is hunting you. Get out of Lab 6 alive.",
+		"reward": {"items": ["turncoat"], "money": 1500}},
 	{"id": "twin_oaks", "title": "Twin Oaks", "giver": "marisol", "kind": "find", "needs": "riverlands",
 		"spots": [["journal_half_a", "rv_farmhouse", 2, 1], ["journal_half_b", "rv_barn", 9, 1]], "consume": true,
 		"desc": "Marisol knew the Morrow sisters who ran Twin Oaks farm. Each kept half of a journal. Find both halves: one in the farmhouse, one in the barn.",
@@ -108,8 +127,6 @@ const CONTRACTS := [
 
 ## Rewards whose job needs something the game doesn't have yet. Shown greyed in the journal.
 const NOT_YET := [
-	["Clean Room", "Escape Lab 6 at Halvorsen Biomedical (needs a lab to explore)", ["turncoat", "quarantine"]],
-	["Showdown at Dry Creek", "Raider captains (needs human raiders)", ["twin_hammer_revolver"]],
 ]
 
 ## Achievements. "stat" reads Game.achievement_value(); "goal" is the target.
@@ -125,9 +142,9 @@ const ACHIEVEMENTS := [
 	{"id": "unseen", "title": "Unseen", "desc": "Reach day 100 without ever being bitten.", "stat": "unbitten_day", "goal": 100, "reward": "grinning_saint"},
 	{"id": "heavy_metal", "title": "Heavy Metal", "desc": "Put down 1,000 infected with any chainsaw.", "stat": "chainsaw", "goal": 1000, "reward": "redline"},
 	{"id": "worthless_fortune", "title": "Worthless Fortune", "desc": "Earn 1,000,000 gold in total.", "stat": "earned", "goal": 1000000, "reward": "gold_sneakers"},
-	{"id": "ghost", "title": "Ghost", "desc": "Clear a Horde Nest without being detected.", "todo": "Needs horde nests.", "reward": "whisper"},
-	{"id": "drive_thru", "title": "Drive-Thru", "desc": "Clear 5 fast food restaurants.", "todo": "Needs fast food restaurants.", "reward": "burger_mascot_suit"},
-	{"id": "comfort_zone", "title": "Comfort Zone", "desc": "Sleep in 50 different safehouses.", "todo": "Needs safehouses.", "reward": "bunny_slippers"},
+	{"id": "ghost", "title": "Ghost", "desc": "Destroy a Horde Nest without its horde ever noticing you.", "stat": "ghost_nests", "goal": 1, "reward": "whisper"},
+	{"id": "drive_thru", "title": "Drive-Thru", "desc": "Clear 5 fast food restaurants: put down every infected inside.", "stat": "fast_food", "goal": 5, "reward": "burger_mascot_suit"},
+	{"id": "comfort_zone", "title": "Comfort Zone", "desc": "Sleep in 25 different safehouses: district buildings you've cleared, using a Sleeping Bag.", "stat": "safehouses", "goal": 25, "reward": "bunny_slippers"},
 ]
 
 ## New quest items: [name, description, icon shape, colour].

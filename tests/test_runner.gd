@@ -28,7 +28,14 @@ func _ready() -> void:
 	main.set_process(false)   # the tests drive time themselves
 	W = main.world
 	U = main.ui
-	run_all()
+	var only := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--only="): only = a.substr(7)
+	if only != "":
+		for i in int(OS.get_environment("REPEAT") if OS.get_environment("REPEAT") != "" else "1"):
+			call("run_" + only)     # one section, for quick checks
+	else:
+		run_all()
 	var passed := 0
 	for r in results:
 		if r.pass: passed += 1
@@ -934,7 +941,8 @@ func run_all() -> void:
 	G.player.pos += Vector2(-48, 0)
 	G.map.remove_obj(pt2.x - 3, pt2.y); G.map.set_tile(pt2.x - 3, pt2.y, "mfloor")
 	tick(2500)
-	check("Pipe Charge explodes and breaks nearby rocks", G.map.get_obj(pt2.x + 3, pt2.y) == null and G.map.get_obj(pc_t.x, pc_t.y) == null)
+	var left_behind = G.map.get_obj(pt2.x + 3, pt2.y)
+	check("Pipe Charge explodes and breaks nearby rocks", (left_behind == null or left_behind.type == "ladder_down") and G.map.get_obj(pc_t.x, pc_t.y) == null)   # a broken rock can reveal a ladder
 
 	# ---------- cooking expansion
 	start("adventure", 2)
@@ -1088,7 +1096,7 @@ func run_all() -> void:
 	G.state.raid = {"day": G.state.day, "size": 2, "spawned": false, "killed": 0, "warned": true}
 	var rl: Array = G.resolve_raid(G.maps.homestead)
 	Balance.raids.grace_days = 99999
-	check("Raids: animals are safe behind a closed coop door, but an open door costs you", safe_n == 2 and G.state.animals.size() == 1 and " ".join(rl).contains("coop door"), " ".join(rl))
+	check("Raids: animals are safe behind a closed coop door, but an open door costs you", safe_n == 2 and G.state.animals.size() == 1 and " ".join(rl).contains("animal door"), " ".join(rl))
 
 	clear_tile(G.maps.homestead, 30, 33)
 	var rack: Dictionary = G.maps.homestead.add_obj(30, 33, "tanning_rack")
@@ -1223,6 +1231,17 @@ func run_all() -> void:
 	run_items()
 	run_districts()
 	run_contracts()
+	run_livestock()
+	run_crop_care()
+	run_injuries()
+	run_hordes()
+	run_halvorsen()
+	run_raiders()
+	run_outposts()
+	run_phase2()
+	run_rooms()
+	run_restoration()
+	run_packart()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -1994,8 +2013,1209 @@ func run_contracts() -> void:
 	U.close_all()
 	check("Journal lists contracts in progress and every achievement with its progress", jr, "")
 
+# ---------------------------------------------------------------- barns and large animals
+func buy_animal(kind: String, nm := "") -> String:
+	var e: Dictionary = {}
+	for x in Game.shop_stock("ranch"):
+		if x.get("animal", "") == kind: e = x
+	var err: String = Game.shop_buy("ranch", e, 1)
+	if ov() == "name_animal":
+		if nm != "": U.overlay.name = nm
+		U._adopt()
+	return err
+
+func animal_named(nm: String):
+	for a in Game.state.animals:
+		if a.name == nm: return a
+	return null
+
+func face_animal(a: Dictionary) -> void:
+	var r: Dictionary = Game.animals_rt[int(a.uid)]
+	Game.change_map(r.map, 6, 6, "up", {"silent": true})
+	r = Game.animals_rt[int(a.uid)]
+	r.pos = Vector2(6 * 16 + 8, 5 * 16 + 12)
+	r.goal = r.pos
+	for b in Game.state.animals:
+		if b != a and Game.animals_rt.has(int(b.uid)):
+			var rb: Dictionary = Game.animals_rt[int(b.uid)]
+			rb.pos = Vector2(2 * 16 + 8, 8 * 16 + 12); rb.goal = rb.pos
+	Game.player.pos = r.pos + Vector2(0, 12)
+	Game.player.dir = "up"
+
+func run_livestock() -> void:
+	var G = Game
+	start("adventure", 2)
+	while G.weekday() == "Tue": sleep()
+	G.state.time = 600; G.sync_npcs()
+	G.state.money = 50000
+	G.state.weather = "sun"
+	var no_barn: String = buy_animal("cow")
+	# a barn from the kit
+	var hm: GameMap = G.maps.homestead
+	for xx in range(16, 30):
+		for yy in range(20, 30):
+			clear_tile(hm, xx, yy)
+	G.add_item("barn_kit", 1, {"silent": true})
+	at("homestead", 22, 28, "up")
+	select("barn_kit")
+	var rect: Rect2i = G.building_rect("barn", W.facing_tile(), "up")
+	W.use_selected(0, false)
+	var barn = G.get_building_rec("barn")
+	check("Barn Kit: builds an 8 by 5 barn on the farm with a feeder inside; animals need it first", no_barn.contains("barn") and barn != null and rect.size == Vector2i(8, 5) and G.maps.has("barn") and G.maps.barn.objects.values().any(func(o): return o.type == "hay_hopper"), "err=%s rect=%s" % [no_barn, rect])
+	if barn == null: return
+	var e1: String = buy_animal("cow", "Bessie")
+	buy_animal("goat", "Gruff"); buy_animal("sheep", "Woolly"); buy_animal("pig", "Truffles")
+	var cow = animal_named("Bessie")
+	check("Cows, goats, sheep and pigs move into the barn", e1 == "" and cow != null and G.state.animals.all(func(a): return Livestock.home_of(a) == "barn") and G.state.animals.size() == 4, "err=%s" % e1)
+	# feed them and let them grow
+	G.change_map("barn", 6, 6, "up", {"silent": true})
+	G.add_item("hay", 80, {"silent": true})
+	W.interact_object(G.map.get_obj(2, 2))
+	var hay_cap: bool = int(barn.hay) == Balance.animals.hopper_cap
+	for i in 8:
+		barn.hay = 40
+		sleep()
+	var sheep = animal_named("Woolly")
+	var goat = animal_named("Gruff")
+	check("Barn animals grow up and get ready for the milk pail or shears", hay_cap and G.animal_mature(cow) and cow.ready and sheep.ready and goat.ready, "cow=%s sheep=%s goat=%s" % [cow.ready, sheep.ready, goat.ready])
+	# milk and shear
+	G.add_item("milk_pail", 1, {"silent": true}); G.add_item("shears", 1, {"silent": true})
+	face_animal(cow)
+	select("shears")
+	W.use_selected(0, false)
+	var wrong: bool = cow.ready and G.count_item("milk") == 0
+	select("milk_pail")
+	W.use_selected(0, false)
+	var milked: bool = (G.count_item("milk") + G.count_item("large_milk")) == 1 and not cow.ready
+	W.use_selected(0, false)
+	var twice: bool = (G.count_item("milk") + G.count_item("large_milk")) == 1
+	face_animal(sheep)
+	select("shears")
+	W.use_selected(0, false)
+	check("Milk Pail milks a ready cow (once a day), Shears give wool, the wrong tool does nothing", wrong and milked and twice and G.count_item("wool") == 1 and not sheep.ready, "wrong=%s milked=%s twice=%s wool=%d" % [wrong, milked, twice, G.count_item("wool")])
+	# mixed feed makes the best product
+	barn.hay = 0
+	barn.feed = 4
+	cow.friendship = 100
+	sleep()
+	face_animal(cow)
+	select("milk_pail")
+	var lm0: int = G.count_item("large_milk")
+	W.use_selected(0, false)
+	check("Mixed Feed: an animal that eats it gives its best product next time (Large Milk)", G.count_item("large_milk") == lm0 + 1 and int(barn.feed) == 0, "large=%d feed=%d" % [G.count_item("large_milk"), int(barn.feed)])
+	# pigs dig truffles outside
+	barn.hay = 40
+	barn.door_open = true
+	var before := hm.objects.values().filter(func(o): return o.type == "animal_product" and o.item == "truffle").size()
+	sleep()
+	var after := hm.objects.values().filter(func(o): return o.type == "animal_product" and o.item == "truffle").size()
+	barn.door_open = false
+	check("Pigs dig up truffles near the barn when the animal door is open (not in winter)", after > before, "%d -> %d" % [before, after])
+	# feed trough and hay silo
+	var cap0: int = G.feeder_cap(barn)
+	G.maps.barn.add_obj(9, 6, "feed_trough")
+	var cap1: int = G.feeder_cap(barn)
+	clear_tile(hm, 30, 22)
+	hm.add_obj(30, 22, "hay_silo")
+	barn.hay = 0
+	var stored := 0
+	for i in 20:
+		clear_tile(hm, 31, 24)
+		var wd: Dictionary = hm.add_obj(31, 24, "weeds")
+		at("homestead", 31, 25, "up")
+		W.break_object(wd)
+	stored = int(barn.hay)
+	check("Feed Trough adds 30 feeder space; with a Hay Silo, hay from weeds goes straight into the feeder", cap1 == cap0 + 30 and stored >= 8, "cap %d -> %d stored=%d" % [cap0, cap1, stored])
+	# mice without a cat, none with one
+	var mice := false
+	for i in 30:
+		barn.hay = 40
+		var rep := {"lines": []}
+		G.animals_overnight(rep)
+		if " ".join(rep.lines).contains("Mice"): mice = true
+	var cat_err: String = buy_animal("barn_cat", "Mittens")
+	var cat = animal_named("Mittens")
+	var mice2 := false
+	var finds := 0
+	for i in 30:
+		barn.hay = 40
+		var rep2 := {"lines": []}
+		G.animals_overnight(rep2)
+		if " ".join(rep2.lines).contains("Mice"): mice2 = true
+	for o in G.maps.barn.objects.values():
+		if o.type == "animal_product" and o.item in ["feather", "fiber", "copper_ore", "mixed_seeds", "bait", "iron_ore", "conspiracy_note"]: finds += 1
+	check("Barn Cat: lives in the barn, keeps mice out of the hay and brings small finds", cat_err == "" and cat != null and Livestock.home_of(cat) == "barn" and mice and not mice2 and finds > 0, "mice=%s mice2=%s finds=%d" % [mice, mice2, finds])
+	# a full barn sends the next cat into the house
+	buy_animal("cow", "C2"); buy_animal("cow", "C3"); buy_animal("cow", "C4")
+	var cat2_err: String = buy_animal("barn_cat", "Socks")
+	var cat2 = animal_named("Socks")
+	check("A second cat lives in your house when the barn is full", cat2_err == "" and cat2 != null and Livestock.home_of(cat2) == "house" and G.animals_rt[int(cat2.uid)].map == "house", "err=%s" % cat2_err)
+	# guard dog
+	var dog_err: String = buy_animal("guard_dog", "Rex")
+	clear_tile(hm, 12, 24)
+	var dh: Dictionary = hm.add_obj(12, 24, "doghouse")
+	var dog_ok: String = buy_animal("guard_dog", "Rex")
+	var dog = animal_named("Rex")
+	at("homestead", 12, 32, "up")
+	G.enemies.clear()
+	var r_d: Dictionary = G.animals_rt[int(dog.uid)]
+	var near_house: bool = r_d.map == "homestead" and r_d.pos.distance_to(Vector2(12 * 16 + 8, 25 * 16 + 12)) < 24
+	for yy in range(24, 27):
+		for xx in range(13, 17):
+			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
+	var z: Dictionary = W.spawn_enemy("shambler", 15, 25)
+	z.state = "wander"; z.wt = 99.0; z.wander = Vector2.ZERO
+	z.pin = 999.0     # it stays put, so it can't wander off toward you
+	var hp0: float = float(z.hp)
+	var bit := false
+	for i in 40:
+		tick(250)
+		G.state.health = 100.0
+		bit = not G.enemies.has(z) or float(z.hp) < hp0
+		if bit: break
+	var barked: bool = G._bark_cd > 0
+	check("Guard Dog: needs a Doghouse, stays by it, barks and goes after infected that come close", dog_err.contains("Doghouse") and dog_ok == "" and near_house and bit and barked, "near=%s bit=%s dog=%s z=%s n=%d mature=%s" % [near_house, bit, r_d.pos, z.pos, G.enemies.size(), G.animal_mature(dog)])
+	Balance.raids.grace_days = 4
+	G.state.raid = {"day": G.state.day, "size": 3, "spawned": false, "killed": 0, "warned": true}
+	var rl: Array = G.resolve_raid(hm)
+	Balance.raids.grace_days = 99999
+	check("Raids: a guard dog drives off attackers overnight", " ".join(rl).contains("dog drove off 2"), " ".join(rl))
+	# hutch: rabbits overflow into it
+	G.add_item("hutch_kit", 1, {"silent": true})
+	for xx in range(27, 34):
+		for yy in range(22, 30):
+			clear_tile(hm, xx, yy)
+	G.animals_rt.clear(); G.sync_animals(true)
+	at("homestead", 29, 28, "up")
+	select("hutch_kit")
+	var hrect: Rect2i = G.building_rect("hutch", W.facing_tile(), "up")
+	W.use_selected(0, false)
+	var r_err: String = buy_animal("rabbit", "Thumper")
+	var bun = animal_named("Thumper")
+	check("Hutch Kit: builds a small hutch, and rabbits live there", G.has_building("hutch") and r_err == "" and bun != null and Livestock.home_of(bun) == "hutch" and G.maps.has("hutch"), "err=%s" % r_err)
+	# save and load, older animals
+	sleep()
+	var snap := JSON.stringify(G.state.animals)
+	G.quit_to_title()
+	G.load_game("adventure", 2)
+	U.close_all()
+	var old := {"type": "rabbit", "name": "Oldie"}
+	check("Save keeps barns, hutches and every animal; animals from older saves live in the coop", JSON.stringify(G.state.animals) == snap and G.maps.has("barn") and G.maps.has("hutch") and Livestock.home_of(old) == "coop", "same=%s barn=%s hutch=%s\n%s\n%s" % [JSON.stringify(G.state.animals) == snap, G.maps.has("barn"), G.maps.has("hutch"), snap.substr(0, 300), JSON.stringify(G.state.animals).substr(0, 300)])
+	var bad := []
+	for k in Livestock.ANIMALS:
+		for adult in [true, false]:
+			for d in ["left", "right", "up", "down"]:
+				var tex: Texture2D = Art.get_animal(k, 1, d, 1, adult)
+				if tex == null or tex.get_image().get_used_rect().size.x < 8: bad.append("%s %s %s" % [k, d, adult])
+	for k in ["barn", "hutch"]:
+		if Art.get_building({"kind": k, "x": 1, "y": 1, "w": Livestock.BUILDINGS[k].size[0], "h": Livestock.BUILDINGS[k].size[1], "door_x": 3, "door_y": 4}, "summer", false) == null: bad.append(k)
+	check("Art: every new animal (young and grown, all directions), the barn and the hutch draw", bad.is_empty(), str(bad))
+
+# ---------------------------------------------------------------- crop quality, pests, frost, crows
+func field(m: GameMap, x0: int, y0: int, w: int, h: int, crop: String, g: int) -> Array:
+	var out := []
+	for y in range(y0, y0 + h):
+		for x in range(x0, x0 + w):
+			clear_tile(m, x, y)
+			m.soil[GameMap.k(x, y)] = {"w": 1, "crop": {"id": crop, "g": g}, "fixed": true}
+			out.append(Vector2i(x, y))
+	return out
+
+func run_crop_care() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.state.day = 30
+	var hm: GameMap = G.maps.homestead
+	# the odds
+	var r := RandomNumberGenerator.new(); r.seed = 7
+	var low := [0, 0, 0]; var high := [0, 0, 0]
+	for i in 2000:
+		low[FarmCare.roll_quality(r, 0, 0)] += 1
+		high[FarmCare.roll_quality(r, 10, 2)] += 1
+	check("Crop quality: beginners mostly grow Normal crops; a skilled farmer with Quality Fertilizer gets lots of Gold", low[0] > 1900 and high[2] > 900, "low=%s high=%s" % [low, high])
+	# stacks keep their quality apart
+	G.state.inventory = []
+	G.state.inventory.resize(int(G.state.inv_size))
+	G.add_item("potato", 3, {"silent": true})
+	G.add_item("potato", 2, {"silent": true, "extra": {"q": 1}})
+	G.add_item("potato", 1, {"silent": true, "extra": {"q": 2}})
+	G.add_item("potato", 2, {"silent": true, "extra": {"q": 1}})
+	var stacks = G.inv().filter(func(x): return x != null and x.id == "potato")
+	var silver = stacks.filter(func(x): return G.quality_of(x) == 1)
+	var sp: int = G.sell_price(silver[0]) if not silver.is_empty() else 0
+	var silver_n: int = int(silver[0].qty) if not silver.is_empty() else 0
+	G.remove_item("potato", 4)
+	var left_q = G.inv().filter(func(x): return x != null and x.id == "potato").map(func(x): return [G.quality_of(x), int(x.qty)])
+	G.sort_inventory()
+	var after_sort = G.inv().filter(func(x): return x != null and x.id == "potato").size()
+	check("Quality stacks: Normal, Silver and Gold stay in separate stacks, the lowest is used first, and Silver sells for 25% more", stacks.size() == 3 and silver.size() == 1 and silver_n == 4 and sp == int(Data.items.potato.price * 1.25) and G.count_item("potato") == 4 and str(left_q) == str([[1, 3], [2, 1]]) and after_sort == 2, "stacks=%d left=%s sorted=%d" % [stacks.size(), str(left_q), after_sort])
+	# harvest with fertilizer
+	G.state.skills.farming = {"xp": 999999}
+	var tiles := field(hm, 10, 24, 6, 3, "potato", 99)
+	at("homestead", 10, 28, "up")
+	G.add_item("quality_fertilizer", 1, {"silent": true})
+	select("quality_fertilizer")
+	W.apply_fert(Vector2i(10, 26), "quality_fertilizer")
+	var fert_ok: bool = hm.soil[GameMap.k(10, 26)].get("fert", "") == "quality2"
+	for t in tiles: hm.soil[GameMap.k(t.x, t.y)].fert = "quality2"
+	G.state.inventory = []; G.state.inventory.resize(int(G.state.inv_size))
+	for t in tiles: W.harvest_at(t)
+	var golds: int = G.inv().filter(func(x): return x != null and x.id == "potato" and G.quality_of(x) == 2).reduce(func(a, x): return a + int(x.qty), 0)
+	check("Harvest: with Quality Fertilizer and Farming 10, many crops come out Gold", fert_ok and golds >= 4 and G.count_item("potato") == 18, "golds=%d total=%d" % [golds, G.count_item("potato")])
+	# shipping pays for quality
+	G.state.shipping = [{"id": "potato", "qty": 2, "q": 2}]
+	var m0: int = int(G.state.money)
+	sleep()
+	check("Shipping: Gold crops sell for 50% more", int(G.state.money) - m0 == int(Data.items.potato.price * 1.5) * 2, "got %d" % (int(G.state.money) - m0))
+
+	# pests
+	hm.soil.clear()
+	var pt := field(hm, 10, 24, 3, 1, "potato", 1)
+	var C: Dictionary = Balance.crop_care
+	var keep_chance: Dictionary = C.pest_chance
+	C.pest_chance = {"spring": 0.0, "summer": 0.0, "autumn": 0.0}
+	var c0: Dictionary = hm.soil[GameMap.k(10, 24)].crop
+	c0.pests = int(G.state.day)
+	var spread0: float = C.pest_spread
+	C.pest_spread = 0.0
+	sleep()
+	var stuck: bool = int(c0.g) == 1
+	sleep(); sleep()
+	var died: bool = c0.get("dead", false)
+	var c1: Dictionary = hm.soil[GameMap.k(11, 24)].crop
+	c1.pests = int(G.state.day)
+	G.add_item("pest_spray", 1, {"silent": true})
+	at("homestead", 11, 26, "up")
+	W.apply_spray(Vector2i(11, 24), "pest_spray")
+	C.pest_chance = {"spring": 1.0, "summer": 1.0, "autumn": 1.0}
+	sleep()
+	var protected: bool = not c1.has("pests") and not hm.soil[GameMap.k(12, 24)].crop.has("pests")
+	C.pest_chance = keep_chance
+	C.pest_spread = spread0
+	check("Pests: an infested crop stops growing and dies in 3 days; Pest Spray clears it and keeps pests off nearby crops", stuck and died and protected, "stuck=%s died=%s prot=%s" % [stuck, died, protected])
+
+	# frost
+	hm.soil.clear()
+	var ft := field(hm, 10, 24, 5, 1, "potato", 4)
+	hm.soil[GameMap.k(14, 24)].crop = {"id": "cabbage", "g": 4} if Data.crops.has("cabbage") else {"id": "potato", "g": 4}
+	G.add_item("frost_cloth", 1, {"silent": true})
+	at("homestead", 10, 26, "up")
+	W.apply_spray(Vector2i(9, 24), "frost_cloth")
+	hm.remove_obj(12, 24)
+	hm.add_obj(12, 24, "cold_frame")
+	G.state.frost_night = true
+	sleep()
+	var g_bare: int = int(hm.soil[GameMap.k(13, 24)].crop.g)
+	var g_cloth: int = int(hm.soil[GameMap.k(10, 24)].crop.g)
+	var g_frame: int = int(hm.soil[GameMap.k(12, 24)].crop.g)
+	var g_hardy: int = int(hm.soil[GameMap.k(14, 24)].crop.g)
+	var nights := 0
+	for d in range(1, 400):
+		if G.roll_frost(d): nights += 1
+	var only_edges := true
+	for d in range(1, 400):
+		if G.roll_frost(d) and not ((G.season(d) == "spring" and G.day_of_season(d) <= 8) or (G.season(d) == "autumn" and G.day_of_season(d) >= 21)): only_edges = false
+	check("Frost: sets unprotected crops back; Frost Cloth, a Cold Frame and winter crops are safe; frost only comes early in spring and late in autumn", g_bare == 2 and g_cloth == 5 and g_frame == 5 and g_hardy == 5 and nights > 0 and only_edges, "bare=%d cloth=%d frame=%d hardy=%d nights=%d" % [g_bare, g_cloth, g_frame, g_hardy, nights])
+	G.state.frost_night = false
+
+	# crows and scarecrows
+	hm.soil.clear()
+	field(hm, 10, 24, 5, 3, "potato", 1)
+	var cc: float = C.crow_chance
+	C.crow_chance = 1.0
+	var rep := {"lines": []}
+	G.crop_care_overnight(rep)
+	var eaten: int = 15 - hm.soil.values().filter(func(x): return x.crop != null).size()
+	hm.soil.clear()
+	field(hm, 10, 24, 5, 3, "potato", 1)
+	clear_tile(hm, 12, 28)
+	hm.add_obj(12, 28, "scarecrow")
+	var rep2 := {"lines": []}
+	G.crop_care_overnight(rep2)
+	var eaten2: int = 15 - hm.soil.values().filter(func(x): return x.crop != null).size()
+	C.crow_chance = cc
+	check("Crows eat crops on bigger fields; a Scarecrow within 8 tiles keeps them off", eaten > 0 and eaten2 == 0 and " ".join(rep.lines).contains("Crows"), "eaten=%d with scarecrow=%d" % [eaten, eaten2])
+
+	# trellis, raised bed, cold frame
+	hm.soil.clear()
+	field(hm, 10, 24, 2, 1, "snapbean", 99)
+	clear_tile(hm, 10, 24)
+	hm.soil[GameMap.k(10, 24)] = {"w": 1, "crop": {"id": "snapbean", "g": 99}}
+	G.add_item("trellis", 1, {"silent": true})
+	at("homestead", 10, 25, "up")
+	W.place_at(Vector2i(10, 24), "trellis")
+	G.state.inventory = []; G.state.inventory.resize(int(G.state.inv_size))
+	W.harvest_at(Vector2i(10, 24))
+	var with_trellis: int = G.count_item("snapbean")
+	W.harvest_at(Vector2i(11, 24))
+	check("Trellis: placed on tilled soil, Snap Beans under it give 1 extra", hm.get_obj(10, 24) != null and hm.get_obj(10, 24).type == "trellis" and with_trellis == 2 and G.count_item("snapbean") == 3, "trellis=%d total=%d" % [with_trellis, G.count_item("snapbean")])
+	for yy in range(30, 36):
+		for xx in range(18, 24):
+			clear_tile(hm, xx, yy)
+	G.add_item("raised_bed", 1, {"silent": true})
+	at("homestead", 20, 35, "up")
+	select("raised_bed")
+	W.use_selected(0, false)
+	var raised := hm.soil.values().filter(func(x): return x.get("raised", false)).size()
+	var rk := GameMap.k(20, 33)
+	if hm.soil.has(rk): hm.soil[rk].crop = {"id": "potato", "g": 1}
+	var reach := PackedByteArray(); reach.resize(hm.w * hm.h); reach.fill(1)
+	var tg: Dictionary = G._raid_targets(hm, reach)
+	check("Raised Bed: builds a 3 by 3 raised patch of soil that raiders can't trample", raised == 9 and G.count_item("raised_bed") == 0 and not tg.crops.has(rk), "raised=%d" % raised)
+	# cold frame: grows out of season
+	clear_tile(hm, 26, 30)
+	hm.soil[GameMap.k(26, 30)] = {"w": 1, "crop": null, "fixed": true}
+	hm.add_obj(26, 30, "cold_frame")
+	var off_seed := ""
+	for sid in Data.items:
+		var it2: Dictionary = Data.items[sid]
+		if it2.get("cat", "") == "seed" and it2.has("crop") and Data.crops.has(it2.crop) and not Data.crops[it2.crop].seasons.has(G.season()):
+			off_seed = sid
+			break
+	G.add_item(off_seed, 1, {"silent": true})
+	W.plant_at(Vector2i(26, 30), off_seed)
+	check("Cold Frame: you can plant out of season under it", hm.soil[GameMap.k(26, 30)].crop != null, "seed=%s" % off_seed)
+
+# ---------------------------------------------------------------- injuries and sickness
+func use_med(id: String) -> void:
+	Game.add_item(id, 1, {"silent": true})
+	Game.eat_item(id)
+
+func run_injuries() -> void:
+	var G = Game
+	start("survivor", 2)
+	var I: Dictionary = Balance.injuries
+	var todo := []
+	for id in Data.items:
+		var it: Dictionary = Data.items[id]
+		if it.get("cat", "") == "medical" and it.has("todo"): todo.append(id)
+	check("Every medical item from the sheet does something now", todo.is_empty(), str(todo))
+	# bleeding from a hit, blood loss, bandage
+	arena("survivor")
+	var keep_b: float = I.bleed_chance
+	I.bleed_chance = 2.0
+	var z: Dictionary = foe("shambler", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	W.cb.player_hurt(z.pos, 8.0, "hit", z)
+	I.bleed_chance = keep_b
+	var bleeding: bool = G.conditions().has("bleed")
+	G.enemies.clear()
+	G.state.health = 100.0
+	var hp0: float = G.state.health
+	for i in 20:
+		tick(500)
+	var lost: float = hp0 - float(G.state.health)
+	var mh: float = G.max_health()
+	use_med("bandage")
+	var stopped: bool = not G.conditions().has("bleed")
+	check("Bleeding: a hit from the infected can start it; you lose health over time and max health drops with blood loss; a Bandage stops it", bleeding and lost >= 3 and mh < 100.0 and stopped, "lost=%.1f max=%.1f" % [lost, mh])
+	# the uncleaned wound turns overnight; antibiotics cure it
+	var keep_w: float = I.wound_chance
+	I.wound_chance = 2.0
+	sleep()
+	I.wound_chance = keep_w
+	var infected: bool = G.conditions().has("wound")
+	var e_cap: float = G.max_energy()
+	use_med("antibiotics")
+	check("Infected wound: an uncleaned bleed turns overnight (less energy); Antibiotics cure it", infected and e_cap < float(Balance.player.max_energy) and not G.conditions().has("wound"), "infected=%s cap=%.0f" % [infected, e_cap])
+	# cleaning lowers the risk
+	G.add_condition("bleed", true)
+	use_med("sterile_bandage")
+	var risk: float = float(G.conditions().dirty.risk)
+	use_med("antiseptic")
+	var risk2: float = float(G.conditions().dirty.risk)
+	check("Sterile Bandage and Antiseptic each halve the chance the wound gets infected", not G.conditions().has("bleed") and is_equal_approx(risk, 0.5) and is_equal_approx(risk2, 0.25), "risk=%.2f then %.2f" % [risk, risk2])
+	G.conditions().clear()
+	# broken limb
+	arena("survivor")
+	var keep_f: float = I.fracture_chance
+	I.fracture_chance = 2.0
+	var br: Dictionary = foe("brute", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	W.cb.player_hurt(br.pos, 60.0, "hit", br)
+	I.fracture_chance = keep_f
+	G.enemies.clear()
+	G.state.health = 100.0
+	var broke: bool = G.conditions().has("fracture")
+	var slow: float = W.cb.speed_mult()
+	W.test_sprint = true
+	tick(300)
+	var sprinted: bool = G.player.get("sprinting", false)
+	W.test_sprint = false
+	use_med("painkillers")
+	var slow_pk: float = W.cb.speed_mult()
+	use_med("splint")
+	check("Broken limb: a heavy hit can break one (slower, no sprinting); Painkillers mask it; a Splint fixes it", broke and slow < 0.8 and not sprinted and slow_pk >= 0.95 and not G.conditions().has("fracture"), "broke=%s slow=%.2f sprint=%s pk=%.2f" % [broke, slow, sprinted, slow_pk])
+	# sickness from dirty water passes in a couple of days
+	G.add_condition("sick", true)
+	var sick_cap: float = G.max_energy()
+	sleep(); sleep()
+	check("Sickness: less energy, and it passes after a couple of days", sick_cap < float(Balance.player.max_energy) and not G.conditions().has("sick"), "cap=%.0f" % sick_cap)
+	# chilled on a winter night outside
+	G.state.day = 1
+	while G.season() != "winter":
+		G.state.day = int(G.state.day) + 1
+	G.state.day = int(G.state.day) + 4
+	G.state.time = 1300
+	at("homestead", 12, 30, "down")
+	var en0: float = G.state.energy
+	G.tick10(); G.tick10(); G.tick10()
+	var chilled: bool = G.conditions().has("chilled") and G.state.energy < en0
+	G.add_buff("cold resistance", 1.0, 60)
+	G.tick10()
+	check("Winter nights outside chill you (energy drains) unless you have cold resistance, a fire or a roof", chilled and not G.conditions().has("chilled"), "")
+	G.state.time = 700
+	# blood bag, surgery kit, clinic
+	G.conditions().blood_loss = 30
+	var low_max: float = G.max_health()
+	use_med("blood_bag")
+	var full_max: float = G.max_health()
+	G.add_condition("fracture", true); G.add_condition("sick", true); G.add_condition("bleed", true)
+	use_med("surgery_kit")
+	var all_clear: bool = not G.conditions().has("fracture") and not G.conditions().has("sick") and not G.conditions().has("bleed")
+	G.add_condition("fracture", true)
+	G.state.money = 1000
+	var treat = null
+	for e in G.shop_stock("clinic"):
+		if e.get("service", "") == "treatment": treat = e
+	G.shop_buy("clinic", treat, 1)
+	check("Blood Bag restores lost max health; a Surgery Kit fixes everything; Dr. Elias's treatment does too", low_max <= 70.0 and full_max >= 100.0 and all_clear and G.conditions().is_empty(), "low=%.0f full=%.0f" % [low_max, full_max])
+	# antiviral and adrenaline
+	arena("survivor")
+	G.add_item("antiviral", 1, {"silent": true})
+	var bz: Dictionary = foe("shambler", Vector2(10, 0), "chase")
+	G.player.iframes = 0.0
+	var day_before: int = int(G.state.day)
+	W.cb.player_hurt(bz.pos, 10.0, "bite", bz)
+	var survived: bool = ov() != "death" and G.count_item("antiviral") == 0 and G.conditions().has("sick") and int(G.state.day) == day_before
+	U.close_all()
+	G.add_item("adrenaline_shot", 1, {"silent": true})
+	G.state.health = 5.0
+	G.damage_player(20.0, null, "infected")
+	check("Antiviral: a bite in Survivor Mode doesn't send you back if you carry one (you get a fever); Adrenaline Shot gets you up when you'd collapse", survived and ov() != "collapse" and float(G.state.health) >= 25.0 and G.count_item("adrenaline_shot") == 0, "survived=%s ov=%s hp=%.0f" % [survived, ov(), float(G.state.health)])
+	# the antiviral can turn up at the crash site
+	var keep_a: float = I.antiviral_find
+	I.antiviral_find = 2.0
+	G.unlock_region("riverlands", true)
+	var tent = null
+	G.change_map("riverlands", 30, 34, "up")
+	for k in G.map.objects:
+		if G.map.objects[k].type == "medical_tent": tent = G.map.objects[k]
+	G.map.drops.clear()
+	if tent != null:
+		tent.erase("searched")
+		W.search(tent, ["lab", "military"], "the medical tent")
+	I.antiviral_find = keep_a
+	check("Antiviral: a very rare find in the crash site's medical tent and helicopter", tent != null and G.map.drops.any(func(d): return d.id == "antiviral"), "tent=%s" % (tent != null))
+	# conditions show on the HUD
+	G.add_condition("fracture", true)
+	var effs: Array = G.status_effects()
+	check("Conditions show as red badges on the HUD", effs.any(func(e): return e.id == "cond_fracture" and e.get("bad", false)), "")
+	G.conditions().clear()
+
+func ui_text(root: Node) -> String:
+	var out := ""
+	for n in root.find_children("*", "", true, false):
+		if n is Label or n is RichTextLabel: out += str(n.text) + "\n"
+	return out
+
+# ---------------------------------------------------------------- horde nests
+func nest_on_map(id: String):
+	for e in Game.enemies:
+		if e.type == "horde_nest" and e.get("nest_id", "") == id: return e
+	return null
+
+func run_hordes() -> void:
+	var G = Game
+	start("adventure", 2)
+	for id in ["residential", "industrial", "riverlands"]: G.unlock_region(id, true)
+	# every nest can be reached from its district's entrance
+	var bad := []
+	for id in Hordes.NESTS:
+		var N: Dictionary = Hordes.NESTS[id]
+		var D: Dictionary = Districts.DISTRICTS[N.map]
+		var seen := reach(G.maps[N.map], Vector2i(D.entry[0], D.entry[1]))
+		if not seen.has(Vector2i(N.at[0], N.at[1])): bad.append(id)
+	check("Horde nests: one in each district, and each can be walked to", Hordes.NESTS.size() == 3 and bad.is_empty(), str(bad))
+	# arriving: the nest and its sleeping horde
+	var D2: Dictionary = Districts.DISTRICTS.residential
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	var nest = nest_on_map("nest_park")
+	var horde: Array = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest")
+	var asleep: int = horde.filter(func(e): return e.state == "asleep").size()
+	var near_nest: bool = nest != null and horde.all(func(e): return e.pos.distance_to(nest.pos) <= (int(Balance.hordes.radius) + 1) * 16.0 * 1.5)
+	check("Arriving in the Residential District: the park nest is there with %d infected around it, some asleep" % horde.size(), nest != null and horde.size() >= 6 and asleep >= 1 and near_nest, "horde=%d asleep=%d" % [horde.size(), asleep])
+	# a bosses-and-nests check: these can't be decapitated or turned
+	check("Nests and named bosses are marked as bosses (no decapitate, execute or turn)", nest != null and nest.get("boss", false), "")
+	# one of them notices you: the nest wakes and sends more
+	G.player.pos = nest.pos + Vector2(0, 12 * 16)
+	horde[0].state = "chase"
+	tick(100)
+	var woke: bool = nest.get("awake", false)
+	var before: int = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park").size()
+	for e in G.enemies:
+		if e.get("nest_id", "") == "nest_park" and e.type != "horde_nest" and e.pos.distance_to(G.player.pos) < 120: G.enemies.erase(e)
+	for i in 8:
+		tick(1000)
+		G.state.health = 100.0
+		G.player.pos = nest.pos + Vector2(0, 12 * 16)
+	var made: int = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest" and e.state != "asleep").size()
+	check("When one notices you the nest wakes, its health shows at the top, and more crawl out (up to a limit)", woke and made >= 2 and made <= maxi(int(Balance.hordes.spawn_cap), int(Balance.hordes.horde[1])) and U.boss_box.visible, "made=%d" % made)
+	# destroy it: a cache, gold, Cole's job counts it, and it's gone until it regrows
+	G.take_contract("burn_them_out")
+	var money0: int = int(G.state.money)
+	G.map.drops.clear()
+	W.cb.damage(nest, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var dropped: int = G.map.drops.size()
+	var prog: int = int(G.contract_state().progress.get("burn_them_out", 0))
+	var no_ghost: bool = not G.state.achievements.get("done", []).has("ghost")
+	G.enemies.clear()
+	at("town", 10, 30)
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	var gone: bool = nest_on_map("nest_park") == null
+	check("Destroying a nest: a cache of loot and gold, it counts for Cole's 'Burn Them Out', no Ghost (they saw you), and it stays gone", dropped >= 3 and int(G.state.money) > money0 and prog == 1 and no_ghost and gone, "drops=%d prog=%d" % [dropped, prog])
+	G.state.day = int(G.state.day) + int(Balance.hordes.regrow_days)
+	G.enemies.clear()
+	at("town", 10, 30)
+	at("residential", D2.entry[0], D2.entry[1], "left")
+	nest = nest_on_map("nest_park")
+	check("A destroyed nest grows back after %d days" % int(Balance.hordes.regrow_days), nest != null, "")
+	# Ghost: put down the whole horde without being noticed, then the nest
+	var quiet: Array = G.enemies.filter(func(e): return e.get("nest_id", "") == "nest_park" and e.type != "horde_nest")
+	for e in quiet:
+		W.cb.damage(e, 99999.0, Vector2.ZERO, {"kind": "stealth", "silent": true})
+	tick(100)
+	var still_asleep: bool = not nest.get("awake", false)
+	G.map.drops.clear()
+	W.cb.damage(nest, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var ghost: bool = G.state.achievements.get("done", []).has("ghost")
+	check("Ghost: clear the horde without being noticed, then destroy the nest. Reward: Whisper", still_asleep and ghost and (G.count_item("whisper") > 0 or G.map.drops.any(func(d): return d.id == "whisper")), "asleep=%s ghost=%s" % [still_asleep, ghost])
+	# the Map tab lists them
+	U.open("journal", {"tab": "map"})
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("The Map tab shows each district's nest and whether it stands", txt.contains("Horde nest in the overgrown park") and txt.contains("destroyed"), "")
+
+# ---------------------------------------------------------------- Halvorsen Biomedical
+func search_at(map_id: String, x: int, y: int) -> void:
+	var o: Dictionary = Game.maps[map_id].get_obj(x, y)
+	o.erase("searched")
+	W.search(o, o.get("loot", []), "it")
+
+func step_on(x: int, y: int) -> void:
+	Game.player.pos = Vector2(x * 16 + 8, y * 16 + 12)
+	Game.last_warp_tile = ""
+	tick(50)
+	U.close_all()
+	tick(50)
+
+func run_halvorsen() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.unlock_region("riverlands", true)
+	# every door, exit and container on the campus and in its rooms can be reached
+	var bad := []
+	var out: GameMap = G.maps.halvorsen
+	var seen := reach(out, Vector2i(21, 1))
+	for wp in out.warps:
+		var ok := false
+		for dd in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			if seen.has(Vector2i(wp.x, wp.y) + dd): ok = true
+		if not ok: bad.append("door to " + wp.to)
+	for k in out.objects:
+		var o: Dictionary = out.objects[k]
+		if Data.obj_defs.get(o.type, {}).get("container", false) or o.type in ["car_wreck", "supply_crate"]:
+			if not reachable(seen, o): bad.append("%s at %d,%d" % [o.type, o.x, o.y])
+	for rid in ["hv_main", "hv_lab6", "hv_vault"]:
+		var r: GameMap = G.maps[rid]
+		var rs := reach(r, Vector2i(6, 9))
+		if not rs.has(Vector2i(6, 10)): bad.append(rid + " exit")
+		for k in r.objects:
+			var o2: Dictionary = r.objects[k]
+			if Data.obj_defs.get(o2.type, {}).get("container", false) and not reachable(rs, o2): bad.append("%s %s at %d,%d" % [rid, o2.type, o2.x, o2.y])
+		if rid == "hv_lab6" and not rs.has(Vector2i(6, 2)): bad.append("vault door")
+	var riv: GameMap = G.maps.riverlands
+	var to_hv: bool = riv.warps.any(func(w): return w.to == "halvorsen")
+	check("Halvorsen Biomedical: down the service road from the Riverlands crash site; every door, exit and container can be reached", to_hv and bad.is_empty(), str(bad.slice(0, 6)))
+	# Lab 6 is locked until you have the keycard
+	at("halvorsen", 32, 30, "up")
+	G.enemies.clear()
+	step_on(32, 27)
+	var locked: bool = G.map.id == "halvorsen"
+	G.enemies.clear()
+	# Clean Room 1: the keycard and the notes in the main building
+	var c1 := Contracts.get_def("clean_room_1")
+	var avail1: bool = G.contract_available(c1)
+	var avail2_early: bool = G.contract_available(Contracts.get_def("clean_room_2"))
+	G.take_contract("clean_room_1")
+	at("hv_main", 6, 9, "up")
+	G.enemies.clear()
+	var money0: int = int(G.state.money)
+	search_at("hv_main", 2, 3)
+	search_at("hv_main", 5, 1)
+	for d in G.map.drops.duplicate():
+		if d.id in ["lab_keycard", "halvorsen_notes"]: G.add_item(d.id, 1, {"silent": true}); G.map.drops.erase(d)
+	var done1: bool = G.contract_state().done.has("clean_room_1")
+	check("Clean Room 1 (Dr. Elias): find the Lab 6 keycard and Halvorsen's notes in the main building; the next job opens after it", avail1 and not avail2_early and done1 and G.count_item("lab_keycard") >= 1 and G.count_item("halvorsen_notes") == 0 and int(G.state.money) > money0, "done=%s key=%d" % [done1, G.count_item("lab_keycard")])
+	# the keycard opens Lab 6
+	at("halvorsen", 32, 30, "up")
+	G.enemies.clear()
+	step_on(32, 27)
+	check("Lab 6 stays locked without the keycard, and the keycard opens it", locked and G.map.id == "hv_lab6" and G.state.flags.get("lab6_open", false), "map=%s" % G.map.id)
+	G.enemies.clear()
+	step_on(6, 1)
+	var in_vault: bool = G.map.id == "hv_vault"
+	# Clean Room 2: the serum and the Quarantine suit in the vault, then lockdown
+	G.take_contract("clean_room_2")
+	G.enemies.clear()
+	G.player.pos = Vector2(6 * 16 + 8, 8 * 16 + 12)
+	search_at("hv_vault", 1, 1)
+	search_at("hv_vault", 12, 1)
+	for d in G.map.drops.duplicate():
+		if d.id in ["serum_sample", "quarantine", "antiviral"]: G.add_item(d.id, 1, {"silent": true}); G.map.drops.erase(d)
+	var cs: Dictionary = G.contract_state()
+	var hunters: int = G.enemies.filter(func(e): return e.get("hunt", false)).size()
+	check("Clean Room 2: the back door of Lab 6 leads to the vault; the serum and the Quarantine suit are in its sealed lockers; Elias pays with an Antiviral; taking them starts the lockdown", in_vault and cs.done.has("clean_room_2") and G.count_item("quarantine") >= 1 and G.count_item("antiviral") >= 1 and G.count_item("serum_sample") == 0 and cs.active.has("clean_room_3") and hunters >= 3, "vault=%s hunters=%d" % [in_vault, hunters])
+	# Clean Room 3: everything in Lab 6 hunts you until you get outside
+	G.enemies.clear()
+	at("hv_lab6", 6, 2, "down")
+	var hunters2: int = G.enemies.filter(func(e): return e.get("hunt", false)).size()
+	G.enemies.clear()
+	at("halvorsen", 32, 28, "down")
+	check("Clean Room 3, Lockdown: the research wing is full of hunters; getting outside finishes it and gives the Turncoat", hunters2 >= 5 and cs.done.has("clean_room_3") and (G.count_item("turncoat") >= 1 or G.map.drops.any(func(d): return d.id == "turncoat")), "hunters=%d" % hunters2)
+	# hazmat infected and the glow carp
+	var fish_ok: bool = Data.fish.glow_carp.locs.has("lab_pond") and not Data.fish.glow_carp.locs.has("pond") and G.maps.halvorsen.fish_zone == "lab_pond"
+	G.state.time = 1300
+	var caught := {}
+	for i in 300: caught[W.pick_fish("lab_pond")] = true
+	G.state.time = 700
+	check("New: Hazmat infected (shrug off acid), and the Glow Carp bites only in the Halvorsen pond at night", Data.enemies.hazmat.immune.has("corrode") and fish_ok and caught.has("glow_carp") and not Data.items.glow_carp.has("todo"), str(caught.keys().slice(0, 5)))
+
+# ---------------------------------------------------------------- human raiders
+func run_raiders() -> void:
+	var G = Game
+	start("survivor", 2)
+	G.unlock_region("industrial", true)
+	# Dry Creek: down Mill Road; every door, exit and container can be reached
+	var bad := []
+	var camp: GameMap = G.maps.dry_creek
+	var seen := reach(camp, Vector2i(22, 1))
+	for wp in camp.warps:
+		var ok := false
+		for dd in [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			if seen.has(Vector2i(wp.x, wp.y) + dd): ok = true
+		if not ok: bad.append("door to " + wp.to)
+	for k in camp.objects:
+		var o: Dictionary = camp.objects[k]
+		if Data.obj_defs.get(o.type, {}).get("container", false) or o.type in ["car_wreck", "supply_crate"]:
+			if not reachable(seen, o): bad.append("%s at %d,%d" % [o.type, o.x, o.y])
+	var club: GameMap = G.maps.dc_clubhouse
+	var cs2 := reach(club, Vector2i(6, 9))
+	if not cs2.has(Vector2i(6, 10)): bad.append("clubhouse exit")
+	for k in club.objects:
+		var o2: Dictionary = club.objects[k]
+		if Data.obj_defs.get(o2.type, {}).get("container", false) and not reachable(cs2, o2): bad.append("clubhouse %s at %d,%d" % [o2.type, o2.x, o2.y])
+	var ind_seen := reach(G.maps.industrial, Vector2i(1, 19))
+	var road_ok: bool = G.maps.industrial.warps.any(func(w): return w.to == "dry_creek" and ind_seen.has(Vector2i(w.x, w.y - 1)))
+	check("Dry Creek raider camp: down Mill Road from the Industrial District; every door, exit and container can be reached", road_ok and bad.is_empty(), str(bad.slice(0, 6)))
+	# arriving: people, not infected
+	at("dry_creek", 22, 1, "down")
+	var people: Array = G.enemies.filter(func(e): return Data.enemies[e.type].get("human", false))
+	var looks_human: bool = people.all(func(e): return not e.look.get("infected", true))
+	check("Raiders hold the camp (%d of them), drawn as people, not infected" % people.size(), people.size() >= 6 and people.size() == G.enemies.size() and looks_human, "n=%d of %d" % [people.size(), G.enemies.size()])
+	# a gunner keeps its distance and shoots
+	arena("survivor")
+	var gn: Dictionary = foe("raider_gunner", Vector2(90, 0), "chase")
+	gn.t = 0.0
+	gn.spit_cd = 0.0
+	var shots := 0
+	var hp_start: float = float(G.state.health)
+	for i in 30:
+		tick(100)
+		shots += G.projectiles.filter(func(pr): return pr.get("hurt", "") == "shot").size()
+	var kept_away: bool = gn.pos.distance_to(G.player.pos) > 40.0
+	check("Raider gunners keep their distance and shoot (bullets can't turn you, even in Survivor Mode)", shots > 0 and float(G.state.health) < hp_start and kept_away and ov() != "death", "shots=%d hp=%.0f dist=%.0f" % [shots, float(G.state.health), gn.pos.distance_to(G.player.pos)])
+	G.enemies.clear(); G.projectiles.clear()
+	G.state.health = 100.0
+	U.close_all()
+	# melee raiders hit; they don't bite
+	var day0: int = int(G.state.day)
+	var rm: Dictionary = foe("raider", Vector2(14, 0), "chase")
+	for i in 30:
+		tick(100)
+	check("Melee raiders hit hard but don't bite: no infection in Survivor Mode", float(G.state.health) < 100.0 and ov() != "death" and int(G.state.day) == day0, "hp=%.0f ov=%s" % [float(G.state.health), ov()])
+	G.enemies.clear()
+	G.state.health = 100.0
+	U.close_all()
+	# Kevlar
+	G.add_item("police_vest", 1, {"silent": true}); G.equip_from(idx("police_vest"))
+	var src: Vector2 = G.player.pos + Vector2(10, 0)
+	G.conditions().clear()
+	G.state.health = 100.0
+	G.player.iframes = 0.0
+	W.cb.player_hurt(src, 20.0, "hit", null)
+	var d_hit: float = 100.0 - float(G.state.health)
+	G.conditions().clear()
+	G.state.health = 100.0
+	G.player.iframes = 0.0
+	W.cb.player_hurt(src, 20.0, "shot", null)
+	var d_shot: float = 100.0 - float(G.state.health)
+	G.conditions().clear()
+	G.state.health = 100.0
+	var vest_inactive: Array = Data.gear.police_vest.get("inactive", [])
+	check("Kevlar vests (Police Vest and others) take 30% off raider bullets", absf(d_shot - d_hit * 0.7) < 0.6 and vest_inactive.is_empty(), "hit=%.1f shot=%.1f" % [d_hit, d_shot])
+	# raider kills: their own drops, counted as raiders
+	var inf0: int = int(G.state.stats.infected_defeated)
+	var cap: Dictionary = foe("raider_captain", Vector2(30, 0), "stun")
+	W.cb.damage(cap, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var rare: Array = Data.rare_drops.get("raider_captain", []).map(func(r): return r[0])
+	check("Raiders count as raiders, not infected; Raider Captains can drop the Twin-Hammer Revolver or the Biker's Kutte", int(G.state.stats.get("raiders_defeated", 0)) == 1 and int(G.state.stats.infected_defeated) == inf0 and rare.has("twin_hammer_revolver") and rare.has("bikers_kutte"), str(rare))
+	# Showdown at Dry Creek
+	G.enemies.clear()
+	G.take_contract("showdown_dry_creek")
+	at("industrial", 1, 19, "right")
+	at("dry_creek", 22, 1, "down")
+	var dutch = null
+	for e in G.enemies:
+		if e.type == "boss_dutch": dutch = e
+	var found: bool = dutch != null
+	if found:
+		W.cb.damage(dutch, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var won: bool = G.contract_state().done.has("showdown_dry_creek") and (G.count_item("twin_hammer_revolver") >= 1 or G.map.drops.any(func(d): return d.id == "twin_hammer_revolver"))
+	check("Showdown at Dry Creek (Cole): Dutch Calloway waits in the camp; beating him gives the Twin-Hammer Revolver. No more 'not in the game yet' rewards", found and won and Contracts.NOT_YET.is_empty(), "found=%s" % found)
+	G.enemies.clear()
+
+# ---------------------------------------------------------------- restaurants, safehouses, farm raids
+func run_outposts() -> void:
+	var G = Game
+	start("adventure", 2)
+	for id in ["residential", "industrial", "riverlands"]: G.unlock_region(id, true)
+	# nothing sits on top of any district building
+	var bad := []
+	for id in Districts.DISTRICTS:
+		var m: GameMap = G.maps[id]
+		for st in m.structures:
+			for y in range(st.y, st.y + st.h):
+				for x in range(st.x, st.x + st.w):
+					var o = m.get_obj(x, y)
+					if o != null: bad.append("%s %s at %d,%d" % [id, o.type, x, y])
+	var ff: Array = []
+	for id in Districts.DISTRICTS:
+		for b in Districts.DISTRICTS[id].buildings:
+			if b.get("fast_food", false): ff.append(b.id)
+	check("Five fast food restaurants across the districts, and nothing is built on top of any district building", ff.size() == 5 and bad.is_empty(), str(ff) + " " + str(bad.slice(0, 4)))
+	# clear them all
+	var counts := []
+	var ok_all := true
+	for rid in ff:
+		G.enemies.clear()
+		at(rid, 6, 9, "up")
+		counts.append(G.enemies.size())
+		if G.enemies.is_empty(): ok_all = false
+		for e in G.enemies.duplicate():
+			W.cb.damage(e, 99999.0, Vector2.ZERO, {"kind": "test"})
+		if not G.state.stats.get("fast_food", {}).has(rid): ok_all = false
+	var won: bool = G.state.achievements.get("done", []).has("drive_thru")
+	check("Drive-Thru: every restaurant has infected inside; putting them all down clears it; 5 cleared gives the Burger Mascot Suit", ok_all and won and (G.count_item("burger_mascot_suit") >= 1 or G.map.drops.any(func(d): return d.id == "burger_mascot_suit")), "inside=%s won=%s" % [counts, won])
+	# the sleeping bag
+	G.add_item("sleeping_bag", 1, {"silent": true})
+	at("house", 2, 4)
+	var day0: int = int(G.state.day)
+	var at_home: bool = G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.clear()
+	at("mh_house1", 6, 9, "up")
+	if G.enemies.is_empty(): W.spawn_enemy("shambler", 10, 3, {"asleep": true})
+	var had_foes: bool = not G.enemies.is_empty()
+	var with_foes: bool = G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.clear()
+	G.player.pos = Vector2(5 * 16 + 8, 6 * 16 + 12)
+	var slept: bool = G.eat_item("sleeping_bag")
+	var rep: Dictionary = U.overlay.get("report", {})
+	U.close_all()
+	var woke_here: bool = G.map.id == "mh_house1" and G.player.pos.distance_to(Vector2(5 * 16 + 8, 6 * 16 + 14)) < 4.0
+	check("Sleeping Bag: not at home, not with infected in the room; once it's clear you sleep there, wake there the next morning with the room still clear, and keep the bag", not at_home and had_foes and not with_foes and slept and int(G.state.day) == day0 + 1 and woke_here and G.enemies.is_empty() and G.count_item("sleeping_bag") == 1 and not rep.is_empty(), "home=%s foes=%s slept=%s map=%s" % [at_home, with_foes, slept, G.map.id])
+	check("A building you sleep in becomes a safehouse", G.state.stats.get("safehouses", {}).has("mh_house1"), "")
+	# outside: only if nothing awake is close
+	at("residential", 50, 22, "left")
+	G.enemies.clear()
+	var z: Dictionary = W.spawn_enemy("shambler", 53, 22)
+	var near_refused: bool = not G.eat_item("sleeping_bag")
+	U.close_all()
+	G.enemies.erase(z)
+	check("Outdoors, an infected nearby means it isn't safe to sleep", near_refused, "")
+	# Comfort Zone
+	for i in 24: G.state.stats.safehouses["fake_%d" % i] = true
+	at("mh_house2", 6, 9, "up")
+	G.enemies.clear()
+	G.eat_item("sleeping_bag")
+	U.close_all()
+	var cz: bool = G.state.achievements.get("done", []).has("comfort_zone")
+	check("Comfort Zone: 25 different safehouses gives the Bunny Slippers", cz and G.count_item("bunny_slippers") + G.map.drops.filter(func(d): return d.id == "bunny_slippers").size() >= 1, "")
+	# farm raids by the Dry Creek crew
+	start("adventure", 2)
+	G.unlock_region("industrial", true)
+	var early := 0
+	for d in range(10, 60):
+		Raiders.roll_farm_raid(d)
+		if Raiders.farm_raid_tonight() or (G.state.raider_raid is Dictionary and not G.state.raider_raid.is_empty()): early += 1
+	G.state.raider_raid = {}
+	at("dry_creek", 22, 1, "down")
+	var met: bool = G.state.flags.has("met_raiders_day")
+	G.enemies.clear()
+	at("homestead", 20, 30)
+	var hm: GameMap = G.maps.homestead
+	for x in [18, 19]:
+		clear_tile(hm, x, 27)
+	var chest: Dictionary = hm.add_obj(18, 27, "chest", {"items": [{"id": "iron_bar", "qty": 5}, {"id": "wood", "qty": 40}, {"id": "stone", "qty": 20}, null]})
+	var box: Dictionary = hm.add_obj(19, 27, "lockbox", {"items": [{"id": "gold_bar", "qty": 3}, null]})
+	G.state.raider_raid = {"day": int(G.state.day), "size": 2, "warned": false}
+	G.state.time = 1070
+	G.tick10()
+	var warned: bool = G.state.raider_raid.get("warned", false)
+	G.state.time = 1300
+	var rp := sleep()
+	var text: String = " ".join(rp.get("lines", []))
+	var left_in_chest: int = chest.items.filter(func(st): return st != null).size()
+	var box_ok: bool = box.items[0] != null and box.items[0].id == "gold_bar"
+	var stolen_n: int = G.state.get("stolen", []).size()
+	check("Farm raids: once you've been to Dry Creek, the raiders can come at night (warning at 6 pm). They take from chests but can't open Lockboxes", early == 0 and met and warned and text.contains("Raiders from Dry Creek") and left_in_chest < 3 and box_ok and stolen_n >= 1, "early=%d chest=%d stolen=%d" % [early, left_in_chest, stolen_n])
+	# take it back
+	var iron0: int = G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone")
+	at("dry_creek", 19, 26, "up")
+	G.enemies.clear()
+	Raiders.return_stolen()
+	U.close_all()
+	var got_back: bool = G.state.get("stolen", []).is_empty() and G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone") > iron0
+	check("Whatever they took is piled up at Dry Creek, and you can take it back", got_back and G.maps.dry_creek.get_obj(19, 24) != null, "")
+
+# ---------------------------------------------------------------- phase 2: fish journal, bait shack, trees, the Foreman, perks
+func run_phase2() -> void:
+	var G = Game
+	start("adventure", 2)
+	# sizes and the journal
+	at("town", 14, 32, "down")
+	G.fishing = {"phase": "bite"}
+	W.finish_catch("river_chub")
+	G.fishing = {"phase": "bite"}
+	W.finish_catch("river_chub")
+	var e: Dictionary = G.state.get("fish_log", {}).get("river_chub", {})
+	var rr := Angling.size_range("river_chub")
+	U.open("journal", {"tab": "collections"})
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("Every catch has a size; the Fish Journal (Collections tab) counts each fish and keeps your record", int(e.get("n", 0)) == 2 and float(e.best) >= rr.x and float(e.best) <= rr.y and txt.contains("Fish Journal") and txt.contains("River Chub  x2"), str(e))
+	# Wren's Bait Shack
+	var town: GameMap = G.maps.town
+	var shack_door = null
+	for w in town.warps:
+		if w.to == "baitshack": shack_door = w
+	var seen := reach(town, Vector2i(28, 20))
+	var door_ok: bool = shack_door != null and seen.has(Vector2i(shack_door.x, shack_door.y + 1))
+	while G.weekday() in ["Thu"]: sleep()
+	G.state.time = 660; G.sync_npcs()
+	var stock: Array = G.shop_stock("baitshack").map(func(x): return x.get("id", ""))
+	check("Wren reopened her mom's bait shop on the riverbank (closed Thursdays): bait, tackle, rods and crab pots, and she buys fish", door_ok and G.npcs.wren.map == "baitshack" and stock.has("bait") and stock.has("fishing_rod_bamboo") and stock.has("spinner") and Data.shops.baitshack.buys.has("fish"), "door=%s wren=%s" % [door_ok, G.npcs.wren.map])
+	# trees: seeds, planting, regrowth
+	var keep: float = Balance.trees.seed_chance
+	Balance.trees.seed_chance = 1.0
+	at("homestead", 20, 30)
+	var hm: GameMap = G.maps.homestead
+	clear_tile(hm, 21, 30); clear_tile(hm, 23, 30)
+	hm.add_obj(21, 30, "tree")
+	G.map.drops.clear()
+	W.break_object(hm.get_obj(21, 30))
+	Balance.trees.seed_chance = keep
+	var dropped: bool = G.map.drops.any(func(d): return d.id == "acorn")
+	var stump: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	G.add_item("acorn", 1, {"silent": true})
+	W.place_at(Vector2i(23, 30), "acorn")
+	var sap = hm.get_obj(23, 30)
+	var planted: bool = sap != null and sap.type == "sapling" and sap.kind == "tree"
+	for i in int(Balance.trees.sapling_days): sleep()
+	var grown = hm.get_obj(23, 30)
+	var farm_stump_stays: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	check("Trees: a felled tree can drop an Acorn (or a Pine Cone from a pine); plant it on your farm and it grows into a tree in %d days" % int(Balance.trees.sapling_days), dropped and stump and planted and grown != null and grown.type == "tree" and farm_stump_stays, "drop=%s planted=%s grown=%s" % [dropped, planted, grown.type if grown != null else "none"])
+	# wild stumps sprout
+	var mtn: GameMap = G.maps.mountain
+	var stumps := []
+	for kk in mtn.objects:
+		if mtn.objects[kk].type == "stump": stumps.append(mtn.objects[kk])
+	if stumps.is_empty():
+		var sp: Vector2i = W.free_tile_near(mtn, 10, 20)
+		stumps.append(mtn.add_obj(sp.x, sp.y, "stump"))
+	var st0: Dictionary = stumps[0]
+	var sx: int = int(st0.x); var sy: int = int(st0.y)
+	var keep2: float = Balance.trees.stump_sprout_chance
+	Balance.trees.stump_sprout_chance = 1.0
+	for i in int(Balance.trees.stump_regrow_days): sleep()
+	Balance.trees.stump_sprout_chance = keep2
+	var wild = mtn.get_obj(sx, sy)
+	check("Out in the wild, stumps left alone sprout into saplings again (not on your farm)", wild != null and wild.type in ["sapling", "tree", "pine"], wild.type if wild != null else "none")
+	# the Foreman on floor 10
+	G.change_map("mine", 0, 0, "down", {"floor": 10})
+	var boss = null
+	for en in G.enemies:
+		if en.type == "boss_foreman": boss = en
+	var no_ladder := true
+	for kk in G.map.objects:
+		if G.map.objects[kk].get("has_ladder", false) or G.map.objects[kk].type == "ladder_down": no_ladder = false
+	G.map.drops.clear()
+	if boss != null: W.cb.damage(boss, 99999.0, Vector2.ZERO, {"kind": "test"})
+	var ladder := false
+	for kk in G.map.objects:
+		if G.map.objects[kk].type == "ladder_down": ladder = true
+	var paid: bool = G.map.drops.any(func(d): return d.id == "iron_bar")
+	G.change_map("mine", 0, 0, "down", {"floor": 10})
+	var again: bool = G.enemies.any(func(en): return en.type == "boss_foreman")
+	check("Mine floor 10: the Foreman blocks the way down; putting him down opens a ladder and his strongbox (once); he doesn't come back", boss != null and no_ladder and ladder and paid and not again, "boss=%s ladder=%s paid=%s again=%s" % [boss != null, ladder, paid, again])
+	# cave fishing
+	G.change_map("mine", 0, 0, "down", {"floor": 20})
+	var water := 0
+	for t in range(G.map.w * G.map.h):
+		if G.map.tile_at(t % G.map.w, t / G.map.w) == "water": water += 1
+	var fish := {}
+	for i in 400: fish[W.pick_fish(G.map.fish_zone)] = true
+	var rim_ok := false
+	for t in range(G.map.w * G.map.h):
+		var v := Vector2i(t % G.map.w, t / G.map.w)
+		if G.map.tile_at(v.x, v.y) == "water":
+			for dd in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				if G.map.floor_tiles.has(v + dd): rim_ok = true
+	check("Cave fishing: still pools on some mine floors (always on floor 20) with Cave Blindfish; the Lantern Queen lives in the deepest one", water >= 6 and G.map.fish_zone == "mine" and fish.has("cave_blindfish") and rim_ok and not Data.items.cave_blindfish.has("todo"), "water=%d fish=%s" % [water, fish.keys().slice(0, 4)])
+	# mining perks
+	G.state.skills.mining.xp = int(Balance.skills.xp_table[5])
+	var pend: Array = DeepMine.pending()
+	DeepMine.choose(5, "prospector")
+	G.state.skills.mining.xp = int(Balance.skills.xp_table[10])
+	var cost0: float = G.tool_energy_cost("pickaxe", 4)
+	DeepMine.choose(10, "strongarm")
+	var cost1: float = G.tool_energy_cost("pickaxe", 4)
+	U.open("journal", {"tab": "skills"})
+	var sk := ui_text(U.overlay_root)
+	U.close_all()
+	check("Mining perks: pick one at level 5 and one at level 10 in the Skills tab (Strongarm halves pickaxe energy)", pend == [5] and DeepMine.has_perk("prospector") and DeepMine.has_perk("strongarm") and cost1 < cost0 and sk.contains("Prospector"), "pend=%s cost %.1f > %.1f" % [pend, cost0, cost1])
+
+# ---------------------------------------------------------------- room variety
+func run_rooms() -> void:
+	var G = Game
+	start("adventure", 2)
+	# every layout works, whichever building ends up with it
+	var bad := []
+	for lay in Districts.ROOMS:
+		var b := {"id": "test_" + lay, "x": 10, "y": 10, "w": 6, "h": 5, "tags": ["home"], "q": 0.1, "room": lay}
+		var r: GameMap = Districts.interior_rows("residential", b, Districts.ROOMS[lay])
+		var rs := reach(r, Vector2i(6, 9))
+		if not rs.has(Vector2i(6, 10)): bad.append(lay + " exit")
+		for k in r.objects:
+			var o: Dictionary = r.objects[k]
+			if Data.obj_defs.get(o.type, {}).get("container", false) and not reachable(rs, o): bad.append("%s %s at %d,%d" % [lay, o.type, o.x, o.y])
+		for sp in r.foes.spots:
+			if not rs.has(sp): bad.append("%s spot %s" % [lay, sp])
+	check("Every room layout (%d) can be walked: exit, containers and infected spots" % Districts.ROOMS.size(), bad.is_empty(), str(bad.slice(0, 6)))
+	# variety: houses and shops don't all look the same
+	var looks := {}
+	var lays := {}
+	for b in Districts.DISTRICTS.residential.buildings:
+		if b.get("room", "") == "home":
+			var m: GameMap = G.maps[b.id]
+			looks[Art.TILE_TYPES[m.tiles[5 * 14 + 5]] + "/" + Art.TILE_TYPES[m.tiles[1 * 14 + 1]]] = true
+			lays[m.layout] = true
+	check("Room variety: the houses use different layouts and floor and wall styles", lays.size() >= 2 and looks.size() >= 2, "layouts=%s styles=%s" % [lays.keys(), looks.keys()])
+	# older saves: a room whose layout changed is rebuilt instead of keeping misplaced things
+	var rid := "mh_house1"
+	G.state.maps_dyn[rid].layout = "something_old"
+	G.state.maps_dyn[rid].objects["99,99"] = {"type": "rock", "x": 99, "y": 99}
+	G.write_save()
+	G.load_game("adventure", 2)
+	var fresh: bool = not G.maps[rid].objects.has("99,99") and str(G.state.maps_dyn[rid].get("layout", "")) == G.maps[rid].layout
+	check("Older saves: a room whose layout changed is rebuilt fresh", fresh, "")
+
+# ---------------------------------------------------------------- rebuilding Brightwater
+func supply(pid: String) -> void:
+	var p := Restoration.project(pid)
+	for n in p.needs:
+		var k: String = n[0]
+		if k == "gold": Game.state.money = int(Game.state.money) + int(n[1])
+		elif k == "cat:crop": Game.add_item("potato", int(n[1]), {"silent": true})
+		elif k == "cat:fish": Game.add_item("river_chub", int(n[1]), {"silent": true})
+		elif k == "cat:artifact":
+			for id in Data.items:
+				if Data.items[id].cat == "artifact": Game.add_item(id, int(n[1]), {"silent": true}); break
+		elif k == "cat:weapon":
+			for i in int(n[1]): Game.add_item("baseball_bat", 1, {"silent": true})
+		else: Game.add_item(k, int(n[1]), {"silent": true})
+	for i in p.needs.size(): Restoration.give(pid, i)
+
+func run_restoration() -> void:
+	var G = Game
+	start("adventure", 2)
+	G.state.inventory.resize(60)
+	var ledger = G.maps.town.get_obj(26, 15)
+	U.open("restoration")
+	var txt := ui_text(U.overlay_root)
+	U.close_all()
+	check("Ruth's Restoration Ledger stands in the town square and lists the five projects", ledger != null and ledger.type == "town_ledger" and txt.contains("Lantern Post Tavern") and txt.contains("Town Militia"), "")
+	# partial gold
+	G.state.money = 500
+	var put := Restoration.give("tavern", Restoration.project("tavern").needs.size() - 1)
+	check("Giving toward a project takes what you have (here 500 of 2,000 gold)", put == 500 and int(G.state.money) == 0, "put=%d" % put)
+	# the tavern
+	supply("tavern")
+	var ready_before: bool = Restoration.ready("tavern")
+	sleep()
+	var tav = null
+	for st in G.maps.town.structures:
+		if st.kind == "tavern_open": tav = st
+	var door_ok: bool = tav != null and G.maps.town.warps.any(func(w): return w.to == "tavern") and reach(G.maps.town, Vector2i(28, 20)).has(Vector2i(20, 30))
+	G.state.time = 1100; G.sync_npcs()
+	var ruth_there: bool = G.npcs.ruth.map == "tavern"
+	var open_now: bool = G.is_shop_open("tavern") and not G.shop_stock("tavern").is_empty()
+	check("Lantern Post Tavern: once supplied, the crews finish it overnight; the door opens and Ruth serves meals and drinks in the evening", ready_before and Restoration.done("tavern") and door_ok and ruth_there and open_now, "door=%s ruth=%s open=%s" % [door_ok, G.npcs.ruth.map, open_now])
+	G.state.time = 700; G.sync_npcs()
+	# the clinic ward
+	supply("clinic"); sleep()
+	var cstock: Array = G.shop_stock("clinic")
+	var treat = cstock.filter(func(e): return e.get("service", "") == "treatment")[0]
+	check("Clinic Ward: Elias stocks Antibiotics, Splints, Painkillers and Sterile Bandages; treatment is half price", cstock.any(func(e): return e.get("id", "") == "antibiotics") and int(treat.final_price) == 75, "treat=%d" % int(treat.final_price))
+	# the archive and museum
+	supply("archive"); sleep()
+	var minerals := []
+	for id in Data.items:
+		if Restoration.donatable(id): minerals.append(id)
+	var arch_door: bool = G.maps.town.warps.any(func(w): return w.to == "archive")
+	var desk := false
+	for k in G.maps.archive.objects:
+		if G.maps.archive.objects[k].type == "museum_desk": desk = true
+	G.add_item(minerals[0], 2, {"silent": true})
+	var m1: String = Restoration.donate(idx(minerals[0]))
+	var m2: String = Restoration.donate(idx(minerals[0]))
+	var money0: int = int(G.state.money)
+	for i in range(1, 5):
+		G.add_item(minerals[i], 1, {"silent": true})
+		Restoration.donate(idx(minerals[i]))
+	check("Community Archive: opens as a museum; donate one of each mineral, gem and artifact; thank-you rewards at 5, 10, 20 and 30", arch_door and desk and m1.contains("Donated") and m2.contains("already") and Restoration.museum().size() == 5 and int(G.state.money) == money0 + 500, "%s | %s" % [m1, m2])
+	# watchtower: smaller raids and a warning
+	supply("watchtower"); sleep()
+	var keep_g: int = Balance.raids.grace_days
+	var keep_c: float = Balance.raids.base_chance
+	var keep_a: float = Balance.raids.adventure_chance_mult
+	var keep_m: float = Balance.raids.max_chance
+	Balance.raids.grace_days = 0; Balance.raids.base_chance = 1.0; Balance.raids.adventure_chance_mult = 1.0; Balance.raids.max_chance = 1.0
+	var rp := sleep()
+	Balance.raids.grace_days = keep_g; Balance.raids.base_chance = keep_c; Balance.raids.adventure_chance_mult = keep_a; Balance.raids.max_chance = keep_m
+	var warned: bool = " ".join(rp.get("lines", [])).contains("Lookouts")
+	G.state.raid = {}
+	check("Watchtowers: the morning report warns you when a raid is coming that night (and raids are one smaller)", warned, "")
+	# militia: some raids never arrive
+	supply("militia")
+	var turned := false
+	var rpm := sleep()
+	for i in 40:
+		G.state.raid = {"day": int(G.state.day), "size": 4, "spawned": false, "killed": 0, "warned": false}
+		var rep2 := {"lines": []}
+		Restoration.after_raid_rolls(rep2)
+		if not G.raid_tonight(): turned = true; break
+	G.state.raid = {}
+	var celebrated: bool = G.state.flags.get("brightwater_lives", false) and " ".join(rpm.get("lines", [])).contains("Brightwater is alive")
+	var price_full: int = int(Data.shops.general.stock.filter(func(e): return e.get("id", "") != "")[0].price)
+	var price_now: int = int(G.shop_stock("general").filter(func(e): return e.get("id", "") != "")[0].final_price)
+	check("Town Militia: some raids are turned back before they reach your farm. All five done: the town celebrates, pays you 5,000 gold and every shop gives 10% off", Restoration.done("militia") and turned and celebrated and price_now < price_full, "turned=%s party=%s price %d<%d" % [turned, celebrated, price_now, price_full])
+	# survives a reload
+	G.write_save()
+	G.load_game("adventure", 2)
+	var still: bool = G.maps.town.structures.any(func(st): return st.kind == "tavern_open") and G.maps.town.warps.any(func(w): return w.to == "archive")
+	check("Restored buildings stay restored after loading", still, "")
+
 func count_nodes(n: Node) -> int:
 	var c := 1
 	for ch in n.get_children():
 		c += count_nodes(ch)
 	return c
+
+
+func _count(m, t: String) -> int:
+	return m.objects.values().filter(func(o): return o.type == t and not o.has("part_of")).size()
+
+func run_packart() -> void:
+	var G = Game
+	start("adventure", 2)
+	# art files from the asset packs are picked up by name
+	var tree: Dictionary = Art.get_obj({"type": "tree", "v": 0, "x": 0, "y": 0}, "spring", 0)
+	var tw: int = tree.tex.get_width()
+	var car0: Dictionary = Art.get_obj({"type": "car_wreck", "v": 0, "w": 2, "x": 0, "y": 0}, "spring", 0)
+	var car1: Dictionary = Art.get_obj({"type": "car_wreck", "v": 1, "w": 2, "x": 1, "y": 0}, "spring", 0)
+	check("Trees, wrecks and other things use the post-apocalypse pack's art, with a different car for each variant", Art.has_override("trees/tree_spring.png") and tw == Art.override("trees/tree_spring.png").get_width() and car0.tex != car1.tex, "tree w=%d" % tw)
+	var g_spring: Image = Art.get_tile("grass", "spring", 0).get_image()
+	var g_autumn: Image = Art.get_tile("grass", "autumn", 0).get_image()
+	var own: Image = Art.override("tiles/grass_spring_0.png").get_image()
+	check("Grass, road and dirt tiles come from the pack and change with the season", g_spring.get_pixel(5, 5) == own.get_pixel(5, 5) and g_spring.get_pixel(5, 5) != g_autumn.get_pixel(5, 5), "")
+	var winter_tree: Dictionary = Art.get_obj({"type": "tree", "v": 0, "x": 0, "y": 0}, "winter", 0)
+	check("Winter trees are snowy versions of the pack's trees", winter_tree.tex.get_width() == Art.override("trees/tree_winter.png").get_width(), "")
+	# a searched container shows its opened picture, or a dimmed copy when it has none
+	var dump := {"type": "dumpster", "v": 0, "w": 2, "x": 3, "y": 3}
+	var closed: Dictionary = Art.get_obj(dump, "spring", 0)
+	dump.searched = int(G.state.day)
+	var opened: Dictionary = Art.get_obj(dump, "spring", 0)
+	var fr := {"type": "loot_fridge", "v": 0, "x": 5, "y": 3}
+	var f0: Image = Art.get_obj(fr, "spring", 0).tex.get_image()
+	fr.searched = int(G.state.day)
+	var f1: Image = Art.get_obj(fr, "spring", 0).tex.get_image()
+	var c0 := f0.get_pixel(8, 14); var c1 := f1.get_pixel(8, 14)
+	check("Searched things look searched: the dumpster lid closes, a fridge goes dim", closed.tex != opened.tex and c1.get_luminance() < c0.get_luminance(), "%s -> %s" % [c0, c1])
+	# icons
+	var ic: Image = Art.get_icon("tomato").get_image()
+	check("Crop, food, gem, bar, ammo and first-aid icons come from the packs (16x16)", Art.has_override("icons/tomato.png") and ic.get_width() == 16 and ic.get_height() == 16 and Art.has_override("icons/iron_bar.png") and Art.has_override("icons/ammo_9mm.png") and Art.has_override("icons/med_kit.png"), "")
+	# new street props in the districts
+	var res = G.maps.residential
+	var ind = G.maps.industrial
+	var dc = G.maps.dry_creek
+	var street := 0
+	for t in ["hydrant", "trash_can", "trash_bags", "traffic_cone"]:
+		street += _count(res, t)
+	check("The districts have new wreckage: a school bus, shipping containers, biker motorcycles, a vending machine", _count(res, "bus_wreck") == 1 and _count(ind, "shipping_container") >= 3 and _count(dc, "motorcycle_wreck") >= 2 and _count(res, "vending_machine") == 1, "bus=%d cont=%d moto=%d vend=%d" % [_count(res, "bus_wreck"), _count(ind, "shipping_container"), _count(dc, "motorcycle_wreck"), _count(res, "vending_machine")])
+	check("Hydrants, trash cans, bags and cones line the sidewalks, and bushes grow wild", street >= 6 and _count(res, "bush") >= 5, "street=%d bushes=%d" % [street, _count(res, "bush")])
+	# a trash can can be searched
+	var can = null
+	for o in res.objects.values():
+		if o.type == "trash_can": can = o; break
+	var before := int(G.state.get("stats", {}).get("searched", 0))
+	if can != null:
+		G.change_map("residential", int(can.x), int(can.y) + 1, "up", {"silent": true})
+		W.interact_object(can)
+	check("Trash cans and vending machines can be searched like other containers", can != null and int(can.get("searched", -99)) == int(G.state.day), str(can))
+	# every new prop is drawn from the pack, never the fallback
+	var missing := []
+	for t in ["hydrant", "traffic_cone", "stop_sign", "shopping_cart", "motorcycle_wreck", "trash_bags", "trash_can", "vending_machine", "bus_wreck", "shipping_container", "bush"]:
+		for season in ["spring", "summer", "autumn", "winter"]:
+			if Art.obj_override({"type": t, "v": 0, "x": 0, "y": 0}, season).is_empty(): missing.append(t + "/" + season)
+	check("Every new prop has art in every season", missing.is_empty(), str(missing))
+	# people from the Modern Interiors character generator
+	var me: Image = Art.char_image(G.state.character.look, "down", 0)
+	var ruth: Dictionary = MiChars.parts(Data.npcs.ruth.look)
+	check("People are built from the character generator: body, eyes, outfit, hair and accessory", MiChars.available() and me.get_width() == 16 and me.get_height() == 32 and ruth.hair == "13_05" and ruth.acc == "15_Glasses_01", str(ruth))
+	var walk := []
+	for f in 4: walk.append(Art.char_image(G.state.character.look, "down", f).get_data())
+	check("Walking uses four different frames, and every direction has its own picture", walk[0] != walk[1] and walk[1] != walk[3] and Art.char_image(G.state.character.look, "left", 0).get_data() != Art.char_image(G.state.character.look, "right", 0).get_data(), "")
+	var zl: Dictionary = Infected.make_look("shambler", G.rng)
+	var z: Image = Art.char_image(zl, "down", 0)
+	var greenish := 0
+	for yy in 32:
+		for xx in 16:
+			var c := z.get_pixel(xx, yy)
+			if c.a > 0 and c.g > c.r + 0.03: greenish += 1
+	check("The infected use the same people with sickly skin, glowing eyes and faded clothes", greenish >= 20, "green px=%d" % greenish)
+	var raider: Dictionary = MiChars.parts(Raiders.make_look("raider", G.rng))
+	check("Raiders are people too, in dark knit caps rather than ball caps", not str(raider.acc).begins_with("04_Snapback"), str(raider))
+	var opts: Dictionary = MiChars.creator_options()
+	var look2: Dictionary = Data.default_look.duplicate(true)
+	MiChars.complete(look2)
+	look2.mi_hair_style = "13"; look2.mi_outfit_style = "08"; look2.mi_outfit_color = "2"; look2.mi_acc_style = "15_Glasses"
+	var p2: Dictionary = MiChars.parts(look2)
+	check("The character creator offers the generator's hair styles, outfits and accessories", opts.mi_hair_style.size() >= 29 and opts.mi_outfit_style.size() >= 33 and p2.hair.begins_with("13_") and p2.outfit == "08_02" and p2.acc.begins_with("15_Glasses"), str(p2))
+	var pt: Image = Art.get_portrait(Data.npcs.hal.look).get_image()
+	check("Portraits frame the generator people's heads", pt.get_used_rect().size.y >= 12, str(pt.get_used_rect()))
+	# interiors
+	var ft: Image = Art.get_tile("floor_tile", "spring", 0).get_image()
+	check("Room floors, walls and furniture come from Modern Interiors", ft.get_pixel(3, 3) == Art.override("tiles/floor_tile_0.png").get_image().get_pixel(3, 3) and Art.has_override("tiles/wall_brick.png") and Art.has_override("objects/loot_locker.png") and Art.has_override("objects/old_bed.png"), "")

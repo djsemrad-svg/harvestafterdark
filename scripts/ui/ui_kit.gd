@@ -203,6 +203,16 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 			rc.position = Vector2(1, 1)
 			rc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			b.add_child(rc)
+		var ql := Game.quality_of(stack)
+		if ql > 0:
+			# crop quality: a small silver or gold star in the bottom-left corner
+			var qc := Color(FarmCare.QUALITY_COLOR[ql])
+			for pt in [[2, size - 6, 3, 1], [3, size - 7, 1, 3], [2, size - 5, 1, 1], [4, size - 5, 1, 1]]:
+				var st := ColorRect.new()
+				st.color = qc
+				st.position = Vector2(pt[0], pt[1]); st.size = Vector2(pt[2], pt[3])
+				st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				b.add_child(st)
 		var md := Game.max_dur(stack.id)
 		if md > 0 and (stack.has("dur") or Game.is_broken(stack)):
 			var frac: float = clampf(float(Game.stack_dur(stack)) / float(md), 0.0, 1.0)

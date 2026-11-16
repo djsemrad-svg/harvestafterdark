@@ -39,7 +39,7 @@ var fires := []                # burning ground, acid puddles and gas clouds
 var shake := 0.0
 var rng := RandomNumberGenerator.new()
 
-var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false}
+var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false}
 
 func _ready() -> void:
 	rng.randomize()
@@ -61,6 +61,7 @@ func save_settings() -> void:
 
 func apply_settings() -> void:
 	Sfx.set_volumes(settings.sfx, settings.music)
+	Art.set_detail(settings.get("detail_art", false))
 	if ui:
 		ui.apply_settings()
 
@@ -182,29 +183,45 @@ func count_match(spec: String) -> int:
 			n += int(s.qty)
 	return n
 
+## Uses up items, Normal quality first, then Silver, then Gold.
 func consume_match(spec: String, qty: int) -> bool:
 	var list := inv()
-	for i in list.size():
-		if qty <= 0:
-			break
-		var s = list[i]
-		if s != null and matches(spec, s.id):
-			var take: int = min(qty, int(s.qty))
-			s.qty = int(s.qty) - take
-			qty -= take
-			if s.qty <= 0:
-				list[i] = null
+	for ql in 3:
+		for i in list.size():
+			if qty <= 0:
+				break
+			var s = list[i]
+			if s != null and matches(spec, s.id) and quality_of(s) == ql:
+				var take: int = min(qty, int(s.qty))
+				s.qty = int(s.qty) - take
+				qty -= take
+				if s.qty <= 0:
+					list[i] = null
 	return qty == 0
 
-func can_fit(id: String, qty: int, list = null) -> bool:
+## Crop quality on a stack: 0 Normal, 1 Silver, 2 Gold.
+func quality_of(s) -> int:
+	return int(s.get("q", 0)) if s is Dictionary else 0
+
+func quality_mult(q: int) -> float:
+	return [1.0, 1.25, 1.5][clampi(q, 0, 2)]
+
+## Stacks merge only when their extra data matches; quality alone still stacks.
+func stack_key(e: Dictionary) -> String:
+	if e.is_empty(): return ""
+	if e.size() == 1 and e.has("q"): return "" if int(e.q) == 0 else "q%d" % int(e.q)
+	return "#single"
+
+func can_fit(id: String, qty: int, list = null, extra := {}) -> bool:
 	if list == null:
 		list = inv()
 	var mx: int = Data.items[id].stack
+	var key := stack_key(extra)
 	var room := 0
 	for s in list:
 		if s == null:
 			room += mx
-		elif s.id == id:
+		elif s.id == id and key != "#single" and stack_key(stack_extras(s)) == key:
 			room += mx - int(s.qty)
 		if room >= qty:
 			return true
@@ -220,9 +237,11 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
 	var extra: Dictionary = opts.get("extra", {})
+	if extra.has("q") and int(extra.q) == 0: extra = {}
+	var key := stack_key(extra)
 	var left := qty
 	for s in list:
-		if left > 0 and s != null and s.id == id and int(s.qty) < mx and extra.is_empty() and stack_extras(s).is_empty():
+		if left > 0 and s != null and s.id == id and int(s.qty) < mx and key != "#single" and stack_key(stack_extras(s)) == key:
 			var a: int = min(mx - int(s.qty), left)
 			s.qty = int(s.qty) + a
 			left -= a
@@ -260,16 +279,21 @@ func sort_inventory() -> void:
 	var singles := []   # weapons and gear keep their durability, so they are not merged
 	for i in range(tb, inv().size()):
 		var s = inv()[i]
-		if s != null and not stack_extras(s).is_empty():
+		if s != null and stack_key(stack_extras(s)) == "#single":
 			singles.append(s)
 		elif s != null:
-			merged[s.id] = merged.get(s.id, 0) + int(s.qty)
+			var mk: String = s.id + "|" + str(quality_of(s))
+			merged[mk] = merged.get(mk, 0) + int(s.qty)
 	var order := Data.categories.keys()
 	var ids := merged.keys()
 	ids.sort_custom(func(a, b):
-		var ca := order.find(Data.items[a].cat)
-		var cb := order.find(Data.items[b].cat)
-		return ca < cb if ca != cb else Data.items[a].name < Data.items[b].name)
+		var ia: String = a.split("|")[0]
+		var ib: String = b.split("|")[0]
+		var ca := order.find(Data.items[ia].cat)
+		var cb := order.find(Data.items[ib].cat)
+		if ca != cb: return ca < cb
+		if ia != ib: return Data.items[ia].name < Data.items[ib].name
+		return a < b)
 	for i in range(tb, inv().size()):
 		inv()[i] = null
 	var i := tb
@@ -280,11 +304,14 @@ func sort_inventory() -> void:
 	for sg in singles:
 		inv()[i] = sg
 		i += 1
-	for id in ids:
-		var q: int = merged[id]
+	for mk in ids:
+		var q: int = merged[mk]
+		var id: String = mk.split("|")[0]
+		var ql := int(mk.split("|")[1])
 		while q > 0 and i < inv().size():
 			var a: int = min(q, Data.items[id].stack)
 			inv()[i] = {"id": id, "qty": a}
+			if ql > 0: inv()[i].q = ql
 			i += 1
 			q -= a
 
@@ -353,7 +380,18 @@ func gear_total() -> Dictionary:
 	return t
 
 func max_health() -> float:
-	return float(Balance.player.max_health) + gear_total().hp + (buff("max hp") if not state.is_empty() else 0.0)
+	if state.is_empty(): return float(Balance.player.max_health)
+	return maxf(10.0, float(Balance.player.max_health) + gear_total().hp + buff("max hp") - float(conditions().get("blood_loss", 0)))
+
+## Energy cap: lower when sick or fighting an infected wound; Vitamins raise it.
+func max_energy() -> float:
+	var m := float(Balance.player.max_energy)
+	if state.is_empty(): return m
+	var c := conditions()
+	var mult := 1.0 + buff("max energy")
+	if c.has("sick"): mult *= float(Balance.injuries.sick_energy_mult)
+	if c.has("wound"): mult *= float(Balance.injuries.wound_energy_mult)
+	return round(m * mult)
 
 ## Makes the pack the right size for your pockets. Returns false if items would be lost.
 func apply_carry(extra := -999) -> bool:
@@ -566,6 +604,8 @@ func add_xp(id: String, amt: int) -> void:
 	if after > before:
 		toast("%s reached level %d!" % [Data.skills[id].name, after], "", "gold")
 		Sfx.play("levelup")
+		if id == "mining" and not DeepMine.pending().is_empty():
+			toast("A new Mining perk is ready to choose in the Skills tab.", "", "gold")
 
 func toast(text: String, icon := "", style := "") -> void:
 	if ui:
@@ -742,10 +782,17 @@ func build_persistent_maps() -> void:
 	maps["greenhouse"] = MapBuilder.room("greenhouse", ["homestead", 29, 9])
 	for b in state.get("buildings", []):
 		maps.homestead.add_structure(b)
-		maps[b.kind] = MapBuilder.coop(b)
+		maps[b.kind] = Livestock.interior(b)
 	maps.merge(Districts.all_maps(int(state.seed)))
+	maps.merge(Halvorsen.all_maps(int(state.seed)))
+	maps.merge(Raiders.all_maps(int(state.seed)))
+	Angling.add_to_town(maps)
+	Restoration.setup(maps)
 	for id in maps:
 		var m: GameMap = maps[id]
+		# a room whose layout changed since this save was made is rebuilt fresh
+		if m.layout != "" and state.maps_dyn.has(id) and str(state.maps_dyn[id].get("layout", "")) != m.layout:
+			state.maps_dyn.erase(id)
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
 			var anchors := []
 			for kk in m.objects:
@@ -758,9 +805,10 @@ func build_persistent_maps() -> void:
 			_reconcile(m, anchors)
 		else:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
+		if m.layout != "": state.maps_dyn[id].layout = m.layout
 	sync_gates()
 	# older saves: clear anything sitting where a newer building now stands
-	for id in ["homestead", "town"]:
+	for id in ["homestead", "town"] + Districts.DISTRICTS.keys():
 		var mm: GameMap = maps[id]
 		for st in mm.structures:
 			var tiles := []
@@ -836,6 +884,8 @@ func quit_to_title() -> void:
 		ui.show_title()
 
 # ================================================================ maps
+var no_spawn_once := false     # waking in a safehouse: nothing comes back in overnight
+
 func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	var m: GameMap
 	if id == "mine":
@@ -872,8 +922,14 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	charge = null
 	last_warp_tile = GameMap.k(tx, ty)
 	mountain_night_spawned = false
+	no_spawn_once = opts.get("no_spawn", false)
+	if id == "dry_creek" and not state.is_empty() and not state.flags.has("met_raiders_day"):
+		state.flags.met_raiders_day = int(state.day)
 	if world:
 		world.on_map_changed()
+	no_spawn_once = false
+	if not state.is_empty():
+		contract_event("enter", {"map": id})
 	if not opts.get("silent", false):
 		Sfx.play("ladder" if id == "mine" else "door")
 		var label := ""
@@ -924,7 +980,11 @@ func update_clock(dt: float) -> void:
 
 func tick10() -> void:
 	expire_buffs()
+	conditions_tick10()
 	check_achievements()
+	if state.get("frost_night", false) and int(state.time) >= 1080 and int(state.flags.get("frost_warned", -1)) != int(state.day):
+		state.flags.frost_warned = int(state.day)
+		toast("It's turning cold. Frost tonight: cover young crops with Frost Cloth.", "frost_cloth", "warn")
 	state.time = int(state.time) + 10
 	survival_tick(10)
 	if state.time == Balance.time.midnight:
@@ -938,14 +998,252 @@ func tick10() -> void:
 	if int(state.time) in [Balance.animals.outside_start, Balance.animals.outside_end]:
 		sync_animals()
 	raid_tick()
+	Raiders.farm_raid_tick()
 	if state.time >= Balance.time.pass_out:
 		pass_out()
 
 
 
-# ================================================================ farm buildings and animals
-const BUILDING_SIZES := {"coop": Vector2i(6, 4)}
+# ================================================================ injuries and sickness
+## See scripts/world/injuries.gd for what each condition does and what treats it.
+func conditions() -> Dictionary:
+	if not (state.get("conditions") is Dictionary): state.conditions = {}
+	return state.conditions
 
+func injury_mult() -> float:
+	return float(mode_cfg().get("injury_mult", 1.0))
+
+func add_condition(k: String, silent := false) -> void:
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	match k:
+		"bleed":
+			c.bleed = {"until": abs_min() + int(I.bleed_minutes), "risk": float(c.get("bleed", {}).get("risk", 1.0)) if c.has("bleed") else 1.0}
+			c.dirty = {"risk": 1.0}
+		"wound", "fracture", "sick":
+			if c.has(k): return
+			c[k] = {"day": int(state.day)}
+		"chilled":
+			if c.has(k): return
+			c[k] = {"since": abs_min()}
+	state.energy = minf(float(state.energy), max_energy())
+	if not silent:
+		var msg := {"bleed": "You're bleeding! Bandage it.", "fracture": "Something snaps. Your limb is broken: you'll be slow until you splint it.", "wound": "Your wound is infected.", "sick": "You feel sick.", "chilled": "You're chilled to the bone. Get indoors or near a fire."}
+		toast(msg.get(k, Injuries.NAMES[k]), "", "bad")
+
+func cure_condition(k: String) -> bool:
+	var c := conditions()
+	if k == "blood_loss":
+		var had := int(c.get("blood_loss", 0)) > 0
+		c.erase("blood_loss")
+		return had
+	if c.has(k):
+		c.erase(k)
+		return true
+	return false
+
+## A hit from the infected can start bleeding or break a limb.
+func injure_from_hit(dmg: float, kind: String) -> void:
+	if state.is_empty() or dmg <= 0: return
+	var I: Dictionary = Balance.injuries
+	var m := injury_mult()
+	if kind in ["bite", "hit", "shot"] and rng.randf() < float(I.bleed_chance) * m:
+		add_condition("bleed")
+	if kind in ["bite", "hit", "blast"] and dmg >= float(I.fracture_hit) and rng.randf() < float(I.fracture_chance) * m:
+		add_condition("fracture")
+
+## Using a medical item (called from eat_item).
+func apply_treatment(id: String, parts: Array) -> void:
+	var T: Dictionary = Data.items[id].treat
+	var c := conditions()
+	if T.get("stop", false) and cure_condition("bleed"):
+		parts.append("bleeding stopped")
+	if T.has("clean") and c.has("dirty"):
+		c.dirty.risk = float(c.dirty.risk) * float(T.clean)
+		parts.append("wound cleaned")
+	for k in T.get("cure", []):
+		if cure_condition(k):
+			parts.append({"wound": "infection cured", "sick": "you feel better", "fracture": "limb set", "blood_loss": "blood restored"}.get(k, k))
+	if T.get("full", false):
+		c.erase("dirty")
+		state.health = max_health()
+		parts.append("fully healed")
+	if T.has("painkiller"):
+		add_buff("painkillers", 1.0, int(T.painkiller))
+		parts.append("pain dulled for %d min" % int(T.painkiller))
+	if T.get("vitamins", false):
+		add_buff("max energy", 0.1, 1440)
+		parts.append("+10% max energy for a day")
+	if T.get("clean_buff", false):
+		add_buff("clean", float(Balance.injuries.soap_clean), 1440)
+		parts.append("clean for a day")
+	if T.has("burn_resist"):
+		add_buff("burn resistance", 0.5, 60)
+		parts.append("-50% burn damage for an hour")
+	if T.has("purify"):
+		var n: int = min(count_item("dirty_water"), int(T.purify))
+		if n > 0:
+			remove_item("dirty_water", n)
+			add_item("water_bottle", n, {"silent": true})
+			parts.append("purified %d dirty water" % n)
+		else:
+			parts.append("no dirty water to purify")
+
+## Every 10 game minutes: bleeding wears off, winter nights chill you.
+func conditions_tick10() -> void:
+	if state.is_empty() or map == null: return
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	state.energy = minf(float(state.energy), max_energy())
+	if c.has("bleed") and abs_min() >= int(c.bleed.until):
+		c.erase("bleed")
+		toast("The bleeding has stopped by itself. Keep the wound clean.")
+	var t := int(state.time)
+	var cold: bool = season() == "winter" and map.outdoor and (t >= 1080 or t < 420) and buff("cold resistance") <= 0 and not near_fire()
+	if cold:
+		if not c.has("chilled"):
+			add_condition("chilled")
+		state.energy = maxf(0.0, float(state.energy) - float(I.chill_energy_per_10min))
+		if abs_min() - int(c.chilled.since) >= int(I.chill_sick_after) and not c.has("sick") and rng.randf() < 0.1 * injury_mult():
+			add_condition("sick")
+	elif c.has("chilled"):
+		c.erase("chilled")
+		toast("You warm up.")
+
+func near_fire() -> bool:
+	var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var o = map.get_obj(pt.x + dx, pt.y + dy)
+			if o != null and (o.type in ["campfire", "campfire_ring", "fire_pit", "generator"] or Data.obj_defs.get(o.type, {}).get("light", 0) > 0 and Data.obj_defs.get(o.type, {}).get("station", "") == "stove"):
+				return true
+	return false
+
+## Overnight: uncleaned wounds may turn, infections hurt, sickness and breaks heal slowly.
+func conditions_overnight(rep: Dictionary) -> void:
+	var c := conditions()
+	var I: Dictionary = Balance.injuries
+	var day := int(state.day)
+	c.erase("bleed")
+	c.erase("chilled")
+	if c.has("dirty"):
+		var risk: float = float(I.wound_chance) * float(c.dirty.risk) - buff("clean")
+		if not c.has("wound") and rng.randf() < risk * injury_mult():
+			c.wound = {"day": day}
+			rep.lines.append("Your wound got infected overnight. Antibiotics will clear it.")
+		c.erase("dirty")
+	if c.has("wound"):
+		if day - int(c.wound.day) >= int(I.wound_heal_days):
+			c.erase("wound")
+			rep.lines.append("Your infected wound has finally cleared up on its own.")
+		else:
+			state.health = maxf(10.0, float(state.health) - float(I.wound_morning_hp))
+			rep.lines.append("Your infected wound throbs (-%d health). Antibiotics would clear it." % int(I.wound_morning_hp))
+	if c.has("sick") and day - int(c.sick.day) >= int(I.sick_days):
+		c.erase("sick")
+		rep.lines.append("You feel better today.")
+	if c.has("fracture") and day - int(c.fracture.day) >= int(I.fracture_heal_days):
+		c.erase("fracture")
+		rep.lines.append("Your broken limb has knitted back together.")
+	if int(c.get("blood_loss", 0)) > 0:
+		c.blood_loss = max(0, int(c.blood_loss) - int(I.blood_loss_recover))
+		if int(c.blood_loss) == 0: c.erase("blood_loss")
+	state.health = minf(float(state.health), max_health())
+	state.energy = minf(float(state.energy), max_energy())
+
+# ================================================================ crop care: quality, frost, pests, crows
+func has_obj_at(m: GameMap, kk: String, type: String) -> bool:
+	var o = m.objects.get(kk)
+	return o != null and o.type == type
+
+## Frost comes on some nights in the first and last 8 days of spring and autumn.
+func roll_frost(day: int) -> bool:
+	if day <= int(Balance.crop_care.grace_days): return false
+	var sn := season(day)
+	var dos := day_of_season(day)
+	var early: bool = sn == "spring" and dos <= 8
+	var late: bool = sn == "autumn" and dos >= Balance.calendar.days_per_season - 7
+	if not (early or late): return false
+	var r := RandomNumberGenerator.new()
+	r.seed = int(state.seed) * 7919 + day * 104729
+	return r.randf() < Balance.crop_care.frost_chance
+
+## Frost, pests and crows overnight. Returns {"stunted": [crops that don't grow tonight]}.
+func crop_care_overnight(rep: Dictionary) -> Dictionary:
+	var C: Dictionary = Balance.crop_care
+	var day := int(state.day)
+	var stunted := []
+	if day <= int(C.grace_days):
+		return {"stunted": stunted}
+	var frosted := 0
+	var frost_killed := 0
+	var new_pests := 0
+	var pest_killed := 0
+	var crows := 0
+	for id in maps:
+		var m: GameMap = maps[id]
+		if not m.outdoor: continue
+		var scarers := []
+		for ok in m.objects:
+			var so: Dictionary = m.objects[ok]
+			if Data.obj_defs.get(so.type, {}).has("scare"):
+				scarers.append(Vector2(int(so.x), int(so.y)))
+		var growing := []
+		for kk in m.soil.keys():
+			var s: Dictionary = m.soil[kk]
+			var c = s.get("crop")
+			if c == null or c.get("dead", false): continue
+			growing.append(kk)
+			var framed := has_obj_at(m, kk, "cold_frame")
+			# frost: sets crops back two days; seedlings can die
+			if state.get("frost_last_night", false) and not framed and int(s.get("frost_until", -1)) < day and not Data.crops[c.id].seasons.has("winter"):
+				if int(c.g) <= 1 and not c.get("regrown", false) and rng.randf() < C.frost_kill_seedling:
+					c.dead = true
+					frost_killed += 1
+					continue
+				c.g = max(0, int(c.g) - 2)
+				stunted.append(c)
+				frosted += 1
+			# pests: an infested crop stops growing, spreads, and dies after a few days
+			if c.has("pests"):
+				if day - int(c.pests) >= C.pest_days_to_kill:
+					c.dead = true
+					pest_killed += 1
+					continue
+				stunted.append(c)
+				var t := GameMap.unk(kk)
+				for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nk := GameMap.k(t.x + dv.x, t.y + dv.y)
+					var ns = m.soil.get(nk)
+					if ns != null and ns.get("crop") != null and not ns.crop.get("dead", false) and not ns.crop.has("pests") and int(ns.get("pest_until", -1)) < day and rng.randf() < C.pest_spread:
+						ns.crop.pests = day
+						new_pests += 1
+			elif int(s.get("pest_until", -1)) < day and not framed and rng.randf() < float(C.pest_chance.get(season(), 0.0)):
+				c.pests = day
+				new_pests += 1
+		# crows go for unprotected crops on bigger fields
+		if id == "homestead" and growing.size() >= C.crow_min_crops and rng.randf() < C.crow_chance:
+			var targets := growing.filter(func(kk2):
+				var t2 := GameMap.unk(kk2)
+				var cc = m.soil[kk2].get("crop")
+				if cc == null or cc.get("dead", false) or has_obj_at(m, kk2, "cold_frame"): return false
+				return not scarers.any(func(p): return p.distance_to(Vector2(t2)) <= 8.0))
+			targets.shuffle()
+			for i in min(targets.size(), 1 + growing.size() / 30):
+				m.soil[targets[i]].crop = null
+				crows += 1
+	if frosted + frost_killed > 0:
+		rep.lines.append("Frost last night set back %d crop%s%s. Frost Cloth or a Cold Frame protects them." % [frosted + frost_killed, "" if frosted + frost_killed == 1 else "s", " and killed %d seedling%s" % [frost_killed, "" if frost_killed == 1 else "s"] if frost_killed > 0 else ""])
+	if new_pests > 0:
+		rep.lines.append("Pests got into %d crop%s. Pest Spray clears them; untreated crops die in %d days." % [new_pests, "" if new_pests == 1 else "s", int(C.pest_days_to_kill)])
+	if pest_killed > 0:
+		rep.lines.append("Pests killed %d crop%s." % [pest_killed, "" if pest_killed == 1 else "s"])
+	if crows > 0:
+		rep.lines.append("Crows ate %d of your crops. A Scarecrow keeps them off within 8 tiles." % crows)
+	return {"stunted": stunted}
+
+# ================================================================ farm buildings and animals
+## Coops, barns and hutches (see scripts/world/livestock.gd), plus doghouses and house cats.
 func has_building(kind: String) -> bool:
 	return state.get("buildings", []).any(func(b): return b.kind == kind)
 
@@ -956,10 +1254,11 @@ func get_building_rec(kind: String):
 
 ## The footprint a building kit would cover if used now (in front of the player).
 func building_rect(kind: String, t: Vector2i, dir: String) -> Rect2i:
-	var sz: Vector2i = BUILDING_SIZES[kind]
+	var sz := Vector2i(int(Livestock.BUILDINGS[kind].size[0]), int(Livestock.BUILDINGS[kind].size[1]))
+	var hx := sz.x / 2 - 1
 	match dir:
-		"up": return Rect2i(t.x - 2, t.y - sz.y + 1, sz.x, sz.y)
-		"down": return Rect2i(t.x - 2, t.y, sz.x, sz.y)
+		"up": return Rect2i(t.x - hx, t.y - sz.y + 1, sz.x, sz.y)
+		"down": return Rect2i(t.x - hx, t.y, sz.x, sz.y)
 		"left": return Rect2i(t.x - sz.x + 1, t.y - sz.y + 1, sz.x, sz.y)
 		_: return Rect2i(t.x, t.y - sz.y + 1, sz.x, sz.y)
 
@@ -980,14 +1279,14 @@ func building_fits(m: GameMap, r: Rect2i) -> bool:
 
 func build_building(kind: String, r: Rect2i) -> void:
 	var b := {"kind": kind, "x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y,
-		"door_x": r.position.x + 3, "door_y": r.position.y + r.size.y - 1, "door_open": false, "hay": 0,
+		"door_x": r.position.x + r.size.x / 2, "door_y": r.position.y + r.size.y - 1, "door_open": false, "hay": 0, "feed": 0,
 		"warp": {"to": kind, "tx": 6, "ty": 8, "dir": "up"}}
 	state.buildings.append(b)
 	_attach_building(b)
 
 func _attach_building(b: Dictionary) -> void:
 	maps.homestead.add_structure(b)
-	var inner := MapBuilder.coop(b)
+	var inner := Livestock.interior(b)
 	maps[b.kind] = inner
 	if state.maps_dyn.has(b.kind) and state.maps_dyn[b.kind].get("objects") is Dictionary:
 		inner.objects = state.maps_dyn[b.kind].objects
@@ -998,10 +1297,38 @@ func _attach_building(b: Dictionary) -> void:
 func animal_door_tile(b: Dictionary) -> Vector2i:
 	return Vector2i(int(b.x) + 1, int(b.y) + int(b.h) - 1)
 
-func animal_room(building: String) -> int:
-	if not has_building(building):
+## How much hay and feed a building's feeder holds (more with Feed Troughs inside).
+func feeder_cap(b: Dictionary) -> int:
+	var cap: int = Balance.animals.hopper_cap
+	var inner = maps.get(b.kind)
+	if inner != null:
+		for k in inner.objects:
+			if inner.objects[k].type == "feed_trough": cap += 30
+	return cap
+
+func doghouses() -> Array:
+	var out := []
+	if not maps.has("homestead"): return out
+	for k in maps.homestead.objects:
+		var o: Dictionary = maps.homestead.objects[k]
+		if o.type == "doghouse": out.append(o)
+	return out
+
+## Room left for animals in one home ("coop", "barn", "hutch", "doghouse", "house").
+func animal_room(home: String) -> int:
+	var living: int = state.animals.filter(func(a): return Livestock.home_of(a) == home).size()
+	match home:
+		"doghouse": return doghouses().size() - living
+		"house": return 1 - living
+	if not has_building(home):
 		return 0
-	return Balance.animals.coop_capacity - state.animals.filter(func(a): return Data.animals[a.type].building == building).size()
+	return int(Livestock.BUILDINGS[home].cap) - living
+
+## The first of an animal's homes with room ("" if none).
+func home_for(kind: String) -> String:
+	for h in Data.animals[kind].homes:
+		if animal_room(h) > 0: return h
+	return ""
 
 func random_animal_name() -> String:
 	var used: Array = state.animals.map(func(a): return a.name)
@@ -1009,8 +1336,10 @@ func random_animal_name() -> String:
 	return pool[rng.randi() % pool.size()] if not pool.is_empty() else "Animal %d" % (state.animals.size() + 1)
 
 func adopt_animal(kind: String, name: String) -> Dictionary:
+	var home := home_for(kind)
+	if home == "": home = Data.animals[kind].homes[0]
 	var a := {"uid": int(state.get("next_animal", 1)), "type": kind, "name": name.strip_edges().substr(0, 14), "born": int(state.day), "friendship": 100,
-		"petted_day": -1, "fed": true, "last_product": int(state.day), "color": rng.randi() % Data.animals[kind].colors.size()}
+		"petted_day": -1, "fed": true, "last_product": int(state.day), "color": rng.randi() % Data.animals[kind].colors.size(), "home": home, "ready": false}
 	if a.name == "": a.name = random_animal_name()
 	state.next_animal = int(a.uid) + 1
 	state.animals.append(a)
@@ -1034,9 +1363,32 @@ func pet_animal(a: Dictionary) -> bool:
 	add_xp("farming", 5)
 	return true
 
-## Animals go outside on fair days when the coop door is open.
-func animals_outside() -> bool:
-	var b = get_building_rec("coop")
+## Collect milk or wool with the right tool. Returns a message.
+func collect_from_animal(a: Dictionary, tool: String) -> String:
+	var D: Dictionary = Data.animals[a.type]
+	if D.get("tool", "") != tool:
+		return "That won't work on %s." % a.name
+	if not animal_mature(a):
+		return "%s is too young." % a.name
+	if not a.get("ready", false):
+		return "%s has nothing for you yet. Try tomorrow." % a.name
+	var item: String = D.product
+	if D.has("big_product") and (a.get("premium", false) or (int(a.friendship) >= Balance.animals.big_product_friendship and rng.randf() < Balance.animals.big_product_chance)):
+		item = D.big_product
+	if not can_fit(item, 1):
+		return "Your inventory is full."
+	add_item(item, 1)
+	a.ready = false
+	a.premium = false
+	a.friendship = min(1000, int(a.friendship) + 5)
+	add_xp("farming", 6)
+	return ""
+
+## Animals go outside on fair days when their building's animal door is open.
+func animals_outside(home := "coop") -> bool:
+	if home == "doghouse": return true
+	if home == "house": return false
+	var b = get_building_rec(home)
 	if b == null or not b.door_open: return false
 	if season() == "winter" or state.weather in ["rain", "storm", "snow"]: return false
 	return int(state.time) >= Balance.animals.outside_start and int(state.time) < Balance.animals.outside_end
@@ -1044,64 +1396,132 @@ func animals_outside() -> bool:
 var animals_rt := {}   # uid -> {pos, map, dir, frame, t, goal}
 
 func sync_animals(force := false) -> void:
-	var b = get_building_rec("coop")
-	var out := animals_outside()
 	var keep := {}
+	var dogs := doghouses()
+	var dog_i := 0
 	for a in state.get("animals", []):
 		var uid := int(a.uid)
 		keep[uid] = true
-		var want := "homestead" if out else "coop"
+		var home := Livestock.home_of(a)
+		var out := animals_outside(home)
+		var want: String = "homestead" if out else home
+		var spot := Vector2(rng.randf_range(2, 10) * 16, rng.randf_range(4, 8) * 16)
+		var b = get_building_rec(home)
+		if home == "doghouse":
+			if dog_i < dogs.size():
+				spot = Vector2(int(dogs[dog_i].x) * 16 + 8, (int(dogs[dog_i].y) + 1) * 16 + 12)
+			dog_i += 1
+		elif want == "homestead" and b != null:
+			spot = Vector2((int(b.door_x) + rng.randf_range(-3, 3)) * 16 + 8, (int(b.door_y) + rng.randf_range(2, 4)) * 16 + 12)
 		var r = animals_rt.get(uid)
-		if r == null or r.map != want or force:
-			var spot := Vector2(rng.randf_range(2, 10) * 16, rng.randf_range(4, 8) * 16)
-			if want == "homestead" and b != null:
-				spot = Vector2((int(b.door_x) + rng.randf_range(-3, 3)) * 16 + 8, (int(b.door_y) + rng.randf_range(2, 4)) * 16 + 12)
-			if r != null and r.map == want and not force:
-				continue
-			animals_rt[uid] = {"pos": spot, "map": want, "dir": "down", "frame": 0, "t": rng.randf() * 2.0, "goal": spot, "home": spot}
+		if r != null and r.map == want and not force:
+			continue
+		animals_rt[uid] = {"pos": spot, "map": want, "dir": "down", "frame": 0, "t": rng.randf() * 2.0, "goal": spot, "home": spot}
 	for uid in animals_rt.keys():
 		if not keep.has(uid): animals_rt.erase(uid)
+
+var _bark_cd := 0.0
 
 func update_animals(dt: float) -> void:
 	if state.get("animals", []).is_empty():
 		return
+	_bark_cd = maxf(0.0, _bark_cd - dt)
 	for a in state.animals:
 		var r = animals_rt.get(int(a.uid))
 		if r == null or map == null or r.map != map.id:
+			continue
+		if a.type == "guard_dog" and _guard_dog(a, r, dt):
 			continue
 		r.t -= dt
 		if r.t <= 0:
 			r.t = rng.randf_range(1.5, 4.0)
 			if rng.randf() < 0.6:
-				r.goal = r.home + Vector2(rng.randf_range(-48, 48), rng.randf_range(-32, 32))
+				var span := 20.0 if Livestock.home_of(a) == "doghouse" else 48.0
+				r.goal = r.home + Vector2(rng.randf_range(-span, span), rng.randf_range(-span * 0.7, span * 0.7))
 			else:
 				r.goal = r.pos
-		var d: Vector2 = r.goal - r.pos
-		if d.length() > 2:
-			var step: Vector2 = d.normalized() * (14.0 if a.type == "chicken" else 18.0) * dt
-			var np: Vector2 = r.pos + step
+		_walk_animal(a, r, r.goal, (14.0 if a.type in ["chicken", "quail", "duck"] else 18.0) * dt)
+
+func _walk_animal(a: Dictionary, r: Dictionary, goal: Vector2, step_len: float) -> void:
+	var d: Vector2 = goal - r.pos
+	if d.length() > 2:
+		var step: Vector2 = d.normalized() * step_len
+		# straight there, or slide along whatever is in the way
+		var moved := false
+		var here := Vector2i(int(floor(r.pos.x / 16)), int(floor((r.pos.y - 3) / 16)))
+		for np in [r.pos + step, r.pos + Vector2(step.x, 0), r.pos + Vector2(0, step.y)]:
+			if np == r.pos: continue
 			var tx := int(floor(np.x / 16))
 			var ty := int(floor((np.y - 3) / 16))
-			if map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
+			# the tile it already stands on never blocks it (something may have grown there)
+			if Vector2i(tx, ty) == here or map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
 				r.pos = np
-				r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
-				r.frame = int(Time.get_ticks_msec() / 200) % 2
-			else:
-				r.goal = r.pos
+				moved = true
+				break
+		if moved:
+			r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
+			r.frame = int(Time.get_ticks_msec() / 200) % 2
 		else:
-			r.frame = 0
+			r.goal = r.pos
+	else:
+		r.frame = 0
 
-## Morning: animals eat from the hopper, grow, and leave products on the coop floor.
+## The guard dog barks at infected that come near and goes after the closest one.
+## Returns true while it's busy fighting.
+func _guard_dog(a: Dictionary, r: Dictionary, dt: float) -> bool:
+	if not animal_mature(a) or enemies.is_empty():
+		return false
+	var best = null
+	var bd := 7.0 * 16.0
+	for e in enemies:
+		var dd: float = (e.pos as Vector2).distance_to(r.home)
+		if dd < bd:
+			bd = dd
+			best = e
+	var near_any := enemies.any(func(e): return (e.pos as Vector2).distance_to(r.pos) < 11.0 * 16.0)
+	if near_any and _bark_cd <= 0:
+		_bark_cd = 45.0
+		toast("%s is barking! Something's coming." % a.name, "", "warn")
+		Sfx.play("scream")
+	if best == null:
+		return false
+	_walk_animal(a, r, best.pos, 52.0 * dt)
+	r.bite_t = float(r.get("bite_t", 0.0)) - dt
+	if r.pos.distance_to(best.pos) < 14.0 and float(r.bite_t) <= 0 and world:
+		r.bite_t = 1.0
+		world.cb.damage(best, float(Balance.animals.dog_bite), (best.pos - r.pos).normalized(), {"kind": "dog"})
+	return true
+
+## Morning: animals eat from their feeder, grow, and leave products (or get ready for the
+## milk pail or shears). Pigs dig truffles, cats bring small finds, mice raid unguarded hay.
 func animals_overnight(rep: Dictionary) -> void:
-	var b = get_building_rec("coop")
-	if b == null or state.animals.is_empty():
+	if state.animals.is_empty():
 		return
 	var A: Dictionary = Balance.animals
-	var cm: GameMap = maps.coop
 	var hungry := 0
 	var made := 0
+	var truffles := 0
+	var cats = state.animals.filter(func(a): return a.type == "barn_cat" and animal_mature(a)).size()
+	if cats == 0:
+		for b in state.get("buildings", []):
+			if b.kind == "barn" and int(b.hay) > 4 and rng.randf() < A.mice_chance:
+				var lost: int = rng.randi_range(1, 3)
+				b.hay = int(b.hay) - lost
+				rep.lines.append("Mice got into the %s feeder and spoiled %d hay. A barn cat would keep them out." % [Livestock.BUILDINGS[b.kind].name.to_lower(), lost])
 	for a in state.animals:
-		if int(b.hay) > 0:
+		var D: Dictionary = Data.animals[a.type]
+		if D.get("pet", false):
+			a.fed = true
+			if int(a.petted_day) < int(state.day) - 1:
+				a.friendship = max(0, int(a.friendship) + A.unpetted_points)
+			continue
+		var b = get_building_rec(Livestock.home_of(a))
+		if b != null and int(b.get("feed", 0)) > 0:
+			b.feed = int(b.feed) - 1
+			a.fed = true
+			a.premium = true
+			a.friendship = min(1000, int(a.friendship) + A.fed_points * 2)
+		elif b != null and int(b.hay) > 0:
 			b.hay = int(b.hay) - 1
 			a.fed = true
 			a.friendship = min(1000, int(a.friendship) + A.fed_points)
@@ -1114,31 +1534,79 @@ func animals_overnight(rep: Dictionary) -> void:
 	# products appear the next morning (called after the day advances)
 	for a in state.animals:
 		var D: Dictionary = Data.animals[a.type]
-		if not a.fed or not animal_mature(a): continue
+		var home := Livestock.home_of(a)
+		if D.has("finds") and animal_mature(a) and rng.randf() < A.cat_find_chance:
+			var pool: Array = D.finds.filter(func(f): return Data.items.has(f[0]))
+			var tot := 0
+			for f in pool: tot += int(f[1])
+			var v = rng.randi() % max(1, tot)
+			for f in pool:
+				v -= int(f[1])
+				if v < 0:
+					if _drop_in(maps.get(home), f[0]): made += 1
+					break
+		if D.get("pet", false) or not a.fed or not animal_mature(a): continue
 		if int(state.day) - int(a.last_product) < int(D.every): continue
+		a.last_product = state.day
+		if D.has("tool"):
+			a.ready = true
+			continue
+		if D.get("digs", false):
+			var b = get_building_rec(home)
+			if b != null and b.door_open and season() != "winter":
+				var n := 1 + (1 if int(a.friendship) >= A.big_product_friendship and rng.randf() < 0.5 else 0)
+				for i in n:
+					if _drop_near(maps.homestead, b, D.product): truffles += 1
+			continue
 		var item: String = D.product
-		if D.has("big_product") and int(a.friendship) >= A.big_product_friendship and rng.randf() < A.big_product_chance:
+		if D.has("big_product") and (a.get("premium", false) or (int(a.friendship) >= A.big_product_friendship and rng.randf() < A.big_product_chance)):
 			item = D.big_product
 		if D.has("rare_product") and int(a.friendship) >= A.rare_friendship and rng.randf() < A.rare_chance:
 			item = D.rare_product
-		for tries in 40:
-			var x := rng.randi_range(1, cm.w - 2)
-			var y := rng.randi_range(3, cm.h - 2)
-			if cm.tile_free(x, y) and not (x == 6 and y >= 8):
-				cm.add_obj(x, y, "animal_product", {"item": item})
-				made += 1
-				break
+		a.premium = false
+		if _drop_in(maps.get(home), item): made += 1
 		# chickens shed feathers now and then (used for arrows)
 		if a.type == "chicken" and rng.randf() < 0.3:
-			for tries in 40:
-				var fx2 := rng.randi_range(1, cm.w - 2)
-				var fy2 := rng.randi_range(3, cm.h - 2)
-				if cm.tile_free(fx2, fy2) and not (fx2 == 6 and fy2 >= 8):
-					cm.add_obj(fx2, fy2, "animal_product", {"item": "feather"})
-					break
-		a.last_product = state.day
-	if made > 0: rep.lines.append("Your animals left %d item%s in the coop." % [made, "" if made == 1 else "s"])
-	if hungry > 0: rep.lines.append("%d of your animals went hungry. Fill the hay hopper in the coop." % hungry)
+			_drop_in(maps.get(home), "feather")
+	var ready = state.animals.filter(func(a): return a.get("ready", false)).size()
+	if made > 0: rep.lines.append("Your animals left %d item%s in their homes." % [made, "" if made == 1 else "s"])
+	if ready > 0: rep.lines.append("%d of your animals %s ready for the milk pail or shears." % [ready, "is" if ready == 1 else "are"])
+	if truffles > 0: rep.lines.append("Your pigs dug up %d truffle%s near the barn." % [truffles, "" if truffles == 1 else "s"])
+	if hungry > 0: rep.lines.append("%d of your animals went hungry. Fill the hay feeders." % hungry)
+
+## A product on the floor of an animal home (not in the doorway).
+func _drop_in(m, item: String) -> bool:
+	if m == null: return false
+	for tries in 40:
+		var x := rng.randi_range(1, m.w - 2)
+		var y := rng.randi_range(3, m.h - 2)
+		if m.tile_free(x, y) and not (x == 6 and y >= 8):
+			m.add_obj(x, y, "animal_product", {"item": item})
+			return true
+	return false
+
+## Something dug up on the grass around a building.
+func _drop_near(m: GameMap, b: Dictionary, item: String) -> bool:
+	for tries in 60:
+		var x := int(b.door_x) + rng.randi_range(-6, 6)
+		var y := int(b.door_y) + rng.randi_range(2, 7)
+		if m.in_bounds(x, y) and m.tile_at(x, y) == "grass" and m.tile_free(x, y):
+			m.add_obj(x, y, "animal_product", {"item": item})
+			return true
+	return false
+
+## Hay from cutting weeds. With a Hay Silo it goes straight into a feeder with room.
+func store_hay(n: int) -> bool:
+	var silo := false
+	for k in maps.homestead.objects:
+		if maps.homestead.objects[k].type == "hay_silo": silo = true
+	if not silo: return false
+	for b in state.get("buildings", []):
+		var room := feeder_cap(b) - int(b.hay) - int(b.get("feed", 0))
+		if room > 0:
+			b.hay = int(b.hay) + min(n, room)
+			return true
+	return false
 
 # ================================================================ machines, power and defenses
 func abs_min() -> int:
@@ -1387,13 +1855,26 @@ func resolve_raid(m: GameMap) -> Array:
 			o.ammo_n = int(o.get("ammo_n", 0)) - k * int(d.ammo_per_kill)
 		turret_kills += k
 		left -= k
-	# an open coop door is an invitation
+	# guard dogs chase some off
+	var dog_kills := 0
+	for a in state.animals:
+		if a.type == "guard_dog" and animal_mature(a) and left > 0:
+			var k2: int = min(left, int(Balance.animals.dog_night_kills))
+			dog_kills += k2
+			left -= k2
+	# an open animal door is an invitation
 	var lost_names := []
-	var coop = get_building_rec("coop")
-	if left > 0 and coop != null and coop.door_open and not state.animals.is_empty():
-		var n_lost: int = min(state.animals.size(), int(ceil(left / float(Balance.animals.open_door_losses_per))))
+	var open_doors := []
+	for b in state.get("buildings", []):
+		if b.door_open: open_doors.append(b)
+	for b in open_doors:
+		if left <= 0: break
+		var inside: Array = state.animals.filter(func(a): return Livestock.home_of(a) == b.kind)
+		if inside.is_empty(): continue
+		var n_lost: int = min(inside.size(), int(ceil(left / float(Balance.animals.open_door_losses_per))))
 		for i in n_lost:
-			var a: Dictionary = state.animals[rng.randi() % state.animals.size()]
+			var a: Dictionary = inside[rng.randi() % inside.size()]
+			inside.erase(a)
 			lost_names.append(a.name)
 			state.animals.erase(a)
 	# 2. the perimeter
@@ -1437,12 +1918,13 @@ func resolve_raid(m: GameMap) -> Array:
 	var parts := []
 	if int(r.killed) > 0: parts.append("you put down %d yourself" % int(r.killed))
 	if turret_kills > 0: parts.append("your turrets stopped %d" % turret_kills)
+	if dog_kills > 0: parts.append("your dog drove off %d" % dog_kills)
 	if wire_kills > 0: parts.append("your wire fences finished off %d" % wire_kills)
 	if damaged > 0: parts.append("%d barrier section%s took damage" % [damaged, "" if damaged == 1 else "s"])
 	if broke > 0: parts.append("%d broke" % broke)
 	lines.append(head + (" " + ", ".join(parts).capitalize().substr(0, 1) + ", ".join(parts).substr(1) + "." if not parts.is_empty() else ""))
 	if not lost_names.is_empty():
-		lines.append("The coop door was left open. %s %s gone. Close the animal door before nightfall." % [", ".join(lost_names), "is" if lost_names.size() == 1 else "are"])
+		lines.append("An animal door was left open. %s %s gone. Close the animal doors before nightfall." % [", ".join(lost_names), "is" if lost_names.size() == 1 else "are"])
 	if trampled > 0:
 		lines.append("They got into your fields and trampled %d crop%s. Fences and turrets will keep them out." % [trampled, "" if trampled == 1 else "s"])
 	elif left > 0 and targets.door:
@@ -1462,7 +1944,7 @@ func _raid_targets(m: GameMap, reach: PackedByteArray) -> Dictionary:
 	for kk in m.soil:
 		var sl: Dictionary = m.soil[kk]
 		var c = sl.get("crop")
-		if c == null or c.get("dead", false): continue
+		if c == null or c.get("dead", false) or sl.get("raised", false): continue   # raised beds can't be trampled
 		var t := GameMap.unk(kk)
 		if reach[t.y * m.w + t.x] or _next_to_reach(m, reach, t):
 			crops.append(kk)
@@ -1537,6 +2019,10 @@ func status_effects() -> Array:
 		elif state.hunger <= S.low_threshold: out.append({"id": "hungry", "label": "Hungry", "desc": "Slower movement, tools cost more energy, poorer rest."})
 		if state.thirst <= 0: out.append({"id": "dehydrated", "label": "Dehydrated", "bad": true, "desc": "Much slower, tools cost far more energy. " + g})
 		elif state.thirst <= S.low_threshold: out.append({"id": "thirsty", "label": "Thirsty", "desc": "Slower movement, tools cost more energy, poorer rest."})
+	for k in conditions():
+		if not Injuries.NAMES.has(k): continue      # "dirty" is bookkeeping, not a condition
+		if k == "blood_loss" and int(conditions().blood_loss) <= 0: continue
+		out.append({"id": "cond_" + k, "label": Injuries.NAMES[k], "bad": true, "desc": Injuries.DESC[k] + (" (Painkillers: you're ignoring it for now.)" if k == "fracture" and buff("painkillers") > 0 else "")})
 	if state.energy <= 10: out.append({"id": "exhausted", "label": "Exhausted", "bad": true, "desc": "Too tired for heavy work. Eat or sleep."})
 	if state.time >= Balance.time.midnight: out.append({"id": "tired", "label": "Tired", "desc": "You will pass out at 2:00 am."})
 	return out
@@ -1561,6 +2047,7 @@ func player_speed() -> float:
 func tool_energy_cost(tool: String, levels: int) -> float:
 	var skill: String = Data.tool_defs.get(tool, {}).get("skill", "")
 	var red = 1.0 - skill_level(skill) * Balance.energy.skill_cost_reduction_per_level if skill != "" else 1.0
+	if tool == "pickaxe" and DeepMine.has_perk("strongarm"): red *= 0.5
 	return max(1.0, snappedf(Balance.energy.tool_base_cost * levels * mode_cfg().tool_energy_mult * survival_mult("energy") * red, 0.1))
 
 func can_capacity() -> int:
@@ -1568,12 +2055,14 @@ func can_capacity() -> int:
 
 func eat_item(id: String) -> bool:
 	var it: Dictionary = Data.items.get(id, {})
+	if it.get("sleep_bag", false):
+		return use_sleeping_bag()
 	if not it.has("edible") or not remove_item(id, 1):
 		return false
 	var e: Dictionary = it.edible
 	var mult := 1.0 + skill_level("cooking") * 0.05 if it.cat == "cooked" else 1.0
 	if it.cat == "medical": mult += float(gear_total().fx.get("med_bonus", 0.0))
-	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, float(Balance.player.max_energy))
+	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, max_energy())
 	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, max_health())
 	var parts := []
 	if e.get("energy", 0): parts.append("+%d energy" % round(e.energy * mult))
@@ -1595,6 +2084,11 @@ func eat_item(id: String) -> bool:
 	if it.get("dirty", false) and rng.randf() < 0.35:
 		state.health = maxf(1.0, state.health - 8.0)
 		parts.append("your stomach turns (-8 health)")
+		if rng.randf() < float(Balance.injuries.dirty_water_sick) / 0.35 * injury_mult():
+			add_condition("sick", true)
+			parts.append("you feel sick")
+	if it.has("treat"):
+		apply_treatment(id, parts)
 	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + (": " + ", ".join(parts) if not parts.is_empty() else ""), id)
 	Sfx.play("eat")
 	return true
@@ -1731,6 +2225,8 @@ func contract_state() -> Dictionary:
 func contract_available(c: Dictionary) -> bool:
 	var cs := contract_state()
 	if cs.active.has(c.id) or cs.done.has(c.id): return false
+	if c.get("hidden", false): return false          # starts by itself after another job
+	if c.has("after") and not cs.done.has(c.after): return false
 	return not c.has("needs") or state.unlocked.get(c.needs, false)
 
 func take_contract(id: String) -> void:
@@ -1754,6 +2250,7 @@ func contract_progress(c: Dictionary) -> Array:
 			return [n, c.spots.size()]
 		"collect": return [min(count_item(c.item), int(c.count)), int(c.count)]
 		"waves": return [int(cs.progress.get(c.id, 0)), int(c.waves)]
+		"escape": return [1 if cs.done.has(c.id) else 0, 1]
 	return [min(int(cs.progress.get(c.id, 0)), int(c.count)), int(c.count)]
 
 func contract_progress_text(c: Dictionary) -> String:
@@ -1761,6 +2258,7 @@ func contract_progress_text(c: Dictionary) -> String:
 	match c.kind:
 		"boss": return "Not yet" if pr[0] == 0 else "Done"
 		"waves": return "Best: wave %d of %d" % [pr[0], pr[1]]
+		"escape": return "Get out" if pr[0] == 0 else "Done"
 	return "%d / %d" % pr
 
 ## Kills, catches and boss deaths count toward active jobs.
@@ -1778,6 +2276,9 @@ func contract_event(kind: String, data: Dictionary) -> void:
 		elif kind == "boss" and c.kind == "boss" and c.boss == data.type:
 			complete_contract(c, data.get("at", player.pos))
 			continue
+		elif kind == "enter" and c.kind == "escape" and data.map == c.goal:
+			complete_contract(c, player.pos)
+			continue
 		else:
 			continue
 		check_contracts()
@@ -1786,7 +2287,7 @@ func check_contracts() -> void:
 	var cs := contract_state()
 	for id in cs.active.duplicate():
 		var c := Contracts.get_def(id)
-		if c.is_empty() or c.kind in ["boss", "waves"]: continue
+		if c.is_empty() or c.kind in ["boss", "waves", "escape"]: continue
 		var pr := contract_progress(c)
 		if pr[0] >= pr[1]:
 			complete_contract(c, player.pos)
@@ -1801,6 +2302,8 @@ func complete_contract(c: Dictionary, at: Vector2) -> void:
 	if c.kind == "find" and c.get("consume", false):
 		for sp in c.spots:
 			remove_item(sp[0], 1)
+	for it in c.get("consume_items", []):
+		remove_item(it, 1)
 	var r: Dictionary = c.reward
 	var parts := []
 	if r.has("money"):
@@ -1813,6 +2316,12 @@ func complete_contract(c: Dictionary, at: Vector2) -> void:
 	toast("Contract complete: %s (%s)" % [c.title, ", ".join(parts)], "", "gold")
 	Sfx.play("coin")
 	add_xp("survival", 80)
+	if c.has("then") and not cs.done.has(c.then) and not cs.active.has(c.then):
+		cs.active.append(c.then)
+		var nx := Contracts.get_def(c.then)
+		toast(nx.get("start_text", "New contract: " + nx.title), "", "bad")
+		if world and Halvorsen.LAB_MAPS.has(map.id):
+			world.spawn_lockdown(map)
 
 func give_or_drop(id: String, at: Vector2) -> void:
 	var left := add_item(id, 1, {"silent": true})
@@ -1903,8 +2412,72 @@ func achievement_value(stat: String) -> float:
 		"deepest": return float(state.mine.deepest)
 		"unbitten_day": return 0.0 if state.flags.get("bitten", false) else float(state.day)
 		"chainsaw": return float(st.get("chainsaw_kills", 0))
+		"ghost_nests": return float(st.get("ghost_nests", 0))
+		"fast_food": return float((st.get("fast_food", {}) as Dictionary).size()) if st.get("fast_food") is Dictionary else 0.0
+		"safehouses": return float((st.get("safehouses", {}) as Dictionary).size()) if st.get("safehouses") is Dictionary else 0.0
 		"earned": return float(st.get("earned", 0))
 	return 0.0
+
+# ================================================================ sleeping bag
+## Sleep where you are, if it's safe. Returns true if you went to sleep.
+func use_sleeping_bag() -> bool:
+	if map == null: return false
+	if map.id == "house":
+		toast("Your own bed is right here.", "", "warn")
+		return false
+	if map.id == "mine":
+		toast("Not down here. Something would find you before morning.", "", "warn")
+		return false
+	var p: Vector2 = player.pos
+	var close := enemies.filter(func(e): return float(e.get("turned", 0.0)) <= 0 and not Data.enemies[e.type].get("nest", false) and (map.indoor or (e.pos.distance_to(p) < Safehouses.SAFE_TILES * 16.0 and e.state != "asleep")))
+	if not close.is_empty():
+		toast("It isn't safe to sleep here. %s" % ("Clear the room first." if map.indoor else "Infected are too close."), "", "warn")
+		return false
+	if Safehouses.counts(map):
+		if not (state.stats.get("safehouses") is Dictionary): state.stats.safehouses = {}
+		if not state.stats.safehouses.has(map.id):
+			state.stats.safehouses[map.id] = true
+			toast("New safehouse: %s (%d)" % [Data.location_names.get(map.id, map.id), state.stats.safehouses.size()], "", "gold")
+		check_achievements()
+	var pt := Vector2i(int(p.x / 16), int(p.y / 16))
+	state.flags.wake_at = {"map": map.id, "x": pt.x, "y": pt.y}
+	end_day("sleep")
+	return true
+
+# ================================================================ cleared rooms
+## After a kill: a fast food restaurant with nothing left in it counts as cleared.
+func check_room_cleared() -> void:
+	if map == null or not map.indoor: return
+	var b := Districts.building(map.id)
+	if not b.get("fast_food", false): return
+	if enemies.any(func(e): return float(e.get("turned", 0.0)) <= 0): return
+	if not (state.stats.get("fast_food") is Dictionary): state.stats.fast_food = {}
+	if state.stats.fast_food.has(map.id): return
+	state.stats.fast_food[map.id] = true
+	toast("%s is clear. (%d of 5 restaurants)" % [b.name, state.stats.fast_food.size()], "", "gold")
+	check_achievements()
+
+# ================================================================ horde nests
+func nests() -> Dictionary:
+	if not (state.get("nests") is Dictionary): state.nests = {}
+	return state.nests
+
+## A nest stands unless it was destroyed less than regrow_days ago.
+func nest_active(id: String) -> bool:
+	var n: Dictionary = nests().get(id, {})
+	return not n.has("cleared") or int(state.day) - int(n.cleared) >= int(Balance.hordes.regrow_days)
+
+func nest_regrow_in(id: String) -> int:
+	var n: Dictionary = nests().get(id, {})
+	if not n.has("cleared"): return 0
+	return maxi(0, int(Balance.hordes.regrow_days) - (int(state.day) - int(n.cleared)))
+
+func clear_nest(id: String, ghost: bool) -> void:
+	nests()[id] = {"cleared": int(state.day)}
+	state.stats.nests_cleared = int(state.stats.get("nests_cleared", 0)) + 1
+	if ghost:
+		state.stats.ghost_nests = int(state.stats.get("ghost_nests", 0)) + 1
+	check_achievements()
 
 func check_achievements() -> void:
 	if not (state.get("achievements") is Dictionary): state.achievements = {"done": []}
@@ -1921,6 +2494,8 @@ func check_achievements() -> void:
 # ================================================================ NPCs
 func npc_schedule(id: String) -> Array:
 	var S: Dictionary = Data.npcs[id].schedules
+	if S.has("tavern_open") and Restoration.done("tavern"):
+		return S.tavern_open
 	if S.has(weekday()):
 		return S[weekday()]
 	if S.has("rain") and (state.weather == "rain" or state.weather == "storm"):
@@ -2222,6 +2797,8 @@ func shop_stock(shop_id: String) -> Array:
 	for e0 in sh.stock:
 		if e0.has("rotating"): list.append_array(rotating_stock(e0.rotating, int(e0.count)))
 		else: list.append(e0)
+	if shop_id == "clinic" and Restoration.done("clinic"):
+		list.append_array(Restoration.clinic_stock())
 	list = list.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
 	var sale_idx := -1
 	if sh.daily_sale:
@@ -2262,10 +2839,17 @@ func shop_stock(shop_id: String) -> Array:
 				e.name = "Claim bounty" if prog >= int(b.target) else "Bounty in progress"
 				e.desc = "%d of %d infected put down. Reward: %d gold." % [min(prog, int(b.target)), int(b.target), int(b.reward)]
 		if e.get("service", "") == "animal":
-			var room := animal_room(Data.animals[e.animal].building)
-			e.desc = Data.shops[shop_id].stock[i].desc + (" Room in your coop: %d." % room if has_building("coop") else " You need a coop first.")
+			var homes: Array = Data.animals[e.animal].homes
+			var room := 0
+			for h in homes: room += max(0, animal_room(h))
+			var where: String = " or ".join(homes.map(func(h): return {"house": "your house", "doghouse": "a doghouse"}.get(h, "a " + h)))
+			e.desc = Data.shops[shop_id].stock[i].desc + (" Room: %d." % room if room > 0 else " You need %s with room first." % where)
 		e.sale = i == sale_idx
+		if shop_id == "clinic" and e.get("service", "") == "treatment" and Restoration.done("clinic"):
+			e.price = int(e.price) / 2
 		e.final_price = int(e.price * 0.75) if e.sale else int(e.price)
+		if state.flags.get("brightwater_lives", false):
+			e.final_price = int(round(e.final_price * Restoration.DISCOUNT))
 		out.append(e)
 	return out
 
@@ -2312,13 +2896,15 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		ui.open("repair", {"owner": Data.shops[shop_id].owner})
 		return ""
 	if e.get("service", "") == "treatment":
-		if float(state.health) >= max_health() and float(state.energy) >= Balance.player.max_energy * 0.5:
+		if float(state.health) >= max_health() and float(state.energy) >= max_energy() * 0.5 and conditions().is_empty():
 			return "Elias looks you over. \"You're fine. Go eat something.\""
 		state.money = int(state.money) - cost
+		var had := conditions().keys().filter(func(k): return k != "chilled")
+		state.conditions = {}
 		state.health = max_health()
-		state.energy = maxf(float(state.energy), Balance.player.max_energy * 0.5)
+		state.energy = maxf(float(state.energy), max_energy() * 0.5)
 		Sfx.play("eat")
-		toast("Elias patches you up. Good as new.")
+		toast("Elias patches you up%s. Good as new." % (" and treats your " + ", ".join(had.map(func(k): return Injuries.NAMES[k].to_lower())) if not had.is_empty() else ""))
 		return ""
 	if e.get("service", "") == "greenhouse":
 		for m in e.mats:
@@ -2380,12 +2966,13 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		return ""
 	if e.get("service", "") == "animal":
 		var kind: String = e.animal
-		if not has_building(Data.animals[kind].building):
+		if home_for(kind) == "":
 			Sfx.play("error")
-			return "You need a coop first. Marisol sells Coop Kits."
-		if animal_room(Data.animals[kind].building) <= 0:
-			Sfx.play("error")
-			return "Your coop is full."
+			var homes: Array = Data.animals[kind].homes
+			if homes.has("doghouse"): return "You need a Doghouse on your farm (one per dog). Craft one at a Workbench."
+			if homes.has("barn") and not has_building("barn"): return "You need a barn first. Craft a Barn Kit at a Workbench."
+			if not homes.any(func(h): return h in ["coop", "barn", "hutch"] and has_building(h)): return "You need a coop first. Marisol sells Coop Kits."
+			return "There's no room left for another %s." % Data.animals[kind].name.to_lower()
 		state.money = int(state.money) - cost
 		Sfx.play("coin")
 		var kind2 := kind
@@ -2497,7 +3084,7 @@ func sell_price(s: Dictionary) -> int:
 		var md := max_dur(s.id)
 		var frac: float = 1.0 if md <= 0 else float(stack_dur(s)) / float(md)
 		return int(it.price * 0.4 * (0.25 + 0.75 * frac)) if not is_broken(s) else int(it.price * 0.05)
-	return int(it.price)
+	return int(it.price * quality_mult(quality_of(s)))
 
 func shop_sell(shop_id: String, slot: int, qty: int) -> void:
 	var s = inv()[slot]
@@ -2592,6 +3179,14 @@ func forge_upgrade(tool: String) -> String:
 
 # ================================================================ death, collapse, pass out
 func player_bitten() -> void:
+	# an Antiviral in your pack saves you, with a fever
+	if remove_item("antiviral", 1):
+		state.flags.bitten = true
+		add_condition("sick", true)
+		state.health = maxf(1.0, float(state.health) - 20.0)
+		toast("The bite breaks the skin. You jam the Antiviral in your arm. You'll live, but the fever is coming.", "antiviral", "bad")
+		Sfx.play("hurt")
+		return
 	# Survivor Mode: immediately restore the last completed bed save, then explain.
 	Sfx.play("death")
 	fishing = null
@@ -2622,6 +3217,12 @@ func damage_player(amt: float, src = null, cause := "infected") -> void:
 func collapse(cause: String) -> void:
 	if ui.overlay_type() == "collapse":
 		return
+	if not cause in ["starvation", "dehydration"] and remove_item("adrenaline_shot", 1):
+		state.health = 30.0
+		add_buff("move speed", 0.3, 3)
+		toast("Adrenaline! You're back on your feet.", "adrenaline_shot", "gold")
+		Sfx.play("zap")
+		return
 	var cfg := mode_cfg()
 	var lost: int = min(cfg.collapse_money_max, int(state.money * cfg.collapse_money_pct))
 	state.money = int(state.money) - lost
@@ -2634,6 +3235,7 @@ func collapse(cause: String) -> void:
 
 func recover_from_collapse() -> void:
 	var cfg := mode_cfg()
+	conditions().erase("bleed")      # whoever found you bandaged you up
 	state.health = round(max_health() * cfg.collapse_health_restore)
 	if is_survivor():
 		state.hunger = max(state.hunger, 30.0)
@@ -2677,13 +3279,14 @@ func end_day(reason: String) -> void:
 			rel.points = max(0, int(rel.points) - Balance.friendship.daily_decay)
 	# 0. tonight's raid plays out while you sleep
 	rep.lines.append_array(resolve_raid(maps.homestead))
+	rep.lines.append_array(Raiders.resolve_farm_raid())
 	# 1. advance the day
 	state.day = int(state.day) + 1
 	state.time = Balance.time.day_start
 	if state.flags.get("wake_full", false):
 		state.flags.erase("wake_full")
 		restore = 1.0
-	state.energy = round(Balance.player.max_energy * restore)
+	state.energy = round(max_energy() * restore)
 	if is_survivor():
 		state.health = min(max_health(), state.health + round((max_health() - state.health) * 0.6))
 		state.hunger = max(0.0, state.hunger - Balance.survival.overnight_hunger_drain)
@@ -2694,29 +3297,41 @@ func end_day(reason: String) -> void:
 		state.health = max_health()
 	state.weather = state.weather_tomorrow
 	state.weather_tomorrow = roll_weather(int(state.day) + 1)
+	state.frost_last_night = state.get("frost_night", false)
+	state.frost_night = roll_frost(int(state.day))
+	if state.frost_night:
+		rep.lines.append("Frost is forecast for tonight. Cover young crops with Frost Cloth.")
 	roll_raid(int(state.day))
+	Raiders.roll_farm_raid(int(state.day))
+	Restoration.after_raid_rolls(rep)
 	var new_season := season()
 	if new_season != prev_season:
 		rep.lines.append("A new season begins: %s!%s" % [new_season.capitalize(), " Happy new year!" if season_index() == 0 else ""])
-	# 2. crops
+	# 2. crops (frost, pests and crows are in FarmCare; see crop_care_overnight)
 	var grew := 0
 	var withered := 0
 	var waters: bool = Data.weather_info[state.weather].waters
+	var care := crop_care_overnight(rep)
 	for id in maps:
 		var m: GameMap = maps[id]
 		for kk in m.soil.keys():
 			var s: Dictionary = m.soil[kk]
 			var c = s.get("crop")
 			if c != null and not c.get("dead", false):
-				if m.outdoor and new_season != prev_season and not Data.crops[c.id].seasons.has(new_season):
+				var framed := has_obj_at(m, kk, "cold_frame")
+				if m.outdoor and new_season != prev_season and not Data.crops[c.id].seasons.has(new_season) and not framed:
 					c.dead = true
 					withered += 1
+				elif care.stunted.has(c):
+					pass    # frost-bitten or full of pests: no growth tonight
 				elif int(s.w):
 					c.g = int(c.g) + 1
 					if s.get("fert", "") == "tonic" and rng.randf() < Balance.farming_extra.tonic_bonus_chance:
 						c.g = int(c.g) + 1
+					if s.get("raised", false) and rng.randf() < Balance.crop_care.raised_bonus_chance:
+						c.g = int(c.g) + 1
 					grew += 1
-			elif c == null and not int(s.w) and not s.get("fixed", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
+			elif c == null and not int(s.w) and not s.get("fixed", false) and not s.get("raised", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
 				m.soil.erase(kk)
 				continue
 			var keep: bool = s.get("fert", "") == "mulch" and int(s.w) == 1 and rng.randf() < Balance.farming_extra.mulch_keep_chance
@@ -2729,7 +3344,10 @@ func end_day(reason: String) -> void:
 			if o.type == "rain_collector":
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
 			overnight_object(maps[mid], o, rep)
+	Woodland.overnight(maps)
+	Restoration.overnight(rep)
 	animals_overnight(rep)
+	conditions_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)
 	if waters: rep.lines.append("%s today. Your outdoor crops are already watered." % Data.weather_info[state.weather].name)
@@ -2763,15 +3381,16 @@ func end_day(reason: String) -> void:
 	for it in state.shipping:
 		if it == null:
 			continue
-		var price: int = Data.items[it.id].price
+		var ql := quality_of(it)
+		var price: int = int(Data.items[it.id].price * quality_mult(ql))
 		var line = null
 		for l in rep.sales:
-			if l.id == it.id: line = l
+			if l.id == it.id and int(l.get("q", 0)) == ql: line = l
 		if line != null:
 			line.qty += int(it.qty)
 			line.total += price * int(it.qty)
 		else:
-			rep.sales.append({"id": it.id, "name": Data.items[it.id].name, "qty": int(it.qty), "price": price, "total": price * int(it.qty)})
+			rep.sales.append({"id": it.id, "q": ql, "name": (FarmCare.QUALITY[ql] + " " if ql > 0 else "") + Data.items[it.id].name, "qty": int(it.qty), "price": price, "total": price * int(it.qty)})
 		state.collections.shipped[it.id] = int(state.collections.shipped.get(it.id, 0)) + int(it.qty)
 		state.stats.items_shipped = int(state.stats.items_shipped) + int(it.qty)
 		shipped += int(it.qty)
@@ -2796,7 +3415,12 @@ func end_day(reason: String) -> void:
 	# 9. report, 10. save, 11. begin the next day
 	state.last_report = rep
 	clock_acc = 0.0
-	change_map("house", 2, 4, "down", {"silent": true})
+	var wake = state.flags.get("wake_at")
+	state.flags.erase("wake_at")
+	if wake is Dictionary and maps.has(str(wake.map)) and reason == "sleep":
+		change_map(str(wake.map), int(wake.x), int(wake.y), "down", {"silent": true, "no_spawn": true})
+	else:
+		change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
 	sync_animals(true)
 	rep.saved = write_save()

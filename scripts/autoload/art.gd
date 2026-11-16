@@ -15,13 +15,21 @@ var PAL := {
 var WATER := {"normal": ["#3a7fc0", "#4a90d0", "#2f6aa8", "#b8e0f8"], "winter": ["#7fa8c8", "#9cc0dc", "#6a94b8", "#eef8fc"]}
 var PINE := ["#163f2a", "#1f5a36", "#2e7a46", "#46985a"]
 
-const TILE_TYPES := ["grass", "dirt", "road", "pave", "sand", "water", "floor", "wall", "walltop", "mfloor", "mwall", "cliff", "bridge", "void", "mfloor2", "mwall2"]
+const TILE_TYPES := ["grass", "dirt", "road", "pave", "sand", "water", "floor", "wall", "walltop", "mfloor", "mwall", "cliff", "bridge", "void", "mfloor2", "mwall2",
+	"floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab",
+	"wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
+## Floor and wall styles for rooms (Districts.STYLES picks them per building).
+const FLOOR_STYLES := ["floor", "floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab"]
+const WALL_STYLES := ["wall", "wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
 var TID := {}
 var TILE_PROPS := {
 	"grass": {"till": true}, "dirt": {"till": true}, "road": {}, "pave": {}, "sand": {},
 	"water": {"solid": true, "water": true}, "floor": {}, "wall": {"solid": true}, "walltop": {"solid": true},
 	"mfloor": {}, "mwall": {"solid": true}, "cliff": {"solid": true}, "bridge": {}, "void": {"solid": true},
 	"mfloor2": {}, "mwall2": {"solid": true},
+	"floor_oak": {}, "floor_tile": {}, "floor_carpet": {}, "floor_concrete": {}, "floor_lab": {},
+	"wall_paper": {"solid": true}, "wall_rose": {"solid": true}, "wall_panel": {"solid": true}, "wall_brick": {"solid": true},
+	"wall_concrete": {"solid": true}, "wall_lab": {"solid": true},
 }
 
 const FONT := {
@@ -38,6 +46,16 @@ const FONT := {
 
 var _col_cache := {}
 var _tex := {}
+## Detailed art preview (Settings): more shading on everything, plus a richer
+## grass tile and oak tree. Switching clears the picture caches.
+var detail := false
+
+func set_detail(on: bool) -> void:
+	if on == detail:
+		return
+	detail = on
+	_tex.clear()
+	_obj.clear()
 var light_texture: GradientTexture2D
 
 func _init() -> void:
@@ -152,7 +170,117 @@ func tile_solid(t: String) -> bool:
 	return TILE_PROPS[t].get("solid", false)
 
 func get_tile(type: String, season: String, v: int, frame: int = 0) -> ImageTexture:
-	return cached("t|%s|%s|%d|%d" % [type, season, v, frame], func(): return _draw_tile(type, season, v, frame))
+	return cached("t|%s|%s|%d|%d" % [type, season, v, frame], func():
+		var ot := tile_override(type, season, v)
+		if ot != null: return ot
+		if detail and type == "grass" and season != "winter": return _grass_hd(season, v)
+		var im := _draw_tile(type, season, v, frame)
+		if detail and not type in ["water", "walltop", "void"]: im = texture_pass(im, v)
+		return im)
+
+## Detailed grass: soft light and dark patches, clumps of blades with bright tips.
+func _grass_hd(season: String, v: int) -> Image:
+	var x := img(16, 16)
+	var g: Array = (PAL.get(season, PAL.spring) as Dictionary).g
+	R(x, 0, 0, 16, 16, g[0])
+	# soft patches of darker and lighter grass with dithered edges, so tiles blend
+	var blobs := [[int(hash2(v, 1, 31) * 16), int(hash2(v, 2, 31) * 16), 4.5, g[1]], [int(hash2(v, 3, 31) * 16), int(hash2(v, 4, 31) * 16), 3.5, g[2]]]
+	for yy in 16:
+		for xx in 16:
+			for bl in blobs:
+				var ddx: float = min(abs(xx - bl[0]), 16 - abs(xx - bl[0])); var ddy: float = min(abs(yy - bl[1]), 16 - abs(yy - bl[1]))
+				var d := sqrt(ddx * ddx + ddy * ddy)
+				if d < bl[2] - 1.0 or (d < bl[2] + 0.5 and (xx + yy) % 2 == 0):
+					P(x, xx, yy, bl[3])
+	for i in 8:
+		P(x, int(hash2(i, v, 3) * 16), int(hash2(i, v, 7) * 16), g[1 + i % 2])
+	# tufts: a dark base, a mid blade and a bright tip, with a one-pixel shadow
+	var tip := shade(g[2], 0.18)
+	for i in 4:
+		var px := 2 + int(hash2(i, v, 11) * 11); var py := 4 + int(hash2(i, v, 13) * 10)
+		P(x, px - 1, py + 1, g[3].darkened(0.1) if g[3] is Color else col(g[3]).darkened(0.1))
+		P(x, px, py, g[3]); P(x, px + 1, py - 1, g[3]); P(x, px + 2, py, g[3])
+		P(x, px + 1, py - 2, g[2]); P(x, px - 1, py - 1, g[2]); P(x, px + 3, py - 1, g[2])
+		P(x, px + 1, py - 3, tip); P(x, px - 1, py - 2, tip)
+	if season == "spring" and v == 3:
+		P(x, 4, 5, PAL.spring.flower[0]); P(x, 11, 10, PAL.spring.flower[1]); P(x, 7, 12, PAL.spring.flower[2])
+	if season == "summer" and v == 3:
+		P(x, 9, 4, PAL.summer.flower[0]); P(x, 3, 11, PAL.summer.flower[2])
+	if season == "autumn" and v >= 2:
+		P(x, 5, 6, "#c8642a"); P(x, 12, 12, "#e0903a"); P(x, 9, 3, "#d87a3a")
+	return x
+
+## Detailed oak: overlapping leaf clumps, each lit from the top left, over a shaded trunk with roots.
+func _oak_hd(season: String, v: int) -> Image:
+	var x := img(32, 48)
+	var leaf: Array = (PAL.get(season, PAL.spring) as Dictionary).leaf
+	R(x, 13, 26, 6, 19, "#6a4a2e"); R(x, 13, 26, 2, 19, "#8a6a44"); R(x, 17, 26, 2, 19, "#4e3620")
+	for i in 6: P(x, 15 + i % 2, 29 + i * 3, "#4e3620")
+	R(x, 10, 44, 4, 2, "#6a4a2e"); R(x, 18, 44, 5, 2, "#4e3620"); R(x, 9, 45, 2, 1, "#6a4a2e"); R(x, 22, 45, 2, 1, "#4e3620")
+	if v % 2 == 0: R(x, 13, 38, 2, 3, "#5a7a3a")    # a bit of moss
+	# back clumps first, front ones over them; each is lit from the top left
+	var clumps := [[16, 7, 6.5], [9, 12, 6.0], [23, 12, 6.0], [16, 14, 7.5], [6, 20, 5.5], [26, 20, 5.5], [11, 22, 7.0], [21, 22, 7.0], [16, 25, 6.5]]
+	var ramp := [shade(leaf[3], 0.16), leaf[3], leaf[2], leaf[1], leaf[0], col(leaf[0]).darkened(0.25)]
+	for yy in 34:
+		for xx in 32:
+			var hit := -1
+			var tone := 0.0
+			for ci in clumps.size():
+				var c: Array = clumps[ci]
+				var dx: float = xx - c[0]; var dy: float = yy - c[1]
+				var r: float = c[2]
+				var dist := sqrt(dx * dx + dy * dy) / r
+				if dist < 1.0:
+					hit = ci
+					tone = (dx * 0.8 + dy) / r + (yy - 6) * 0.03 + (hash2(xx, yy, v + 61) - 0.5) * 0.18
+					if dist > 0.82 and dy > 0: tone += 0.6          # a dark rim under each clump
+			if hit >= 0:
+				P(x, xx, yy, ramp[clampi(int(round(tone * 1.5 + 2.0)), 0, 5)])
+	for i in 14:
+		var a := hash2(i, v, 71) * TAU
+		var px := 16 + int(cos(a) * (12 + hash2(i, v, 73) * 3)); var py := 16 + int(sin(a) * (13 + hash2(i, v, 75) * 3))
+		if px > 0 and px < 31 and py > 0 and py < 34 and x.get_pixel(px, py).a == 0: P(x, px, py, leaf[1])
+	if season == "spring" and v % 2 == 0:
+		for i in 7:
+			var fx := 6 + int(hash2(i, v, 2) * 20); var fy := 5 + int(hash2(i, v, 3) * 22)
+			if x.get_pixel(fx, fy).a > 0: P(x, fx, fy, (PAL.spring.flower as Array)[1])
+	return x
+
+## A light texture pass for flat tiles: sparse light and dark speckles.
+func texture_pass(src: Image, v: int) -> Image:
+	var im: Image = src.duplicate()
+	for yy in im.get_height():
+		for xx in im.get_width():
+			var c := src.get_pixel(xx, yy)
+			var n := hash2(xx, yy, 83 + v)
+			if n < 0.08: im.set_pixel(xx, yy, c.darkened(0.06))
+			elif n > 0.93: im.set_pixel(xx, yy, c.lightened(0.06))
+	return im
+
+## The shading pass for sprites: light from the top left on every edge, shadow
+## on the bottom right, and a little texture on flat areas. Outlines stay put.
+func shade_pass(src: Image, strength := 1.0) -> Image:
+	var im: Image = src.duplicate()
+	var w = im.get_width(); var h = im.get_height()
+	var edge := func(px, py): return px < 0 or py < 0 or px >= w or py >= h or src.get_pixel(px, py).a < 0.5 or src.get_pixel(px, py).get_luminance() < 0.12
+	for yy in h:
+		for xx in w:
+			var c := src.get_pixel(xx, yy)
+			if c.a < 0.5 or c.get_luminance() < 0.12:
+				continue
+			var f := 0.0
+			if edge.call(xx, yy - 1): f += 0.16
+			if edge.call(xx - 1, yy): f += 0.07
+			if edge.call(xx, yy + 1): f -= 0.15
+			if edge.call(xx + 1, yy): f -= 0.07
+			if f == 0.0:
+				var n := hash2(xx, yy, 91)
+				if n < 0.07: f = -0.06
+				elif n > 0.94: f = 0.06
+			f *= strength
+			if f > 0: im.set_pixel(xx, yy, c.lightened(f))
+			elif f < 0: im.set_pixel(xx, yy, c.darkened(-f))
+	return im
 
 func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 	var x := img(16, 16)
@@ -234,6 +362,63 @@ func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 				P(x, 6, 5, "#9a8a6a"); P(x, 7, 6, "#9a8a6a"); P(x, 7, 7, "#9a8a6a"); P(x, 8, 8, "#9a8a6a")
 		"walltop":
 			R(x, 0, 0, 16, 16, "#3a2e26"); R(x, 0, 14, 16, 2, "#4a3c30")
+		"floor_oak":
+			R(x, 0, 0, 16, 16, "#b08a5a")
+			for r in 4:
+				R(x, 0, r * 4 + 3, 16, 1, "#94703f")
+				R(x, (r * 5 + v * 3) % 16, r * 4, 1, 3, "#9c7a4a")
+				P(x, (r * 9 + v * 7) % 16, r * 4 + 1, "#c49e6c")
+		"floor_tile":
+			R(x, 0, 0, 16, 16, "#d8d4c8")
+			R(x, 0, 0, 8, 8, "#a8a49a"); R(x, 8, 8, 8, 8, "#a8a49a")
+			R(x, 0, 15, 16, 1, "#8a867c"); R(x, 15, 0, 1, 16, "#8a867c")
+			if v == 2: P(x, 3, 11, "#7a766c"); P(x, 4, 12, "#7a766c")    # a scuff
+		"floor_carpet":
+			R(x, 0, 0, 16, 16, "#6a3a3a")
+			for i in 4:
+				P(x, 2 + i * 4, 2 + (i % 2) * 8, "#8a5242"); P(x, 4 + i * 4, 6 + (i % 2) * 8, "#5a3030")
+			if v == 1: R(x, 5, 9, 4, 2, "#5a3030")    # a worn patch
+		"floor_concrete":
+			R(x, 0, 0, 16, 16, "#8a8a86")
+			for i in 8:
+				P(x, int(hash2(i, s, 1) * 16), int(hash2(i, s, 2) * 16), "#7a7a76" if i % 2 else "#969690")
+			if v == 3:
+				for i in 6: P(x, 3 + i, 8 + i % 2, "#6a6a66")    # a crack
+		"floor_lab":
+			R(x, 0, 0, 16, 16, "#e4e8e8")
+			R(x, 0, 7, 16, 1, "#c8d0d0"); R(x, 7, 0, 1, 16, "#c8d0d0"); R(x, 0, 15, 16, 1, "#c8d0d0"); R(x, 15, 0, 1, 16, "#c8d0d0")
+			if v == 2: R(x, 9, 9, 4, 3, "#a8c8a0")    # an old stain
+		"wall_paper", "wall_rose":
+			var paper := "#8aa890" if type == "wall_paper" else "#c8a0a0"
+			R(x, 0, 0, 16, 16, paper)
+			if type == "wall_paper":
+				for i in range(1, 16, 4): R(x, i, 0, 2, 13, shade(paper, -0.1))
+			else:
+				for i in 4: P(x, 2 + i * 4, 3 + (i % 2) * 5, "#e8c8c8"); P(x, 3 + i * 4, 4 + (i % 2) * 5, "#a87070")
+			R(x, 0, 11, 16, 2, "#e8e0d0")                              # chair rail
+			R(x, 0, 13, 16, 3, "#5a4636"); R(x, 0, 13, 16, 1, "#6e5644")
+			if v == 2: R(x, 10, 2, 3, 6, shade(paper, 0.15))           # a peeled strip
+		"wall_panel":
+			R(x, 0, 0, 16, 16, "#7a5a3a")
+			for i in range(0, 16, 4): R(x, i, 0, 1, 13, "#6a4a2e")
+			R(x, 0, 6, 16, 1, "#8a6a48"); R(x, 0, 13, 16, 3, "#4a3220"); R(x, 0, 13, 16, 1, "#5a4028")
+		"wall_brick":
+			R(x, 0, 0, 16, 16, "#9a5a42")
+			for r in 4:
+				R(x, 0, r * 4 + 3, 16, 1, "#7a4a38")
+				for c in 2: R(x, (c * 8 + (4 if r % 2 else 0)) % 16, r * 4, 1, 3, "#7a4a38")
+			R(x, 0, 13, 16, 3, "#4a3a32")
+			if v == 1: P(x, 5, 5, "#b06a52"); P(x, 12, 9, "#b06a52")
+		"wall_concrete":
+			R(x, 0, 0, 16, 16, "#9a9a96"); R(x, 0, 6, 16, 1, "#8a8a86")
+			for i in 5: P(x, int(hash2(i, s, 3) * 16), int(hash2(i, s, 4) * 12), "#86867f")
+			R(x, 0, 13, 16, 3, "#5a5a56")
+			if v == 3: R(x, 0, 8, 16, 2, "#c8a020")                    # a hazard stripe
+		"wall_lab":
+			R(x, 0, 0, 16, 16, "#d8e0e0")
+			for r in 3: R(x, 0, r * 4 + 3, 16, 1, "#c0cccc")
+			R(x, 7, 0, 1, 13, "#c0cccc")
+			R(x, 0, 13, 16, 3, "#6a7a80")
 		"mfloor", "mfloor2":
 			var deep := type == "mfloor2"
 			R(x, 0, 0, 16, 16, "#4a4654" if deep else "#6a5a4a")
@@ -293,6 +478,11 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 		return ov
 	if not _obj.has(k):
 		var r := _draw_obj(o, season, frame, nb)
+		if detail:
+			if t == "tree" and season != "winter":
+				r = [outline(_oak_hd(season, v), "#1e1a14"), -8, -32]
+			else:
+				r[0] = shade_pass(r[0])
 		_obj[k] = {"tex": to_tex(r[0]), "ox": r[1], "oy": r[2]}
 	return _obj[k]
 
@@ -707,27 +897,71 @@ func override(path: String) -> Texture2D:
 func has_override(path: String) -> bool:
 	return override(path) != null
 
+## Ground tiles with hand-made art: tiles/<type>_<season>_<v>.png, tiles/<type>_<v>.png,
+## tiles/<type>_<season>.png or tiles/<type>.png, first one found wins. Returns null when there is none.
+func tile_override(type: String, season: String, v: int) -> Image:
+	for p in ["tiles/%s_%s_%d.png" % [type, season, v], "tiles/%s_%d.png" % [type, v], "tiles/%s_%s.png" % [type, season], "tiles/%s.png" % type]:
+		var tex := override(p)
+		if tex != null:
+			var im: Image = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			return im
+	return null
+
+var _ovobj := {}
+
 ## Objects that have hand-made art. Returns {} when there is none.
+## Looks for objects/<type>_<season>_<v>.png, then <type>_<v>, <type>_<season>, <type>.
+## A searched container uses <type>_open.png if there is one, or a dimmed copy of its art.
 func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var t: String = o.type
 	var d: Dictionary = Data.obj_defs.get(t, {})
 	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
 		return {}
-	var v: int = int(o.get("v", 0))
-	var name := ""
-	match t:
-		"tree": name = "trees/%s_%s.png" % ["tree" if v % 2 == 0 else "tree2", season]
-		"pine": name = "trees/pine.png"
-		"rock": name = "objects/rock.png" if v % 2 == 0 else "objects/rock2.png"
-		_: name = "objects/%s.png" % t
 	if t == "rock" and o.get("palette", "field") != "field":
 		return {}
-	var tex := override(name)
-	if tex == null:
-		return {}
-	var fw: int = int(o.get("w", 1))
-	var fh: int = int(o.get("h", 1))
-	return {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+	var v: int = int(o.get("v", 0)) % 4
+	var searched: bool = (d.get("container", false) or t in ["supply_crate", "car_wreck"]) and DistrictArt.searched(o)
+	var key := "%s|%s|%d|%s|%d|%d" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1))]
+	if _ovobj.has(key):
+		return _ovobj[key]
+	var names: Array = []
+	match t:
+		"tree":
+			var tn := "tree" if v % 2 == 0 else "tree2"
+			names = ["trees/%s_%s.png" % [tn, season], "trees/tree_%s.png" % season]
+		"pine": names = ["trees/pine_%s.png" % season, "trees/pine.png"]
+		"rock": names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
+		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
+	var tex: Texture2D = null
+	if searched:
+		tex = override("objects/%s_open.png" % t)
+	var dim := false
+	for n in names:
+		if tex != null: break
+		tex = override(n)
+		dim = searched and tex != null
+	var res := {}
+	if tex != null:
+		if dim:
+			# no "opened" picture: show the same art a little darker and greyer, so searched things read as done
+			# (a copy: get_image() can hand back the texture's own image)
+			var im: Image = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			for yy in im.get_height():
+				for xx in im.get_width():
+					var c := im.get_pixel(xx, yy)
+					if c.a > 0:
+						var g := c.get_luminance()
+						im.set_pixel(xx, yy, Color(lerp(c.r, g, 0.45) * 0.72, lerp(c.g, g, 0.45) * 0.72, lerp(c.b, g, 0.45) * 0.72, c.a))
+			tex = ImageTexture.create_from_image(im)
+		var fw: int = int(o.get("w", 1))
+		var fh: int = int(o.get("h", 1))
+		res = {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+	_ovobj[key] = res
+	return res
 
 ## People and infected drawn from the sprite sheets. look.sprite names them.
 func char_override(look: Dictionary, dir: String, frame: int) -> Image:
@@ -829,6 +1063,30 @@ func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) ->
 		"log":
 			R(x, 1, 8, 14, 6, woodd); R(x, 1, 8, 14, 1, wood); R(x, 1, 8, 3, 6, "#c8a070")
 			R(x, 5, 5, 3, 3, "#d8c8b0"); R(x, 10, 6, 3, 2, "#d8c8b0")
+		"trellis":
+			x = img(16, 26)
+			R(x, 2, 2, 2, 24, wood); R(x, 12, 2, 2, 24, wood)
+			for i in 6:
+				R(x, 2, 4 + i * 4, 12, 1, woodd)
+			for i in 5:
+				for j in 3: P(x, 4 + j * 4, 5 + i * 4, "#c8a870")
+			return [outline(x, "#1e140e"), 0, -10]
+		"cold_frame":
+			x = img(16, 18)
+			R(x, 1, 6, 14, 11, Color(0.8, 0.9, 1.0, 0.28)); R(x, 1, 6, 14, 1, Color(1, 1, 1, 0.7))
+			for i in 3: R(x, 2 + i * 5, 3 + i, 4, 1, Color(1, 1, 1, 0.5))
+			R(x, 0, 2, 16, 1, wood); R(x, 0, 2, 1, 15, wood); R(x, 15, 2, 1, 15, wood); R(x, 0, 16, 16, 2, woodd)
+			R(x, 7, 2, 2, 15, Color(0.55, 0.42, 0.25, 0.8))
+			return [x, 0, -2]
+		"doghouse":
+			x = img(20, 22)
+			for i in 7: R(x, 10 - i - 1, 2 + i, 2 * i + 2, 1, "#8a3a2a" if i % 3 else "#6e2a1e")
+			R(x, 2, 9, 16, 12, "#b8864a"); R(x, 2, 9, 16, 1, "#d0a060")
+			for i in 4: R(x, 2, 11 + i * 3, 16, 1, "#9a6e3a")
+			R(x, 7, 13, 6, 8, "#2a1e16"); R(x, 8, 12, 4, 1, "#2a1e16")
+			R(x, 3, 20, 14, 2, "#7a5432"); R(x, 13, 18, 4, 2, "#c8c8d0")
+			if season == "winter": R(x, 3, 2, 14, 2, "#f4f8fc")
+			return [outline(x, "#1e140e"), -2, -6]
 		"well":
 			R(x, 2, 7, 12, 8, "#8a8a8a"); R(x, 2, 7, 12, 1, "#a8a8a8"); R(x, 4, 9, 8, 3, "#3a5a8a"); R(x, 2, 1, 2, 7, wood); R(x, 12, 1, 2, 7, wood); R(x, 1, 0, 14, 2, "#8a3a2a")
 		"scarecrow":
@@ -930,7 +1188,7 @@ func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
 	return im
 
 func recolor_infected(src: Image, look: Dictionary) -> Image:
-	var im := src.duplicate()
+	var im: Image = src.duplicate()
 	var W = im.get_width()
 	var H = im.get_height()
 	var lying: bool = look.get("lying", false)
@@ -1002,7 +1260,7 @@ func recolor_infected(src: Image, look: Dictionary) -> Image:
 
 ## The atlas farmer wears a red shirt, blue overalls and brown hair. Swap those for the player's choices.
 func recolor_player(src: Image, look: Dictionary) -> Image:
-	var im := src.duplicate()
+	var im: Image = src.duplicate()
 	var targets := {"shirt": Color(look.get("shirt", "#b5442f")), "pants": Color(look.get("pants", "#3f6fb5")), "hair": Color(look.get("hair", "#5a3a22")), "skin": Color(look.get("skin", "#e8b48f"))}
 	var refs := {"shirt": Color("#a83a2c"), "pants": Color("#3a5aa8"), "hair": Color("#5a3a22"), "skin": Color("#e0a878")}
 	for y in im.get_height():
@@ -1038,16 +1296,19 @@ func look_key(l: Dictionary) -> String:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
 	parts.append(str(l.get("sprite", "")))
-	for k in ["body", "extra", "scale", "lying"]:
-		if l.has(k): parts.append(str(l[k]))
+	for k in ["body", "extra", "scale", "lying", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc"]:
+		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 	var ovr := char_override(look, dir, frame)
 	if ovr != null:
 		return ovr
-	var im: Image
-	if dir == "right":
+	# people from the Modern Interiors generator when its parts are installed
+	var im: Image = MiChars.compose(look, dir, frame)
+	if im != null:
+		pass
+	elif dir == "right":
 		im = _draw_character(look, "left", frame)
 		im.flip_x()
 	else:
@@ -1064,12 +1325,16 @@ func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 	return im
 
 func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
-	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return char_image(look, dir, frame))
+	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return shade_pass(char_image(look, dir, frame), 0.7) if detail else char_image(look, dir, frame))
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
 func get_portrait(look: Dictionary) -> ImageTexture:
 	return cached("pt|" + look_key(look), func():
 		var im := char_image(look, "down", 0)
+		if MiChars.available() and im.get_width() == 16:
+			# generator people are shorter: frame the head and shoulders from the top of the sprite
+			var top := im.get_used_rect().position.y
+			return im.get_region(Rect2i(0, maxi(0, top - 1), 16, 18))
 		return im.get_region(Rect2i(0, 0, im.get_width(), 18 if im.get_width() > 16 else 18)) if im.get_width() > 16 else im.get_region(Rect2i(0, 1, 16, 18)))
 
 func _draw_character(L: Dictionary, dir: String, frame: int) -> Image:
@@ -1470,6 +1735,12 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 	var d: Dictionary = Data.obj_defs.get(o.type, {})
 	var k := ""
+	if o.type == "display_case":
+		k += "|m%d" % mini(Restoration.museum().size(), 6) if Game.state.has("day") else ""
+	if o.type == "sapling":
+		k += "|g%d%s" % [Woodland.stage(o), o.get("kind", "tree")]
+	if o.type == "stolen_goods":
+		k += "|s%s" % (Game.state.get("stolen") is Array and not Game.state.stolen.is_empty())
 	if d.get("barrier", false):
 		k += "|%d|%d|%s" % [nb, damage_level(o), o.get("open", false)]
 	if d.has("power") or d.has("power_source"):
@@ -1776,7 +2047,71 @@ func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool
 			return out)
 	return cached("an|%s|%d|%s|%d|%s" % [type, color_i, dir, frame, adult], func(): return _draw_animal(type, color_i, dir, frame, adult))
 
+## Cows, goats, sheep, pigs, dogs and cats. Drawn side-on (front and back views reuse it).
+func _draw_big_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	var cols: Array = Data.animals[type].colors
+	var c = cols[color_i % cols.size()]
+	var cd := shade(c, -0.22)
+	var cl := shade(c, 0.12)
+	var hop := frame % 2
+	var W = {"cow": 30, "goat": 24, "sheep": 26, "pig": 26, "guard_dog": 22, "barn_cat": 16}[type]
+	var H = {"cow": 24, "goat": 22, "sheep": 20, "pig": 18, "guard_dog": 18, "barn_cat": 14}[type]
+	var x := img(W, H)
+	var base = H - 1
+	match type:
+		"cow":
+			for lx in [6, 10, 20, 24]: R(x, lx, base - 6 + (hop if lx in [10, 24] else 0), 3, 6 - (hop if lx in [10, 24] else 0), cd)
+			R(x, 5, base - 16, 22, 11, c); R(x, 5, base - 16, 22, 1, cl)
+			if color_i % 3 == 0:
+				R(x, 10, base - 14, 5, 4, "#2a2a2e"); R(x, 18, base - 12, 6, 5, "#2a2a2e"); R(x, 7, base - 9, 3, 3, "#2a2a2e")
+			R(x, 15, base - 6, 5, 2, "#e8a8a8")
+			R(x, 0, base - 20, 7, 8, c); R(x, 0, base - 15, 5, 3, "#e8c8b0"); P(x, 2, base - 18, "#1a1a1a")
+			R(x, 0, base - 22, 1, 3, "#e8e0c8"); R(x, 6, base - 22, 1, 3, "#e8e0c8"); R(x, 6, base - 19, 2, 2, cd)
+			R(x, 27, base - 15, 1, 8, cd); R(x, 27, base - 8, 2, 2, "#2a2a2e")
+		"goat":
+			for lx in [5, 8, 16, 19]: R(x, lx, base - 6 + (hop if lx in [8, 19] else 0), 2, 6 - (hop if lx in [8, 19] else 0), cd)
+			R(x, 4, base - 14, 18, 9, c); R(x, 4, base - 14, 18, 1, cl)
+			R(x, 0, base - 19, 6, 7, c); P(x, 2, base - 17, "#1a1a1a"); R(x, 1, base - 12, 2, 3, cl)   # head and beard
+			R(x, 3, base - 21, 1, 3, "#8a7a5a"); R(x, 4, base - 22, 2, 1, "#8a7a5a")
+			R(x, 6, base - 18, 3, 2, cd); R(x, 22, base - 15, 2, 2, cl)
+		"sheep":
+			for lx in [6, 9, 17, 20]: R(x, lx, base - 5 + (hop if lx in [9, 20] else 0), 2, 5 - (hop if lx in [9, 20] else 0), "#3a3438")
+			R(x, 4, base - 14, 20, 10, c)
+			for i in 9: R(x, 4 + i * 2 + (i % 2), base - 15 - (i % 2), 3, 2, cl)
+			for i in 6: P(x, 6 + i * 3, base - 9 + (i % 2), shade(c, -0.1))
+			R(x, 0, base - 15, 6, 6, "#3a3438"); P(x, 2, base - 13, "#e8e0d0"); R(x, 4, base - 16, 3, 2, c)
+		"pig":
+			for lx in [6, 9, 17, 20]: R(x, lx, base - 4 + (hop if lx in [9, 20] else 0), 3, 4 - (hop if lx in [9, 20] else 0), cd)
+			R(x, 4, base - 13, 20, 10, c); R(x, 4, base - 13, 20, 1, cl); R(x, 6, base - 5, 16, 2, cd)
+			R(x, 0, base - 12, 6, 7, c); R(x, 0, base - 9, 2, 3, "#d88a80"); P(x, 0, base - 8, "#7a4a44"); P(x, 3, base - 11, "#1a1a1a")
+			R(x, 4, base - 14, 2, 2, cd); R(x, 24, base - 12, 2, 1, cd); P(x, 25, base - 13, cd)
+			if color_i % 3 == 1: R(x, 12, base - 11, 5, 4, "#4a3a38")
+		"guard_dog":
+			for lx in [4, 7, 15, 18]: R(x, lx, base - 5 + (hop if lx in [7, 18] else 0), 2, 5 - (hop if lx in [7, 18] else 0), cd)
+			R(x, 4, base - 11, 16, 7, c); R(x, 4, base - 11, 16, 1, cl); R(x, 5, base - 7, 12, 2, "#c8a878" if color_i != 2 else "#e8d8b8")
+			R(x, 0, base - 16, 7, 6, c); R(x, 0, base - 13, 3, 3, cd); P(x, 0, base - 13, "#1a1a1a"); P(x, 3, base - 15, "#1a1a1a")
+			R(x, 4, base - 17, 2, 4, cd)
+			R(x, 20, base - 14 + hop, 2, 5, c)
+			R(x, 5, base - 11, 2, 2, "#c83a2a")   # collar
+		"barn_cat":
+			for lx in [3, 5, 10, 12]: R(x, lx, base - 3 + (hop if lx in [5, 12] else 0), 1, 3 - (hop if lx in [5, 12] else 0), cd)
+			R(x, 3, base - 7, 11, 5, c); R(x, 3, base - 7, 11, 1, cl)
+			R(x, 0, base - 10, 5, 5, c); P(x, 0, base - 11, c); P(x, 4, base - 11, c); P(x, 1, base - 8, "#3a8a3a"); P(x, 3, base - 8, "#3a8a3a")
+			R(x, 14, base - 12 + hop, 1, 6, c); P(x, 15, base - 12 + hop, c)
+			if color_i == 0:
+				for i in 3: R(x, 6 + i * 3, base - 7, 1, 4, cd)
+	if not adult:
+		var small := x.duplicate()
+		small.resize(int(W * 0.7), int(H * 0.7), Image.INTERPOLATE_NEAREST)
+		x = img(W, H)
+		x.blit_rect(small, Rect2i(Vector2i.ZERO, small.get_size()), Vector2i((W - small.get_width()) / 2, H - small.get_height()))
+	if dir == "right":
+		x.flip_x()
+	return outline(x, "#22161a")
+
 func _draw_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	if Data.animals[type].get("big", false) or Data.animals[type].get("pet", false):
+		return _draw_big_animal(type, color_i, dir, frame, adult)
 	var x := img(16, 16)
 	var cols: Array = Data.animals[type].colors
 	var c = cols[color_i % cols.size()]
@@ -1863,7 +2198,19 @@ func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
 		return ovb
 	var cond := building_condition(s)
 	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d|%s" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y, s.get("door_open", false)]
-	return cached(k, func(): return _draw_building(s, season, night, cond))
+	return cached(k, func(): return _building_hd(_draw_building(s, season, night, cond), s) if detail else _draw_building(s, season, night, cond))
+
+## Detailed buildings: the shading pass plus a soft shadow under the eaves.
+func _building_hd(src: Image, s: Dictionary) -> Image:
+	var im := shade_pass(src, 0.8)
+	var roof_h := int(round(int(s.h) * 16 * 0.5))
+	for i in 4:
+		var yy := roof_h + 3 + i
+		if yy >= im.get_height(): break
+		for xx in range(3, im.get_width() - 3):
+			var c := im.get_pixel(xx, yy)
+			if c.a > 0.5 and c.get_luminance() > 0.12: im.set_pixel(xx, yy, c.darkened(0.2 - i * 0.05))
+	return im
 
 func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Image:
 	var W: int = s.w * 16

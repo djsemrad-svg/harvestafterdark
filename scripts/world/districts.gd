@@ -28,6 +28,12 @@ const CONTAINERS := {
 	"medical_tent": {"name": "Field Hospital Tent", "what": "the medical tent", "tags": ["lab", "military"], "rolls": [1, 3], "w": 2, "quality": 0.5},
 	"heli_wreck": {"name": "Crashed Helicopter", "what": "the helicopter", "tags": ["military"], "rolls": [2, 3], "w": 3, "h": 2, "quality": 0.7},
 	"fire_truck": {"name": "Fire Engine", "what": "the fire engine", "tags": ["fire_station"], "rolls": [1, 3], "w": 3},
+	"loot_vault": {"name": "Sealed Locker", "what": "the sealed locker", "tags": ["lab", "military"], "rolls": [1, 2], "quality": 0.4},
+	"biohazard_bin": {"name": "Biohazard Bin", "what": "the biohazard bin", "tags": ["lab"], "rolls": [1, 1]},
+	"trash_can": {"name": "Trash Can", "what": "the trash can", "tags": ["home", "kitchen"], "rolls": [1, 1]},
+	"vending_machine": {"name": "Vending Machine", "what": "the vending machine", "tags": ["kitchen"], "rolls": [1, 2]},
+	"bus_wreck": {"name": "Wrecked Bus", "what": "the bus", "tags": ["vehicle", "home"], "rolls": [1, 2], "w": 4, "h": 2},
+	"shipping_container": {"name": "Shipping Container", "what": "the shipping container", "tags": ["hardware", "scrapyard"], "rolls": [1, 2], "w": 3},
 }
 
 ## Props that only look the part.
@@ -45,6 +51,18 @@ const PROPS := {
 	"jersey_barrier": {"solid": true},
 	"rail_fence": {"solid": true},
 	"overpass_flare": {"solid": true},
+	"lab_bench": {"solid": true},
+	"specimen_tank": {"solid": true},
+	"server_rack": {"solid": true},
+	"decon_shower": {"solid": true},
+	"lookout": {"solid": true},
+	"fryer": {"solid": true},
+	"hydrant": {"solid": true},
+	"traffic_cone": {"solid": true},
+	"stop_sign": {"solid": true},
+	"shopping_cart": {"solid": true},
+	"motorcycle_wreck": {"solid": true},
+	"trash_bags": {"solid": false},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -93,16 +111,78 @@ const ROOMS := {
 	"boathouse": [
 		"WWWWWWWWWWWWWW", "WVSVwSSSwYCSOW", "W.....z......W", "W~~~~~~~~..T.W", "W~~~~~~~~..h.W", "W~~~~~~~~....W",
 		"W............W", "WXX.....z..CCW", "WO...........W", "WNNN.....L..SW", "WWWWWW..WWWWWW"],
+	"fastfood": [
+		"WWWWWWWWWWWWWW", "WFKffKwWwKFVKW", "W.....W......W", "W..z..W..C.z.W", "WNNN.NNN.....W", "W..z.......z.W",
+		"W.hTh..hTh...W", "W............W", "W.hTh.z.hTh.zW", "WL.........OOW", "WWWWWW..WWWWWW"],
+	"house3": [
+		"WWWWWWWWWWWWWW", "WKFKSwWbMwMbLW", "W.....W......W", "W.hTh.W..z...W", "W..T..W......W", "W.....WWW.WWWW",
+		"W............W", "W.z..RRRR....W", "WS...RRRR..U.W", "WO.....L...z.W", "WWWWWW..WWWWWW"],
+	"house4": [
+		"WWWWWWWWWWWWWW", "WMbwSSWKFKwKSW", "W.....W......W", "W..z..W.hTh..W", "W.....W..T.z.W", "WWW.WWW......W",
+		"W............W", "W..RRR...hTh.W", "WU.RRR.z.....W", "WL.......OO.MW", "WWWWWW..WWWWWW"],
+	"shop2": [
+		"WWWWWWWWWWWWWW", "WVVSwVVSwVVSVW", "W............W", "W.S.S.S.S.S..W", "W.S.S.S.S.SzVW", "W.S.S.S.S.S..W",
+		"W............W", "W.z........z.W", "WNNN....GG.C.W", "WC.....U..L..W", "WWWWWW..WWWWWW"],
 	"church": [
 		"WWWWWWWWWWWWWW", "WCw..LTL...wUW", "W.....z......W", "W..BBB..BBB..W", "W............W", "W..BBB..BBB..W",
 		"W............W", "W..BBB..BBB..W", "W....z.......W", "WO..........OW", "WWWWWW..WWWWWW"],
 }
 
+## Room layouts that can be picked from: a building with "room": "home" gets one
+## of these, chosen by its id, so neighbouring houses differ. To add a layout,
+## add its rows to ROOMS and its name here.
+const ROOM_SETS := {
+	"home": ["house", "house2", "house3", "house4"],
+	"store": ["shop", "shop2"],
+}
+
+## Floor and wall styles per room kind: [floor tile, wall tile]. One is picked per
+## building (by its id). A building can also set "floor" and "wall" itself.
+## Floors: floor, floor_oak, floor_tile, floor_carpet, floor_concrete, floor_lab.
+## Walls: wall, wall_paper, wall_rose, wall_panel, wall_brick, wall_concrete, wall_lab.
+const STYLES := {
+	"house": [["floor", "wall_paper"], ["floor_oak", "wall_rose"], ["floor_carpet", "wall_panel"], ["floor", "wall"], ["floor_oak", "wall_paper"]],
+	"shop": [["floor_tile", "wall"], ["floor_concrete", "wall_brick"], ["floor_tile", "wall_paper"]],
+	"diner": [["floor_tile", "wall_rose"]],
+	"fastfood": [["floor_tile", "wall_brick"], ["floor_tile", "wall_paper"], ["floor_concrete", "wall_rose"]],
+	"police": [["floor_tile", "wall_concrete"]],
+	"gym": [["floor_oak", "wall_brick"]],
+	"garage": [["floor_concrete", "wall_brick"]],
+	"warehouse": [["floor_concrete", "wall_concrete"], ["floor_concrete", "wall_brick"]],
+	"firehouse": [["floor_concrete", "wall_brick"]],
+	"bar": [["floor", "wall_panel"], ["floor_concrete", "wall_panel"]],
+	"cabin": [["floor", "wall_panel"], ["floor_oak", "wall_panel"]],
+	"barn": [["floor", "wall_panel"]],
+	"boathouse": [["floor", "wall_panel"]],
+	"church": [["floor_oak", "wall"]],
+	"lab": [["floor_lab", "wall_lab"]],
+	"vault": [["floor_lab", "wall_concrete"]],
+	"clubhouse": [["floor_concrete", "wall_panel"]],
+}
+const STYLE_OF_ROOM := {"house2": "house", "house3": "house", "house4": "house", "shop2": "shop", "hv_main": "lab", "hv_lab6": "lab", "hv_vault": "vault"}
+
+## Which layout and style a building gets.
+static func pick_layout(b: Dictionary) -> String:
+	var room: String = b.get("room", "")
+	if ROOM_SETS.has(room):
+		var set: Array = ROOM_SETS[room]
+		return set[_h(b.id) % set.size()]
+	return room
+
+static func pick_style(b: Dictionary, layout: String) -> Array:
+	var kind: String = STYLE_OF_ROOM.get(layout, layout)
+	var opts: Array = STYLES.get(kind, [["floor", "wall"]])
+	var st: Array = opts[_h(b.id + "|style") % opts.size()]
+	return [b.get("floor", st[0]), b.get("wall", st[1])]
+
+static func _h(s: String) -> int:
+	return absi(hash(s))
+
 const LETTERS := {
 	"F": "loot_fridge", "K": "loot_cabinet", "M": "loot_dresser", "Q": "loot_locker", "G": "loot_gun_case", "Y": "loot_toolbox",
 	"U": "loot_desk", "V": "loot_shelf", "C": "loot_crate", "A": "loot_medicine", "q": "fire_truck",
 	"b": "old_bed", "S": "shelf", "T": "table", "h": "chair", "B": "bench", "N": "counter", "O": "barrel", "X": "crate",
-	"L": "lamp", "R": "rug", "I": "cell_bars", "J": "stall_rail", "H": "hay_bale", "E": "tire_stack", "k": "car_wreck",
+	"f": "fryer", "L": "lamp", "R": "rug", "I": "cell_bars", "J": "stall_rail", "H": "hay_bale", "E": "tire_stack", "k": "car_wreck",
 }
 
 ## Outside looks for the buildings (merged into Data.buildings).
@@ -135,6 +215,14 @@ const LOOKS := {
 	"d_ranger": {"roof": "#4a5a3a", "roof2": "#3a482e", "wall": "#8a6a48", "trim": "#3a2a1a", "sign": "RANGER STATION", "windows": 2, "condition": 2, "chimney": true},
 	"d_cabin": {"roof": "#4a3a2a", "roof2": "#3a2c1e", "wall": "#7a5a3a", "trim": "#3a2a1a", "windows": 1, "condition": 1, "chimney": true},
 	"d_farmhouse": {"roof": "#6a4a3a", "roof2": "#54382c", "wall": "#d0c8b0", "trim": "#5a4a3a", "windows": 2, "condition": 1},
+	"d_burger": {"roof": "#8a2a22", "roof2": "#6e2018", "wall": "#e0c890", "trim": "#8a2a22", "sign": "BURGER BARN", "awning": "#d8a828", "windows": 3, "condition": 1},
+	"d_pizza": {"roof": "#3a5a3a", "roof2": "#2c462c", "wall": "#e8dcc8", "trim": "#a83a2a", "sign": "SLICE PALACE", "awning": "#a83a2a", "windows": 3, "condition": 1},
+	"d_chicken": {"roof": "#c8902a", "roof2": "#a87420", "wall": "#e8e0d0", "trim": "#a83a2a", "sign": "CLUCK HUT", "awning": "#c83a2a", "windows": 2, "condition": 1, "boarded": true},
+	"d_taco": {"roof": "#4a7a6a", "roof2": "#3a6254", "wall": "#e8c8a0", "trim": "#c86a2a", "sign": "TACO RANCHO", "awning": "#e8a020", "windows": 2, "condition": 2},
+	"d_hotdog": {"roof": "#3a5a8a", "roof2": "#2c4870", "wall": "#e0e0d8", "trim": "#c83a2a", "sign": "DOCKSIDE DOGS", "awning": "#e8c020", "windows": 2, "condition": 1},
+	"d_lab": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#d8dcd8", "trim": "#3a6a8a", "sign": "HALVORSEN BIOMEDICAL", "windows": 4, "condition": 2},
+	"d_lab6": {"roof": "#4a4e52", "roof2": "#3a3e42", "wall": "#9a9e9a", "trim": "#c8a020", "sign": "LAB 6", "windows": 0, "condition": 3},
+	"d_booth": {"roof": "#5a6470", "roof2": "#48505a", "wall": "#c8ccc8", "trim": "#3a6a8a", "windows": 1, "condition": 1},
 	"d_barn": {"roof": "#5a3a2a", "roof2": "#462c1e", "wall": "#a83a2a", "trim": "#e0d8c8", "sign": "TWIN OAKS", "windows": 1, "condition": 2},
 }
 
@@ -148,22 +236,24 @@ const DISTRICTS := {
 		"foes": {"day": [6, 9], "night": [7, 10], "asleep": 0.35, "table": [["shambler", 40], ["lurcher", 18], ["runner", 12], ["crawler", 10], ["spitter", 6], ["screamer", 4], ["stalker", 4], ["riot", 6]]},
 		"fixed_foes": [{"x": 37, "y": 19, "type": "riot", "chance": 0.7}, {"x": 47, "y": 15, "type": "lurcher", "chance": 0.6}],
 		"buildings": [
-			{"id": "mh_house1", "kind": "d_house_blue", "x": 2, "y": 4, "w": 6, "h": 5, "room": "house", "name": "House on Birch Lane", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 3], ["crawler", 1]]},
-			{"id": "mh_house2", "kind": "d_house_yellow", "x": 10, "y": 4, "w": 6, "h": 5, "room": "house2", "name": "House on Birch Lane", "tags": ["home", "sports"], "q": 0.15, "foes": [["shambler", 3], ["lurcher", 1]]},
+			{"id": "mh_house1", "kind": "d_house_blue", "x": 2, "y": 4, "w": 6, "h": 5, "room": "home", "name": "House on Birch Lane", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 3], ["crawler", 1]]},
+			{"id": "mh_house2", "kind": "d_house_yellow", "x": 10, "y": 4, "w": 6, "h": 5, "room": "home", "name": "House on Birch Lane", "tags": ["home", "sports"], "q": 0.15, "foes": [["shambler", 3], ["lurcher", 1]]},
 			{"id": "mh_ruin1", "kind": "d_ruin", "x": 18, "y": 4, "w": 6, "h": 5, "text": "The roof came down years ago. Nothing in there but rot and rafters."},
 			{"id": "mh_diner", "kind": "d_diner", "x": 1, "y": 14, "w": 7, "h": 6, "room": "diner", "name": "Rosie's Diner", "tags": ["kitchen", "home"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1]]},
 			{"id": "mh_pawn", "kind": "d_pawn", "x": 9, "y": 14, "w": 6, "h": 6, "room": "shop", "name": "Gold Pawn", "tags": ["pawn"], "q": 0.35, "foes": [["shambler", 2], ["runner", 1]]},
-			{"id": "mh_guns", "kind": "d_guns", "x": 16, "y": 14, "w": 6, "h": 6, "room": "shop", "name": "Hartley Guns", "tags": ["gun_store", "wilderness"], "q": 0.5, "foes": [["stalker", 1], ["runner", 1], ["shambler", 2]]},
-			{"id": "mh_pharmacy", "kind": "d_pharmacy", "x": 23, "y": 15, "w": 5, "h": 5, "room": "shop", "swap": {"G": "A", "V": "A"}, "name": "Corner Pharmacy", "tags": ["lab", "home"], "q": 0.3, "foes": [["shambler", 2], ["spitter", 1]]},
+			{"id": "mh_guns", "kind": "d_guns", "x": 16, "y": 14, "w": 6, "h": 6, "room": "store", "name": "Hartley Guns", "tags": ["gun_store", "wilderness"], "q": 0.5, "foes": [["stalker", 1], ["runner", 1], ["shambler", 2]]},
+			{"id": "mh_pharmacy", "kind": "d_pharmacy", "x": 23, "y": 15, "w": 5, "h": 5, "room": "store", "swap": {"G": "A", "V": "A"}, "name": "Corner Pharmacy", "tags": ["lab", "home"], "q": 0.3, "foes": [["shambler", 2], ["spitter", 1]]},
 			{"id": "mh_police", "kind": "d_police", "x": 34, "y": 12, "w": 9, "h": 6, "room": "police", "name": "Precinct 9", "tags": ["police"], "q": 0.6, "foes": [["riot", 3], ["shambler", 2], ["runner", 1]]},
 			{"id": "mh_church", "kind": "d_church", "x": 45, "y": 4, "w": 8, "h": 6, "room": "church", "name": "St. Luke's Church", "tags": ["cemetery", "home"], "q": 0.2, "foes": [["shambler", 3], ["screamer", 1]]},
 			{"id": "mh_shed", "kind": "d_shed", "x": 54, "y": 12, "w": 4, "h": 3, "room": "cabin", "swap": {"G": "Y", "F": "C"}, "name": "Groundskeeper's Shed", "tags": ["cemetery", "farm", "hardware"], "q": 0.25, "foes": [["shambler", 2]]},
 			{"id": "mh_school", "kind": "d_school", "x": 2, "y": 27, "w": 12, "h": 7, "room": "gym", "name": "Maple Elementary Gym", "tags": ["sports", "home"], "q": 0.3, "foes": [["shambler", 3], ["runner", 2], ["crawler", 1]]},
-			{"id": "mh_thrift", "kind": "d_thrift", "x": 17, "y": 27, "w": 7, "h": 5, "room": "shop", "swap": {"G": "M", "V": "M"}, "name": "Thrift Store", "tags": ["clothing"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
-			{"id": "mh_house3", "kind": "d_house_green", "x": 2, "y": 37, "w": 6, "h": 5, "room": "house", "name": "House on Maple Street", "tags": ["home", "farm"], "q": 0.15, "foes": [["shambler", 2], ["crawler", 1]]},
+			{"id": "mh_thrift", "kind": "d_thrift", "x": 17, "y": 27, "w": 7, "h": 5, "room": "store", "swap": {"G": "M", "V": "M"}, "name": "Thrift Store", "tags": ["clothing"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "mh_house3", "kind": "d_house_green", "x": 2, "y": 37, "w": 6, "h": 5, "room": "home", "name": "House on Maple Street", "tags": ["home", "farm"], "q": 0.15, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "mh_ruin2", "kind": "d_ruin", "x": 10, "y": 37, "w": 6, "h": 5, "text": "Burned out. Someone's stenciled \"CHECKED\" on the door frame, with a date that's years old."},
-			{"id": "mh_house4", "kind": "d_house_red", "x": 18, "y": 37, "w": 6, "h": 5, "room": "house2", "name": "House on Maple Street", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 2], ["lurcher", 1]]},
-			{"id": "mh_gas", "kind": "d_gas", "x": 35, "y": 27, "w": 8, "h": 5, "room": "shop", "swap": {"G": "F"}, "name": "Quik Gas", "tags": ["vehicle", "kitchen"], "q": 0.2, "foes": [["shambler", 2], ["runner", 1]]},
+			{"id": "mh_house4", "kind": "d_house_red", "x": 18, "y": 37, "w": 6, "h": 5, "room": "home", "name": "House on Maple Street", "tags": ["home", "clothing"], "q": 0.15, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "mh_burger", "kind": "d_burger", "x": 34, "y": 4, "w": 8, "h": 5, "room": "fastfood", "name": "Burger Barn", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
+			{"id": "mh_pizza", "kind": "d_pizza", "x": 34, "y": 34, "w": 8, "h": 5, "room": "fastfood", "name": "Slice Palace", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["crawler", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
+			{"id": "mh_gas", "kind": "d_gas", "x": 35, "y": 27, "w": 8, "h": 5, "room": "store", "swap": {"G": "F"}, "name": "Quik Gas", "tags": ["vehicle", "kitchen"], "q": 0.2, "foes": [["shambler", 2], ["runner", 1]]},
 		],
 	},
 	"industrial": {
@@ -172,13 +262,15 @@ const DISTRICTS := {
 		"foes": {"day": [7, 10], "night": [8, 11], "asleep": 0.3, "table": [["shambler", 24], ["brute", 12], ["charred", 14], ["runner", 14], ["spitter", 10], ["spitter_brute", 4], ["lurcher", 10], ["riot", 4]]},
 		"fixed_foes": [{"x": 54, "y": 17, "type": "soldier", "chance": 0.85}, {"x": 56, "y": 21, "type": "soldier", "chance": 0.7}, {"x": 51, "y": 23, "type": "soldier", "chance": 0.5}, {"x": 46, "y": 37, "type": "brute", "chance": 0.6}],
 		"buildings": [
-			{"id": "ind_hardware", "kind": "d_hardware", "x": 2, "y": 11, "w": 8, "h": 6, "room": "shop", "swap": {"G": "Y"}, "name": "Bolt & Beam Hardware", "tags": ["hardware", "construction"], "q": 0.35, "foes": [["shambler", 2], ["brute", 1]]},
+			{"id": "ind_hardware", "kind": "d_hardware", "x": 2, "y": 11, "w": 8, "h": 6, "room": "store", "swap": {"G": "Y"}, "name": "Bolt & Beam Hardware", "tags": ["hardware", "construction"], "q": 0.35, "foes": [["shambler", 2], ["brute", 1]]},
 			{"id": "ind_garage", "kind": "d_garage", "x": 12, "y": 11, "w": 8, "h": 6, "room": "garage", "name": "Dale's Auto", "tags": ["garage", "vehicle"], "q": 0.35, "foes": [["shambler", 2], ["charred", 1]]},
 			{"id": "ind_fire", "kind": "d_firehouse", "x": 22, "y": 10, "w": 9, "h": 7, "room": "firehouse", "name": "Fire Station 4", "tags": ["fire_station"], "q": 0.4, "foes": [["charred", 2], ["shambler", 1]]},
 			{"id": "ind_warehouse", "kind": "d_warehouse", "x": 35, "y": 6, "w": 11, "h": 8, "room": "warehouse", "name": "Warehouse 3", "tags": ["construction", "hardware"], "q": 0.4, "foes": [["brute", 1], ["shambler", 2], ["spitter", 1]]},
 			{"id": "ind_bar", "kind": "d_bar", "x": 2, "y": 23, "w": 8, "h": 6, "room": "bar", "name": "The Rusty Spoke", "tags": ["biker_bar"], "q": 0.35, "foes": [["shambler", 2], ["runner", 2]]},
 			{"id": "ind_scrap", "kind": "d_scrap_office", "x": 14, "y": 23, "w": 5, "h": 4, "room": "warehouse", "name": "Scrapyard Office", "tags": ["scrapyard", "garage"], "q": 0.3, "foes": [["shambler", 2]]},
 			{"id": "ind_lumber", "kind": "d_lumber_office", "x": 3, "y": 35, "w": 6, "h": 4, "room": "cabin", "swap": {"G": "Y", "F": "C", "M": "C"}, "name": "Lumber Co. Office", "tags": ["lumber", "construction"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "ind_chicken", "kind": "d_chicken", "x": 25, "y": 3, "w": 7, "h": 5, "room": "fastfood", "name": "Cluck Hut", "tags": ["kitchen"], "q": 0.2, "foes": [["charred", 2], ["shambler", 2], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
+			{"id": "ind_taco", "kind": "d_taco", "x": 38, "y": 21, "w": 7, "h": 4, "room": "fastfood", "name": "Taco Rancho", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["brute", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "ind_mill", "kind": "d_mill", "x": 39, "y": 27, "w": 13, "h": 8, "room": "warehouse", "name": "Mill Works", "tags": ["construction", "scrapyard", "hardware"], "q": 0.55, "foes": [["brute", 2], ["charred", 1], ["spitter_brute", 1], ["shambler", 1]]},
 		],
 	},
@@ -190,9 +282,10 @@ const DISTRICTS := {
 		"buildings": [
 			{"id": "rv_farmhouse", "kind": "d_farmhouse", "x": 4, "y": 12, "w": 7, "h": 5, "room": "cabin", "swap": {"G": "K"}, "name": "Twin Oaks Farmhouse", "tags": ["farm", "home", "kitchen"], "q": 0.25, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "rv_barn", "kind": "d_barn", "x": 14, "y": 11, "w": 8, "h": 6, "room": "barn", "name": "Twin Oaks Barn", "tags": ["farm"], "q": 0.3, "foes": [["shambler", 2], ["crawler", 1]]},
-			{"id": "rv_bait", "kind": "d_bait", "x": 32, "y": 15, "w": 5, "h": 5, "room": "shop", "swap": {"G": "V"}, "name": "Bait & Tackle", "tags": ["marina", "wilderness"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "rv_bait", "kind": "d_bait", "x": 32, "y": 15, "w": 5, "h": 5, "room": "store", "swap": {"G": "V"}, "name": "Bait & Tackle", "tags": ["marina", "wilderness"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "rv_marina", "kind": "d_boathouse", "x": 39, "y": 14, "w": 8, "h": 6, "room": "boathouse", "name": "Marina Boathouse", "tags": ["marina"], "q": 0.35, "foes": [["shambler", 2], ["crawler", 1]]},
 			{"id": "rv_ranger", "kind": "d_ranger", "x": 12, "y": 27, "w": 8, "h": 5, "room": "cabin", "name": "Ranger Station", "tags": ["wilderness", "fire_station"], "q": 0.4, "foes": [["stalker", 1], ["shambler", 2]]},
+			{"id": "rv_hotdog", "kind": "d_hotdog", "x": 33, "y": 8, "w": 6, "h": 5, "room": "fastfood", "name": "Dockside Dogs", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["lurcher", 1], ["crawler", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "rv_cabin", "kind": "d_cabin", "x": 3, "y": 36, "w": 6, "h": 5, "room": "cabin", "name": "Hunting Cabin", "tags": ["wilderness", "gun_store"], "q": 0.5, "foes": [["stalker", 2], ["shambler", 1]]},
 		],
 	},
@@ -220,6 +313,8 @@ static func register(d) -> void:
 		od2.fixture = true
 		od2.district_art = true
 		d.obj_defs[t] = od2
+	# bushes grow wild in the districts: any tool clears one, for a little fiber
+	d.obj_defs["bush"] = {"solid": true, "hp": 2, "tool": "any", "drops": [["fiber", 1, 2]], "xp": ["foraging", 1], "name": "Bush"}
 	d.obj_defs["district_gate"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true}
 	for id in DISTRICTS:
 		var D: Dictionary = DISTRICTS[id]
@@ -298,8 +393,17 @@ static func _place(m: GameMap, x: int, y: int, type: String, extra := {}) -> voi
 
 # ================================================================ rooms
 static func interior(district: String, b: Dictionary) -> GameMap:
-	var rows: Array = ROOMS[b.room]
-	var m := GameMap.new(b.id, 14, 11, "floor")
+	var lay := pick_layout(b)
+	var m := interior_rows(district, b, ROOMS[lay])
+	m.layout = lay
+	return m
+
+## Builds a 14 x 11 room from rows of letters (see ROOMS); other places reuse it.
+static func interior_rows(district: String, b: Dictionary, rows: Array, letters := {}) -> GameMap:
+	var style := pick_style(b, str(b.get("room", "")) if not ROOM_SETS.has(str(b.get("room", ""))) else pick_layout(b))
+	var fl: String = style[0]
+	var wl: String = style[1]
+	var m := GameMap.new(b.id, 14, 11, fl)
 	m.indoor = true
 	m.mood = "cold"
 	m.district = district
@@ -312,10 +416,10 @@ static func interior(district: String, b: Dictionary) -> GameMap:
 			var ch: String = row[x]
 			if swap.has(ch): ch = swap[ch]
 			if ch == "W":
-				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else "wall")
-				if y == 1: m.set_tile(x, y, "wall")
+				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else wl)
+				if y == 1: m.set_tile(x, y, wl)
 			elif ch == "w":
-				m.set_tile(x, y, "wall")
+				m.set_tile(x, y, wl)
 				m.add_obj(x, y, "window")
 			elif ch == "~":
 				m.set_tile(x, y, "water")
@@ -324,15 +428,15 @@ static func interior(district: String, b: Dictionary) -> GameMap:
 			elif ch == ".":
 				if y == rows.size() - 1:
 					m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": district, "tx": door_x, "ty": int(b.y) + int(b.h), "dir": "down", "door": true})
-			elif LETTERS.has(ch):
-				var t: String = LETTERS[ch]
+			elif letters.has(ch) or LETTERS.has(ch):
+				var t: String = letters.get(ch, LETTERS.get(ch, ""))
 				if CONTAINERS.has(t):
 					_container(m, x, y, t, b.tags, float(b.q))
 				elif t == "car_wreck":
 					m.add_obj(x, y, t, {"w": 2, "loot": ["vehicle", "garage"]})
 				else:
 					_place(m, x, y, t, {"h": 2} if t == "old_bed" else {})
-	m.foes = {"spots": spots, "table": b.get("foes", [["shambler", 1]]), "chance": 0.55, "asleep": 0.45}
+	m.foes = {"spots": spots, "table": b.get("foes", [["shambler", 1]]), "chance": float(b.get("spot_chance", 0.55)), "asleep": 0.45}
 	return m
 
 # ================================================================ outdoor maps
@@ -350,6 +454,7 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 		"residential": _residential(m, r)
 		"industrial": _industrial(m, r)
 		"riverlands": _riverlands(m, r)
+	Hordes.shape_map(m)
 	for b in D.buildings:
 		var dx := _door_x(b)
 		var s := {"kind": b.kind, "x": b.x, "y": b.y, "w": b.w, "h": b.h, "door_x": dx, "door_y": int(b.y) + int(b.h) - 1}
@@ -358,12 +463,77 @@ static func outdoor(id: String, world_seed: int) -> GameMap:
 		else:
 			s.text = b.text
 		m.add_structure(s)
+	_dress(m, r, id)
 	_scatter(m, r, id)
 	return m
 
+## True if a w x h thing can stand at x,y: every tile free and not in front of a door or on a warp.
+static func _fits(m: GameMap, x: int, y: int, w: int, h: int, allow_clear: bool) -> bool:
+	for dy in h:
+		for dx in w:
+			var tx := x + dx
+			var ty := y + dy
+			if not m.tile_free(tx, ty) or (not allow_clear and m.is_clear(tx, ty)):
+				return false
+			for s in m.structures:
+				if s.has("door_x") and absi(tx - int(s.door_x)) <= 1 and ty - int(s.door_y) >= 0 and ty - int(s.door_y) <= 2:
+					return false
+			for wp in m.warps:
+				if Rect2i(int(wp.x) - 1, int(wp.y) - 1, int(wp.get("w", 1)) + 2, int(wp.get("h", 1)) + 2).has_point(Vector2i(tx, ty)):
+					return false
+	return true
+
+## Puts a thing at the first free spot near cx,cy (searching outwards). Returns false if none fits.
+static func _near(m: GameMap, cx: int, cy: int, type: String, allow_clear := false, radius := 4) -> bool:
+	var w: int = int(CONTAINERS.get(type, PROPS.get(type, {})).get("w", 1))
+	var h: int = int(CONTAINERS.get(type, PROPS.get(type, {})).get("h", 1))
+	for rr in radius + 1:
+		for dy in range(-rr, rr + 1):
+			for dx in range(-rr, rr + 1):
+				if maxi(absi(dx), absi(dy)) != rr: continue
+				if _fits(m, cx + dx, cy + dy, w, h, allow_clear):
+					_place(m, cx + dx, cy + dy, type)
+					return true
+	return false
+
+## Street dressing from the post-apocalypse art: hydrants, bins and bags along the sidewalks,
+## then a few bigger wrecks placed by hand.
+static func _dress(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
+	for y in range(1, m.h - 1):
+		for x in range(1, m.w - 1):
+			if m.tile_at(x, y) != "pave": continue
+			var by_road := false
+			for d in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0)]:
+				if m.tile_at(x + d.x, y + d.y) == "road": by_road = true
+			if not by_road or r.randf() > 0.07 or not _fits(m, x, y, 1, 1, true): continue
+			var pick := r.randf()
+			_place(m, x, y, "hydrant" if pick < 0.3 else ("trash_can" if pick < 0.6 else ("trash_bags" if pick < 0.85 else "traffic_cone")))
+	match id:
+		"residential":
+			_near(m, 42, 26, "vending_machine", true)            # the gas station
+			_near(m, 34, 26, "trash_can", true)
+			_near(m, 28, 25, "stop_sign", true); _near(m, 32, 19, "stop_sign", true)
+			_near(m, 7, 35, "bus_wreck", true, 3)                         # the school bus, never made it out of the schoolyard
+			for c in [[35, 21], [39, 17], [44, 17]]:
+				_near(m, c[0], c[1], "traffic_cone", true, 2)
+			_near(m, 14, 26, "shopping_cart", true, 3)
+			_near(m, 50, 26, "motorcycle_wreck", false, 3)
+		"industrial":
+			for c in [[35, 15], [43, 15], [38, 36], [49, 36]]:
+				_near(m, c[0], c[1], "shipping_container", true, 1)  # the loading area and the mill yard
+			for c in [[52, 17], [54, 21], [49, 21]]:
+				_near(m, c[0], c[1], "traffic_cone", true, 2)        # the checkpoint
+			_near(m, 4, 25, "bus_wreck")
+			_near(m, 40, 15, "vending_machine", true)
+			_near(m, 25, 33, "motorcycle_wreck", true, 3)
+		"riverlands":
+			_near(m, 36, 22, "trash_can", true, 3)
+			_near(m, 33, 19, "vending_machine", true, 3)         # the marina
+			_near(m, 26, 10, "motorcycle_wreck", true, 3)
+
 static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 	# a ring of trees, then weeds and debris on whatever grass is left
-	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6)]}[id]
+	var gaps: Array = {"residential": [Rect2i(59, 21, 1, 3)], "industrial": [Rect2i(0, 18, 1, 3), Rect2i(34, 43, 2, 1)], "riverlands": [Rect2i(28, 0, 3, 1), Rect2i(0, 2, 1, 6), Rect2i(59, 2, 1, 6), Rect2i(30, 43, 3, 1)]}[id]
 	MapBuilder._border(m, r, gaps)
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
@@ -380,6 +550,7 @@ static func _scatter(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 			elif v < trees + weeds: m.add_obj(x, y, "weeds")
 			elif v < trees + weeds + 0.03: m.add_obj(x, y, "twig")
 			elif v < trees + weeds + 0.045: m.add_obj(x, y, "rock")
+			elif v < trees + weeds + 0.07: m.add_obj(x, y, "bush")
 	# cracks and weeds pushing through the old roads
 	for i in 40:
 		var x := r.randi_range(1, m.w - 2)
@@ -480,6 +651,11 @@ static func _industrial(m: GameMap, r: RandomNumberGenerator) -> void:
 	_place(m, 36, 39, "dumpster")
 	for c in [[33, 23], [36, 22], [53, 33]]:
 		m.add_obj(c[0], c[1], "barrel")
+	# Mill Road runs on south to Dry Creek, where the raiders camp
+	m.warps.append({"x": 34, "y": 43, "w": 2, "h": 1, "to": "dry_creek", "tx": 22, "ty": 1, "dir": "down"})
+	m.clear.append(Rect2i(33, 39, 4, 5))
+	m.purge.append(Rect2i(33, 39, 4, 5))
+	m.add_obj(33, 41, "sign", {"text": "MILL ROAD SOUTH. DRY CREEK 2 MI. Cole's chalk on the post: \"Raiders. These ones shoot back.\"", "anchor": true})
 
 static func _riverlands(m: GameMap, r: RandomNumberGenerator) -> void:
 	m.fill(0, 2, 60, 1, "sand"); m.fill(0, 3, 60, 4, "water"); m.fill(0, 7, 60, 1, "sand")
@@ -530,3 +706,9 @@ static func _riverlands(m: GameMap, r: RandomNumberGenerator) -> void:
 	for c in [[29, 12], [27, 24]]:
 		m.add_obj(c[0], c[1], "car_wreck", {"w": 2})
 	_place(m, 35, 20, "dumpster")
+	# the service road south to Halvorsen Biomedical, where the medevac took off
+	m.fill(30, 33, 3, 11, "dirt")
+	m.warps.append({"x": 30, "y": 43, "w": 3, "h": 1, "to": "halvorsen", "tx": 21, "ty": 1, "dir": "down"})
+	m.clear.append(Rect2i(29, 33, 5, 11))
+	m.purge.append(Rect2i(29, 33, 5, 11))
+	m.add_obj(33, 40, "sign", {"text": "HALVORSEN BIOMEDICAL, 1 MI. SERVICE ROAD. Someone added in marker: \"the chopper came from here\"", "anchor": true})

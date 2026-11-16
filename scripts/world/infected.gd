@@ -12,6 +12,8 @@ func _init(world) -> void:
 ## Builds this infected's own look from its type's "looks" lists, so each one differs.
 static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	var d: Dictionary = Data.enemies[type]
+	if d.get("human", false):
+		return Raiders.make_look(type, rng)
 	var L: Dictionary = d.get("looks", {})
 	var look: Dictionary = d.get("look", {}).duplicate(true)
 	if look.is_empty():
@@ -32,11 +34,12 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 	look.pants = pick.call(L.get("pants", [look.pants]))
 	look.extra = L.get("extra", "")
 	match look.extra:
-		"riot": look.acc = "Cap"; look.acc_color = "#1c1e26"; look.shirt_style = "Vest"
+		"riot", "worker": look.acc = "Cap"; look.acc_color = "#1c1e26"; look.shirt_style = "Vest"
 		"soldier": look.acc = "Cap"; look.acc_color = "#4a5630"; look.shirt_style = "Jacket"
 		"mouth": look.hair = "#e8e8e0"; look.eyes = "#ff4040"
 		"embers": look.eyes = "#ff8a20"; look.hair = "#1a1410"
 		"drool": look.eyes = "#c8f040"
+		"hazmat": look.eyes = "#90f060"; look.face = "Plain"
 	look.scale = float(L.get("scale", 1.0))
 	look.lying = L.get("lying", false)
 	return look
@@ -49,6 +52,8 @@ func spawn(type: String, tx: int, ty: int, opts := {}) -> Dictionary:
 		"wander": Vector2.ZERO, "wt": 0.0, "vel": Vector2.ZERO, "frame": 0, "walk_t": 0.0, "flash": 0.0, "lunge": Vector2.ZERO,
 		"look": make_look(type, Game.rng), "spit_cd": randf_range(0.5, 2.0), "notice": 0.0}
 	if opts.get("asleep", false): e.state = "asleep"
+	if d.get("boss", false) or d.get("nest", false):
+		e.boss = true      # no decapitating, executing or turning these
 	Game.enemies.append(e)
 	return e
 
@@ -82,6 +87,9 @@ func update(dt: float) -> void:
 		if not Game.enemies.has(e):
 			continue
 		e.flash = maxf(0.0, e.flash - dt)
+		if ai == "nest":
+			_nest(e, dt, (p.pos - e.pos).length())
+			continue
 		e.zap = maxf(0.0, e.get("zap", 0.0) - dt)
 		e.alert_t = maxf(0.0, float(e.get("alert_t", 0.0)) - dt)
 		e.spit_cd = maxf(0.0, float(e.get("spit_cd", 0.0)) - dt)
@@ -131,6 +139,8 @@ func update(dt: float) -> void:
 					e.state = "wander"
 				elif ai == "spitter" and dist < float(d.spit.range) and dist > 30.0:
 					mv = _spitter(e, d, to, dist)
+				elif ai == "gunner":
+					mv = _gunner(e, d, to, dist, dt)
 				elif ai == "screamer" and not e.get("screamed", false):
 					e.state = "scream"
 					e.t = 1.1
@@ -200,6 +210,10 @@ func _move(e: Dictionary, mv: Vector2, dt: float) -> void:
 
 func _on_notice(e: Dictionary, d: Dictionary) -> void:
 	e.notice = 0.0
+	if d.get("ai", "") == "gunner":
+		e.spit_cd = maxf(float(e.get("spit_cd", 0.0)), 0.8)   # a moment to aim: your cue to find cover
+		if d.get("human", false) and Game.rng.randf() < 0.5:
+			Game.floaters.append({"text": ["Hey!", "Over there!", "Got one!", "Take 'em!"][Game.rng.randi() % 4], "pos": e.pos + Vector2(0, -34), "t": 1.0, "color": Color("#ffd0a0")})
 	if d.get("ai", "") == "stalker":
 		e.alert_t = 2.0
 
@@ -217,6 +231,38 @@ func _raider(e: Dictionary, dt: float, d: Dictionary) -> void:
 	e.dir = (("left" if mv.x < 0 else "right") if abs(mv.x) > abs(mv.y) else ("up" if mv.y < 0 else "down"))
 	e.walk_t += dt
 	e.frame = int(e.walk_t / 0.2) % 4 if mv != Vector2.ZERO else 0
+
+## Raider gunners keep their distance, strafe and shoot. They reload after a
+## magazine, and the noise draws the infected.
+func _gunner(e: Dictionary, d: Dictionary, to: Vector2, dist: float, dt: float) -> Vector2:
+	var G: Dictionary = d.gun
+	e.dir = (("left" if to.x < 0 else "right") if abs(to.x) > abs(to.y) else ("up" if to.y < 0 else "down"))
+	if not e.has("mag"): e.mag = int(G.mag)
+	if float(e.spit_cd) <= 0 and dist < float(G.range):
+		var n: int = int(G.get("n", 1))
+		for i in n:
+			var ang: float = to.angle() + Game.rng.randf_range(-1.0, 1.0) * float(G.spread) + (i - (n - 1) / 2.0) * 0.12
+			Game.projectiles.append({"pos": e.pos + Vector2(0, -12), "vel": Vector2.from_angle(ang) * float(G.speed), "life": float(G.range) / float(G.speed) + 0.2,
+				"kind": "round", "owner": "enemy", "dmg": float(G.dmg), "hurt": "shot", "hit": []})
+		Sfx.play("shot")
+		w.cb.alert(e.pos, 8 * 16.0)
+		e.mag = int(e.mag) - 1
+		e.spit_cd = float(G.cd)
+		if int(e.mag) <= 0:
+			e.mag = int(G.mag)
+			e.spit_cd = float(G.reload)
+			Game.floaters.append({"text": "Reloading", "pos": e.pos + Vector2(0, -32), "t": 0.8, "color": Color("#ffd0a0")})
+	e.strafe_t = float(e.get("strafe_t", 0.0)) - dt
+	if float(e.strafe_t) <= 0:
+		e.strafe_t = 1.2 + Game.rng.randf() * 1.5
+		e.strafe = 1.0 if Game.rng.randf() < 0.5 else -1.0
+	var sp: float = float(d.chase_speed)
+	var range: float = float(G.range)
+	if dist > range * 0.8:
+		return to / dist * sp
+	if dist < range * 0.4:
+		return -to / dist * sp * 0.8
+	return Vector2(-to.y, to.x) / dist * sp * 0.5 * float(e.get("strafe", 1.0))
 
 ## Spitters keep their distance and lob acid.
 func _spitter(e: Dictionary, d: Dictionary, to: Vector2, dist: float) -> Vector2:
@@ -266,6 +312,9 @@ func _attack_player(e: Dictionary, d: Dictionary, ai: String) -> void:
 	var dmg: float = float(d.damage)
 	if ai == "brute":
 		Game.shake = 0.3
+	if d.get("human", false):
+		w.cb.player_hurt(e.pos, dmg, "hit", e)     # people hit; they don't bite
+		return
 	w.cb.player_hurt(e.pos, dmg, "bite", e)
 	if ai == "brute" and Game.player.has("kb"):
 		Game.player.kb *= 1.8
@@ -285,6 +334,47 @@ func _turned(e: Dictionary, dt: float) -> void:
 		_move(e, Vector2.ZERO, dt)
 	else:
 		_move(e, to.normalized() * float(Data.enemies[e.type].chase_speed), dt)
+
+## A horde nest doesn't move. It wakes when one of its horde notices you, or when
+## it's hit while any of them are left; then it keeps sending more until destroyed.
+func _nest(e: Dictionary, dt: float, dist: float) -> void:
+	var H: Dictionary = Balance.hordes
+	var id: String = e.nest_id
+	e.state = "nest"
+	e.walk_t = float(e.get("walk_t", 0.0)) + dt
+	var flag := "nest_found_" + id
+	if dist < 10 * 16.0 and not Game.state.flags.get(flag, false):
+		Game.state.flags[flag] = true
+		Game.toast("A horde nest. They sleep piled around it. If they notice you, more will crawl out until it's destroyed.", "", "warn")
+	var horde := Game.enemies.filter(func(o): return o != e and o.get("nest_id", "") == id and float(o.get("turned", 0.0)) <= 0)
+	if not e.get("awake", false):
+		var noticed := horde.any(func(o): return not (o.state in ["asleep", "wander"]))
+		var hit := float(e.hp) < float(e.max_hp) and not horde.is_empty()
+		if noticed or hit:
+			e.awake = true
+			e.seen = true
+			e.spawn_t = 1.5
+			Game.toast("The nest stirs. More of them are crawling out. Destroy it!", "", "bad")
+			Sfx.play("scream")
+			for o in horde:
+				if o.state in ["asleep", "wander"]: o.state = "chase"
+				o.alert_t = 6.0
+		return
+	e.spawn_t = float(e.get("spawn_t", 0.0)) - dt
+	if float(e.spawn_t) > 0:
+		return
+	e.spawn_t = float(H.spawn_cd)
+	if horde.size() >= int(H.spawn_cap):
+		return
+	var table: Array = Hordes.NESTS[id].table
+	for i in mini(int(H.spawn_n), int(H.spawn_cap) - horde.size()):
+		var a := Game.rng.randf() * TAU
+		var t := Vector2i((e.pos + Vector2.from_angle(a) * 24.0) / 16.0)
+		if Game.map.tile_free(t.x, t.y):
+			var z: Dictionary = spawn(w.pick_foe(table), t.x, t.y)
+			z.nest_id = id
+			z.state = "chase"
+			z.alert_t = 4.0
 
 ## Bosses: call up helpers now and then, and the Inferno leaves fire where it walks.
 func _boss(e: Dictionary, d: Dictionary, dist: float, dt: float) -> void:

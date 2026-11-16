@@ -278,9 +278,15 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 		ic.custom_minimum_size = Vector2(16, 32)
 		dirs.add_child(ic)
 	pvv.add_child(dirs)
+	var look_opts: Dictionary = Data.look_options
+	var look_lbls: Dictionary = Data.look_labels
+	if MiChars.available():
+		MiChars.complete(look)
+		look_opts = MiChars.creator_options()
+		look_lbls = MiChars.LABELS
 	pvv.add_child(K.button("Randomize", func():
-		for kk in Data.look_options:
-			look[kk] = Data.look_options[kk][randi() % Data.look_options[kk].size()]
+		for kk in look_opts:
+			look[kk] = look_opts[kk][randi() % look_opts[kk].size()]
 		_refresh_creator(), "small"))
 	pv.add_child(pvv)
 	h.add_child(pv)
@@ -295,10 +301,10 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 		le.custom_minimum_size.x = 150
 		le.text_changed.connect(func(t): flow.name = t)
 		opts.add_child(le)
-	for kk in Data.look_options:
+	for kk in look_opts:
 		var key: String = kk
-		var options: Array = Data.look_options[kk]
-		opts.add_child(K.label(Data.look_labels[kk], 7))
+		var options: Array = look_opts[kk]
+		opts.add_child(K.label(look_lbls[kk], 7))
 		if str(options[0]).begins_with("#"):
 			var sw := K.hbox(1)
 			for c in options:
@@ -320,8 +326,8 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 			st.add_child(K.button("◀", func():
 				look[key] = options[(options.find(look[key]) - 1 + options.size()) % options.size()]
 				_refresh_creator(), "small"))
-			var val := K.label(str(look[key]), 7)
-			val.custom_minimum_size.x = 50
+			var val := K.label(MiChars.display(key, look[key]) if MiChars.available() else str(look[key]), 7)
+			val.custom_minimum_size.x = 60
 			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			st.add_child(val)
 			st.add_child(K.button("▶", func():
@@ -527,7 +533,7 @@ func update_hud(dt: float) -> void:
 	if _last.get("clock") != clock:
 		clock_lbl.text = clock
 		_last.clock = clock
-	var bars := [["Health", st.health, Balance.player.max_health, Color("#d8453a")], ["Energy", st.energy, Balance.player.max_energy, Color("#e8c03a")]]
+	var bars := [["Health", st.health, Game.max_health(), Color("#d8453a")], ["Energy", st.energy, Game.max_energy(), Color("#e8c03a")]]
 	if Game.is_survivor():
 		bars.append(["Hunger", st.hunger, Balance.survival.hunger_max, Color("#d8823a")])
 		bars.append(["Thirst", st.thirst, Balance.survival.thirst_max, Color("#3a90d8")])
@@ -603,7 +609,7 @@ func update_hud(dt: float) -> void:
 	# boss health
 	var boss = null
 	for en in Game.enemies:
-		if Data.enemies[en.type].get("boss", false) and en.state != "asleep":
+		if (Data.enemies[en.type].get("boss", false) and en.state != "asleep") or en.get("awake", false):
 			boss = en
 			break
 	boss_box.visible = boss != null
@@ -675,15 +681,22 @@ func hint_text() -> String:
 		return "E: " + ("Talk / give %s to " % Data.items[s.id].name if gift else "Talk to ") + Data.npcs[npc].name.split(" ")[0]
 	var an = w.animal_in_front()
 	if an != null:
-		return ("E: Pet %s" % an.name) if int(an.petted_day) != int(Game.state.day) else "%s looks %s" % [an.name, Game.animal_mood(an)]
+		var tool_needed: String = Data.animals[an.type].get("tool", "")
+		var held = Game.selected_stack()
+		if tool_needed != "" and an.get("ready", false) and held != null and held.id == tool_needed:
+			return "Space: Use the %s on %s" % [Data.items[tool_needed].name, an.name]
+		if int(an.petted_day) != int(Game.state.day): return "E: Pet %s" % an.name
+		if tool_needed != "" and an.get("ready", false): return "%s is ready for the %s" % [an.name, Data.items[tool_needed].name]
+		return "%s looks %s" % [an.name, Game.animal_mood(an)]
 	var t: Vector2i = w.target_preview()
 	var m: GameMap = Game.map
-	var coop = Game.get_building_rec("coop")
-	if coop != null and m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
-		return "E: " + ("Close" if coop.door_open else "Open") + " animal door"
+	for coop in Game.state.get("buildings", []):
+		if m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
+			return "E: " + ("Close" if coop.door_open else "Open") + " " + Livestock.BUILDINGS[coop.kind].name.to_lower() + " animal door"
 	var sel_b = Game.selected_stack()
 	if sel_b != null and Data.items[sel_b.id].has("building"):
-		return "Face an open 6 by 4 space and press Space to build (green means it fits)" if m.id == "homestead" else "Take the kit to your farm to build"
+		var bsz: Array = Livestock.BUILDINGS[Data.items[sel_b.id].building].size
+		return "Face an open %d by %d space and press Space to build (green means it fits)" % [bsz[0], bsz[1]] if m.id == "homestead" else "Take the kit to your farm to build"
 	var sl = m.soil.get(GameMap.k(t.x, t.y))
 	if sl != null and w.crop_ready(sl.get("crop")):
 		return "E: Harvest " + Data.crops[sl.crop.id].name
@@ -700,7 +713,9 @@ func hint_text() -> String:
 			if o.type == "rain_collector": return "E: Collect water (%d)" % int(o.get("water", 0))
 			return "E: Load %s (%s)" % [od.name, Data.machines[o.type].hint]
 		if o.type == "generator": return "E: Generator (%d coal)" % int(o.get("fuel", 0))
-		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
+		if o.type == "hay_hopper":
+			var hb = Game.get_building_rec(m.id)
+			return "E: Feeder (%d hay, %d mixed feed)" % [int(hb.hay), int(hb.get("feed", 0))] if hb != null else ""
 		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
 		if o.type == "armory_bench": return "E: Use Armory Bench"
@@ -712,6 +727,9 @@ func hint_text() -> String:
 			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
+		if o.type == "stolen_goods": return "E: Search the stolen goods"
+		if o.type == "town_ledger": return "E: Read the restoration ledger"
+		if o.type == "museum_desk": return "E: Donate to the Archive"
 		if names.has(o.type): return "E: " + names[o.type]
 		if o.type == "boulder" or o.type == "big_stump": return Data.obj_defs[o.type].hint
 	var stc = m.structure_at(t.x, t.y)
@@ -1001,7 +1019,7 @@ func _ov_death() -> Control:
 
 func _ov_collapse() -> Control:
 	var pw := _window("Rescued", 260)
-	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out."}.get(overlay.cause, "You collapsed.")
+	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out.", "bleeding": "You lost too much blood and blacked out.", "shot": "A raider's bullet put you down.", "raiders": "The raiders beat you down and left you in the dirt."}.get(overlay.cause, "You collapsed.")
 	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d gold along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 240
@@ -1061,12 +1079,87 @@ func _ov_notices() -> Control:
 	pins.append("Coming up: " + ("; ".join(up.map(func(e): return "%s (%s)" % [e.label, e.when])) if not up.is_empty() else "nothing scheduled") + ".")
 	pins.append("From Ruth: \"Infected have been spotted on the ridge after dark. Stay in town at night, or carry something to defend yourself.\"")
 	pins.append("From Ines: \"Bring geodes and ore to the forge. Five ore and one coal makes a bar.\"")
+	var rdone := Restoration.PROJECTS.filter(func(p): return Restoration.done(p.id)).size()
+	pins.append("Rebuilding Brightwater: %d of %d projects finished. Ruth's ledger is right next to this board." % [rdone, Restoration.PROJECTS.size()])
 	for t in pins:
 		var b := K.row_box(Color("#fff6e4"))
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 290
 		b.add_child(l)
 		v.add_child(b)
+	v.add_child(_close_btn())
+	return pw[0]
+
+# ---------------------------------------------------------------- rebuilding Brightwater
+func _ov_restoration() -> Control:
+	var pw := _window("Rebuilding Brightwater", 400)
+	var v: VBoxContainer = pw[1]
+	var n_done := Restoration.PROJECTS.filter(func(p): return Restoration.done(p.id)).size()
+	v.add_child(K.label("Ruth's ledger. Bring what each project needs; when it has everything, the crews finish it overnight. %d of %d done.%s" % [n_done, Restoration.PROJECTS.size(),
+		" Brightwater is alive again: 10% off at every shop." if Game.state.flags.get("brightwater_lives", false) else " Finish all five for a celebration."], 6, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	var list := K.vbox(3)
+	for p in Restoration.PROJECTS:
+		var box := K.row_box(Color("#e8f0d8") if Restoration.done(p.id) else Color("#fff6e4"))
+		var col := K.vbox(1)
+		var state_txt: String = "[color=#3f7a2c]Done[/color]" if Restoration.done(p.id) else ("[color=#c87a1a]Crews finish it tonight[/color]" if Restoration.ready(p.id) else "")
+		col.add_child(K.rich("[b]%s[/b]  [color=#7a5434](%s)[/color]  %s" % [p.name, p.who, state_txt], 7))
+		col.add_child(K.label(p.desc + " Unlocks: " + p.unlock, 6, K.INK_SOFT, true))
+		if not Restoration.done(p.id) and not Restoration.ready(p.id):
+			var g := Restoration.given(p.id)
+			var grid := GridContainer.new()
+			grid.columns = 3
+			for i in p.needs.size():
+				var n: Array = p.needs[i]
+				var full: bool = int(g[i]) >= int(n[1])
+				var have: int = int(Game.state.money) if n[0] == "gold" else Restoration.matching(n).reduce(func(acc, s): return acc + int(Game.state.inventory[s].qty), 0)
+				var lb := K.rich("%s%s: %d/%d[/color]" % ["[color=#3f7a2c]" if full else "[color=#4a2a12]", Restoration.need_name(n), int(g[i]), int(n[1])], 6)
+				lb.custom_minimum_size.x = 120
+				grid.add_child(lb)
+				var hv := K.label("(you have %d)" % have if not full else "", 5, K.INK_SOFT)
+				hv.custom_minimum_size.x = 70
+				grid.add_child(hv)
+				var pid: String = p.id
+				var ii: int = i
+				var btn := K.button("Give", func():
+					var put := Restoration.give(pid, ii)
+					overlay.msg = ("Gave %d %s." % [put, Restoration.need_name(Restoration.project(pid).needs[ii])]) if put > 0 else "You don't have any of that."
+					render_overlay(), "small")
+				btn.disabled = full or have <= 0
+				grid.add_child(btn)
+			col.add_child(grid)
+		box.add_child(col)
+		list.add_child(box)
+	v.add_child(K.scroll(list, 200))
+	v.add_child(_close_btn())
+	return pw[0]
+
+func _ov_museum() -> Control:
+	var pw := _window("Community Archive: donations", 340)
+	var v: VBoxContainer = pw[1]
+	var mus := Restoration.museum()
+	var next := -1
+	for mr in Restoration.MUSEUM_REWARDS:
+		if mus.size() < int(mr[0]): next = int(mr[0]); break
+	v.add_child(K.label("Ruth takes minerals, gems and artifacts for the Archive's cases, one of each. %d donated.%s" % [mus.size(), (" Next thank-you at %d." % next) if next > 0 else ""], 6, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	var list := K.vbox(2)
+	var any := false
+	for i in Game.state.inventory.size():
+		var s = Game.state.inventory[i]
+		if s == null or not Restoration.donatable(s.id) or mus.has(s.id): continue
+		any = true
+		var row := K.hbox(4)
+		row.add_child(K.icon(Art.get_icon(s.id), 16))
+		var nm := K.label(Data.items[s.id].name, 7)
+		nm.custom_minimum_size.x = 200
+		row.add_child(nm)
+		var slot: int = i
+		row.add_child(K.button("Donate", func(): overlay.msg = Restoration.donate(slot); render_overlay(), "small"))
+		list.add_child(row)
+	if not any:
+		list.add_child(K.label("Nothing in your pack the Archive doesn't already have.", 7, K.INK_SOFT, true))
+	v.add_child(K.scroll(list, 150))
 	v.add_child(_close_btn())
 	return pw[0]
 
@@ -1118,10 +1211,17 @@ func _ov_contracts() -> Control:
 		list.add_child(b)
 	if tab == "posted":
 		for c in Contracts.CONTRACTS:
-			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c): continue
+			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c) or c.get("hidden", false): continue
+			var why := ""
+			if c.has("needs") and not Game.state.unlocked.get(c.needs, false):
+				why = "Opens with the %s." % Districts.DISTRICTS[c.needs].name
+			elif c.has("after"):
+				why = "After \"%s\"." % Contracts.get_def(c.after).title
+			else:
+				continue
 			var b2 := K.row_box()
 			b2.modulate = Color(1, 1, 1, 0.6)
-			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]Opens with the %s.[/color]" % [c.title, Districts.DISTRICTS[c.needs].name], 6))
+			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]%s[/color]" % [c.title, why], 6))
 			list.add_child(b2)
 			shown += 1
 	if shown == 0:
@@ -1194,7 +1294,7 @@ func _ov_name_animal() -> Control:
 func _adopt() -> void:
 	var a := Game.adopt_animal(overlay.kind, str(overlay.name))
 	close()
-	toast("Welcome home, %s! Find them in your coop." % a.name)
+	toast("Welcome home, %s! Find them %s." % [a.name, {"house": "in your house", "doghouse": "by the doghouse"}.get(Livestock.home_of(a), "in your " + Livestock.home_of(a))])
 
 func _ov_appearance() -> Control:
 	if not overlay.has("look"):
@@ -1755,7 +1855,8 @@ func _tab_inventory() -> Control:
 		var fl := Game.item_flags(sel.id)
 		var hh := K.hbox(4)
 		hh.add_child(K.icon(Art.get_icon(sel.id, Game.tool_tier(it.tool) if it.has("tool") else 0), 24))
-		hh.add_child(K.rich("[b]%s[/b]\n[color=%s]%s[/color] · x%d" % [Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
+		var qn := Game.quality_of(sel)
+		hh.add_child(K.rich("[b]%s%s[/b]\n[color=%s]%s[/color] · x%d" % ["[color=%s]%s[/color] " % [FarmCare.QUALITY_COLOR[qn], FarmCare.QUALITY[qn]] if qn > 0 else "", Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
 		hh.get_child(1).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dv.add_child(hh)
 		if it.has("weapon") or it.has("gear"):
@@ -1779,10 +1880,13 @@ func _tab_inventory() -> Control:
 			if e.get("hp", 0): parts.append("%d health" % e.hp)
 			if Game.is_survivor() and e.get("hunger", 0): parts.append("%d hunger" % e.hunger)
 			if Game.is_survivor() and e.get("thirst", 0): parts.append("%d thirst" % e.thirst)
-			dv.add_child(K.label("Restores: " + ", ".join(parts), 6, K.INK_SOFT, true))
+			if not parts.is_empty():
+				dv.add_child(K.label("Restores: " + ", ".join(parts), 6, K.INK_SOFT, true))
 		var tags := []
 		if fl.sellable: tags.append("[bgcolor=#a87a10][color=white] Sellable (%d) [/color][/bgcolor]" % it.price)
-		if fl.edible: tags.append("[bgcolor=#c8642a][color=white] Edible [/color][/bgcolor]")
+		if it.has("treat"): tags.append("[bgcolor=#b03a3a][color=white] Treatment [/color][/bgcolor]")
+		elif it.get("sleep_bag", false): tags.append("[bgcolor=#3a5a8a][color=white] Bedroll [/color][/bgcolor]")
+		elif fl.edible: tags.append("[bgcolor=#c8642a][color=white] Edible [/color][/bgcolor]")
 		if fl.donatable: tags.append("[bgcolor=#7a4aa0][color=white] Collectible [/color][/bgcolor]")
 		if fl.placeable: tags.append("[bgcolor=#4a7a6a][color=white] Placeable [/color][/bgcolor]")
 		if fl.plantable: tags.append("[bgcolor=#3f7a2c][color=white] Plantable [/color][/bgcolor]")
@@ -1919,6 +2023,20 @@ func _tab_skills() -> Control:
 			v.add_child(K.rich(pips, 7))
 			v.add_child(K.label("%d XP%s · Gain by: %s" % [xp, (" · %d to next level" % (nxt - xp)) if lvl < Balance.skills.max_level else " · max level", s.gain], 6, K.INK_SOFT, true))
 			v.add_child(K.label(s.perk, 6, null, true))
+			if id == "mining":
+				for plvl in DeepMine.PERKS:
+					var chosen: String = DeepMine.perks().get(str(plvl), "")
+					if chosen != "":
+						var pk: Dictionary = DeepMine.PERKS[plvl].filter(func(p): return p.id == chosen)[0]
+						v.add_child(K.rich("[color=#3f7a2c]Level %d perk: [b]%s[/b][/color]. %s" % [plvl, pk.name, pk.desc], 6))
+					elif lvl >= plvl:
+						v.add_child(K.rich("[color=#b3392e][b]Choose a level %d perk:[/b][/color]" % plvl, 6))
+						for pk2 in DeepMine.PERKS[plvl]:
+							var pid: String = pk2.id
+							var pl: int = plvl
+							v.add_child(K.button("%s: %s" % [pk2.name, pk2.desc], func(): DeepMine.choose(pl, pid); render_overlay(), "small"))
+					else:
+						v.add_child(K.label("Level %d perk: choose one of %s." % [plvl, " or ".join(DeepMine.PERKS[plvl].map(func(p): return p.name))], 6, K.INK_SOFT, true))
 		box.add_child(v)
 		g.add_child(box)
 	return K.scroll(g, 186)
@@ -1966,6 +2084,11 @@ func _tab_map() -> Control:
 	for id in Districts.DISTRICTS:
 		var open: bool = st.unlocked.get(id, false)
 		v.add_child(K.label("%s: %s" % [Districts.DISTRICTS[id].name, "open" if open else how[id]], 6, K.INK_SOFT, true))
+		if open:
+			for nid in Hordes.at_map(id):
+				var N: Dictionary = Hordes.NESTS[nid]
+				var stand: String = "[color=#b3392e]active[/color]" if Game.nest_active(nid) else "[color=#3f7a2c]destroyed[/color], grows back in %d days" % Game.nest_regrow_in(nid)
+				v.add_child(K.rich("   Horde nest in %s: %s" % [N.where, stand], 6))
 	v.custom_minimum_size.x = 170
 	h.add_child(v)
 	return h
@@ -2116,6 +2239,27 @@ func _tab_collections() -> Control:
 				cell.tooltip_text = "Not discovered yet"
 			flow_c.add_child(cell)
 		v.add_child(flow_c)
+	# the fish journal: how many of each fish you've landed and your biggest
+	var flog: Dictionary = Game.state.get("fish_log", {}) if Game.state.get("fish_log") is Dictionary else {}
+	v.add_child(K.rich("[b]Fish Journal[/b]  [color=#7a5434]%d/%d species landed[/color]" % [flog.size(), Data.fish.size()], 7))
+	var fj := GridContainer.new()
+	fj.columns = 3
+	var fids: Array = Data.fish.keys()
+	fids.sort_custom(func(a, b): return Data.fish[a].name < Data.fish[b].name)
+	for fid in fids:
+		var row := K.hbox(2)
+		var ic2 := K.icon(Art.get_icon(fid), 12)
+		if not flog.has(fid): ic2.modulate = Color(0, 0, 0, 0.45)
+		row.add_child(ic2)
+		var rng_in := Angling.size_range(fid)
+		var txt2: String = ("%s  x%d, best %s" % [Data.fish[fid].name, int(flog[fid].n), Angling.fmt(float(flog[fid].best))]) if flog.has(fid) else "???"
+		var lb := K.label(txt2, 5, K.INK if flog.has(fid) else K.INK_SOFT)
+		lb.custom_minimum_size.x = 120
+		row.add_child(lb)
+		row.tooltip_text = ("%s: %s to %s" % [Data.fish[fid].name, Angling.fmt(rng_in.x), Angling.fmt(rng_in.y)]) if flog.has(fid) else "Not caught yet"
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		fj.add_child(row)
+	v.add_child(fj)
 	# shipping log: every crop, forage, fish and artisan good you've sent out in the trade crate
 	var ship_ids := []
 	for id in Data.items:
@@ -2135,7 +2279,10 @@ func _tab_collections() -> Control:
 		cell.tooltip_text = (Data.items[id].name + ": shipped %d" % int(shipped[id])) if shipped.has(id) else "Not shipped yet"
 		sf.add_child(cell)
 	v.add_child(sf)
-	v.add_child(K.label("Museum donations: the Brightwater Community Archive is closed for restoration. Keep your finest finds.", 6, K.INK_SOFT, true))
+	if Restoration.done("archive"):
+		v.add_child(K.label("Museum: %d minerals, gems and artifacts donated to the Community Archive." % Restoration.museum().size(), 6, K.INK_SOFT, true))
+	else:
+		v.add_child(K.label("Museum donations: the Community Archive is closed until it's restored (see Ruth's ledger in the square). Keep your finest finds.", 6, K.INK_SOFT, true))
 	return K.scroll(v, 186)
 
 func _tab_calendar() -> Control:
@@ -2203,7 +2350,7 @@ func _settings_box(in_game: bool) -> Control:
 		h.add_child(val)
 		v.add_child(h)
 	v.add_child(K.label("Display and controls", 8, K.WOOD_DARK))
-	for pair in [["large_text", "Larger interface text"], ["high_contrast", "High-contrast interface"], ["show_target", "Show tool target outline"], ["pause_on_blur", "Pause when the window loses focus"]]:
+	for pair in [["large_text", "Larger interface text"], ["high_contrast", "High-contrast interface"], ["show_target", "Show tool target outline"], ["pause_on_blur", "Pause when the window loses focus"], ["detail_art", "Detailed art (preview)"]]:
 		var key: String = pair[0]
 		var cb := CheckBox.new()
 		cb.text = pair[1]

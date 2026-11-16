@@ -169,7 +169,113 @@ static func draw(a, o: Dictionary, season: String, _frame: int) -> Array:
 			a.R(x, 2, 11, 30, 1, "#e8d040"); a.R(x, 5, 18, 6, 6, "#1a1a1a"); a.R(x, 36, 18, 6, 6, "#1a1a1a")
 			if done: a.R(x, 14, 9, 8, 7, "#2a1414")
 			return [a.outline(x, "#1a0e0a"), 0, -8]
+		"loot_vault":
+			x = a.img(16, 26)
+			a.R(x, 1, 0, 14, 26, "#c8ccc8"); a.R(x, 1, 0, 14, 2, "#e0e4e0"); a.R(x, 13, 0, 2, 26, "#a8aca8")
+			a.R(x, 3, 4, 9, 6, "#e8c020"); a.R(x, 5, 5, 5, 4, "#2a2a2a"); a.P(x, 7, 6, "#e8c020")   # biohazard plate
+			a.R(x, 10, 13, 3, 4, "#3a3a3a"); a.P(x, 11, 14, "#40e060" if not done else "#e04040")      # keypad
+			if done: a.R(x, 3, 12, 6, 13, "#1a1c1a"); a.R(x, 2, 12, 1, 13, "#e0e4e0")
+			return [a.outline(x, "#1a1c1e"), 0, -10]
+		"biohazard_bin":
+			a.R(x, 3, 3, 10, 12, "#c83a2a"); a.R(x, 2, 2, 12, 2, "#d84a3a"); a.R(x, 5, 7, 6, 4, "#e8c020"); a.R(x, 7, 8, 2, 2, "#2a2a2a")
+			if done: a.R(x, 2, 0, 12, 2, "#d84a3a"); a.R(x, 4, 4, 8, 2, "#2a1410")
+			return [a.outline(x, "#1a0e0a"), 0, -2]
 		# ---- props
+		"lookout":
+			x = a.img(24, 44)
+			a.R(x, 3, 12, 2, 32, "#5e3c1e"); a.R(x, 19, 12, 2, 32, "#5e3c1e")
+			for i in 4: a.P(x, 5 + i * 4, 20 + i * 5, "#4a2e16"); a.P(x, 18 - i * 4, 20 + i * 5, "#4a2e16")   # cross braces
+			a.R(x, 9, 14, 6, 30, Color(0, 0, 0, 0)); for i in 8: a.R(x, 10, 16 + i * 3, 4, 1, "#7a5a36")       # ladder rungs
+			a.R(x, 1, 8, 22, 4, "#8a6a40"); a.R(x, 1, 8, 22, 1, "#a8844e")
+			a.R(x, 1, 2, 2, 7, "#6a4a2a"); a.R(x, 21, 2, 2, 7, "#6a4a2a"); a.R(x, 1, 3, 22, 1, "#7a5a36")
+			a.R(x, 3, 4, 18, 4, "#6a6a62"); a.R(x, 6, 5, 4, 2, "#a82a2a")   # sheet-metal shield, a red rag
+			return [a.outline(x, "#1e1410"), -4, -28]
+		"sapling":
+			var pine: bool = o.get("kind", "tree") == "pine"
+			var leaf := "#2f6a42" if pine else "#4a8a3a"
+			var leaf2 := "#3f7a52" if pine else "#62a44a"
+			match Woodland.stage(o):
+				0:
+					a.R(x, 5, 12, 6, 2, "#6a4a2a"); a.R(x, 7, 10, 1, 2, "#5a9a42"); a.P(x, 8, 10, "#7ac05a")
+					return [x, 0, 0]
+				1:
+					a.R(x, 5, 13, 6, 2, "#6a4a2a"); a.R(x, 7, 7, 1, 6, "#6a4a2a"); a.R(x, 5, 6, 3, 2, leaf2); a.R(x, 8, 4, 3, 2, leaf)
+					return [a.outline(x, "#1a2a14"), 0, 0]
+				2:
+					x = a.img(16, 24)
+					a.R(x, 7, 12, 2, 12, "#6a4a2a")
+					if pine:
+						for i in 4: a.R(x, 7 - i, 2 + i * 3, 2 + i * 2, 3, leaf if i % 2 else leaf2)
+					else:
+						a.R(x, 3, 3, 10, 9, leaf); a.R(x, 4, 4, 5, 4, leaf2); a.P(x, 10, 5, leaf2)
+					return [a.outline(x, "#1a2a14"), 0, -8]
+				_:
+					x = a.img(24, 32)
+					a.R(x, 11, 18, 3, 14, "#6a4a2a"); a.R(x, 12, 18, 1, 14, "#5a3a1e")
+					if pine:
+						for i in 5: a.R(x, 11 - i * 2, 2 + i * 3, 3 + i * 4, 4, leaf if i % 2 else leaf2)
+					else:
+						a.R(x, 4, 3, 16, 15, leaf); a.R(x, 6, 4, 8, 6, leaf2); a.R(x, 14, 9, 4, 4, leaf2); a.R(x, 3, 8, 2, 6, leaf)
+					return [a.outline(x, "#1a2a14"), -4, -16]
+		"town_ledger":
+			x = a.img(16, 22)
+			a.R(x, 6, 10, 4, 12, "#5e3c1e"); a.R(x, 3, 20, 10, 2, "#5e3c1e")      # a lectern
+			a.R(x, 1, 5, 14, 6, "#7a5236"); a.R(x, 2, 4, 6, 6, "#f0e6cc"); a.R(x, 8, 4, 6, 6, "#e8dcc0")   # an open ledger
+			for i in 3: a.R(x, 3, 5 + i * 2, 4, 1, "#8a7a6a"); a.R(x, 9, 5 + i * 2, 4, 1, "#8a7a6a")
+			a.R(x, 7, 3, 2, 8, "#a83a2a")                                          # ribbon
+			return [a.outline(x, "#1e1410"), 0, -6]
+		"museum_desk":
+			a.R(x, 0, 5, 16, 10, "#7a5636"); a.R(x, 0, 5, 16, 2, "#9a7048"); a.R(x, 5, 2, 6, 4, "#e8dcc0"); a.R(x, 6, 3, 4, 1, "#8a7a6a")
+			return [a.outline(x, "#1e1410"), 0, -2]
+		"display_case":
+			x = a.img(16, 20)
+			a.R(x, 1, 12, 14, 8, "#6a4a2e"); a.R(x, 1, 12, 14, 1, "#8a6a44")
+			a.R(x, 2, 2, 12, 10, Color(0.75, 0.88, 0.95, 0.45)); a.R(x, 2, 2, 12, 1, "#e8f4fc"); a.R(x, 3, 3, 1, 7, "#f4fafe")
+			if Game.state.has("day") and Restoration.museum().size() > int(v) % 6:
+				a.R(x, 6, 7, 4, 4, ["#9a7a5a", "#c890e0", "#b0b8c8", "#d8b080"][int(v) % 4])
+			return [a.outline(x, "#1a1410"), 0, -4]
+		"stolen_goods":
+			x = a.img(16, 20)
+			a.R(x, 1, 8, 7, 11, "#9a7a4a"); a.R(x, 8, 10, 7, 9, "#8a6a40"); a.R(x, 3, 4, 8, 6, "#a88a5a")
+			a.R(x, 0, 3, 16, 9, "#4a5a7a"); a.R(x, 0, 3, 16, 1, "#5a6a8a"); a.R(x, 2, 11, 2, 3, "#4a5a7a"); a.R(x, 12, 11, 3, 2, "#4a5a7a")   # a blue tarp over it all
+			a.R(x, 6, 2, 1, 3, "#3a3a3a"); a.R(x, 4, 13, 3, 5, "#c8b070")   # a rope, a sack poking out
+			if Game.state.get("stolen") is Array and not Game.state.stolen.is_empty(): a.R(x, 10, 13, 4, 4, "#c83a2a")   # your red chest lid, right there
+			return [a.outline(x, "#1a1410"), 0, -4]
+		"fryer":
+			a.R(x, 1, 3, 14, 12, "#a8acb0"); a.R(x, 1, 3, 14, 1, "#c8ccd0"); a.R(x, 2, 4, 5, 4, "#3a2a14"); a.R(x, 9, 4, 5, 4, "#3a2a14")
+			a.R(x, 3, 1, 3, 4, "#6a6a70"); a.R(x, 10, 1, 3, 4, "#6a6a70"); a.R(x, 4, 0, 1, 2, "#2a2a2a"); a.R(x, 11, 0, 1, 2, "#2a2a2a")
+			a.R(x, 2, 10, 12, 1, "#7a7e82"); a.P(x, 4, 12, "#c83a2a"); a.P(x, 11, 12, "#40c040")
+			return [a.outline(x, "#1a1c1e"), 0, -2]
+		"lab_bench":
+			a.R(x, 0, 5, 16, 3, "#e0e4e0"); a.R(x, 0, 8, 16, 7, "#7a8a9a"); a.R(x, 1, 9, 6, 5, "#6a7a8a"); a.R(x, 9, 9, 6, 5, "#6a7a8a")
+			var gl = ["#90d0e0", "#b8e060", "#e0a060"][v % 3]
+			a.R(x, 2, 2, 2, 3, gl); a.R(x, 6, 3, 3, 2, "#c8d0d8"); a.R(x, 11, 1, 2, 4, "#c8d0d8"); a.R(x, 11, 3, 2, 2, gl)
+			return [a.outline(x, "#1a1c22"), 0, -2]
+		"specimen_tank":
+			x = a.img(16, 28)
+			a.R(x, 2, 24, 12, 4, "#5a5e62"); a.R(x, 2, 0, 12, 3, "#5a5e62")
+			a.R(x, 3, 3, 10, 21, "#5a8a6a"); a.R(x, 3, 3, 10, 21, Color(0.55, 0.85, 0.6, 0.55))
+			for i in 4: a.P(x, 5 + (i * 3) % 7, 20 - i * 4, "#c8f0d0")   # bubbles
+			if v % 2 == 0:
+				a.R(x, 6, 8, 4, 4, "#3a4a3e"); a.R(x, 5, 12, 6, 7, "#3a4a3e"); a.R(x, 6, 19, 1, 4, "#3a4a3e"); a.R(x, 9, 19, 1, 4, "#3a4a3e")   # a shape inside
+			else:
+				a.R(x, 4, 14, 8, 1, "#3a5a42"); a.R(x, 9, 4, 1, 10, "#e0f0e8")   # cracked, drained
+			a.R(x, 4, 4, 1, 18, "#e0f4e8")
+			return [a.outline(x, "#1a1c1e"), 0, -12]
+		"server_rack":
+			x = a.img(16, 26)
+			a.R(x, 2, 0, 12, 26, "#2a2e34"); a.R(x, 2, 0, 12, 1, "#4a4e54")
+			for i in 7:
+				a.R(x, 3, 2 + i * 3, 10, 2, "#3a3e44")
+				a.P(x, 4, 2 + i * 3, ["#40e060", "#e0a020", "#2a2e34", "#40e060"][(i + v) % 4])
+			return [a.outline(x, "#121418"), 0, -10]
+		"decon_shower":
+			x = a.img(16, 26)
+			a.R(x, 1, 0, 2, 26, "#c8a020"); a.R(x, 13, 0, 2, 26, "#c8a020"); a.R(x, 1, 0, 14, 3, "#c8a020")
+			for i in 3: a.R(x, 4 + i * 3, 3, 1, 2, "#a8b0b8")
+			for i in 6: a.P(x, 4 + (i * 5) % 9, 7 + i * 3, Color(0.6, 0.85, 1.0, 0.6))
+			for i in 4: a.R(x, 1, 4 + i * 6, 2, 3, "#2a2a2a")
+			return [a.outline(x, "#1a1810"), 0, -10]
 		"old_bed":
 			x = a.img(16, 32)
 			a.R(x, 1, 0, 14, 4, "#5a4030"); a.R(x, 1, 4, 14, 26, "#6a4c32"); a.R(x, 2, 4, 12, 24, "#c8c0b0")

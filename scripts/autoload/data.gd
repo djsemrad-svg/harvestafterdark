@@ -416,7 +416,7 @@ var buildings := {
 var npcs := {
 	"ruth": {
 		"name": "Ruth Adeyemi", "role": "Town coordinator", "birthday": {"season": "autumn", "day": 14},
-		"look": {"sprite": "ruth", "skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
+		"look": {"sprite": "ruth", "mi_hair": "13_05", "mi_outfit": "24_01", "mi_acc": "15_Glasses_01", "skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
 		"loves": ["pumpkin", "amethyst", "veggie_stew", "sunflower"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
@@ -436,7 +436,7 @@ var npcs := {
 	},
 	"hal": {
 		"name": "Hal Brennan", "role": "Owner of Brennan's General", "birthday": {"season": "spring", "day": 21},
-		"look": {"sprite": "hal", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
+		"look": {"sprite": "hal", "mi_hair": "06_02", "mi_outfit": "31_01", "mi_acc": "04_Snapback_01", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
 		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato", "hot_pepper"], "dislikes": ["stone", "cat:junk", "clay"],
 		"schedules": {
 			"default": [[360, ""], [510, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
@@ -456,7 +456,7 @@ var npcs := {
 	},
 	"ines": {
 		"name": "Ines Varga", "role": "Blacksmith", "birthday": {"season": "winter", "day": 5},
-		"look": {"sprite": "ines", "skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
+		"look": {"sprite": "ines", "mi_hair": "11_04", "mi_outfit": "23_01", "mi_acc": "", "skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["emerald", "ruby", "iron_bar", "glimmerite"], "likes": ["cat:ore", "cat:gem", "coal", "fried_fish"], "dislikes": ["cat:forage", "dandelion", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "forge", 6, 3, "down"], [960, "mountain", 24, 10, "up"], [1140, "town", 31, 22, "down"], [1260, ""]],
@@ -476,7 +476,7 @@ var npcs := {
 	},
 	"wren": {
 		"name": "Wren Calloway", "role": "Angler", "birthday": {"season": "summer", "day": 9},
-		"look": {"sprite": "wren", "skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
+		"look": {"sprite": "wren", "mi_hair": "04_01", "mi_outfit": "13_03", "mi_acc": "11_Beanie_02", "skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
 		"loves": ["ghost_pike", "sunberry", "forager_salad"], "likes": ["cat:fish", "wild_mint", "bread_loaf"], "dislikes": ["cat:ore", "stone", "scrap"],
 		"schedules": {
 			"default": [[360, "town", 14, 33, "down"], [720, "mountain", 9, 21, "up"], [1080, "town", 16, 33, "down"], [1320, ""]],
@@ -496,7 +496,7 @@ var npcs := {
 	},
 	"marisol": {
 		"name": "Marisol Reyes", "role": "Rancher", "birthday": {"season": "summer", "day": 20},
-		"look": {"sprite": "marisol", "skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
+		"look": {"sprite": "marisol", "mi_hair": "11_04", "mi_outfit": "02_01", "mi_acc": "", "skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
 		"loves": ["sunflower", "strawbloom", "tanned_pelt"], "likes": ["egg", "large_egg", "cat:crop", "hay"], "dislikes": ["cat:junk", "coal", "scrap"],
 		"schedules": {
 			"default": [[360, ""], [480, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
@@ -517,7 +517,7 @@ var npcs := {
 	},
 	"elias": {
 		"name": "Dr. Elias Okoro", "role": "Town doctor", "birthday": {"season": "winter", "day": 18},
-		"look": {"sprite": "elias", "skin": "#7a4a2c", "hair": "#1a1210", "hair_style": "Buzz", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#e8e8e0", "pants": "#333a44", "acc": "None", "acc_color": "#222222"},
+		"look": {"sprite": "elias", "mi_hair": "06_07", "mi_outfit": "08_01", "mi_acc": "", "skin": "#7a4a2c", "hair": "#1a1210", "hair_style": "Buzz", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#e8e8e0", "pants": "#333a44", "acc": "None", "acc_color": "#222222"},
 		"loves": ["med_kit", "mint_tea", "garlic"], "likes": ["cat:forage", "bandage", "dandelion_tea"], "dislikes": ["cat:junk", "pipe_charge", "hot_pepper"],
 		"schedules": {
 			"default": [[360, ""], [510, "clinic", 10, 3, "down"], [1020, "town", 26, 21, "left"], [1140, ""]],
@@ -537,7 +537,7 @@ var npcs := {
 	},
 	"jo": {
 		"name": "Jo Mercer", "role": "Mechanic and builder", "birthday": {"season": "spring", "day": 7},
-		"look": {"sprite": "jo", "skin": "#f6d3b3", "hair": "#c8502a", "hair_style": "Long", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Overalls", "shirt": "#3f6fb5", "pants": "#3f6fb5", "acc": "None", "acc_color": "#222222"},
+		"look": {"sprite": "jo", "mi_hair": "04_01", "mi_outfit": "19_01", "mi_acc": "", "skin": "#f6d3b3", "hair": "#c8502a", "hair_style": "Long", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Overalls", "shirt": "#3f6fb5", "pants": "#3f6fb5", "acc": "None", "acc_color": "#222222"},
 		"loves": ["iron_bar", "copper_bar", "smoked_fish"], "likes": ["scrap", "wood", "cat:bar"], "dislikes": ["cat:junk", "soggy_paper", "sunflower"],
 		"schedules": {
 			"default": [[360, ""], [480, "workshop", 6, 5, "down"], [1020, "town", 47, 16, "down"], [1200, ""]],
@@ -557,7 +557,7 @@ var npcs := {
 	},
 	"cole": {
 		"name": "Cole Ashford", "role": "Guildmaster", "birthday": {"season": "autumn", "day": 27},
-		"look": {"sprite": "guildmaster", "skin": "#e8b48f", "hair": "#8a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Beard", "shirt_style": "Jacket", "shirt": "#6a4a2e", "pants": "#3f5a8a", "acc": "Bandana", "acc_color": "#b5442f"},
+		"look": {"sprite": "guildmaster", "mi_hair": "01_01", "mi_outfit": "05_04", "mi_acc": "13_Beard_02", "skin": "#e8b48f", "hair": "#8a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Beard", "shirt_style": "Jacket", "shirt": "#6a4a2e", "pants": "#3f5a8a", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["ember_chili", "iron_bar", "survivor_plate"], "likes": ["cat:cooked", "bolts", "nail_rounds"], "dislikes": ["cat:junk", "sunflower", "mint_tea"],
 		"schedules": {
 			"default": [[360, ""], [600, "guild", 8, 2, "down"], [1320, "town", 12, 31, "down"], [1440, ""]],
@@ -936,7 +936,7 @@ func _init() -> void:
 		def_item(id, {"name": dd[0], "cat": "cooked", "price": dd[1], "edible": {"hunger": dd[2], "thirst": dd[3], "energy": dd[4], "hp": dd[5]}, "drink": dd[6] == "cup", "desc": dd[8], "icon": {"s": dd[6], "c": dd[7]}})
 
 	# ---- animals and their products
-	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the coop's hopper to feed your animals.", "icon": {"s": "hay"}})
+	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the feeder in your coop, barn or hutch to feed your animals.", "icon": {"s": "hay"}})
 	def_item("egg", {"name": "Egg", "cat": "animal", "price": 50, "edible": {"hunger": 6, "energy": 10, "hp": 1, "thirst": 0}, "desc": "A fresh egg. Better cooked.", "icon": {"s": "egg", "c": "#f4ecd8"}})
 	def_item("large_egg", {"name": "Large Egg", "cat": "animal", "price": 95, "edible": {"hunger": 10, "energy": 16, "hp": 2, "thirst": 0}, "desc": "From a happy, well-fed hen.", "icon": {"s": "egg", "c": "#e8d0a8", "big": true}})
 	def_item("rabbit_fur", {"name": "Rabbit Fur", "cat": "animal", "price": 140, "desc": "Soft and warm. Tan it on a Tanning Rack.", "icon": {"s": "fur", "c": "#c8c0b8"}})
@@ -1007,6 +1007,17 @@ func _init() -> void:
 	Catalog.register(self)
 	Districts.register(self)
 	Contracts.register(self)
+	Livestock.register(self)
+	FarmCare.register(self)
+	Injuries.register(self)
+	Hordes.register(self)
+	Halvorsen.register(self)
+	Raiders.register(self)
+	Safehouses.register(self)
+	Angling.register(self)
+	Woodland.register(self)
+	DeepMine.register(self)
+	Restoration.register(self)
 
 
 func item(id: String) -> Dictionary:

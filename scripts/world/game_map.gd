@@ -26,6 +26,8 @@ var dark := false
 var mood := "warm"
 ## A room picture drawn instead of tiles (path under res://art/), "" for tiled maps.
 var backdrop := ""
+## Rooms: which layout this room was built from (older saves of a changed layout are rebuilt).
+var layout := ""
 var mine := false
 ## Districts: which district this map belongs to, and who roams it
 ## ({"day": [min, max], "night": [...], "table": [...]} outside, {"spots": [...]} in rooms).
