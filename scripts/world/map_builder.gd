@@ -100,6 +100,80 @@ static func store() -> GameMap:
 	m.lights = [{"x": 6, "y": 5, "r": 90}]
 	return m
 
+static func ranch() -> GameMap:
+	var m := _interior("ranch")
+	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 37, "ty": 9, "dir": "down", "door": true})
+	for i in range(3, 10):
+		m.add_obj(i, 4, "counter", {"shop": "ranch"})
+	m.add_obj(1, 2, "hay_bale"); m.add_obj(2, 2, "hay_bale"); m.add_obj(10, 2, "nest_box"); m.add_obj(9, 2, "nest_box")
+	m.add_obj(1, 7, "water_trough"); m.add_obj(10, 7, "hay_bale"); m.add_obj(10, 8, "barrel")
+	m.add_obj(4, 1, "window"); m.add_obj(7, 1, "window")
+	m.lights = [{"x": 6, "y": 5, "r": 90}]
+	return m
+
+## A coop's inside. One per farm for now; "b" is the building record from the save.
+static func coop(b: Dictionary) -> GameMap:
+	var m := _interior("coop")
+	m.mood = "warm"
+	m.fill(1, 2, 10, 7, "dirt")
+	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "homestead", "tx": int(b.door_x), "ty": int(b.door_y) + 1, "dir": "down", "door": true})
+	m.add_obj(2, 2, "hay_hopper")
+	m.add_obj(4, 2, "water_trough")
+	for x in [7, 8, 9, 10]:
+		m.add_obj(x, 2, "nest_box")
+	m.add_obj(6, 1, "window")
+	m.lights = [{"x": 6, "y": 5, "r": 80}]
+	return m
+
+## Rooms for the Clinic, Workshop, Combat Guild and Greenhouse, 14 x 11 tiles.
+## Grid letters: W wall, . floor, C shop counter, P greenhouse plot, and furniture:
+## B bed, S shelf, T table, h chair, X crate, O barrel, L lamp, w window, R rug, D target dummy.
+const ROOMS := {
+	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSWWwSSSSW", "W............W", "WB.B.....CCCCW", "W.........L..W",
+		"WB.B.........W", "W............W", "WS..RRRR..T.hW", "W...RRRR.....W", "W....O...X...W", "WWWWWW..WWWWWW"]},
+	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSSSwSSXXW", "W............W", "WTT..CCCCC..OW", "W............W",
+		"WXX.......L..W", "W.....TT.....W", "WOO.........XW", "W..........XXW", "WX.........OOW", "WWWWWW..WWWWWW"]},
+	"guild": {"exit": ["town", 12, 29], "shop": "guild", "floor": "floor", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSWWSSwSSW", "W............W", "W...CCCCCC...W", "W.L..........W",
+		"WD..........DW", "W....RRRR....W", "WD...RRRR...DW", "W............W", "WXXTh......OOW", "WWWWWW..WWWWWW"]},
+	"greenhouse": {"exit": ["homestead", 0, 0], "shop": "", "floor": "dirt", "grid": [
+		"WWWWWWWWWWWWWW", "WwwwwwwwwwwwwW", "W.PPPPP.PPPPPW", "W............W", "W............W",
+		"W.PPPPP.PPPPPW", "W............W", "WO..........XW", "W............W", "WWWWWW...WWWWW", "WWWWWW...WWWWW"]},
+}
+
+static func room(id: String, exit_override := []) -> GameMap:
+	var R: Dictionary = ROOMS[id]
+	var rows: Array = R.grid
+	var m := GameMap.new(id, 14, 11, R.get("floor", "floor"))
+	m.indoor = true
+	var ex: Array = exit_override if not exit_override.is_empty() else R.exit
+	var furniture := {"B": "bench", "S": "shelf", "T": "table", "h": "chair", "X": "crate", "O": "barrel", "L": "lamp", "w": "window", "R": "rug", "D": "crate"}
+	for y in rows.size():
+		var row: String = rows[y]
+		for x in row.length():
+			var ch := row[x]
+			if ch == "W":
+				m.set_tile(x, y, "walltop" if y == 0 or x == 0 or x == row.length() - 1 or y == rows.size() - 1 else "wall")
+				if y == 1: m.set_tile(x, y, "wall")
+			if ch == "w":
+				m.set_tile(x, y, "wall")
+				m.add_obj(x, y, "window")
+			elif furniture.has(ch):
+				m.add_obj(x, y, furniture[ch], {"h": 2} if ch == "B" else {})
+			if ch == "C":
+				m.add_obj(x, y, "counter", {"shop": R.shop})
+			if ch == "P":
+				m.set_tile(x, y, "dirt")
+				m.soil[GameMap.k(x, y)] = {"w": 0, "crop": null, "fixed": true}
+			if ch == "." and y == rows.size() - 1:
+				m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": ex[0], "tx": ex[1], "ty": ex[2], "dir": "down", "door": true})
+	if id == "greenhouse":
+		m.farmable = true
+	m.lights = [{"x": 7, "y": 5, "r": 110}]
+	return m
+
 static func forge() -> GameMap:
 	var m := _interior("forge")
 	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 39, "ty": 17, "dir": "down", "door": true})
@@ -123,6 +197,7 @@ static func town(world_seed: int) -> GameMap:
 	m.fill(0, 34, 56, 3, "water")
 	m.fill(27, 33, 3, 4, "bridge")
 	m.fill(27, 37, 3, 3, "dirt")
+	m.fill(0, 30, 27, 2, "road")              # Maple Street, west to the Residential District
 	m.add_structure({"kind": "store", "x": 8, "y": 11, "w": 8, "h": 6, "door_x": 12, "door_y": 16, "warp": {"to": "store", "tx": 6, "ty": 8, "dir": "up", "shop": "general"}})
 	m.add_structure({"kind": "forge", "x": 36, "y": 11, "w": 7, "h": 6, "door_x": 39, "door_y": 16, "warp": {"to": "forge", "tx": 6, "ty": 8, "dir": "up", "shop": "forge"}})
 	m.add_structure({"kind": "townhall", "x": 20, "y": 4, "w": 7, "h": 5, "door_x": 23, "door_y": 8, "text": "Ruth's house. The door is locked. She keeps it tidy, even now."})
@@ -130,6 +205,17 @@ static func town(world_seed: int) -> GameMap:
 	m.add_structure({"kind": "archive", "x": 35, "y": 24, "w": 9, "h": 6, "door_x": 39, "door_y": 29, "text": "Brightwater Community Archive. The doors are chained. Through a gap you can see empty display cases waiting to be filled."})
 	m.add_structure({"kind": "house_a", "x": 3, "y": 24, "w": 6, "h": 5, "door_x": 6, "door_y": 28, "text": "Hal's house. A hand-painted sign reads: \"Out back, or at the store.\""})
 	m.add_structure({"kind": "house_b", "x": 46, "y": 24, "w": 6, "h": 5, "door_x": 49, "door_y": 28, "text": "Ines and Wren share this house. Nobody answers."})
+	m.add_structure({"kind": "ranch", "x": 34, "y": 3, "w": 8, "h": 6, "door_x": 37, "door_y": 8, "warp": {"to": "ranch", "tx": 6, "ty": 8, "dir": "up", "shop": "ranch"}})
+	m.fill(35, 9, 3, 1, "dirt"); m.fill(35, 9, 1, 4, "dirt")
+	# Marisol's little paddock beside the road
+	for xx in range(31, 34):
+		m.add_obj(xx, 3, "fence"); m.add_obj(xx, 8, "fence")
+	for yy in range(4, 8):
+		m.add_obj(31, yy, "fence")
+	m.add_obj(32, 5, "hay_bale"); m.add_obj(32, 7, "water_trough")
+	m.add_structure({"kind": "clinic", "x": 5, "y": 3, "w": 7, "h": 5, "door_x": 8, "door_y": 7, "warp": {"to": "clinic", "tx": 7, "ty": 9, "dir": "up", "shop": "clinic"}})
+	m.add_structure({"kind": "workshop", "x": 45, "y": 10, "w": 7, "h": 5, "door_x": 48, "door_y": 14, "warp": {"to": "workshop", "tx": 6, "ty": 9, "dir": "up", "shop": "workshop"}})
+	m.add_structure({"kind": "guild", "x": 9, "y": 24, "w": 7, "h": 5, "door_x": 12, "door_y": 28, "warp": {"to": "guild", "tx": 6, "ty": 9, "dir": "up", "shop": "guild"}})
 	m.add_structure({"kind": "ruin", "x": 45, "y": 3, "w": 7, "h": 5, "door_x": 48, "door_y": 7, "text": "A collapsed house. Too dangerous to enter."})
 	m.warps.append({"x": 0, "y": 18, "w": 1, "h": 3, "to": "homestead", "tx": 48, "ty": 19, "dir": "left"})
 	m.warps.append({"x": 27, "y": 0, "w": 3, "h": 1, "to": "mountain", "tx": 19, "ty": 30, "dir": "up"})
@@ -149,15 +235,25 @@ static func town(world_seed: int) -> GameMap:
 	m.add_obj(24, 23, "bench"); m.add_obj(32, 23, "bench")
 	m.add_obj(7, 16, "barrel"); m.add_obj(16, 16, "barrel"); m.add_obj(43, 15, "crate"); m.add_obj(43, 16, "barrel")
 	m.add_obj(46, 18, "car_wreck", {"w": 2}); m.add_obj(4, 20, "car_wreck", {"w": 2})
-	for y in range(16, 23):
+	# the three district gates. "anchor" objects are put back on load if an older save has something else there.
+	for y in [16, 17, 21, 22]:
 		m.add_obj(55, y, "rubble")
-	m.add_obj(53, 16, "sign", {"text": "INDUSTRIAL DISTRICT. The east gate is sealed and the power is out."})
+	for y in [18, 19, 20]:
+		m.add_obj(55, y, "district_gate", {"region": "industrial", "anchor": true})
+	m.add_obj(53, 16, "sign", {"text": "INDUSTRIAL DISTRICT. The east gate is sealed and the power is out. Jo at Mercer Workshop might get it running.", "anchor": true})
 	for x in range(27, 30):
-		m.add_obj(x, 39, "rubble")
-	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Repairs needed."})
+		m.add_obj(x, 39, "district_gate", {"region": "riverlands", "anchor": true})
+	m.add_obj(26, 38, "sign", {"text": "Riverlands Road. The far bridge washed out. Jo at Mercer Workshop could rebuild it.", "anchor": true})
+	for y in [30, 31]:
+		m.add_obj(1, y, "district_gate", {"region": "residential", "anchor": true})
+	m.add_obj(2, 29, "sign", {"text": "MAPLE STREET. Residential District. Closed by order of the Combat Guild.", "anchor": true})
+	m.warps.append({"x": 0, "y": 30, "w": 1, "h": 2, "to": "residential", "tx": 58, "ty": 22, "dir": "left", "requires": "open_residential"})
+	m.warps.append({"x": 55, "y": 18, "w": 1, "h": 3, "to": "industrial", "tx": 1, "ty": 19, "dir": "right", "requires": "open_industrial"})
+	m.warps.append({"x": 27, "y": 39, "w": 3, "h": 1, "to": "riverlands", "tx": 29, "ty": 1, "dir": "down", "requires": "open_riverlands"})
+	m.purge.append(Rect2i(0, 29, 27, 4))
 	m.add_obj(31, 32, "sign", {"text": "Brightwater River. Good fishing, says Wren."})
-	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3)])
-	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4)])
+	m.clear.append_array([Rect2i(20, 12, 17, 13), Rect2i(0, 14, 5, 11), Rect2i(0, 17, 56, 5), Rect2i(23, 0, 11, 4), Rect2i(26, 0, 5, 40), Rect2i(12, 31, 6, 3), Rect2i(37, 30, 5, 3), Rect2i(5, 28, 3, 3), Rect2i(11, 20, 4, 3), Rect2i(30, 2, 13, 11), Rect2i(4, 2, 9, 8), Rect2i(44, 9, 9, 8), Rect2i(8, 23, 9, 9), Rect2i(0, 29, 27, 4)])
+	_border(m, r, [Rect2i(0, 18, 1, 3), Rect2i(27, 0, 3, 1), Rect2i(55, 16, 1, 7), Rect2i(27, 39, 3, 1), Rect2i(0, 33, 1, 4), Rect2i(55, 33, 1, 4), Rect2i(0, 30, 1, 2)])
 	for y in range(1, m.h - 1):
 		for x in range(1, m.w - 1):
 			if not _open(m, x, y):
@@ -326,6 +422,12 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		var t: Vector2i = tiles[tiles.size() - 3]
 		m.remove_obj(t.x, t.y)
 		m.add_obj(t.x, t.y, "sign", {"text": "The tunnel below has caved in completely. You can hear water and something mechanical far beneath. Heavier equipment will be needed to dig through."})
+	# an old supply crate now and then, more often deeper down
+	if r.randf() < 0.2 + floor_n * 0.02:
+		var cands := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 5)
+		if not cands.is_empty():
+			var ct: Vector2i = cands[r.randi() % cands.size()]
+			m.add_obj(ct.x, ct.y, "supply_crate", {"quality": clampf(floor_n / 20.0, 0.0, 1.0)})
 	var count := r.randi_range(band.enemy_count[0], band.enemy_count[1])
 	var free := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 9)
 	for i in count:

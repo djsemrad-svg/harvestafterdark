@@ -18,6 +18,9 @@ var bars_box: VBoxContainer
 var status_box: HBoxContainer
 var hint_lbl: Label
 var banner_lbl: Label
+var boss_box: VBoxContainer
+var boss_lbl: Label
+var boss_bar: ProgressBar
 var toolbar: HBoxContainer
 var tb_name: Label
 var _last := {}
@@ -192,7 +195,7 @@ func _title_slots() -> void:
 				if is_new: h.add_child(K.button("Overwrite", func(): _start_create(slot_n), "small"))
 			else:
 				h.add_child(K.icon(Art.get_portrait(d.character.look), 18))
-				var info := K.label("%s of %s\n%s · %d scrip" % [d.character.name, d.property_name, Game.date_label(d.day), d.money], 7, null)
+				var info := K.label("%s of %s\n%s · %d gold" % [d.character.name, d.property_name, Game.date_label(d.day), d.money], 7, null)
 				info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				h.add_child(info)
 				if is_new:
@@ -367,7 +370,7 @@ func _title_property() -> void:
 		v.add_child(K.label(flow.err, 7, K.DANGER))
 	p.add_child(v)
 	_center(p, screen_root)
-	le.call_deferred("grab_focus")
+	(func(): if is_instance_valid(le) and le.is_inside_tree(): le.grab_focus()).call_deferred()
 
 func _title_import() -> void:
 	var p := K.panel(380)
@@ -479,6 +482,24 @@ func build_hud() -> void:
 	br.add_child(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"))
 	br.add_child(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"))
 	hud.add_child(br)
+	# boss health (top centre, only while a boss is on the map)
+	boss_box = K.vbox(0)
+	boss_box.anchor_left = 0.5; boss_box.anchor_right = 0.5
+	boss_box.offset_left = -80; boss_box.offset_right = 80; boss_box.offset_top = 4
+	boss_box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	boss_lbl = K.label("", 7, Color("#fff4dc"))
+	boss_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_lbl.add_theme_constant_override("outline_size", 3)
+	boss_lbl.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02, 0.9))
+	boss_box.add_child(boss_lbl)
+	boss_bar = ProgressBar.new()
+	boss_bar.show_percentage = false
+	boss_bar.custom_minimum_size = Vector2(160, 6)
+	boss_bar.add_theme_stylebox_override("background", K.sb(Color("#2a1c14"), K.OUTLINE, 1, 1, Color(0, 0, 0, 0), 0, 0))
+	boss_bar.add_theme_stylebox_override("fill", K.sb(Color("#b8302a"), Color("#6a1a14"), 1, 1, Color(0, 0, 0, 0), 0, 0))
+	boss_box.add_child(boss_bar)
+	boss_box.visible = false
+	hud.add_child(boss_box)
 	# banner
 	banner_lbl = K.label("", 14, Color("#fff4d0"))
 	banner_lbl.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -500,7 +521,7 @@ func update_hud(dt: float) -> void:
 		return
 	var st: Dictionary = Game.state
 	var late: bool = st.time >= Balance.time.midnight
-	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s scrip[/color][/b]%s[/right]" % [
+	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s gold[/color][/b]%s[/right]" % [
 		Game.weekday(), Game.season().capitalize(), Game.day_of_season(), Game.year(), "#b3392e" if late else "#5a2c0e", Game.fmt_time(int(st.time)),
 		Data.weather_info[st.weather].name, Game.location_name(), _num(int(st.money)), "\n[color=#b3392e][b]PAUSED[/b][/color]" if Game.paused else ""]
 	if _last.get("clock") != clock:
@@ -579,6 +600,22 @@ func update_hud(dt: float) -> void:
 		if toasts[i].t <= 0:
 			toasts[i].node.queue_free()
 			toasts.remove_at(i)
+	# boss health
+	var boss = null
+	for en in Game.enemies:
+		if Data.enemies[en.type].get("boss", false) and en.state != "asleep":
+			boss = en
+			break
+	boss_box.visible = boss != null
+	if boss != null:
+		boss_lbl.text = Data.enemies[boss.type].name
+		boss_bar.max_value = float(boss.max_hp)
+		boss_bar.value = maxf(0.0, float(boss.hp))
+	elif not Game.event.is_empty():
+		boss_box.visible = true
+		boss_lbl.text = "Hold the overpass: wave %d of %d" % [int(Game.event.wave), int(Contracts.get_def(Game.event.id).waves)]
+		boss_bar.max_value = float(Contracts.get_def(Game.event.id).waves)
+		boss_bar.value = float(Game.event.wave) - 1.0
 	# hint and banner
 	var h := hint_text()
 	if hint_lbl.text != h:
@@ -636,8 +673,17 @@ func hint_text() -> String:
 		var rel: Dictionary = Game.state.npcs[npc]
 		var gift: bool = s != null and Game.item_flags(s.id).giftable and rel.met and Game.can_gift(npc)
 		return "E: " + ("Talk / give %s to " % Data.items[s.id].name if gift else "Talk to ") + Data.npcs[npc].name.split(" ")[0]
+	var an = w.animal_in_front()
+	if an != null:
+		return ("E: Pet %s" % an.name) if int(an.petted_day) != int(Game.state.day) else "%s looks %s" % [an.name, Game.animal_mood(an)]
 	var t: Vector2i = w.target_preview()
 	var m: GameMap = Game.map
+	var coop = Game.get_building_rec("coop")
+	if coop != null and m.id == "homestead" and w.facing_tile() == Game.animal_door_tile(coop):
+		return "E: " + ("Close" if coop.door_open else "Open") + " animal door"
+	var sel_b = Game.selected_stack()
+	if sel_b != null and Data.items[sel_b.id].has("building"):
+		return "Face an open 6 by 4 space and press Space to build (green means it fits)" if m.id == "homestead" else "Take the kit to your farm to build"
 	var sl = m.soil.get(GameMap.k(t.x, t.y))
 	if sl != null and w.crop_ready(sl.get("crop")):
 		return "E: Harvest " + Data.crops[sl.crop.id].name
@@ -654,7 +700,16 @@ func hint_text() -> String:
 			if o.type == "rain_collector": return "E: Collect water (%d)" % int(o.get("water", 0))
 			return "E: Load %s (%s)" % [od.name, Data.machines[o.type].hint]
 		if o.type == "generator": return "E: Generator (%d coal)" % int(o.get("fuel", 0))
+		if o.type == "hay_hopper": return "E: Hay hopper (%d hay)" % int(Game.get_building_rec("coop").hay) if Game.get_building_rec("coop") != null else ""
+		if o.type == "animal_product": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "ammo_bench": return "E: Use Ammo Bench"
+		if o.type == "armory_bench": return "E: Use Armory Bench"
+		if o.type in ["car_wreck", "suitcase", "supply_crate"] or od.get("container", false):
+			var nm: String = od.get("name", "")
+			return ("E: Search" + (" " + nm if nm != "" else "") if int(Game.state.day) - int(o.get("searched", -99)) >= Balance.loot.respawn_days else "Already searched")
+		if o.type == "overpass_flare": return "E: Light the flare" if Game.event.is_empty() else "Hold the road!"
+		if o.type == "district_gate" and not o.get("open", false):
+			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
 		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if names.has(o.type): return "E: " + names[o.type]
@@ -786,6 +841,44 @@ func render_overlay() -> void:
 	else:
 		_center(body, overlay_root)
 
+## Weapons and gear that need work, with what each repair costs.
+func _repair_box() -> VBoxContainer:
+	var v := K.vbox(2)
+	v.add_child(K.label("Repairs restore full durability. The closer something is to breaking, the more it costs." + (" In Survivor Mode a broken item is lost, so don't wait too long." if Game.is_survivor() else " Broken items can still be fixed."), 6, K.INK_SOFT, true))
+	var items := Game.repairable_items()
+	if items.is_empty():
+		v.add_child(K.label("Nothing you're carrying or wearing needs repair.", 7))
+	for s in items:
+		var c := Game.repair_cost(s)
+		var row := K.row_box()
+		var rh := K.hbox(4)
+		rh.add_child(K.icon(Art.get_icon(s.id), 16))
+		var md := Game.max_dur(s.id)
+		var nm := K.rich("[b]%s[/b]%s\n%s · %d gold + %s" % [Data.items[s.id].name, " [color=#c83a2a](broken)[/color]" if Game.is_broken(s) else "",
+			"Durability %d/%d" % [Game.stack_dur(s), md], int(c.gold), ", ".join(c.mats.map(func(m): return "%d %s" % [int(m[1]), Data.items[m[0]].name]))], 6)
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.custom_minimum_size.x = 220
+		rh.add_child(nm)
+		var ss: Dictionary = s
+		rh.add_child(K.button("Repair", func():
+			var err := Game.repair_item(ss)
+			overlay.err = err
+			if err == "": toast("Repaired your %s." % Data.items[ss.id].name, ss.id)
+			render_overlay(), "small"))
+		row.add_child(rh)
+		v.add_child(row)
+	return v
+
+func _ov_repair() -> Control:
+	var pw := _window("", 360)
+	var v: VBoxContainer = pw[1]
+	var owner: String = overlay.get("owner", "jo")
+	v.add_child(_shop_head(owner, Data.npcs[owner].name, "Repairs"))
+	v.add_child(K.scroll(_repair_box(), 170))
+	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
+	v.add_child(_close_btn("Done"))
+	return pw[0]
+
 func _window(title: String, w := 300.0) -> Array:
 	var p := K.panel(w)
 	var v := K.vbox(4)
@@ -909,7 +1002,7 @@ func _ov_death() -> Control:
 func _ov_collapse() -> Control:
 	var pw := _window("Rescued", 260)
 	var cause: String = {"starvation": "You collapsed from hunger.", "dehydration": "You collapsed from thirst.", "infected": "The infected overwhelmed you and you blacked out."}.get(overlay.cause, "You collapsed.")
-	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d scrip along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
+	for t in [cause, "Someone from Brightwater found you and carried you home.%s You lost %d hours recovering." % [(" You lost %d gold along the way." % overlay.lost) if overlay.lost else "", Game.mode_cfg().collapse_hours_lost]]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 240
 		pw[1].add_child(l)
@@ -925,7 +1018,7 @@ func _ov_report() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(K.label("%s. %s · %s" % [Game.weekday(), Game.date_label(), Data.weather_info[Game.state.weather].name], 7, K.INK_SOFT))
 	if r.reason == "passout":
-		v.add_child(K.label("You collapsed from exhaustion at 2:00 am and woke up at home%s." % ((", %d scrip lighter" % r.lost) if r.lost else ""), 7, K.EMBER, true))
+		v.add_child(K.label("You collapsed from exhaustion at 2:00 am and woke up at home%s." % ((", %d gold lighter" % r.lost) if r.lost else ""), 7, K.EMBER, true))
 	v.add_child(K.label("Trade crate sales", 8, K.WOOD_DARK))
 	if r.sales.is_empty():
 		v.add_child(K.label("Nothing was shipped yesterday.", 7, K.INK_SOFT))
@@ -977,6 +1070,66 @@ func _ov_notices() -> Control:
 	v.add_child(_close_btn())
 	return pw[0]
 
+# ---------------------------------------------------------------- Cole's contract board
+static func contract_reward_text(c: Dictionary) -> String:
+	var parts := []
+	for it in c.reward.get("items", []):
+		parts.append("[color=%s]%s[/color]" % [Arsenal.rarity_color(Data.items[it].get("rarity", "Normal")), Data.items[it].name])
+	if c.reward.has("money"): parts.append("%d gold" % int(c.reward.money))
+	return ", ".join(parts)
+
+func _ov_contracts() -> Control:
+	var pw := _window("", 390)
+	var v: VBoxContainer = pw[1]
+	v.add_child(_shop_head("cole", Data.npcs.cole.name, "Contract board"))
+	var cs := Game.contract_state()
+	var tab: String = overlay.get("tab", "posted")
+	var tabs := K.hbox(2)
+	var counts := {"posted": Contracts.CONTRACTS.filter(func(c): return Game.contract_available(c)).size(), "active": cs.active.size(), "done": cs.done.size()}
+	for t in [["posted", "Posted"], ["active", "In progress"], ["done", "Done"]]:
+		var tt: String = t[0]
+		var b := K.button("%s (%d)" % [t[1], counts[tt]], func(): overlay.tab = tt; render_overlay(), "small" if tab != tt else "")
+		tabs.add_child(b)
+	v.add_child(tabs)
+	var list := K.vbox(2)
+	var shown := 0
+	for c in Contracts.CONTRACTS:
+		var show := false
+		match tab:
+			"posted": show = Game.contract_available(c)
+			"active": show = cs.active.has(c.id)
+			"done": show = cs.done.has(c.id)
+		if not show: continue
+		shown += 1
+		var b := K.row_box(Color("#fff6e4"))
+		var col := K.vbox(1)
+		var kind_label: String = {"boss": "Boss", "kill": "Hunt", "find": "Search", "collect": "Gather", "fish": "Fishing", "waves": "Defend"}[c.kind]
+		col.add_child(K.rich("[b]%s[/b]  [color=#8a3a2a]%s[/color]  [color=#7a5434]Posted by %s[/color]" % [c.title, kind_label, Data.npcs[c.giver].name.split(" ")[0]], 7))
+		var dl := K.label(c.desc, 6, null, true)
+		dl.custom_minimum_size.x = 330
+		col.add_child(dl)
+		col.add_child(K.rich("[color=#3f7a2c]Reward:[/color] %s" % contract_reward_text(c), 6))
+		if tab == "active":
+			col.add_child(K.rich("[color=#5a2c0e]Progress: %s[/color]" % Game.contract_progress_text(c), 6))
+		if tab == "posted":
+			var cid: String = c.id
+			col.add_child(K.button("Take this contract", func(): Game.take_contract(cid); render_overlay(), "small"))
+		b.add_child(col)
+		list.add_child(b)
+	if tab == "posted":
+		for c in Contracts.CONTRACTS:
+			if cs.active.has(c.id) or cs.done.has(c.id) or Game.contract_available(c): continue
+			var b2 := K.row_box()
+			b2.modulate = Color(1, 1, 1, 0.6)
+			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]Opens with the %s.[/color]" % [c.title, Districts.DISTRICTS[c.needs].name], 6))
+			list.add_child(b2)
+			shown += 1
+	if shown == 0:
+		list.add_child(K.label({"posted": "Nothing new on the board.", "active": "No contracts in progress. Take one from the Posted list.", "done": "None finished yet."}[tab], 7, K.INK_SOFT))
+	v.add_child(K.scroll(list, 180))
+	v.add_child(_close_btn())
+	return pw[0]
+
 func upcoming(n: int) -> Array:
 	var out := []
 	var day := int(Game.state.day)
@@ -1011,6 +1164,37 @@ func _ov_lift() -> Control:
 			Game.change_map("mine", 0, 0, "down", {"floor": fl})))
 	v.add_child(_close_btn("Cancel"))
 	return pw[0]
+
+func _ov_name_animal() -> Control:
+	var kind: String = overlay.kind
+	var pw := _window("Name your new %s" % Data.animals[kind].name.to_lower(), 260)
+	var v: VBoxContainer = pw[1]
+	var h := K.hbox(8)
+	var ic := K.icon(Art.get_animal(kind, 0, "down", 0, false), 32)
+	ic.custom_minimum_size = Vector2(32, 32)
+	h.add_child(ic)
+	var le := LineEdit.new()
+	le.text = overlay.name
+	le.max_length = 14
+	le.custom_minimum_size.x = 150
+	le.text_changed.connect(func(t): overlay.name = t)
+	le.text_submitted.connect(func(_t): _adopt())
+	h.add_child(le)
+	v.add_child(h)
+	v.add_child(K.label("It will be waiting in your coop. Babies grow up in a few days.", 7, K.INK_SOFT, true))
+	var row := K.hbox()
+	row.add_child(K.button("Random name", func():
+		overlay.name = Game.random_animal_name()
+		render_overlay(), "small"))
+	row.add_child(K.button("Done", _adopt, "big"))
+	v.add_child(row)
+	(func(): if is_instance_valid(le) and le.is_inside_tree(): le.grab_focus()).call_deferred()
+	return pw[0]
+
+func _adopt() -> void:
+	var a := Game.adopt_animal(overlay.kind, str(overlay.name))
+	close()
+	toast("Welcome home, %s! Find them in your coop." % a.name)
 
 func _ov_appearance() -> Control:
 	if not overlay.has("look"):
@@ -1056,7 +1240,7 @@ func _ov_ship() -> Control:
 	var total := 0
 	for s in st.shipping:
 		total += Data.items[s.id].price * int(s.qty)
-	b.add_child(K.label("In the crate (worth about %d scrip)" % total, 8, K.WOOD_DARK))
+	b.add_child(K.label("In the crate (worth about %d gold)" % total, 8, K.WOOD_DARK))
 	b.add_child(_grid(st.shipping, 6, func(i, _btn):
 		var s: Dictionary = st.shipping[i]
 		var left := Game.add_item(s.id, int(s.qty), {"silent": true})
@@ -1092,7 +1276,7 @@ func _ship_add(i: int, btn: int) -> void:
 	var only: bool = Game.count_item(id) <= n
 	if (fl.donatable and only) or Data.items[id].price >= 200:
 		var saved := overlay.duplicate()
-		confirm(("This is your only %s. The Archive may want one when it reopens. " % Data.items[id].name if fl.donatable and only else "This is a valuable item. ") + "Ship %d %s for %d scrip?" % [n, Data.items[id].name, Data.items[id].price * n],
+		confirm(("This is your only %s. The Archive may want one when it reopens. " % Data.items[id].name if fl.donatable and only else "This is a valuable item. ") + "Ship %d %s for %d gold?" % [n, Data.items[id].name, Data.items[id].price * n],
 			func():
 				do_ship.call()
 				overlay = saved
@@ -1160,7 +1344,10 @@ func _shop_box(shop_id: String) -> Control:
 		var row := K.row_box()
 		var rh := K.hbox(3)
 		var owned: bool = e.get("service", "") == "backpack" and st.flags.get("backpack", false)
-		rh.add_child(K.icon(Art.get_icon(e.id), 14) if e.has("id") else K.label("★", 10, K.GOLD))
+		if e.has("id"): rh.add_child(K.icon(Art.get_icon(e.id), 14))
+		elif e.get("service", "") == "animal": rh.add_child(K.icon(Art.get_animal(e.animal, 0, "down", 0, true), 14))
+		elif e.get("service", "") == "coop": rh.add_child(K.icon(Art.get_icon("coop_kit"), 14))
+		else: rh.add_child(K.label("★", 10, K.GOLD))
 		var nm := K.rich("[b]%s[/b]%s\n[font_size=5][color=#7a5434]%s[/color][/font_size]" % [Data.items[e.id].name if e.has("id") else e.name, " [color=#b3392e]SALE[/color]" if e.sale else "", Data.items[e.id].desc if e.has("id") else e.desc], 6)
 		nm.custom_minimum_size.x = 110
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1196,7 +1383,7 @@ func _shop_box(shop_id: String) -> Control:
 		var nm := K.label("%s x%d" % [Data.items[s.id].name, s.qty], 6)
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rh.add_child(nm)
-		rh.add_child(K.label(str(Data.items[s.id].price), 6, Color("#6a4a10")))
+		rh.add_child(K.label(str(Game.sell_price(s)), 6, Color("#6a4a10")))
 		rh.add_child(K.button("1", func(): Game.shop_sell(shop_id, idx, 1); render_overlay(), "small"))
 		rh.add_child(K.button("All", func(): Game.shop_sell(shop_id, idx, 999); render_overlay(), "small"))
 		row.add_child(rh)
@@ -1222,7 +1409,7 @@ func _shop_head(owner: String, title: String, sub: String) -> HBoxContainer:
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(tv)
 	var purse := K.row_box(Color("#fff0c8"))
-	purse.add_child(K.label("%s scrip" % _num(int(Game.state.money)), 8, Color("#6a4a10")))
+	purse.add_child(K.label("%s gold" % _num(int(Game.state.money)), 8, Color("#6a4a10")))
 	h.add_child(purse)
 	return h
 
@@ -1243,7 +1430,7 @@ func _ov_forge() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(_shop_head("ines", "Varga Forge", "Ines Varga · Blacksmith"))
 	var tabs := K.hbox(2)
-	for t in [["geodes", "Crack Geodes"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["shop", "Buy & Sell"]]:
+	for t in [["geodes", "Crack Geodes"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["repair", "Repair"], ["shop", "Buy & Sell"]]:
 		var tid: String = t[0]
 		var b := K.button(t[1], func():
 			overlay.tab = tid
@@ -1256,7 +1443,7 @@ func _ov_forge() -> Control:
 	var body := K.vbox(2)
 	match tab:
 		"geodes":
-			body.add_child(K.label("Fee: %d scrip per geode. Each geode type has its own pool of possible finds." % Balance.services.geode_fee, 7, K.INK_SOFT))
+			body.add_child(K.label("Fee: %d gold per geode. Each geode type has its own pool of possible finds." % Balance.services.geode_fee, 7, K.INK_SOFT))
 			var any := false
 			for g in Data.geode_tables:
 				if Game.count_item(g) <= 0: continue
@@ -1299,7 +1486,7 @@ func _ov_forge() -> Control:
 				var row := K.row_box()
 				var rh := K.hbox(3)
 				rh.add_child(K.icon(Art.get_icon(bar), 14))
-				var nm := K.label("%s: %d %s (have %d) + %d Coal (have %d) + %d scrip" % [Data.items[bar].name, r.ore_qty, Data.items[r.ore].name, Game.count_item(r.ore), r.coal, Game.count_item("coal"), fee], 6, null, true)
+				var nm := K.label("%s: %d %s (have %d) + %d Coal (have %d) + %d gold" % [Data.items[bar].name, r.ore_qty, Data.items[r.ore].name, Game.count_item(r.ore), r.coal, Game.count_item("coal"), fee], 6, null, true)
 				nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				rh.add_child(nm)
 				var b1 := K.button("Refine 1", func(): overlay.err = Game.forge_refine(bid, 1); render_overlay(), "small")
@@ -1321,7 +1508,7 @@ func _ov_forge() -> Control:
 			if not pending.is_empty():
 				body.add_child(K.label("In the furnace: " + ", ".join(pending.map(func(o): return "%d %s (ready %s)" % [o.qty, Data.items[o.bar].name, Game.date_label(int(o.ready_day))])), 7, K.INK_SOFT, true))
 		"upgrade":
-			body.add_child(K.label("Upgrades need refined bars, scrip and your current tool. The tool stays with Ines until it is done.", 7, K.INK_SOFT, true))
+			body.add_child(K.label("Upgrades need refined bars, gold and your current tool. The tool stays with Ines until it is done.", 7, K.INK_SOFT, true))
 			for t in Data.tool_defs:
 				if not Data.tool_defs[t].upgradable: continue
 				var tid: String = t
@@ -1341,7 +1528,7 @@ func _ov_forge() -> Control:
 					rh.add_child(K.icon(Art.get_icon(t, up.tier), 16))
 					var ok_b: bool = Game.count_item(up.bar) >= up.bars
 					var ok_m: bool = int(st.money) >= up.cost
-					text = "[b]%s → %s %s[/b]\n[font_size=5]Now: %s Upgraded: %s[/font_size]\n[color=%s]%d %ss (have %d)[/color] · [color=%s]%d scrip[/color] · %d days" % [
+					text = "[b]%s → %s %s[/b]\n[font_size=5]Now: %s Upgraded: %s[/font_size]\n[color=%s]%d %ss (have %d)[/color] · [color=%s]%d gold[/color] · %d days" % [
 						Data.tool_tiers[cur].name, Data.tool_tiers[up.tier].name, Data.tool_defs[t].name, Game.tool_effect_text(t, cur), Game.tool_effect_text(t, up.tier),
 						"#3f7a2c" if ok_b else "#b3392e", up.bars, Data.items[up.bar].name, Game.count_item(up.bar), "#3f7a2c" if ok_m else "#b3392e", up.cost, up.days]
 				var rl := K.rich(text, 6)
@@ -1356,6 +1543,8 @@ func _ov_forge() -> Control:
 					rh.add_child(b)
 				row.add_child(rh)
 				body.add_child(row)
+		"repair":
+			body.add_child(_repair_box())
 		"shop":
 			body.add_child(_shop_box("forge"))
 	v.add_child(K.scroll(body, 170))
@@ -1368,14 +1557,20 @@ func recipe_unlocked(r: Dictionary) -> bool:
 	if r.unlock.type == "start": return true
 	if r.unlock.type == "skill": return Game.skill_level(r.unlock.skill) >= r.unlock.level
 	if r.unlock.type == "friend": return Game.hearts(r.unlock.npc) >= r.unlock.hearts
+	if r.unlock.type == "has_item": return Game.count_item(r.unlock.item) > 0
+	if r.unlock.type == "reward": return Game.state.flags.get("recipe_" + r.out, false)
 	return false
 
 func unlock_text(r: Dictionary) -> String:
 	if r.unlock.type == "skill": return "Locked: reach %s level %d." % [Data.skills[r.unlock.skill].name, r.unlock.level]
 	if r.unlock.type == "friend": return "Locked: become friends with %s (%d hearts)." % [Data.npcs[r.unlock.npc].name.split(" ")[0], r.unlock.hearts]
+	if r.unlock.type == "has_item": return "Locked: needs a %s in your pack." % Data.items[r.unlock.item].name
+	if r.unlock.type == "reward": return "Locked: %s." % str(r.unlock.get("text", "a recipe reward"))
 	return "Locked."
 
-const STATION_NAMES := {"stove": "Stove (in your house)", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench"}
+const STATION_NAMES := {"stove": "Stove, Campfire or Cookstove", "hand": "By hand, anywhere", "ammo_bench": "Ammo Bench", "armory_bench": "Armory Bench",
+	"workbench": "Workbench", "anvil": "Anvil", "electronics_bench": "Electronics Bench", "chem_station": "Chemistry Station", "sewing_table": "Sewing Table",
+	"brick_furnace": "Brick Furnace", "loom": "Loom", "ferment_barrel": "Fermentation Barrel", "grain_mill": "Grain Mill"}
 
 func _recipes(station: String, show_all: bool) -> VBoxContainer:
 	var v := K.vbox(2)
@@ -1396,7 +1591,7 @@ func _recipes(station: String, show_all: bool) -> VBoxContainer:
 		var ins := []
 		for pair in r.inputs:
 			var have := Game.count_match(pair[0])
-			var nm: String = ("any " + Data.categories[pair[0].substr(4)].label) if pair[0].begins_with("cat:") else Data.items[pair[0]].name
+			var nm: String = Game.spec_name(pair[0])
 			ins.append("[color=%s]%d %s (%d)[/color]" % ["#3f7a2c" if have >= pair[1] else "#b3392e", pair[1], nm, have])
 		var text := "[b]%s%s[/b]\n%s\n[font_size=5]%s · %s%s[/font_size]" % [Data.items[r.out].name, " x%d" % r.qty if r.qty > 1 else "",
 			", ".join(ins) if un else unlock_text(r),
@@ -1426,12 +1621,43 @@ func _craft(r: Dictionary) -> void:
 	Game.add_item(r.out, r.qty)
 	if r.station == "stove":
 		Game.add_xp("cooking", 12)
+		Game.state.stats.meals = int(Game.state.stats.get("meals", 0)) + int(r.qty)
 	Sfx.play("eat" if r.station == "stove" else "pick")
 	overlay.err = ""
 	render_overlay()
 
+## Your own anvil: upgrade tools with 5 bars of the next metal, on the spot.
+func _ov_anvil() -> Control:
+	var pw := _window("Anvil", 380)
+	var v: VBoxContainer = pw[1]
+	v.add_child(K.label("Upgrade a tool with 5 bars of the next metal (Aurium also needs a Glimmerite). No fee, no wait.", 7, K.INK_SOFT, true))
+	for t in Data.tool_defs:
+		if not Data.tool_defs[t].upgradable: continue
+		var up := Game.next_upgrade(t)
+		var row := K.row_box()
+		var rh := K.hbox(4)
+		rh.add_child(K.icon(Art.get_icon(t, Game.tool_tier(t)), 16))
+		var txt := "%s %s" % [Data.tool_tiers[Game.tool_tier(t)].name, Data.tool_defs[t].name]
+		if not up.is_empty(): txt += "  >  %s (5 %s, you have %d)" % [Data.tool_tiers[int(up.tier)].name, Data.items[up.bar].name, Game.count_item(up.bar)]
+		var nl := K.label(txt, 6)
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rh.add_child(nl)
+		if not up.is_empty():
+			var tid: String = t
+			rh.add_child(K.button("Upgrade", func():
+				overlay.err = Game.anvil_upgrade(tid)
+				if overlay.err == "": toast("Upgraded your %s." % Data.tool_defs[tid].name, tid, "gold")
+				render_overlay(), "small"))
+		row.add_child(rh)
+		v.add_child(row)
+	v.add_child(K.label("Also made here:", 7, K.WOOD_DARK))
+	v.add_child(K.scroll(_recipes("anvil", false), 90))
+	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
+	v.add_child(_close_btn())
+	return pw[0]
+
 func _ov_craft() -> Control:
-	var pw := _window({"stove": "Cooking", "ammo_bench": "Ammo Bench"}.get(overlay.station, "Crafting"), 380)
+	var pw := _window({"stove": "Cooking"}.get(overlay.station, STATION_NAMES.get(overlay.station, "Crafting")), 380)
 	pw[1].add_child(K.scroll(_recipes(overlay.station, false), 170))
 	if overlay.get("err", "") != "": pw[1].add_child(K.label(overlay.err, 7, K.DANGER))
 	pw[1].add_child(_close_btn())
@@ -1483,23 +1709,33 @@ func _tab_inventory() -> Control:
 		Game.sort_inventory()
 		overlay.erase("sel"); overlay.erase("pick")
 		render_overlay(), "small"))
-	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inv_size, "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
+	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
 	left.add_child(row)
 	var eq := K.row_box()
 	var eh := K.hbox(6)
 	var face := K.icon(Art.get_char(st.character.look, "down", 0), 16)
 	face.custom_minimum_size = Vector2(24, 48)
 	eh.add_child(face)
-	var weapon = st.inventory.filter(func(x): return x != null and Data.items[x.id].has("weapon"))
-	var look: Dictionary = st.character.look
-	var tools := []
-	for t in Data.tool_defs:
-		if Data.tool_defs[t].upgradable:
-			tools.append(Data.tool_tiers[Game.tool_tier(t)].name + " " + Data.tool_defs[t].name + (" (at forge)" if Game.tool_busy(t) != null else ""))
-	var info := K.label("%s of %s\n%s · %s scrip\nEquipment: %s · Outfit: %s%s (change at your mirror)\nTools: %s" % [st.character.name, st.property_name, Balance.modes[st.mode].label, _num(int(st.money)),
-		("%s (Damage %d)" % [Data.items[weapon[0].id].name, Data.items[weapon[0].id].weapon.damage]) if not weapon.is_empty() else "none", look.shirt_style, ", " + look.acc if look.acc != "None" else "", ", ".join(tools)], 6, null, true)
-	info.custom_minimum_size.x = 220
-	eh.add_child(info)
+	# what you're wearing: click a slot to see it or take it off
+	var gv := K.vbox(1)
+	var gslots := K.hbox(2)
+	for slot in Arsenal.SLOTS:
+		var sv := K.vbox(0)
+		var sname: String = slot
+		var es = st.equip.get(slot)
+		var gsl := K.slot(es, func(_b):
+			overlay.erase("pick"); overlay.erase("sel")
+			overlay.eq = sname
+			render_overlay(), 0, overlay.get("eq", "") == slot, false, 20)
+		sv.add_child(gsl)
+		sv.add_child(K.label(Arsenal.SLOT_NAMES[slot], 5, K.INK_SOFT))
+		gslots.add_child(sv)
+	gv.add_child(gslots)
+	var gt := Game.gear_total()
+	var red: float = gt.armor / (gt.armor + Balance.armor.armor_k) * 100.0
+	gv.add_child(K.label("Armor %d (-%d%% damage) · Max health %d · Bite resist %d%%\nSpeed %+d%% · Noise %+d%% · Extra pockets %d" % [int(gt.armor), int(red), int(Game.max_health()), int(gt.bite * 100), int(gt.move * 100), int(gt.noise * 100), int(gt.carry)], 6, null, true))
+	gv.add_child(K.label("Shift: sprint · Ctrl: crouch · V: shove or stomp · R: reload", 5, K.INK_SOFT))
+	eh.add_child(gv)
 	eq.add_child(eh)
 	left.add_child(eq)
 	h.add_child(left)
@@ -1507,7 +1743,12 @@ func _tab_inventory() -> Control:
 	det.custom_minimum_size.x = 150
 	var dv := K.vbox(3)
 	var sel = st.inventory[overlay.sel] if overlay.has("sel") and overlay.sel < st.inventory.size() else null
-	if sel == null:
+	var eq_slot: String = overlay.get("eq", "")
+	if eq_slot != "" and sel == null:
+		sel = st.equip.get(eq_slot)
+	if sel == null and eq_slot != "":
+		dv.add_child(K.label("Nothing worn on your %s. Click clothing or armour in your pack, then Wear." % Arsenal.SLOT_NAMES[eq_slot].to_lower(), 6, K.INK_SOFT, true))
+	elif sel == null:
 		dv.add_child(K.label("Click an item to see details. Click two slots in a row to move or swap them. The top row is your toolbar.", 6, K.INK_SOFT, true))
 	else:
 		var it: Dictionary = Data.items[sel.id]
@@ -1517,7 +1758,18 @@ func _tab_inventory() -> Control:
 		hh.add_child(K.rich("[b]%s[/b]\n[color=%s]%s[/color] · x%d" % [Game.item_display_name(sel.id), Data.categories[it.cat].color, Data.categories[it.cat].label, sel.qty], 7))
 		hh.get_child(1).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		dv.add_child(hh)
-		dv.add_child(K.label(it.desc, 6, null, true))
+		if it.has("weapon") or it.has("gear"):
+			dv.add_child(K.rich(gear_info(sel), 6))
+		else:
+			dv.add_child(K.label(it.desc, 6, null, true))
+			if it.has("buffs"):
+				dv.add_child(K.label("Also: " + ", ".join(it.buffs.map(func(b): return Game.buff_text(str(b.stat), float(b.v), int(b.min)))), 6, K.MOSS, true))
+			var od: Dictionary = Data.obj_defs.get(it.get("place", ""), {})
+			var todo: String = str(it.get("todo", od.get("todo", "")))
+			if todo != "":
+				dv.add_child(K.label("Not in the game yet: " + todo, 6, Color("#9a8a7a"), true))
+			if it.has("sheet") and it.sheet.where != "" and not it.has("weapon"):
+				dv.add_child(K.label(("Made at: " if it.sheet.source in ["Craft", "Cook", "Machine", "Upgrade"] else "Found: ") + str(it.sheet.where), 5, K.INK_SOFT, true))
 		if it.has("tool") and Data.tool_defs[it.tool].upgradable:
 			dv.add_child(K.label(Game.tool_effect_text(it.tool, Game.tool_tier(it.tool)), 6, K.INK_SOFT, true))
 		if it.has("edible"):
@@ -1538,7 +1790,18 @@ func _tab_inventory() -> Control:
 		if Data.recipes.any(func(r): return r.inputs.any(func(p): return Game.matches(p[0], sel.id))): tags.append("[bgcolor=#6a5a4a][color=white] Crafting ingredient [/color][/bgcolor]")
 		dv.add_child(K.rich(" ".join(tags), 5))
 		var br := K.hbox()
-		var sidx: int = overlay.sel
+		var sidx: int = overlay.get("sel", -1)
+		if it.has("gear") and eq_slot != "" and sidx < 0:
+			br.add_child(K.button("Take off", func():
+				Game.unequip(eq_slot)
+				overlay.erase("eq")
+				render_overlay(), "small"))
+		elif it.has("gear"):
+			br.add_child(K.button("Wear", func():
+				Game.equip_from(sidx)
+				overlay.erase("pick"); overlay.erase("sel")
+				overlay.eq = Data.gear[it.id].slot
+				render_overlay(), "small"))
 		if fl.edible:
 			br.add_child(K.button(it.get("use_word", "Drink" if it.get("drink", false) else "Eat"), func():
 				var s2 = Game.state.inventory[sidx]
@@ -1558,7 +1821,65 @@ func _tab_inventory() -> Control:
 	h.add_child(det)
 	return h
 
+## Stats, effects and story for a weapon or piece of gear.
+func gear_info(s: Dictionary) -> String:
+	var it: Dictionary = Data.items[s.id]
+	var t := ""
+	var rar: String = it.get("rarity", "Normal")
+	if it.has("weapon"):
+		var w: Dictionary = it.weapon
+		t += "[color=%s]%s %s %s[/color]\n" % [Arsenal.rarity_color(rar), rar, w.category, w.type]
+		var dmg := "%d" % int(w.damage) + (" x%d" % int(w.projectiles) if int(w.projectiles) > 1 else "")
+		t += "Damage [b]%s[/b] · %s per second · Range %s tiles · Crit %d%%\n" % [dmg, str(snappedf(float(w.aps), 0.01)), str(snappedf(float(w.range), 0.1)), int(w.crit)]
+		var extra := []
+		if float(w.stamina) > 0: extra.append("Energy %s per attack" % str(snappedf(float(w.stamina) * Balance.weapons.stamina_to_energy, 0.1)))
+		extra.append("Noise %d/5" % int(w.noise))
+		if w.ammo != "":
+			var an: Array = Arsenal.ammo_ids(w).map(func(a): return Data.items[a].name)
+			extra.append("Ammo: " + " or ".join(an))
+		if int(w.mag) > 1: extra.append("Loaded %d/%d" % [int(Game.mag_of(s)), int(w.mag)])
+		if float(w.reload) > 0: extra.append("Reload %ss" % str(w.reload))
+		t += " · ".join(extra) + "\n"
+	else:
+		var g: Dictionary = it.gear
+		t += "[color=%s]%s %s (%s)[/color]\n" % [Arsenal.rarity_color(rar), rar, Arsenal.SLOT_NAMES[g.slot], g.weight]
+		if not g.cosmetic:
+			var parts := ["Armor %d" % int(g.armor)]
+			if g.hp: parts.append("Health %+d" % int(g.hp))
+			if g.move: parts.append("Speed %+d%%" % int(g.move * 100))
+			if g.regen: parts.append("Stamina %+d%%" % int(g.regen * 100))
+			if g.bite: parts.append("Bite resist %+d%%" % int(g.bite * 100))
+			if g.noise: parts.append("Noise %+d%%" % int(g.noise * 100))
+			if g.carry: parts.append("Pockets +%d" % int(g.carry))
+			t += " · ".join(parts) + "\n"
+	var md := Game.max_dur(s.id)
+	if md > 0:
+		t += ("[color=#c83a2a][b]Broken.[/b] Repair it at Varga Forge or Mercer Workshop.[/color]\n" if Game.is_broken(s) else "Durability %d/%d\n" % [Game.stack_dur(s), md])
+	var d: Dictionary = it.get("weapon", it.get("gear", {}))
+	var inactive: Array = d.get("inactive", [])
+	for k in [["trait", "Trait"], ["passive", "Passive"], ["ability", "Ability"], ["bonus", "Legendary"]]:
+		var txt: String = d.get(k[0], "")
+		if txt == "" or txt == "Cosmetic only": continue
+		var shown := []
+		for part in txt.split(";"):
+			var pt := part.strip_edges()
+			if pt == "": continue
+			shown.append(("[color=#9a8a7a]%s (not in the game yet)[/color]" % pt) if inactive.has(pt) and not _flavor(pt) else pt)
+		t += "[color=#7a5434]%s:[/color] %s\n" % [k[1], "; ".join(shown)]
+	if d.get("look", "") != "": t += "[i]%s[/i]\n" % d.look
+	if d.get("flavor", "") != "": t += "[color=#6a5a4a][i]%s[/i][/color]\n" % d.flavor
+	elif it.has("gear") and d.get("cosmetic", false): t += "Cosmetic. Changes nothing but how you feel.\n"
+	t += "[color=#8a7a6a]Found: %s[/color]" % it.get("reward_of", d.get("how", ""))
+	return t
+
+## Descriptive text that isn't meant to do anything by itself.
+func _flavor(t: String) -> bool:
+	for w in ["pockets", "reach", "plating", "soles", "quiet", "light", "pattern", "rubber", "vest", "suit", "sprinting", "never jams", "sidearm", "firearm", "semi-auto", "handling", "belt-fed", "magazine", "stab", "one-handed", "breaks easily", "plentiful", "camouflage", "denim", "leather", "slippery", "footsteps", "knee armor", "accurate", "mailbag", "stopping", "draw stamina", "thrown as a pair"]:
+		if t.to_lower().contains(w): return true
+	return false
+
 func _inv_click(i: int) -> void:
+	overlay.erase("eq")
 	var inv: Array = Game.state.inventory
 	if overlay.has("pick") and overlay.pick != i:
 		var tmp = inv[i]
@@ -1613,7 +1934,7 @@ func _tab_map() -> Control:
 	wm.custom_minimum_size = Vector2(9 * cell + 4, 6 * cell + 4)
 	wm.add_theme_stylebox_override("panel", K.sb(Color("#6a9a50"), K.WOOD, 2, 3, K.OUTLINE, 1, 0))
 	for r in Data.regions:
-		var unlocked: bool = not r.has("lock") and st.unlocked.get(r.id, false)
+		var unlocked: bool = st.unlocked.get(r.id, false)
 		var name: String = st.property_name if r.id == "homestead" else r.name
 		var rp := PanelContainer.new()
 		var col := Color("#f8e2b0") if unlocked else Color(0.18, 0.14, 0.1, 0.65)
@@ -1625,7 +1946,8 @@ func _tab_map() -> Control:
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		rp.add_child(l)
-		rp.tooltip_text = name if unlocked else name + ": " + r.get("lock", "Locked")
+		var why: String = r.get("lock", Districts.UNLOCKS[r.id].locked if Districts.UNLOCKS.has(r.id) else "Locked")
+		rp.tooltip_text = name if unlocked else name + ": " + why
 		rp.mouse_filter = Control.MOUSE_FILTER_PASS
 		wm.add_child(rp)
 	h.add_child(wm)
@@ -1639,6 +1961,11 @@ func _tab_map() -> Control:
 	v.add_child(K.label("Lantern Post tavern: boarded up for now.\nCommunity Archive: closed for restoration.", 6, null, true))
 	v.add_child(K.label("Old Mine", 8, K.WOOD_DARK))
 	v.add_child(K.label("North of town, up the Ridge Path. Deepest floor: %s. Hover a locked area to see why it's closed." % (str(st.mine.deepest) if int(st.mine.deepest) > 0 else "none yet"), 6, K.INK_SOFT, true))
+	v.add_child(K.label("Districts", 8, K.WOOD_DARK))
+	var how := {"residential": "Cole's task opens it", "industrial": "Jo can power the east gate", "riverlands": "Jo can rebuild the bridge"}
+	for id in Districts.DISTRICTS:
+		var open: bool = st.unlocked.get(id, false)
+		v.add_child(K.label("%s: %s" % [Districts.DISTRICTS[id].name, "open" if open else how[id]], 6, K.INK_SOFT, true))
 	v.custom_minimum_size.x = 170
 	h.add_child(v)
 	return h
@@ -1652,11 +1979,41 @@ func _tab_quests() -> Control:
 		var d := Game.quest_def(id)
 		var r: Dictionary = d.get("reward", {})
 		var rew := []
-		if r.has("money"): rew.append("%d scrip" % r.money)
+		if r.has("money"): rew.append("%d gold" % r.money)
 		for pair in r.get("items", []): rew.append("%d %s" % [pair[1], Data.items[pair[0]].name])
 		var b := K.row_box()
 		b.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [d.title, Game.quest_progress_text(d), d.desc, Data.npcs[d.giver].name, ", ".join(rew)], 6))
 		v.add_child(b)
+	var cs := Game.contract_state()
+	v.add_child(K.label("Contracts (Cole's board at the Combat Guild)", 8, K.WOOD_DARK))
+	if cs.active.is_empty(): v.add_child(K.label("None in progress.", 6, K.INK_SOFT))
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		var b0 := K.row_box()
+		b0.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [c.title, Game.contract_progress_text(c), c.desc, Data.npcs[c.giver].name, contract_reward_text(c)], 6))
+		v.add_child(b0)
+	var ach: Array = Game.state.get("achievements", {}).get("done", [])
+	v.add_child(K.label("Achievements (%d of %d)" % [ach.size(), Contracts.ACHIEVEMENTS.size()], 8, K.WOOD_DARK))
+	for a in Contracts.ACHIEVEMENTS:
+		var b1 := K.row_box()
+		var got: bool = ach.has(a.id)
+		var prog := ""
+		if a.has("todo"):
+			b1.modulate = Color(1, 1, 1, 0.55)
+			prog = "[color=#9a8a7a]Not in the game yet: %s[/color]" % a.todo
+		elif got:
+			prog = "[color=#3f7a2c]Done[/color]"
+		else:
+			var val := Game.achievement_value(a.stat)
+			prog = "%s / %s" % [str(snappedf(val, 0.1)) if a.stat == "sprint_km" else str(int(val)), str(int(a.goal))]
+		var rw: String = Data.items[a.reward].name
+		b1.add_child(K.rich("%s[b]%s[/b]  %s\n%s [color=#7a5434]Reward: [color=%s]%s[/color][/color]" % ["✔ " if got else "", a.title, prog, a.desc, Arsenal.rarity_color(Data.items[a.reward].get("rarity", "Normal")), rw], 6))
+		v.add_child(b1)
+	for ny in Contracts.NOT_YET:
+		var b3 := K.row_box()
+		b3.modulate = Color(1, 1, 1, 0.55)
+		b3.add_child(K.rich("[b]%s[/b]  [color=#9a8a7a]Not in the game yet: %s[/color]\n[color=#7a5434]Reward: %s[/color]" % [ny[0], ny[1], ", ".join(ny[2].map(func(i): return Data.items[i].name))], 6))
+		v.add_child(b3)
 	v.add_child(K.label("Main story", 8, K.WOOD_DARK))
 	for s in Data.story:
 		var b := K.row_box()
@@ -1667,6 +2024,8 @@ func _tab_quests() -> Control:
 	if q.done.is_empty(): v.add_child(K.label("Nothing yet.", 6, K.INK_SOFT))
 	for id in q.done:
 		v.add_child(K.label("✔ " + Game.quest_def(id).title, 6, K.MOSS))
+	for id in cs.done:
+		v.add_child(K.label("✔ Contract: " + Contracts.get_def(id).title, 6, K.MOSS))
 	return K.scroll(v, 186)
 
 func _tab_social() -> Control:
@@ -1698,7 +2057,34 @@ func _tab_social() -> Control:
 		h.add_child(t)
 		b.add_child(h)
 		g.add_child(b)
-	return K.scroll(g, 186)
+	var wrap := K.vbox(4)
+	wrap.add_child(g)
+	wrap.add_child(_animals_box())
+	return K.scroll(wrap, 186)
+
+func _animals_box() -> Control:
+	var v := K.vbox(2)
+	var list: Array = Game.state.get("animals", [])
+	v.add_child(K.label("Your animals (%d)" % list.size(), 8, K.WOOD_DARK))
+	if list.is_empty():
+		v.add_child(K.label("No animals yet. Build a coop and visit Marisol at Reyes Ranch, north of the town square.", 6, K.INK_SOFT, true))
+		return v
+	var g := GridContainer.new()
+	g.columns = 2
+	for a in list:
+		var b := K.row_box()
+		b.custom_minimum_size.x = 210
+		var h := K.hbox(4)
+		var ic := K.icon(Art.get_animal(a.type, int(a.color), "down", 0, Game.animal_mature(a)), 16)
+		h.add_child(ic)
+		var hearts := int(a.friendship) / 200
+		var t := K.rich("[b]%s[/b] [font_size=5][color=#7a5434]%s%s[/color][/font_size]\n%s\n[font_size=5]Mood: %s · Petted today: %s[/font_size]" % [a.name, Data.animals[a.type].name, "" if Game.animal_mature(a) else " (baby)", K.hearts(hearts), Game.animal_mood(a), "✔" if int(a.petted_day) == int(Game.state.day) else "–"], 6)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(t)
+		b.add_child(h)
+		g.add_child(b)
+	v.add_child(g)
+	return v
 
 func _tab_crafting() -> Control:
 	var v := K.vbox(2)
@@ -1861,7 +2247,9 @@ func _controls_box() -> Control:
 	var g := GridContainer.new()
 	g.columns = 2
 	for pair in [["Move", "WASD / Arrow keys"], ["Use tool or item", "Space / Left click (hold to charge or cast)"], ["Interact, talk, harvest", "E / Enter / Right click"],
-		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  Q"], ["Eat selected item", "F"], ["Journal / Map / Tasks / Crafting", "Tab or I / M / J / C"], ["Pause", "Esc or P"]]:
+		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  Q"], ["Eat selected item", "F"],
+		["Aim a gun, bow or throw", "Point with the mouse and click (Space fires where you face)"], ["Sprint / Crouch", "Hold Shift / hold Ctrl"],
+		["Shove (stomp if they're down)", "V"], ["Reload", "R"], ["Journal / Map / Tasks / Crafting", "Tab or I / M / J / C"], ["Pause", "Esc or P"]]:
 		g.add_child(K.label(pair[0], 6, K.WOOD_DARK))
 		g.add_child(K.label(pair[1], 6))
 	return g
@@ -1871,9 +2259,11 @@ func _help_box() -> Control:
 	for t in ["The daily loop: wake at 6:00 am, work your land, visit Brightwater, explore the mine, and get to bed before 2:00 am. Sleeping in your bed is how the game saves.",
 		"Farming: clear weeds with the scythe, rocks with the pickaxe and branches with the axe. Till soil with the hoe, plant, and water every day (rain does it for you). Crops die when their season ends.",
 		"Selling: drop goods in the trade crate beside your house to sell them overnight, or sell directly at shops during opening hours.",
-		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and scrip.",
+		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and gold.",
 		"Fishing: talk to Wren at the river to get a rod. Hold to cast, press when the \"!\" appears, then hold Space to keep the fish inside the green bar.",
-		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them with your club to knock them back. In Survivor Mode a bite reloads your last sleep."]:
+		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them to knock them back. In Survivor Mode a bite reloads your last sleep, unless your gear stops it (see Bite resist).",
+		"Weapons and gear wear out. Repair them at Varga Forge or Mercer Workshop: the closer something is to breaking, the more it costs. In Survivor Mode a broken item is gone for good.",
+		"Noise draws the infected. Guns are loud. Crouch to sneak up on infected that haven't noticed you: a hit from behind does extra damage, and knives kill outright."]:
 		var l := K.label(t, 7, null, true)
 		l.custom_minimum_size.x = 320
 		v.add_child(l)

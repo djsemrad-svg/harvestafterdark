@@ -26,6 +26,7 @@ var categories := {
 	"farm_supply": {"label": "Farm Supply", "color": "#9ac070"},
 	"artisan": {"label": "Artisan Good", "color": "#e0a050"},
 	"junk": {"label": "Junk", "color": "#888888"},
+	"animal": {"label": "Animal Product", "color": "#f0d8a0"},
 	"quest": {"label": "Quest Item", "color": "#f0e070", "protected": true},
 }
 
@@ -34,6 +35,14 @@ var collections := {
 }
 
 var items := {}
+var weapons := {}     # weapon id -> stats from the spreadsheet (see Arsenal)
+var gear := {}        # clothing and armour id -> stats
+var loot_tags := {}   # place tag -> item ids found there
+var rare_drops := {}  # infected type -> [[item id, chance], ...]
+var groups := {}      # recipe groups ("grp:fruit") -> item ids (see Catalog)
+var loot_items := {}  # place tag -> [[item id, min, max, weight], ...] from the item sheet
+var enemy_drops := {} # infected type ("*" for all) -> [[item id, chance], ...] from the item sheet
+var livestock := {}   # livestock rows from the item sheet
 
 func def_item(id: String, o: Dictionary) -> void:
 	var it := {"id": id, "stack": 999, "price": 0, "cat": "resource", "desc": ""}
@@ -54,7 +63,7 @@ var tool_defs := {
 	"pickaxe": {"name": "Pickaxe", "skill": "mining", "upgradable": true, "desc": "Breaks rocks, ore deposits and placed objects."},
 	"axe": {"name": "Axe", "skill": "foraging", "upgradable": true, "desc": "Chops trees, stumps and branches."},
 	"watering_can": {"name": "Watering Can", "skill": "farming", "upgradable": true, "chargeable": true, "desc": "Waters crops. Refill at the hand pump or any water."},
-	"scythe": {"name": "Scythe", "skill": "farming", "upgradable": false, "desc": "Cuts weeds and harvests ripe crops."},
+	"scythe": {"name": "Scythe", "skill": "farming", "upgradable": true, "desc": "Cuts weeds and harvests ripe crops. Upgrades widen the swing: copper and iron reach farther to the sides, silver and gold cut a 3x3 area, aurium a 5x5 area."},
 	"fishing_rod": {"name": "Driftwood Rod", "skill": "fishing", "upgradable": false, "desc": "Hold to cast into water, then reel in when a fish bites."},
 	# Planned later phases (slots reserved): milk_pail, shears, sifter, salvage_kit
 }
@@ -180,6 +189,7 @@ var recipes := [
 	{"id": "r_chest", "group": "Storage", "out": "chest", "qty": 1, "station": "hand", "inputs": [["wood", 40]], "unlock": {"type": "start"}},
 	{"id": "r_path", "group": "Storage", "out": "stone_path", "qty": 5, "station": "hand", "inputs": [["stone", 5]], "unlock": {"type": "start"}},
 	{"id": "r_bench", "group": "Storage", "out": "ammo_bench", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["scrap", 10], ["stone", 10]], "unlock": {"type": "start"}, "note": "Crafts ammunition and ranged weapons."},
+	{"id": "r_wbench", "group": "Storage", "out": "armory_bench", "qty": 1, "station": "hand", "inputs": [["wood", 40], ["scrap", 20], ["stone", 20], ["copper_bar", 2]], "unlock": {"type": "start"}, "note": "Crafts and upgrades weapons and gear."},
 	# barriers
 	{"id": "r_fence", "group": "Barriers", "out": "fence", "qty": 4, "station": "hand", "inputs": [["wood", 4]], "unlock": {"type": "start"}},
 	{"id": "r_gate", "group": "Barriers", "out": "wood_gate", "qty": 1, "station": "hand", "inputs": [["wood", 10]], "unlock": {"type": "start"}},
@@ -198,7 +208,6 @@ var recipes := [
 	# ammunition (ammo bench)
 	{"id": "a_nails", "group": "Ammunition", "out": "nail_rounds", "qty": 20, "station": "ammo_bench", "inputs": [["scrap", 2]], "unlock": {"type": "start"}},
 	{"id": "a_bolts", "group": "Ammunition", "out": "bolts", "qty": 10, "station": "ammo_bench", "inputs": [["wood", 3], ["scrap", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 2}},
-	{"id": "a_crossbow", "group": "Ammunition", "out": "scrap_crossbow", "qty": 1, "station": "ammo_bench", "inputs": [["wood", 20], ["scrap", 15], ["fiber", 10], ["copper_bar", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 2}, "note": "A ranged weapon. Fires Bolts."},
 	{"id": "a_buckshot", "group": "Ammunition", "out": "buckshot", "qty": 10, "station": "ammo_bench", "inputs": [["scrap", 2], ["coal", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 3}},
 	# survival supplies
 	{"id": "r_water", "group": "Survival", "out": "water_bottle", "qty": 1, "station": "hand", "inputs": [["scrap", 2], ["cloth", 1]], "unlock": {"type": "skill", "skill": "survival", "level": 1}, "note": "A crude filter bottle."},
@@ -223,12 +232,16 @@ var recipes := [
 	{"id": "r_furnace", "group": "Equipment", "out": "brick_furnace", "qty": 1, "station": "hand", "inputs": [["stone", 25], ["copper_ore", 15], ["clay", 4]], "unlock": {"type": "skill", "skill": "mining", "level": 1}, "note": "Smelt your own bars."},
 	{"id": "r_collector", "group": "Equipment", "out": "rain_collector", "qty": 1, "station": "hand", "inputs": [["wood", 25], ["scrap", 6], ["cloth", 2]], "unlock": {"type": "skill", "skill": "foraging", "level": 2}, "note": "Fills a bottle of clean water each day."},
 	{"id": "r_smoker", "group": "Equipment", "out": "smoker", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 10], ["scrap", 5], ["coal", 5]], "unlock": {"type": "skill", "skill": "fishing", "level": 2}},
+	{"id": "r_tanning", "group": "Equipment", "out": "tanning_rack", "qty": 1, "station": "hand", "inputs": [["wood", 25], ["fiber", 10], ["scrap", 4]], "unlock": {"type": "skill", "skill": "farming", "level": 2}, "note": "Turns rabbit fur into tanned pelts."},
 	{"id": "r_jar", "group": "Equipment", "out": "preserves_jar", "qty": 1, "station": "hand", "inputs": [["wood", 30], ["stone", 20], ["coal", 4]], "unlock": {"type": "skill", "skill": "farming", "level": 3}},
 	# cooking (stove)
 	{"id": "c_fish", "group": "Cooking", "out": "fried_fish", "qty": 1, "station": "stove", "inputs": [["cat:fish", 1]], "unlock": {"type": "start"}},
 	{"id": "c_stew", "group": "Cooking", "out": "veggie_stew", "qty": 1, "station": "stove", "inputs": [["cat:crop", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_salad", "group": "Cooking", "out": "forager_salad", "qty": 1, "station": "stove", "inputs": [["cat:forage", 2]], "unlock": {"type": "start"}},
 	{"id": "c_potato", "group": "Cooking", "out": "baked_potato", "qty": 1, "station": "stove", "inputs": [["potato", 1], ["wood", 1]], "unlock": {"type": "skill", "skill": "farming", "level": 1}},
+	{"id": "c_egg", "group": "Cooking", "out": "fried_egg", "qty": 1, "station": "stove", "inputs": [["egg", 1]], "unlock": {"type": "start"}},
+	{"id": "c_skillet", "group": "Cooking", "out": "breakfast_skillet", "qty": 1, "station": "stove", "inputs": [["egg", 1], ["potato", 1]], "unlock": {"type": "skill", "skill": "cooking", "level": 1}},
+	{"id": "c_omelette", "group": "Cooking", "out": "garden_omelette", "qty": 1, "station": "stove", "inputs": [["large_egg", 1], ["cat:crop", 1]], "unlock": {"type": "friend", "npc": "marisol", "hearts": 3}},
 	{"id": "c_tea", "group": "Cooking", "out": "dandelion_tea", "qty": 1, "station": "stove", "inputs": [["dandelion", 2], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_mint", "group": "Cooking", "out": "mint_tea", "qty": 1, "station": "stove", "inputs": [["wild_mint", 1], ["water_bottle", 1]], "unlock": {"type": "start"}},
 	{"id": "c_corn", "group": "Cooking", "out": "roast_corn", "qty": 1, "station": "stove", "inputs": [["corn", 1]], "unlock": {"type": "start"}},
@@ -264,6 +277,7 @@ var machines := {
 		{"in": "old_can", "qty": 1, "out": "scrap", "out_qty": 2, "min": 60},
 		{"in": "soggy_paper", "qty": 1, "out": "fiber", "out_qty": 3, "min": 60}], "hint": "junk"},
 	"rain_collector": {"recipes": [], "passive": "water_bottle", "hint": ""},
+	"tanning_rack": {"recipes": [{"in": "rabbit_fur", "qty": 2, "out": "tanned_pelt", "out_qty": 1, "min": 1440}], "hint": "2 rabbit fur"},
 }
 
 var skills := {
@@ -302,14 +316,14 @@ var obj_defs := {
 	"wood_gate": {"solid": true, "returns": "wood_gate", "barrier": true, "gate": true, "max_hp": 30, "repair": [["wood", 2]], "name": "Wood Gate"},
 	"sandbag_wall": {"solid": true, "returns": "sandbag_wall", "barrier": true, "max_hp": 55, "repair": [["stone", 2]], "name": "Sandbag Wall"},
 	"stone_wall": {"solid": true, "returns": "stone_wall", "barrier": true, "max_hp": 90, "repair": [["stone", 3]], "name": "Stone Wall"},
-	"barbed_fence": {"solid": true, "returns": "barbed_fence", "barrier": true, "max_hp": 60, "barbed": 2, "repair": [["scrap", 1]], "name": "Barbed Wire Fence"},
-	"electric_fence": {"solid": true, "returns": "electric_fence", "barrier": true, "max_hp": 80, "electric": 4, "power": 0.25, "repair": [["scrap", 2]], "name": "Electric Fence"},
+	"barbed_fence": {"solid": true, "returns": "barbed_fence", "barrier": true, "max_hp": 60, "barbed": 15, "repair": [["scrap", 1]], "name": "Barbed Wire Fence"},
+	"electric_fence": {"solid": true, "returns": "electric_fence", "barrier": true, "max_hp": 80, "electric": 30, "power": 0.25, "repair": [["scrap", 2]], "name": "Electric Fence"},
 	"reinforced_wall": {"solid": true, "returns": "reinforced_wall", "barrier": true, "max_hp": 200, "repair": [["scrap", 3]], "name": "Reinforced Barrier"},
 	# turrets: range in tiles, rate in seconds between shots
-	"nail_turret": {"solid": true, "returns": "nail_turret", "turret": true, "tier": 1, "name": "Nail Turret", "ammo": "nail_rounds", "ammo_cap": 80, "range": 4.5, "damage": 1, "rate": 0.9, "night_kills": 2, "ammo_per_kill": 5},
-	"shotgun_turret": {"solid": true, "returns": "shotgun_turret", "turret": true, "tier": 2, "name": "Scrap Shotgun Turret", "ammo": "buckshot", "ammo_cap": 30, "range": 3.5, "damage": 3, "rate": 1.3, "pellets": 3, "night_kills": 3, "ammo_per_kill": 2},
-	"sentry_turret": {"solid": true, "returns": "sentry_turret", "turret": true, "tier": 3, "name": "Salvaged Sentry", "power": 2.0, "range": 6.0, "damage": 2, "rate": 0.45, "night_kills": 4},
-	"arc_pylon": {"solid": true, "returns": "arc_pylon", "turret": true, "tier": 4, "name": "Arc Pylon", "power": 3.0, "range": 4.0, "damage": 4, "rate": 1.5, "chain": 3, "night_kills": 6},
+	"nail_turret": {"solid": true, "returns": "nail_turret", "turret": true, "tier": 1, "name": "Nail Turret", "ammo": "nail_rounds", "ammo_cap": 80, "range": 4.5, "damage": 10, "rate": 0.9, "night_kills": 2, "ammo_per_kill": 5},
+	"shotgun_turret": {"solid": true, "returns": "shotgun_turret", "turret": true, "tier": 2, "name": "Scrap Shotgun Turret", "ammo": "buckshot", "ammo_cap": 30, "range": 3.5, "damage": 30, "rate": 1.3, "pellets": 3, "night_kills": 3, "ammo_per_kill": 2},
+	"sentry_turret": {"solid": true, "returns": "sentry_turret", "turret": true, "tier": 3, "name": "Salvaged Sentry", "power": 2.0, "range": 6.0, "damage": 22, "rate": 0.45, "night_kills": 4},
+	"arc_pylon": {"solid": true, "returns": "arc_pylon", "turret": true, "tier": 4, "name": "Arc Pylon", "power": 3.0, "range": 4.0, "damage": 40, "rate": 1.5, "chain": 3, "night_kills": 6},
 	# power sources
 	"generator": {"solid": true, "returns": "generator", "power_source": 6.0, "fuel": "coal", "name": "Generator"},
 	"solar_panel": {"solid": true, "returns": "solar_panel", "power_source": 2.0, "solar": true, "name": "Solar Panel"},
@@ -319,6 +333,8 @@ var obj_defs := {
 	"drip_array": {"solid": true, "returns": "drip_array", "sprinkler": "big"},
 	# stations and processing equipment
 	"ammo_bench": {"solid": true, "returns": "ammo_bench", "station": "ammo_bench", "name": "Ammo Bench"},
+	"armory_bench": {"solid": true, "returns": "armory_bench", "station": "armory_bench", "name": "Armory Bench"},
+	"supply_crate": {"solid": true, "loot": ["military", "police", "hardware", "home", "sports"], "name": "Supply Crate", "fixture": true},
 	"recycler": {"solid": true, "returns": "recycler", "machine": true, "name": "Recycler"},
 	"charcoal_kiln": {"solid": true, "returns": "charcoal_kiln", "machine": true, "name": "Charcoal Kiln", "light": 30},
 	"brick_furnace": {"solid": true, "returns": "brick_furnace", "machine": true, "name": "Brick Furnace", "light": 40},
@@ -341,6 +357,13 @@ var obj_defs := {
 	"rug": {"solid": false, "fixture": true, "floor": true},
 	"window": {"solid": true, "fixture": true},
 	"counter": {"solid": true, "fixture": true},
+	"hay_hopper": {"solid": true, "fixture": true},
+	"hidden_counter": {"solid": true, "fixture": true, "invisible": true},
+	"nest_box": {"solid": true, "fixture": true},
+	"water_trough": {"solid": true, "fixture": true},
+	"hay_bale": {"solid": true, "fixture": true},
+	"animal_product": {"solid": false, "pickup": true},
+	"tanning_rack": {"solid": true, "returns": "tanning_rack", "machine": true, "name": "Tanning Rack"},
 	"shelf": {"solid": true, "fixture": true},
 	"anvil": {"solid": true, "fixture": true},
 	"furnace": {"solid": true, "fixture": true, "light": 70},
@@ -379,6 +402,12 @@ var buildings := {
 	"house_a": {"roof": "#5a6a8a", "roof2": "#46546e", "wall": "#b8a888", "trim": "#5a4a3a", "windows": 2, "condition": 3},
 	"house_b": {"roof": "#8a5a4a", "roof2": "#6e463a", "wall": "#a8b098", "trim": "#4a4a3a", "windows": 2, "condition": 3},
 	"ruin": {"roof": "#555555", "roof2": "#444444", "wall": "#8a8478", "trim": "#4a4440", "windows": 2, "condition": 0},
+	"ranch": {"roof": "#8a3a2a", "roof2": "#6e2a1e", "wall": "#c8a070", "trim": "#5a3a22", "sign": "REYES RANCH", "windows": 2, "condition": 4, "door": "#5a7a3a", "curtain": "#e8d8a0"},
+	"coop": {"roof": "#8a4a2e", "roof2": "#6e3820", "wall": "#e8dcc0", "trim": "#6a4a2e", "sign": "COOP", "windows": 1, "condition": 4, "door": "#6a4a2e", "curtain": "#d8c070"},
+	"clinic": {"roof": "#4a5a6a", "roof2": "#3a4a5a", "wall": "#e8e4dc", "trim": "#4a4a52", "sign": "CLINIC", "windows": 2, "condition": 4, "door": "#8a3a3a", "curtain": "#d8e0e8"},
+	"workshop": {"roof": "#5a5a62", "roof2": "#46464e", "wall": "#b8a888", "trim": "#4a3a2a", "sign": "WORKSHOP", "windows": 1, "condition": 3},
+	"guild": {"roof": "#4a3a2a", "roof2": "#3a2a1e", "wall": "#8a6a48", "trim": "#3a2a1a", "sign": "COMBAT GUILD", "windows": 2, "condition": 3},
+	"greenhouse": {"roof": "#9ac8d8", "roof2": "#7aa8b8", "wall": "#c8e0e8", "trim": "#6a6a5a", "windows": 3, "condition": 1},
 	"mine": {"special": "mine"},
 }
 
@@ -387,7 +416,7 @@ var buildings := {
 var npcs := {
 	"ruth": {
 		"name": "Ruth Adeyemi", "role": "Town coordinator", "birthday": {"season": "autumn", "day": 14},
-		"look": {"skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
+		"look": {"sprite": "ruth", "skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
 		"loves": ["pumpkin", "amethyst", "veggie_stew", "sunflower"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
@@ -407,7 +436,7 @@ var npcs := {
 	},
 	"hal": {
 		"name": "Hal Brennan", "role": "Owner of Brennan's General", "birthday": {"season": "spring", "day": 21},
-		"look": {"skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
+		"look": {"sprite": "hal", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
 		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato", "hot_pepper"], "dislikes": ["stone", "cat:junk", "clay"],
 		"schedules": {
 			"default": [[360, ""], [510, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
@@ -427,7 +456,7 @@ var npcs := {
 	},
 	"ines": {
 		"name": "Ines Varga", "role": "Blacksmith", "birthday": {"season": "winter", "day": 5},
-		"look": {"skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
+		"look": {"sprite": "ines", "skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["emerald", "ruby", "iron_bar", "glimmerite"], "likes": ["cat:ore", "cat:gem", "coal", "fried_fish"], "dislikes": ["cat:forage", "dandelion", "cat:junk"],
 		"schedules": {
 			"default": [[360, ""], [480, "forge", 6, 3, "down"], [960, "mountain", 24, 10, "up"], [1140, "town", 31, 22, "down"], [1260, ""]],
@@ -447,7 +476,7 @@ var npcs := {
 	},
 	"wren": {
 		"name": "Wren Calloway", "role": "Angler", "birthday": {"season": "summer", "day": 9},
-		"look": {"skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
+		"look": {"sprite": "wren", "skin": "#f6d3b3", "hair": "#c98b3c", "hair_style": "Long", "eyes": "#2e6da4", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#2f8f8f", "pants": "#8a5a3a", "acc": "Beanie", "acc_color": "#e4e4e4"},
 		"loves": ["ghost_pike", "sunberry", "forager_salad"], "likes": ["cat:fish", "wild_mint", "bread_loaf"], "dislikes": ["cat:ore", "stone", "scrap"],
 		"schedules": {
 			"default": [[360, "town", 14, 33, "down"], [720, "mountain", 9, 21, "up"], [1080, "town", 16, 33, "down"], [1320, ""]],
@@ -465,6 +494,87 @@ var npcs := {
 			"gift": {"love": "No way! This is my favorite!", "like": "Ooh, thank you!", "neutral": "Thanks!", "dislike": "Oh. Um. Thanks, I guess?"},
 		},
 	},
+	"marisol": {
+		"name": "Marisol Reyes", "role": "Rancher", "birthday": {"season": "summer", "day": 20},
+		"look": {"sprite": "marisol", "skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
+		"loves": ["sunflower", "strawbloom", "tanned_pelt"], "likes": ["egg", "large_egg", "cat:crop", "hay"], "dislikes": ["cat:junk", "coal", "scrap"],
+		"schedules": {
+			"default": [[360, ""], [480, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
+			"Tue": [[360, ""], [540, "town", 32, 9, "up"], [720, "mountain", 12, 24, "up"], [960, "town", 25, 21, "left"], [1140, ""]],
+			"rain": [[360, ""], [480, "ranch", 6, 3, "down"], [1140, ""]],
+		},
+		"dialogue": {
+			"intro": ["You're the one who took the old homestead! I'm Marisol. I keep the chickens and rabbits for Brightwater.", "Animals keep a town honest. They need feeding every single day, outbreak or no outbreak.", "When you've got a coop, come see me. I'll sell you birds, rabbits and hay. And mind your coop door at night."],
+			"generic": ["A hen that's been petted lays bigger eggs. Don't laugh, it's true.", "Rabbits are skittish. Talk to them every day and they'll trust you.", "Keep the hopper full. Hungry animals don't produce a thing.", "The infected can't open a latch, but they can walk through an open door.", "My grandmother kept goats in the hills. Maybe someday I'll find some."],
+			"spring": ["Spring chicks! Everyone wants one this time of year."],
+			"summer": ["Let them out on sunny days. They're happier for it."],
+			"autumn": ["Stock up on hay before winter. The animals can't go outside in the snow."],
+			"winter": ["Winter's hard on the coop. Keep it full and keep it closed."],
+			"rain": ["Rain day. The hens are sulking and so am I."],
+			"hearts": ["I lost my whole herd the first winter of the Fall. Started over with two hens. Look at us now.", "You've got good hands with animals. Steady. They can tell."],
+			"gift": {"love": "Oh, you remembered! This is perfect.", "like": "That's kind of you. Thank you.", "neutral": "Thanks, neighbour.", "dislike": "Hm. I'll... find somewhere for it."},
+		},
+	},
+	"elias": {
+		"name": "Dr. Elias Okoro", "role": "Town doctor", "birthday": {"season": "winter", "day": 18},
+		"look": {"sprite": "elias", "skin": "#7a4a2c", "hair": "#1a1210", "hair_style": "Buzz", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#e8e8e0", "pants": "#333a44", "acc": "None", "acc_color": "#222222"},
+		"loves": ["med_kit", "mint_tea", "garlic"], "likes": ["cat:forage", "bandage", "dandelion_tea"], "dislikes": ["cat:junk", "pipe_charge", "hot_pepper"],
+		"schedules": {
+			"default": [[360, ""], [510, "clinic", 10, 3, "down"], [1020, "town", 26, 21, "left"], [1140, ""]],
+			"Sat": [[360, ""], [600, "town", 31, 32, "down"], [900, "mountain", 14, 20, "up"], [1080, ""]],
+		},
+		"dialogue": {
+			"intro": ["Ah, the new farmer. I'm Elias, the closest thing Brightwater has to a doctor.", "Medical school, two years. Field medicine, nine. I stitch, I splint, I listen.", "If you're hurt, come to the clinic. If you're bitten... well. Don't get bitten."],
+			"generic": ["Wash your hands. I know. But wash them.", "Fresh greens do more for this town than anything in my cabinet.", "Bandages are just clean cloth and patience. I'll show you how sometime.", "Most of my patients are farmers with sore backs. I count that as a victory.", "Sleep is medicine too. Get to bed before two."],
+			"spring": ["Spring allergies. Even the apocalypse couldn't kill pollen."],
+			"summer": ["Drink water before you're thirsty. By then it's late."],
+			"autumn": ["Harvest injuries keep me busy. Mind your scythe."],
+			"winter": ["Keep warm. Cold makes the body careless."],
+			"rain": ["Rain days, people come in to talk. I don't mind."],
+			"hearts": ["I couldn't save everyone, the first year. I try to save everyone now.", "You check in on people. That's half of medicine, you know."],
+			"gift": {"love": "This is exactly what I needed. Thank you.", "like": "Very thoughtful. Thank you.", "neutral": "Thank you. Truly.", "dislike": "I'll... make sure it's disposed of safely."},
+		},
+	},
+	"jo": {
+		"name": "Jo Mercer", "role": "Mechanic and builder", "birthday": {"season": "spring", "day": 7},
+		"look": {"sprite": "jo", "skin": "#f6d3b3", "hair": "#c8502a", "hair_style": "Long", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Overalls", "shirt": "#3f6fb5", "pants": "#3f6fb5", "acc": "None", "acc_color": "#222222"},
+		"loves": ["iron_bar", "copper_bar", "smoked_fish"], "likes": ["scrap", "wood", "cat:bar"], "dislikes": ["cat:junk", "soggy_paper", "sunflower"],
+		"schedules": {
+			"default": [[360, ""], [480, "workshop", 6, 5, "down"], [1020, "town", 47, 16, "down"], [1200, ""]],
+			"Wed": [[360, ""], [600, "town", 46, 19, "left"], [840, "mountain", 22, 22, "down"], [1080, ""]],
+		},
+		"dialogue": {
+			"intro": ["You're the farmer! Jo. I fix things. Engines, roofs, fences, sometimes people's opinions.", "Bring me materials and I'll build what you need. The old greenhouse on your land? I could get it running.", "The workshop's open eight to five, closed Wednesdays. That's my salvage day."],
+			"generic": ["Everything can be fixed. Some things just need more duct tape.", "That rusted bus out by the ridge? I've got plans for it.", "Wood's cheap. Copper's dear. Iron's a miracle.", "I run the workshop's lights off a bike generator. My legs are amazing.", "If it's broken, bring it here. If it's sparking, bring it here faster."],
+			"spring": ["Spring is roof season. Everyone's leaks show up at once."],
+			"summer": ["Too hot to weld. I weld anyway."],
+			"autumn": ["Get your greenhouse fixed before winter. You'll thank me."],
+			"winter": ["Winter's when I build. Nobody's out farming."],
+			"rain": ["Rain means I get to test everyone's roofs. Including mine."],
+			"hearts": ["I used to race motorbikes. Now I build turrets. It's basically the same thing.", "You're one of the few people who brings me what I ask for. Respect."],
+			"gift": {"love": "Oh, now we're talking! Thank you!", "like": "Nice. I'll use this.", "neutral": "Thanks!", "dislike": "Uh. What am I supposed to do with this?"},
+		},
+	},
+	"cole": {
+		"name": "Cole Ashford", "role": "Guildmaster", "birthday": {"season": "autumn", "day": 27},
+		"look": {"sprite": "guildmaster", "skin": "#e8b48f", "hair": "#8a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Beard", "shirt_style": "Jacket", "shirt": "#6a4a2e", "pants": "#3f5a8a", "acc": "Bandana", "acc_color": "#b5442f"},
+		"loves": ["ember_chili", "iron_bar", "survivor_plate"], "likes": ["cat:cooked", "bolts", "nail_rounds"], "dislikes": ["cat:junk", "sunflower", "mint_tea"],
+		"schedules": {
+			"default": [[360, ""], [600, "guild", 8, 2, "down"], [1320, "town", 12, 31, "down"], [1440, ""]],
+			"Mon": [[360, ""], [480, "mountain", 18, 14, "up"], [900, "town", 12, 31, "down"], [1200, ""]],
+		},
+		"dialogue": {
+			"intro": ["So you're the farmer who's been clearing the treeline. Cole Ashford. I run the Combat Guild.", "We keep the infected thin around Brightwater. Bounties for anyone who helps, gear for anyone who can pay.", "Check the board when you're in. And don't go into the mine without something sharp."],
+			"generic": ["A good blade beats a good plan. A good plan beats a bad blade.", "The infected are slow, not stupid. Watch for the wind-up.", "Turrets are fine. A friend with a crossbow is better.", "We lost three good people the first winter. Nobody goes out alone now.", "Rest is a weapon. Use it."],
+			"spring": ["Spring thaw brings them out of the hills. Stay sharp."],
+			"summer": ["Long days. Short nights. My favorite season."],
+			"autumn": ["Harvest raids. They follow the smell of the fields."],
+			"winter": ["Cold slows them down. Doesn't stop them."],
+			"rain": ["Rain hides footsteps. Theirs and ours."],
+			"hearts": ["I wasn't always a fighter. I taught history. Turns out history is mostly fighting.", "You've got steady hands. Ever think about joining the Guild proper?"],
+			"gift": {"love": "Now that's a gift. Thank you.", "like": "Appreciated.", "neutral": "Thanks.", "dislike": "Hm. Keep your junk, farmer."},
+		},
+	},
 }
 
 # ---------------- Shops ----------------
@@ -478,7 +588,58 @@ var shops := {
 		"buys": ["ore", "bar", "mineral", "gem"], "daily_sale": false,
 		"stock": [{"id": "coal", "price": 45}, {"id": "copper_ore", "price": 30}, {"id": "iron_ore", "price": 60, "min_deepest": 5}],
 	},
+	"ranch": {
+		"name": "Reyes Ranch", "owner": "marisol", "map": "ranch", "open": 540, "close": 960, "closed_days": ["Tue"],
+		"buys": ["animal"], "daily_sale": false,
+		"stock": [
+			{"id": "hay", "price": 50}, {"id": "feather", "price": 15},
+			{"service": "coop", "name": "Coop Kit", "desc": "A pre-cut coop for up to 8 chickens or rabbits. You choose where it goes on your farm. Also needs 150 wood and 50 stone.", "price": 3000, "mats": [["wood", 150], ["stone", 50]]},
+			{"service": "animal", "animal": "chicken", "name": "Chicken", "desc": "Lays an egg every day it's fed. Lives in a coop.", "price": 600},
+			{"service": "animal", "animal": "rabbit", "name": "Rabbit", "desc": "Sheds soft fur every few days. Lives in a coop.", "price": 1500},
+		],
+	},
+	"clinic": {
+		"name": "Brightwater Clinic", "owner": "elias", "map": "clinic", "open": 540, "close": 1020, "closed_days": ["Sat"],
+		"buys": ["medical"], "daily_sale": false,
+		"stock": [
+			{"service": "treatment", "name": "Full treatment", "desc": "Elias patches you up: restores all health and half your energy.", "price": 150},
+			{"id": "bandage", "price": 40}, {"id": "med_kit", "price": 160}, {"id": "water_bottle", "price": 60},
+		],
+	},
+	"workshop": {
+		"name": "Mercer Workshop", "owner": "jo", "map": "workshop", "open": 480, "close": 1020, "closed_days": ["Wed"],
+		"buys": ["resource", "bar"], "daily_sale": false,
+		"stock": [
+			{"service": "greenhouse", "name": "Restore the greenhouse", "desc": "Jo rebuilds the old greenhouse on your farm overnight. Crops grow inside in any season. Also needs 200 wood, 100 stone and 5 copper bars.", "price": 3000, "mats": [["wood", 200], ["stone", 100], ["copper_bar", 5]]},
+			{"service": "unlock", "region": "industrial", "name": "Power the east gate", "desc": "Jo wires a car battery and new copper into the east gate overnight. Opens the Industrial District. Also needs 1 Car Battery (search car wrecks) and 5 Copper Bars.", "price": 2000, "mats": [["car_battery", 1], ["copper_bar", 5]]},
+			{"service": "unlock", "region": "riverlands", "name": "Rebuild the south bridge", "desc": "Jo rebuilds the washed-out bridge on the Riverlands road overnight. Opens the Riverlands. Also needs 150 Wood and 5 Iron Bars.", "price": 3000, "mats": [["wood", 150], ["iron_bar", 5]]},
+			{"service": "repair", "name": "Repair weapons and gear", "desc": "Jo fixes what you carry and wear. Cost depends on how worn it is.", "price": 0},
+			{"id": "wood", "price": 15}, {"id": "stone", "price": 15}, {"id": "scrap", "price": 35}, {"id": "clay", "price": 25},
+			{"id": "saltpeter", "price": 40}, {"id": "duct_tape", "price": 60}, {"id": "gasoline", "price": 150}, {"id": "rubber_tubing", "price": 50},
+			{"id": "armory_bench", "price": 600}, {"id": "gear_kit", "price": 750},
+		],
+	},
+	"guild": {
+		"name": "Combat Guild", "owner": "cole", "map": "guild", "open": 600, "close": 1320, "closed_days": ["Mon"],
+		"buys": ["ammo", "weapon", "gear"], "daily_sale": false,
+		"stock": [
+			{"service": "contracts", "name": "Contract board", "desc": "", "price": 0},
+			{"service": "bounty", "name": "Bounty board", "desc": "", "price": 0},
+			{"id": "machete", "price": 900}, {"id": "scrap_crossbow", "price": 1400},
+			{"id": "bolts", "price": 6}, {"id": "nail_rounds", "price": 3}, {"id": "buckshot", "price": 12}, {"id": "bandage", "price": 50},
+			{"id": "arrow", "price": 8}, {"id": "ammo_22lr", "price": 6}, {"id": "ammo_9mm", "price": 8}, {"id": "ball_bearings", "price": 2},
+			{"rotating": "guild_arms", "count": 6},
+		],
+	},
 }
+
+## (more shops)
+## Farm animals. "every": days between products. Friendship is 0-1000.
+var animals := {
+	"chicken": {"name": "Chicken", "building": "coop", "product": "egg", "big_product": "large_egg", "every": 1, "mature_days": 3, "colors": ["#f4f0e8", "#b8743a", "#3a3a40"]},
+	"rabbit": {"name": "Rabbit", "building": "coop", "product": "rabbit_fur", "rare_product": "lucky_paw", "every": 4, "mature_days": 6, "colors": ["#b8b0a8", "#8a6a4a", "#f0ece8"]},
+}
+var animal_names := ["Clover", "Pip", "Bess", "Nugget", "Juniper", "Biscuit", "Maple", "Hazel", "Pepper", "Tater", "Daisy", "Sprout", "Mabel", "Rook", "Thistle", "Butter", "Cinder", "Wren Jr.", "Dot", "Moss"]
 
 # ---------------- Quests ----------------
 # type: talk | plant | harvest | ship | catch | mine_floor | geode | upgrade
@@ -490,6 +651,7 @@ var quests := [
 	{"id": "q_fish", "title": "Something in the Water", "giver": "wren", "type": "catch", "count": 1, "requires_flag": "got_rod", "desc": "Catch a fish anywhere. Try the pond on your homestead or the river in town.", "reward": {"items": [["water_bottle", 3], ["bread_loaf", 2]]}},
 	{"id": "q_mine", "title": "Into the Dark", "giver": "ines", "type": "mine_floor", "count": 3, "desc": "Reach floor 3 of the old mine, north of town past the ridge path.", "reward": {"items": [["copper_ore", 10], ["coal", 3]]}},
 	{"id": "q_geode", "title": "Cracking Stones", "giver": "ines", "type": "geode", "count": 1, "desc": "Find a geode in the mine and have Ines open it at the forge.", "reward": {"money": 100}},
+	{"id": "q_maple", "title": "Maple Street Sweep", "giver": "cole", "type": "kill", "count": 15, "requires_met": "cole", "desc": "Cole keeps the Maple Street barricade west of the Combat Guild locked. Put down 15 infected anywhere and he'll open it to the Residential District.", "reward": {"money": 300, "unlock": "residential"}},
 	{"id": "q_upgrade", "title": "Sharper Tools", "giver": "ines", "type": "upgrade", "count": 1, "requires": "q_mine", "desc": "Refine copper bars and have Ines upgrade any tool.", "reward": {"money": 250}},
 ]
 
@@ -519,6 +681,14 @@ var weather_info := {
 ## Heart events: a short scene the first time you talk to someone after reaching
 ## that many hearts. Options are [answer, friendship points, their reply].
 var heart_events := {
+	"marisol": {
+		2: {"lines": ["See this hen? Her name's Duchess. She's nine. That's ancient for a chicken.", "She was one of the two I started over with. Stubborn as a mule and twice as loud."],
+			"q": "", "options": [["She's beautiful.", 40, "Don't tell her that. She'll get a big head."], ["Nine years is a long time.", 30, "It is. She's seen this whole town come back."]]},
+		4: {"lines": ["Some nights I hear them. Out past the fence. Just shuffling.", "The rabbits go still. The hens stop clucking. And I sit up with a lantern until it passes."],
+			"q": "", "options": [["Next time, come get me.", 45, "...I might. It's easier with company."], ["Have you thought about turrets?", 25, "Ha. Ines keeps offering. Maybe I'll let her."]]},
+		6: {"lines": ["I've been saving these for someone who'd treat them right.", "Two of my best hens' eggs. And a bale of good hay. Take care of your flock."], "reward": ["hay", 20],
+			"q": "", "options": [["I'll treat them like family.", 40, "I know you will. That's why I picked you."]]},
+	},
 	"ruth": {
 		2: {"lines": ["Do you know what I write first in the ledger every morning? Not seeds. Names.", "Everyone who's still here. Some days the list was shorter than the day before. Not lately, though."],
 			"q": "Why keep the list?", "options": [["So no one is forgotten.", 40, "Exactly. Someone has to remember them out loud."], ["That sounds heavy.", 20, "It is. It's lighter when someone asks about it."], ["Seems like a waste of ink.", -10, "...Ink is the one thing we have plenty of."]]},
@@ -553,22 +723,67 @@ var heart_events := {
 	},
 }
 
+## The infected. Add a new type by adding an entry here (and a "looks" list for variety).
+## ai: walker, runner, brute, spitter, stalker, screamer, crawler. Numbers are per second / pixels.
+## looks: skin tones, clothing colours and extra pieces drawn over the atlas bodies. Each infected
+## picks one of each when it spawns, so no two look quite alike.
 var enemies := {
-	"shambler": {"name": "Shambler", "hp": 5, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 88.0, "damage": 15, "xp": 6,
-		"look": {"skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
+	"shambler": {"name": "Shambler", "hp": 45, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 88.0, "damage": 15, "xp": 6, "ai": "walker",
+		"look": {"sprite": "shambler", "skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
+		"looks": {"skin": ["#8fa58a", "#9aa880", "#7f9a7a", "#a0a890"], "shirt": ["#b05a2a", "#6a4a8a", "#3a6a8a", "#8a3a3a", "#5a7a4a", "#c8b070", "#4a4a5a"], "pants": ["#3a4a6a", "#4a4a40", "#5a4a3a", "#2a3a5a"], "bodies": [0, 1, 2, 3, 4, 5, 6]},
 		"drops": [["cloth", 0.45], ["scrap", 0.45], ["geode", 0.06]]},
-	"lurcher": {"name": "Lurcher", "hp": 7, "wander_speed": 18.0, "chase_speed": 40.0, "sight": 104.0, "damage": 20, "xp": 10,
-		"look": {"skin": "#9aa080", "hair": "#5a4a3a", "hair_style": "Long", "eyes": "#f0c060", "face": "Plain", "shirt_style": "Jacket", "shirt": "#5a4a5a", "pants": "#3a3a44", "acc": "None", "acc_color": "#000000", "infected": true},
+	"lurcher": {"name": "Lurcher", "hp": 70, "wander_speed": 18.0, "chase_speed": 40.0, "sight": 104.0, "damage": 20, "xp": 10, "ai": "walker",
+		"look": {"sprite": "lurcher", "skin": "#9aa080", "hair": "#5a4a3a", "hair_style": "Long", "eyes": "#f0c060", "face": "Plain", "shirt_style": "Jacket", "shirt": "#5a4a5a", "pants": "#3a3a44", "acc": "None", "acc_color": "#000000", "infected": true},
+		"looks": {"skin": ["#9aa080", "#8a9470", "#a4a888"], "shirt": ["#5a4a5a", "#4a3a2a", "#3a4a3a", "#6a2a2a"], "pants": ["#3a3a44", "#2a2a30", "#4a3a2a"], "bodies": [3, 4, 6]},
 		"drops": [["cloth", 0.5], ["scrap", 0.6], ["deep_geode", 0.06]]},
+	"runner": {"name": "Runner", "hp": 35, "wander_speed": 22.0, "chase_speed": 70.0, "sight": 124.0, "damage": 12, "xp": 10, "ai": "runner", "telegraph": 0.38,
+		"looks": {"skin": ["#b8c0a0", "#c0c8b0", "#a8b898"], "shirt": ["#d8d0c0", "#3a8ac8", "#c83a3a", "#e8c040", "#3aa870"], "pants": ["#2a2a30", "#5a5a68", "#c8c0b0"], "bodies": [1, 4, 5], "scale": 0.92},
+		"drops": [["cloth", 0.4], ["water_bottle", 0.08]]},
+	"brute": {"name": "Brute", "hp": 260, "wander_speed": 10.0, "chase_speed": 25.0, "sight": 92.0, "damage": 35, "xp": 32, "ai": "brute", "armor": 0.25,
+		"knock_immune": true, "telegraph": 0.95, "no_stealth_kill": true,
+		"looks": {"skin": ["#7a8a5a", "#6a7a4a", "#8a8a60"], "shirt": ["#4a3a2a", "#5a5a5a", "#3a2a2a", "#2a3a4a"], "pants": ["#2a2a30", "#3a3020"], "bodies": [3, 6, 0], "scale": 1.3},
+		"drops": [["scrap", 0.9], ["iron_ore", 0.3], ["deep_geode", 0.12]]},
+	"spitter": {"name": "Spitter", "hp": 55, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 150.0, "damage": 10, "xp": 14, "ai": "spitter",
+		"spit": {"dmg": 12, "cd": 2.6, "range": 96.0, "speed": 130.0, "n": 1}, "immune": ["corrode"],
+		"looks": {"skin": ["#b8c850", "#a8c040", "#c0c860"], "shirt": ["#6a7a6a", "#7a7a7a", "#5a6a5a"], "pants": ["#3a3a30", "#4a4a40"], "bodies": [2, 5, 6], "extra": "drool"},
+		"drops": [["spitter_gland", 0.25], ["glass_bottle", 0.2]]},
+	"spitter_brute": {"name": "Spitter Brute", "hp": 320, "wander_speed": 10.0, "chase_speed": 22.0, "sight": 150.0, "damage": 30, "xp": 48, "ai": "spitter", "armor": 0.2,
+		"spit": {"dmg": 14, "cd": 2.2, "range": 112.0, "speed": 120.0, "n": 3}, "immune": ["corrode"], "knock_immune": true, "no_stealth_kill": true,
+		"looks": {"skin": ["#a0b840", "#98b030"], "shirt": ["#4a5a3a", "#5a5a4a"], "pants": ["#2a2a20"], "bodies": [3, 6], "scale": 1.3, "extra": "drool"},
+		"drops": [["spitter_gland", 0.8], ["precision_parts", 0.05]]},
+	"charred": {"name": "Charred", "hp": 60, "wander_speed": 16.0, "chase_speed": 38.0, "sight": 100.0, "damage": 18, "xp": 14, "ai": "walker", "burns": true, "immune": ["burn"],
+		"looks": {"skin": ["#3a3028", "#4a3a2a", "#2a2420"], "shirt": ["#2a2020", "#3a2a1a", "#1a1a1a"], "pants": ["#1a1a1a", "#2a2018"], "bodies": [0, 2, 6], "extra": "embers"},
+		"drops": [["coal", 0.5], ["magnesium", 0.04]]},
+	"stalker": {"name": "Stalker", "hp": 80, "wander_speed": 12.0, "chase_speed": 62.0, "sight": 72.0, "damage": 28, "xp": 22, "ai": "stalker", "telegraph": 0.45,
+		"looks": {"skin": ["#5a6070", "#4a5060", "#6a6878"], "shirt": ["#1a1a22", "#22222a"], "pants": ["#1a1a22"], "bodies": [3, 4, 1], "scale": 1.05},
+		"drops": [["cloth", 0.5], ["precision_parts", 0.03]]},
+	"riot": {"name": "Riot", "hp": 140, "wander_speed": 12.0, "chase_speed": 30.0, "sight": 96.0, "damage": 20, "xp": 24, "ai": "walker", "armor": 0.15, "armor_front": 0.65,
+		"looks": {"skin": ["#8fa58a", "#9aa880"], "shirt": ["#1a2a4a", "#22304a", "#2a2a3a"], "pants": ["#1a2238", "#222a3a"], "bodies": [0, 2, 5], "extra": "riot"},
+		"drops": [["ammo_9mm", 0.4], ["buckshot", 0.2], ["duct_tape", 0.1]]},
+	"soldier": {"name": "Soldier", "hp": 150, "wander_speed": 14.0, "chase_speed": 36.0, "sight": 112.0, "damage": 24, "xp": 26, "ai": "walker", "armor": 0.35,
+		"looks": {"skin": ["#8fa58a", "#7f9a7a"], "shirt": ["#4a5a3a", "#5a5a40", "#3a4a2a"], "pants": ["#3a4430", "#4a4a38"], "bodies": [0, 4, 5, 2], "extra": "soldier"},
+		"drops": [["ammo_556", 0.45], ["ammo_9mm", 0.25], ["med_kit", 0.05], ["gunpowder", 0.2]]},
+	"screamer": {"name": "Screamer", "hp": 40, "wander_speed": 16.0, "chase_speed": 34.0, "sight": 160.0, "damage": 8, "xp": 18, "ai": "screamer",
+		"looks": {"skin": ["#d8d8c8", "#c8c8b8", "#e0e0d0"], "shirt": ["#a8c8d8", "#c8d8e0", "#e0e0e0"], "pants": ["#a8c8d8", "#d0d0d0"], "bodies": [2, 6, 1], "extra": "mouth"},
+		"drops": [["cloth", 0.5], ["bandage", 0.1]]},
+	"crawler": {"name": "Crawler", "hp": 50, "wander_speed": 8.0, "chase_speed": 26.0, "sight": 72.0, "damage": 14, "xp": 10, "ai": "crawler", "grab": 1.3,
+		"looks": {"skin": ["#8fa58a", "#9aa880"], "shirt": ["#6a4a8a", "#b05a2a", "#4a4a5a"], "pants": ["#3a4a6a", "#4a4a40"], "bodies": [0, 1, 2, 3], "lying": true},
+		"drops": [["cloth", 0.5], ["scrap", 0.3]]},
 }
 
 var mine_bands := [
 	{"floors": [1, 4], "name": "Upper Abandoned Mine", "palette": "upper", "rock_density": 0.34,
 		"ores": [{"id": "copper_ore", "w": 10}, {"id": "coal", "w": 4}], "ore_chance": 0.10, "geode_chance": 0.035, "geode": "geode",
-		"gem_chance": 0.012, "gems": ["quartz", "quartz", "amethyst", "topaz"], "enemies": [{"id": "shambler", "w": 1}], "enemy_count": [0, 2]},
+		"gem_chance": 0.012, "gems": ["quartz", "quartz", "amethyst", "topaz"], "enemies": [{"id": "shambler", "w": 6}, {"id": "crawler", "w": 1}], "enemy_count": [0, 2]},
 	{"floors": [5, 10], "name": "Collapsed Lower Levels", "palette": "lower", "rock_density": 0.38,
 		"ores": [{"id": "copper_ore", "w": 8}, {"id": "iron_ore", "w": 5}, {"id": "coal", "w": 5}], "ore_chance": 0.13, "geode_chance": 0.04, "geode": "deep_geode",
-		"gem_chance": 0.018, "gems": ["quartz", "amethyst", "topaz", "emerald"], "enemies": [{"id": "shambler", "w": 3}, {"id": "lurcher", "w": 1}], "enemy_count": [2, 4]},
+		"gem_chance": 0.018, "gems": ["quartz", "amethyst", "topaz", "emerald"], "enemies": [{"id": "shambler", "w": 6}, {"id": "lurcher", "w": 2}, {"id": "runner", "w": 2}, {"id": "crawler", "w": 2}, {"id": "spitter", "w": 1}], "enemy_count": [2, 4]},
+	{"floors": [11, 15], "name": "Flooded Works", "palette": "lower", "rock_density": 0.4,
+		"ores": [{"id": "iron_ore", "w": 8}, {"id": "coal", "w": 6}, {"id": "silver_ore", "w": 3}, {"id": "saltpeter", "w": 3}], "ore_chance": 0.14, "geode_chance": 0.045, "geode": "deep_geode",
+		"gem_chance": 0.02, "gems": ["amethyst", "topaz", "emerald"], "enemies": [{"id": "lurcher", "w": 3}, {"id": "runner", "w": 3}, {"id": "spitter", "w": 2}, {"id": "charred", "w": 2}, {"id": "screamer", "w": 1}, {"id": "brute", "w": 1}, {"id": "stalker", "w": 1}], "enemy_count": [3, 5]},
+	{"floors": [16, 20], "name": "The Deep", "palette": "lower", "rock_density": 0.42,
+		"ores": [{"id": "iron_ore", "w": 6}, {"id": "silver_ore", "w": 5}, {"id": "gold_ore", "w": 2}, {"id": "coal", "w": 5}, {"id": "saltpeter", "w": 3}], "ore_chance": 0.15, "geode_chance": 0.05, "geode": "deep_geode",
+		"gem_chance": 0.025, "gems": ["topaz", "emerald", "emerald"], "enemies": [{"id": "runner", "w": 2}, {"id": "brute", "w": 2}, {"id": "stalker", "w": 2}, {"id": "riot", "w": 2}, {"id": "soldier", "w": 2}, {"id": "charred", "w": 2}, {"id": "spitter_brute", "w": 1}], "enemy_count": [3, 6]},
 ]
 
 var regions := [
@@ -586,9 +801,9 @@ var regions := [
 	{"id": "quarry", "name": "Quarry", "gx": 6, "gy": 0, "gw": 3, "gh": 1, "lock": "Past the rockslide on the ridge."},
 ]
 
-var location_names := {"house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
+var location_names := {"clinic": "Brightwater Clinic", "workshop": "Mercer Workshop", "guild": "Combat Guild", "greenhouse": "Your Greenhouse", "ranch": "Reyes Ranch", "coop": "Your Coop", "house": "Your House", "town": "Brightwater", "store": "Brennan's General", "forge": "Varga Forge", "mountain": "Ridge Path", "mine": "Old Mine"}
 
-var look_options := {
+var look_options_full := {
 	"skin": ["#f6d3b3", "#e8b48f", "#c98e66", "#a26a45", "#7a4a2c", "#553220"],
 	"hair": ["#2b1d16", "#5a3a22", "#8b5a2b", "#c98b3c", "#e7c66b", "#d8d8d8", "#b5442f", "#6a3d9a", "#2e86c1", "#3f8f4f"],
 	"hair_style": ["Short", "Long", "Ponytail", "Curly", "Buzz", "Spiky", "Bob"],
@@ -600,8 +815,15 @@ var look_options := {
 	"acc": ["None", "Cap", "Beanie", "Glasses", "Bandana", "Headband", "Scarf"],
 	"acc_color": ["#b5442f", "#3f6fb5", "#3f8f4f", "#d9a43a", "#e4e4e4", "#222222", "#c46a9a"],
 }
-var look_labels := {"skin": "Skin tone", "hair": "Hair color", "hair_style": "Hair style", "eyes": "Eye color", "face": "Face", "shirt_style": "Clothing", "shirt": "Clothing color", "pants": "Pants color", "acc": "Accessory", "acc_color": "Accessory color"}
-var default_look := {"skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f8f4f", "pants": "#333a44", "acc": "None", "acc_color": "#b5442f"}
+## The atlas farmer can be recoloured: skin, hair, shirt and overalls.
+var look_options := {
+	"skin": look_options_full.skin,
+	"hair": look_options_full.hair,
+	"shirt": look_options_full.shirt,
+	"pants": look_options_full.pants,
+}
+var look_labels := {"skin": "Skin tone", "hair": "Hair color", "hair_style": "Hair style", "eyes": "Eye color", "face": "Face", "shirt_style": "Clothing", "shirt": "Clothing color", "pants": "Overalls color", "acc": "Accessory", "acc_color": "Accessory color"}
+var default_look := {"sprite": "player", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#b5442f", "pants": "#3f6fb5", "acc": "None", "acc_color": "#b5442f"}
 
 
 func _init() -> void:
@@ -625,8 +847,6 @@ func _init() -> void:
 
 	for t in tool_defs:
 		def_item(t, {"name": tool_defs[t].name, "cat": "tool", "stack": 1, "tool": t, "desc": tool_defs[t].desc, "icon": {"s": "tool_" + t}})
-	def_item("club", {"name": "Splintered Club", "cat": "weapon", "stack": 1, "weapon": {"damage": 2, "knock": 1.0},
-		"desc": "A fence rail wrapped in tape. Damage 2, Knockback 1. Pushes the infected back.", "icon": {"s": "club"}})
 
 	for c in crops:
 		var cr: Dictionary = crops[c]
@@ -715,6 +935,18 @@ func _init() -> void:
 		var dd: Array = dishes[id]
 		def_item(id, {"name": dd[0], "cat": "cooked", "price": dd[1], "edible": {"hunger": dd[2], "thirst": dd[3], "energy": dd[4], "hp": dd[5]}, "drink": dd[6] == "cup", "desc": dd[8], "icon": {"s": dd[6], "c": dd[7]}})
 
+	# ---- animals and their products
+	def_item("hay", {"name": "Hay", "cat": "resource", "price": 10, "desc": "Dried grass. Put it in the coop's hopper to feed your animals.", "icon": {"s": "hay"}})
+	def_item("egg", {"name": "Egg", "cat": "animal", "price": 50, "edible": {"hunger": 6, "energy": 10, "hp": 1, "thirst": 0}, "desc": "A fresh egg. Better cooked.", "icon": {"s": "egg", "c": "#f4ecd8"}})
+	def_item("large_egg", {"name": "Large Egg", "cat": "animal", "price": 95, "edible": {"hunger": 10, "energy": 16, "hp": 2, "thirst": 0}, "desc": "From a happy, well-fed hen.", "icon": {"s": "egg", "c": "#e8d0a8", "big": true}})
+	def_item("rabbit_fur", {"name": "Rabbit Fur", "cat": "animal", "price": 140, "desc": "Soft and warm. Tan it on a Tanning Rack.", "icon": {"s": "fur", "c": "#c8c0b8"}})
+	def_item("lucky_paw", {"name": "Lucky Paw", "cat": "animal", "price": 500, "desc": "A rabbit's shed toe-tuft, said to bring luck. Only very happy rabbits leave one.", "icon": {"s": "fur", "c": "#f0e0c0"}})
+	def_item("tanned_pelt", {"name": "Tanned Pelt", "cat": "artisan", "price": 420, "desc": "Supple and warm. Valuable in winter.", "icon": {"s": "fur", "c": "#a8703a"}})
+	def_item("coop_kit", {"name": "Coop Kit", "cat": "placeable", "price": 0, "building": "coop", "stack": 1, "desc": "Hold it on your farm to see where the coop will go (6 by 4 tiles), then use it to build.", "icon": {"s": "kit"}})
+	def_item("tanning_rack", {"name": "Tanning Rack", "cat": "machine", "price": 90, "place": "tanning_rack", "desc": "Turns 2 rabbit fur into a tanned pelt overnight.", "icon": {"s": "obj", "obj": "tanning_rack"}})
+	for dd in [["fried_egg", "Fried Egg", 70, 14, 0, 25, 4, "dish", "#f8e0a0", "Sunny side up."], ["breakfast_skillet", "Breakfast Skillet", 160, 35, 0, 50, 12, "dish", "#e8b860", "Eggs and crispy potatoes. Gets you through a mine trip."], ["garden_omelette", "Marisol's Garden Omelette", 240, 40, 5, 70, 25, "dish", "#f0d070", "Marisol's recipe: one big egg and whatever's fresh."]]:
+		def_item(dd[0], {"name": dd[1], "cat": "cooked", "price": dd[2], "edible": {"hunger": dd[3], "thirst": dd[4], "energy": dd[5], "hp": dd[6]}, "desc": dd[9], "icon": {"s": dd[7], "c": dd[8]}})
+
 	# ---- crafted placeables (icons are drawn from the object art)
 	var placeables := {
 		"wood_gate": ["Wood Gate", "defense", 6, "Opens and closes. The infected can't work latches."],
@@ -735,6 +967,7 @@ func _init() -> void:
 		"pressure_sprinkler": ["Pressure Sprinkler", "machine", 200, "Waters the 8 tiles around it every morning."],
 		"drip_array": ["Drip Array", "machine", 500, "Waters a 5x5 square around it every morning."],
 		"ammo_bench": ["Ammo Bench", "machine", 60, "A workbench for ammunition and ranged weapons."],
+		"armory_bench": ["Armory Bench", "machine", 300, "Crafts and upgrades weapons and gear, and makes upgrade kits."],
 		"recycler": ["Recycler", "machine", 40, "Turns junk into scrap and fiber."],
 		"charcoal_kiln": ["Charcoal Kiln", "machine", 120, "Turns 10 wood into 1 coal."],
 		"brick_furnace": ["Brick Furnace", "machine", 150, "Smelts 5 ore and 1 coal into a bar."],
@@ -749,12 +982,6 @@ func _init() -> void:
 	items.fence.desc = "A simple fence. Keeps animals in and slows the infected down."
 	items.fence.icon = {"s": "obj", "obj": "fence"}
 
-	def_item("nail_rounds", {"name": "Nail Rounds", "cat": "ammo", "price": 1, "desc": "Clips of nails for a Nail Turret.", "icon": {"s": "nails"}})
-	def_item("buckshot", {"name": "Buckshot", "cat": "ammo", "price": 4, "desc": "Hand-packed shells for a Scrap Shotgun Turret.", "icon": {"s": "shells"}})
-	def_item("bolts", {"name": "Bolts", "cat": "ammo", "price": 2, "desc": "Crossbow bolts.", "icon": {"s": "bolts"}})
-	def_item("scrap_crossbow", {"name": "Scrap Crossbow", "cat": "weapon", "stack": 1,
-		"weapon": {"damage": 3, "knock": 0.6, "ranged": {"ammo": "bolts", "speed": 230.0, "range": 120.0}},
-		"desc": "Fires Bolts in the direction you face. Damage 3.", "icon": {"s": "crossbow"}})
 	def_item("bandage", {"name": "Bandage", "cat": "medical", "price": 10, "edible": {"hp": 20, "energy": 0, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Clean cloth strips. Restores 20 health.", "icon": {"s": "bandage"}})
 	def_item("med_kit", {"name": "Med Kit", "cat": "medical", "price": 60, "edible": {"hp": 60, "energy": 10, "hunger": 0, "thirst": 0}, "use_word": "Use", "desc": "Herbal salve, bandages and boiled water. Restores 60 health.", "icon": {"s": "medkit"}})
 	def_item("pipe_charge", {"name": "Pipe Charge", "cat": "defense", "price": 25, "place": "pipe_charge_lit", "bomb": true, "desc": "Place it and stand back. Breaks rocks and hurts the infected in a small radius.", "icon": {"s": "pipebomb"}})
@@ -771,9 +998,15 @@ func _init() -> void:
 		st.append({"id": c + "_seed", "price": crops[c].seed_price, "seasons": crops[c].seasons})
 	st.append_array([{"id": "water_bottle", "price": 15}, {"id": "canned_beans", "price": 45}, {"id": "bread_loaf", "price": 35},
 		{"id": "fence", "price": 12}, {"id": "torch_post", "price": 40},
+		{"id": "t_shirt", "price": 80}, {"id": "hoodie", "price": 140}, {"id": "jeans", "price": 200}, {"id": "sneakers", "price": 90},
+		{"id": "rain_boots", "price": 100}, {"id": "work_boots", "price": 180}, {"id": "beanie", "price": 70}, {"id": "baseball_cap", "price": 70},
 		{"service": "backpack", "name": "Large Backpack", "desc": "+12 inventory slots.", "price": 1500},
 		{"service": "house_repair", "name": "Farmhouse repairs", "desc": "", "price": 0}])
 	shops.general.stock = st
+	Arsenal.register(self)
+	Catalog.register(self)
+	Districts.register(self)
+	Contracts.register(self)
 
 
 func item(id: String) -> Dictionary:

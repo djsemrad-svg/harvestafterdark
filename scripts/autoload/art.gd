@@ -288,6 +288,9 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 	if t in ["torch_post", "furnace", "crystal"]: k += "|%d" % (frame % 4)
 	if t == "window": k += "|%d" % (1 if frame > 0 else 0)
 	k += obj_state_key(o, nb, frame)
+	var ov := obj_override(o, season)
+	if not ov.is_empty():
+		return ov
 	if not _obj.has(k):
 		var r := _draw_obj(o, season, frame, nb)
 		_obj[k] = {"tex": to_tex(r[0]), "ox": r[1], "oy": r[2]}
@@ -301,7 +304,11 @@ func rock_pal(p) -> Array:
 func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 	var t: String = o.type
 	var dd: Dictionary = Data.obj_defs.get(t, {})
-	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "oil_lantern"]:
+	if dd.get("generic", false) or t == "fruit_tree":
+		return _draw_generic(o, dd, season, frame)
+	if dd.get("district_art", false):
+		return DistrictArt.draw(self, o, season, frame)
+	if dd.get("barrier", false) or dd.get("turret", false) or dd.has("power") or dd.has("power_source") or dd.get("machine", false) or dd.has("sprinkler") or dd.has("bomb") or t in ["ammo_bench", "armory_bench", "oil_lantern"]:
 		return _draw_defense(o, season, frame, nb)
 	var v: int = int(o.get("v", 0))
 	var pal: Dictionary = PAL.get(season, PAL.spring)
@@ -512,6 +519,13 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			for i in 10:
 				P(x, 3 + i, 4 + i, "#6e5232"); P(x, 12 - i, 4 + i, "#6e5232")
 			return [outline(x, "#1e1410"), 0, -2]
+		"supply_crate":
+			var opened: bool = DistrictArt.searched(o)
+			R(x, 1, 5, 14, 10, "#4a5a3a"); R(x, 1, 5, 14, 1, "#6a7a4a"); R(x, 1, 9, 14, 1, "#3a4a2a")
+			R(x, 6, 7, 4, 4, "#e8e0c8"); R(x, 7, 7, 2, 4, "#c83a2a"); R(x, 6, 8, 4, 2, "#c83a2a")
+			if opened: R(x, 1, 3, 14, 2, "#3a4a2a")
+			else: R(x, 1, 4, 14, 1, "#2a3420")
+			return [outline(x, "#121410"), 0, -2]
 		"bench":
 			R(x, 0, 5, 16, 3, "#8a6a40"); R(x, 0, 9, 16, 3, "#9a7a50"); R(x, 1, 12, 2, 3, "#4a4a52"); R(x, 13, 12, 2, 3, "#4a4a52")
 			return [outline(x, "#1e1410"), 0, 0]
@@ -563,6 +577,30 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 				P(x, 5 + i, 9 + i, "#1e1e22")
 			if season != "winter":
 				R(x, 6, 5, 1, 2, pal.weed[1]); R(x, 7, 4, 1, 3, pal.weed[0]); R(x, 11, 7, 1, 2, pal.weed[1])
+			return [x, 0, 0]
+		"hay_hopper":
+			x = img(16, 24)
+			R(x, 2, 2, 12, 14, "#8a6a40"); R(x, 2, 2, 12, 1, "#a8865a"); R(x, 3, 3, 10, 6, "#e0c070")
+			for i in 5: P(x, 4 + i * 2, 4 + i % 2, "#c8a050")
+			R(x, 4, 16, 8, 6, "#6e5232"); R(x, 5, 17, 6, 3, "#e0c070")
+			return [outline(x, "#1e1410"), 0, -8]
+		"nest_box":
+			R(x, 1, 5, 14, 10, "#8a6a40"); R(x, 1, 5, 14, 1, "#a8865a"); R(x, 3, 8, 10, 5, "#e0c070")
+			for i in 4: P(x, 4 + i * 2, 8, "#c8a050")
+			return [outline(x, "#1e1410"), 0, -2]
+		"water_trough":
+			R(x, 1, 7, 14, 7, "#7a7a84"); R(x, 1, 7, 14, 1, "#9a9aa4"); R(x, 2, 8, 12, 3, "#5aa0d8"); P(x, 4, 8, "#c8e8f8")
+			return [outline(x, "#121214"), 0, 0]
+		"hay_bale":
+			R(x, 1, 4, 14, 11, "#e0c070"); R(x, 1, 4, 14, 2, "#f0d890"); R(x, 1, 13, 14, 2, "#c8a050")
+			R(x, 5, 4, 1, 11, "#a8803a"); R(x, 10, 4, 1, 11, "#a8803a")
+			for i in 6: P(x, 2 + i * 2, 8 + i % 3, "#c8a050")
+			return [outline(x, "#2a1e0a"), 0, -1]
+		"animal_product":
+			var ic := icon_image(o.get("item", "egg"), 0)
+			var small := ic.duplicate()
+			small.resize(12, 12, Image.INTERPOLATE_NEAREST)
+			x.blit_rect(small, Rect2i(0, 0, 12, 12), Vector2i(2, 3))
 			return [x, 0, 0]
 		"ladder_down":
 			R(x, 2, 2, 12, 12, "#0e0a08"); R(x, 4, 2, 2, 12, "#8a6a40"); R(x, 10, 2, 2, 12, "#8a6a40")
@@ -647,6 +685,348 @@ func get_crop(crop_id: String, stage: int) -> Dictionary:
 		_obj[k] = {"tex": to_tex(outline(x, "#16200e")), "ox": 0, "oy": -oy}
 	return _obj[k]
 
+
+# ================================================================ art overrides
+# Any PNG in res://art/ replaces the generated art for that thing (see tools/art_map.py).
+const ART_DIR := "res://art/"
+var _ov := {}
+
+func override(path: String) -> Texture2D:
+	if _ov.has(path):
+		return _ov[path]
+	var full := ART_DIR + path
+	var tex: Texture2D = null
+	if ResourceLoader.exists(full):
+		tex = load(full)
+	elif FileAccess.file_exists(full):
+		var im := Image.load_from_file(ProjectSettings.globalize_path(full))
+		if im != null: tex = ImageTexture.create_from_image(im)
+	_ov[path] = tex
+	return tex
+
+func has_override(path: String) -> bool:
+	return override(path) != null
+
+## Objects that have hand-made art. Returns {} when there is none.
+func obj_override(o: Dictionary, season: String) -> Dictionary:
+	var t: String = o.type
+	var d: Dictionary = Data.obj_defs.get(t, {})
+	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
+		return {}
+	var v: int = int(o.get("v", 0))
+	var name := ""
+	match t:
+		"tree": name = "trees/%s_%s.png" % ["tree" if v % 2 == 0 else "tree2", season]
+		"pine": name = "trees/pine.png"
+		"rock": name = "objects/rock.png" if v % 2 == 0 else "objects/rock2.png"
+		_: name = "objects/%s.png" % t
+	if t == "rock" and o.get("palette", "field") != "field":
+		return {}
+	var tex := override(name)
+	if tex == null:
+		return {}
+	var fw: int = int(o.get("w", 1))
+	var fh: int = int(o.get("h", 1))
+	return {"tex": tex, "ox": int((fw * 16 - tex.get_width()) / 2), "oy": fh * 16 - tex.get_height() + (1 if t in ["tree", "pine"] else 0)}
+
+## People and infected drawn from the sprite sheets. look.sprite names them.
+func char_override(look: Dictionary, dir: String, frame: int) -> Image:
+	var sp: String = look.get("sprite", "")
+	if sp == "":
+		return null
+	var base := "characters/" if not look.get("infected", false) else "enemies/"
+	var flip := false
+	var name := ""
+	if sp == "player":
+		var d := "right" if dir == "left" else dir
+		flip = dir == "left"
+		var f := frame % 4
+		if d == "down" or d == "up":
+			name = "player_%s_%d.png" % [d, 1 if f == 1 or f == 3 else 0]
+		else:
+			name = "player_%s_%d.png" % [d, f]
+	elif sp == "zv":
+		return infected_variant(look, dir, frame)
+	elif look.get("infected", false):
+		if dir == "down" or dir == "up":
+			name = sp + "_down.png"
+		else:
+			name = "%s_right_%d.png" % [sp, 1 if frame % 4 >= 2 else 0]
+			flip = dir == "left"
+	else:
+		# directional sprites when the sheet has them, else one front view
+		var dname := "%s_%s.png" % [sp, dir]
+		if dir == "down" and (frame == 1 or frame == 3) and has_override(base + sp + "_down_1.png"):
+			dname = sp + "_down_1.png"
+		if has_override(base + dname):
+			name = dname
+		elif dir == "left" and has_override(base + sp + "_right.png"):
+			name = sp + "_right.png"
+			flip = true
+		elif has_override(base + sp + "_down.png"):
+			name = sp + "_down.png"
+		else:
+			name = sp + ".png"
+			flip = dir == "left"
+	var tex := override(base + name)
+	if tex == null:
+		return null
+	var im := tex.get_image()
+	if im.is_compressed(): im.decompress()
+	im.convert(Image.FORMAT_RGBA8)
+	if sp == "player":
+		im = recolor_player(im, look)
+	if flip:
+		im.flip_x()
+	# a small bob on step frames for sprites without walk cycles
+	if sp != "player" and (frame == 1 or frame == 3) and not look.get("infected", false):
+		var bob := Image.create(im.get_width(), im.get_height(), false, Image.FORMAT_RGBA8)
+		bob.blit_rect(im, Rect2i(0, 0, im.get_width(), im.get_height() - 1), Vector2i(0, 1))
+		im = bob
+	return im
+
+## Objects from the item sheet: drawn from a simple shape and a colour.
+func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) -> Array:
+	var c = dd.get("color", "#8a7a6a")
+	var cd := shade(c, -0.3)
+	var cl := shade(c, 0.25)
+	var wood := "#8a6a40"; var woodd := "#5e4428"; var metal := "#7a7e88"; var metald := "#4a4e58"
+	if o.type == "fruit_tree":
+		var age := int(o.get("age", 0))
+		var grown: bool = age >= Balance.trees.grow_days
+		if not grown:
+			var x0 := img(16, 16)
+			var hgt: int = 6 + int(age / 4)
+			R(x0, 7, 16 - hgt, 2, hgt, woodd)
+			R(x0, 4, 16 - hgt - 3, 8, 4, "#5a9a3a" if season != "winter" else "#8a8a7a")
+			return [outline(x0, "#1a1410"), 0, -1]
+		var x := img(24, 32)
+		R(x, 10, 18, 4, 14, woodd); R(x, 11, 18, 1, 14, wood)
+		var leaf = {"spring": "#6ab84a", "summer": "#3a8a3a", "autumn": "#c8822a", "winter": "#9aa0a0"}.get(season, "#3a8a3a")
+		for k in [[3, 4, 18, 14], [1, 8, 22, 9], [6, 1, 12, 6]]:
+			R(x, k[0], k[1], k[2], k[3], leaf)
+		R(x, 5, 6, 6, 3, shade(leaf, 0.2))
+		var fr: String = o.get("fruit", "apple")
+		var fc: String = Data.items[fr].get("icon", {}).get("c", "#d03a2a")
+		for i in int(o.get("fruit_n", 0)) * 2:
+			P(x, 5 + (i * 5) % 14, 6 + (i * 3) % 10, fc); P(x, 6 + (i * 5) % 14, 6 + (i * 3) % 10, fc)
+		return [outline(x, "#121a10"), -4, -16]
+	var x := img(16, 16)
+	match dd.get("shape", "box"):
+		"bench":
+			R(x, 0, 6, 16, 3, wood); R(x, 0, 6, 16, 1, shade(wood, 0.2)); R(x, 1, 9, 2, 7, woodd); R(x, 13, 9, 2, 7, woodd)
+			R(x, 3, 11, 10, 1, woodd); R(x, 3, 2, 10, 4, c); R(x, 4, 3, 3, 2, cl); R(x, 9, 3, 3, 2, cd)
+		"anvil":
+			R(x, 2, 5, 12, 3, metal); R(x, 0, 5, 3, 2, metal); R(x, 5, 8, 6, 3, metald); R(x, 3, 11, 10, 4, woodd); R(x, 3, 5, 12, 1, "#a0a4ac")
+		"barrel":
+			R(x, 3, 2, 10, 13, c); R(x, 3, 4, 10, 1, metald); R(x, 3, 11, 10, 1, metald); R(x, 4, 2, 8, 2, cd)
+		"fire":
+			R(x, 2, 11, 12, 3, "#6a6a6a"); R(x, 4, 10, 8, 2, woodd)
+			R(x, 5, 5 + frame % 2, 6, 5, "#f08a30"); R(x, 6, 3 + frame % 2, 4, 4, "#f8c040"); P(x, 8, 2, "#fff0a0")
+		"hive":
+			R(x, 3, 3, 10, 12, "#e8d080"); R(x, 3, 6, 10, 1, "#c8a050"); R(x, 3, 10, 10, 1, "#c8a050"); R(x, 2, 2, 12, 2, wood); R(x, 7, 12, 2, 2, "#3a2a1a")
+			if o.get("ready", "") != "": P(x, 12, 1, "#f0c030")
+		"log":
+			R(x, 1, 8, 14, 6, woodd); R(x, 1, 8, 14, 1, wood); R(x, 1, 8, 3, 6, "#c8a070")
+			R(x, 5, 5, 3, 3, "#d8c8b0"); R(x, 10, 6, 3, 2, "#d8c8b0")
+		"well":
+			R(x, 2, 7, 12, 8, "#8a8a8a"); R(x, 2, 7, 12, 1, "#a8a8a8"); R(x, 4, 9, 8, 3, "#3a5a8a"); R(x, 2, 1, 2, 7, wood); R(x, 12, 1, 2, 7, wood); R(x, 1, 0, 14, 2, "#8a3a2a")
+		"scarecrow":
+			R(x, 7, 4, 2, 12, wood); R(x, 2, 6, 12, 2, wood); R(x, 5, 1, 6, 5, "#e8d080"); R(x, 4, 0, 8, 2, "#6a4a2a"); R(x, 5, 7, 6, 5, c)
+			if dd.get("alarm", false): P(x, 3, 9, "#a8a8b0"); P(x, 12, 9, "#a8a8b0")
+		"frame":
+			R(x, 1, 3, 14, 12, woodd); R(x, 2, 4, 12, 10, "#5a3a22"); R(x, 2, 4, 12, 1, wood)
+			if o.type == "cold_frame": R(x, 2, 4, 12, 4, Color(0.7, 0.9, 1.0, 0.6))
+		"pot":
+			R(x, 4, 7, 8, 7, c); R(x, 3, 6, 10, 2, cd)
+			if o.type == "crab_pot":
+				R(x, 3, 6, 10, 8, "#5a5040")
+				for i in 4:
+					R(x, 4 + i * 2, 7, 1, 6, "#8a8070")
+			if o.get("catch", "") != "": P(x, 8, 4, "#e85a3a")
+		"wall":
+			var broken: bool = o.get("broken", false)
+			var hpf: float = float(o.get("hp", dd.get("max_hp", 1))) / float(dd.get("max_hp", 1))
+			var wc := "#9a9a9a" if o.type == "concrete_wall" else ("#6a6e78" if o.type == "metal_gate" else wood)
+			if broken: R(x, 2, 11, 12, 4, shade(wc, -0.3))
+			elif o.type == "metal_gate" and o.get("open", false): R(x, 0, 6, 3, 10, wc)
+			else:
+				R(x, 0, 3, 16, 12, wc); R(x, 0, 3, 16, 1, shade(wc, 0.2))
+				if o.type == "metal_gate":
+					for i in 4:
+						R(x, 1 + i * 4, 4, 1, 10, metald)
+				if o.type == "spiked_barricade":
+					for i in 5:
+						P(x, 1 + i * 3, 2, "#c8c8d0")
+				if hpf < 0.6: P(x, 5, 7, "#2a2a2a"); P(x, 6, 8, "#2a2a2a")
+				if hpf < 0.3: P(x, 10, 10, "#2a2a2a"); P(x, 11, 9, "#2a2a2a")
+		"trap":
+			match o.type:
+				"bear_trap":
+					R(x, 3, 10, 10, 3, metal)
+					for i in 5:
+						P(x, 3 + i * 2, 9, "#c8c8d0")
+				"landmine", "nail_mine": R(x, 5, 10, 6, 3, "#4a5030"); P(x, 8, 9, "#c83a2a")
+				"punji_pit":
+					R(x, 2, 8, 12, 6, "#3a2a1a")
+					for i in 5:
+						P(x, 3 + i * 2, 9, "#c8a070")
+				"tripwire_alarm": R(x, 0, 11, 16, 1, "#c8c8c0"); R(x, 2, 8, 3, 3, "#a8a8b0"); R(x, 11, 8, 3, 3, "#a8a8b0")
+				_: R(x, 2, 11, 12, 3, woodd); for i in 6: P(x, 2 + i * 2, 10, "#c8c8d0")
+		"turret":
+			R(x, 4, 9, 8, 6, metald); R(x, 3, 5, 10, 5, c); R(x, 12, 6, 4, 2, metal); R(x, 4, 5, 2, 2, cl)
+			if dd.get("flame", false): P(x, 15, 6, "#f08a30")
+		"turbine":
+			R(x, 7, 6, 2, 10, metal); R(x, 6, 4, 4, 3, metald)
+			var a := frame % 2
+			R(x, 2 if a == 0 else 7, 5 if a == 0 else 0, 12 if a == 0 else 2, 2 if a == 0 else 11, "#e8e8e8")
+		"chest":
+			R(x, 1, 5, 14, 10, c); R(x, 1, 5, 14, 3, cl); R(x, 7, 8, 2, 3, "#d8b040"); R(x, 1, 9, 14, 1, cd)
+		"path":
+			var pc = {"brick_path": "#a85a3a", "gravel_path": "#9a948a", "wood_floor": "#a8804a"}.get(o.type, "#8a8a8a")
+			R(x, 0, 0, 16, 16, pc)
+			for i in 4: R(x, 0, i * 4, 16, 1, shade(pc, -0.2))
+			return [x, 0, 0]
+		"lamp":
+			R(x, 7, 4, 2, 12, metald); R(x, 5, 1, 6, 4, "#e8e0a0" if o.get("powered", false) else "#8a8a7a")
+		"table":
+			R(x, 1, 6, 14, 3, wood); R(x, 2, 9, 2, 6, woodd); R(x, 12, 9, 2, 6, woodd)
+		"shelf":
+			R(x, 2, 1, 12, 14, woodd); for i in 3: R(x, 3, 3 + i * 4, 10, 2, ["#c83a2a", "#3a6ac8", "#d8b040"][i])
+		"gnome":
+			R(x, 6, 8, 4, 6, "#3a6ac8"); R(x, 6, 5, 4, 3, "#f0c8a0"); R(x, 6, 1, 4, 4, "#d02a2a"); R(x, 7, 7, 2, 2, "#f0f0f0")
+		"sign":
+			R(x, 7, 8, 2, 8, woodd); R(x, 2, 2, 12, 7, wood); R(x, 4, 4, 8, 1, woodd); R(x, 4, 6, 6, 1, woodd)
+		_:
+			R(x, 2, 4, 12, 11, c); R(x, 2, 4, 12, 2, cl); R(x, 3, 8, 10, 1, cd); R(x, 6, 10, 4, 3, cd)
+			if o.get("job") != null and frame % 2 == 0: P(x, 12, 5, "#f8e080")
+	return [outline(x, "#1a1410"), 0, -2]
+
+## An infected built from one of the atlas bodies, recoloured and dressed for its type.
+func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
+	var b: int = int(look.get("body", 0))
+	var name := ""
+	var flip := false
+	if look.get("lying", false):
+		name = "zv_lying_%d.png" % (b % 4)
+		flip = dir == "right"
+	elif dir == "down" or dir == "up":
+		name = "zv%d_down.png" % b
+	else:
+		name = "zv%d_right_%d.png" % [b, 1 if frame % 4 >= 2 else 0]
+		flip = dir == "left"
+	var tex := override("enemies/" + name)
+	if tex == null:
+		return null
+	var im := tex.get_image()
+	if im.is_compressed(): im.decompress()
+	im.convert(Image.FORMAT_RGBA8)
+	im = recolor_infected(im, look)
+	if flip:
+		im.flip_x()
+	var sc: float = float(look.get("scale", 1.0))
+	if abs(sc - 1.0) > 0.01:
+		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	return im
+
+func recolor_infected(src: Image, look: Dictionary) -> Image:
+	var im := src.duplicate()
+	var W = im.get_width()
+	var H = im.get_height()
+	var lying: bool = look.get("lying", false)
+	var skin := Color(look.get("skin", "#8fa58a"))
+	var shirt := Color(look.get("shirt", "#6a6a7a"))
+	var pants := Color(look.get("pants", "#4a4a40"))
+	var extra: String = look.get("extra", "")
+	var top = H
+	var head_l = W
+	var head_r := 0
+	for y in H:
+		for x in W:
+			var c: Color = im.get_pixel(x, y)
+			if c.a < 0.5: continue
+			if y < top: top = y
+			var h: float = c.h * 360.0
+			var head: bool = (x > W * 0.62) if lying else (y < H * 0.4)
+			var legs: bool = (x < W * 0.38) if lying else (y > H * 0.62)
+			var part := ""
+			if h >= 30 and h <= 115 and c.s > 0.15 and c.v > 0.25:
+				part = "skin"
+			elif not head and h >= 185 and h <= 265 and c.s > 0.12:
+				part = "pants" if legs else "shirt"
+			elif not head and c.s > 0.22 and ((h > 265 and h < 345) or (h >= 12 and h < 30)):
+				part = "shirt"
+			if part == "": continue
+			var t: Color = skin if part == "skin" else (shirt if part == "shirt" else pants)
+			var ref_v: float = 0.55 if part == "skin" else (0.42 if part == "shirt" else 0.3)
+			im.set_pixel(x, y, Color.from_hsv(t.h, clampf(t.s * (0.6 + c.s), 0.0, 1.0), clampf(c.v * t.v / ref_v, 0.0, 1.0), c.a))
+			if head and not lying:
+				head_l = min(head_l, x)
+				head_r = max(head_r, x)
+	if lying or extra == "":
+		return im
+	var hcx := int((head_l + head_r) / 2.0)
+	match extra:
+		"riot", "soldier":
+			var hc := Color("#1c1e26") if extra == "riot" else Color("#4a5630")
+			for y in range(top, min(top + 5, H)):
+				for x in range(head_l, head_r + 1):
+					if im.get_pixel(x, y).a > 0.5 or y == top + 4:
+						im.set_pixel(x, y, hc.lightened(0.15) if y == top else hc)
+			if extra == "riot":
+				for x in range(head_l + 1, head_r):
+					if im.get_pixel(x, min(top + 5, H - 1)).a > 0.5: im.set_pixel(x, min(top + 5, H - 1), Color("#7a9ab8"))
+			# vest over the chest
+			var vest := Color("#262c40") if extra == "riot" else Color("#3e4a2a")
+			for y in range(int(H * 0.42), int(H * 0.6)):
+				for x in W:
+					var c2: Color = im.get_pixel(x, y)
+					if c2.a > 0.5 and abs(x - hcx) <= 4 and c2.v > 0.18:
+						im.set_pixel(x, y, vest.lightened(0.1) if (x + y) % 5 == 0 else vest)
+		"embers":
+			for y in H:
+				for x in W:
+					if im.get_pixel(x, y).a > 0.5 and hash2(x, y, 9) < 0.07:
+						im.set_pixel(x, y, Color("#f08a30") if hash2(x, y, 3) < 0.6 else Color("#ffd060"))
+		"drool":
+			var my = top + 9
+			for k in 3:
+				if my + k < H: im.set_pixel(clampi(hcx, 0, W - 1), my + k, Color("#b8f040"))
+		"mouth":
+			var my2 = top + 8
+			for dy in 2:
+				for dx in [-1, 0]:
+					var xx := clampi(hcx + dx, 0, W - 1)
+					if my2 + dy < H: im.set_pixel(xx, my2 + dy, Color("#2a0606"))
+	return im
+
+## The atlas farmer wears a red shirt, blue overalls and brown hair. Swap those for the player's choices.
+func recolor_player(src: Image, look: Dictionary) -> Image:
+	var im := src.duplicate()
+	var targets := {"shirt": Color(look.get("shirt", "#b5442f")), "pants": Color(look.get("pants", "#3f6fb5")), "hair": Color(look.get("hair", "#5a3a22")), "skin": Color(look.get("skin", "#e8b48f"))}
+	var refs := {"shirt": Color("#a83a2c"), "pants": Color("#3a5aa8"), "hair": Color("#5a3a22"), "skin": Color("#e0a878")}
+	for y in im.get_height():
+		for x in im.get_width():
+			var c: Color = im.get_pixel(x, y)
+			if c.a < 0.5: continue
+			var h: float = c.h * 360.0
+			var head: bool = y < im.get_height() * 0.42
+			var part := ""
+			if head:
+				# the head: dark warm pixels are hair, light warm pixels are skin
+				if (h <= 45 or h > 330) and c.s > 0.2:
+					part = "hair" if c.v < 0.55 else "skin"
+			else:
+				if (h < 14 or h > 335) and c.s > 0.4 and c.v > 0.3: part = "shirt"
+				elif h > 195 and h < 255 and c.s > 0.22: part = "pants"
+				elif h >= 14 and h <= 45 and c.s > 0.2 and c.v >= 0.6: part = "skin"
+			if part == "": continue
+			var t: Color = targets[part]
+			var r: Color = refs[part]
+			var nv: float = clampf(c.v * (t.v / maxf(r.v, 0.05)), 0.0, 1.0)
+			im.set_pixel(x, y, Color.from_hsv(t.h, clampf(t.s * (c.s / maxf(r.s, 0.05)), 0.0, 1.0), nv, c.a))
+	return im
+
 # ---------------------------------------------------------------- characters (16x32, Stardew-like proportions)
 # Feet sit on row 31. The world draws a character at pos - (8, 31).
 const CHAR_W := 16
@@ -657,21 +1037,40 @@ func look_key(l: Dictionary) -> String:
 	for k in ["skin", "hair", "hair_style", "eyes", "face", "shirt_style", "shirt", "pants", "acc", "acc_color"]:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
+	parts.append(str(l.get("sprite", "")))
+	for k in ["body", "extra", "scale", "lying"]:
+		if l.has(k): parts.append(str(l[k]))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int) -> Image:
+	var ovr := char_override(look, dir, frame)
+	if ovr != null:
+		return ovr
+	var im: Image
 	if dir == "right":
-		var im := _draw_character(look, "left", frame)
+		im = _draw_character(look, "left", frame)
 		im.flip_x()
-		return im
-	return _draw_character(look, dir, frame)
+	else:
+		im = _draw_character(look, dir, frame)
+	# knocked-down infected and crawlers lie on the ground
+	if look.get("lying", false):
+		var used := im.get_used_rect()
+		if used.size.x > 0:
+			im = im.get_region(used)
+		im.rotate_90(CLOCKWISE if dir != "right" else COUNTERCLOCKWISE)
+	var sc: float = float(look.get("scale", 1.0))
+	if abs(sc - 1.0) > 0.01:
+		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	return im
 
 func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
 	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return char_image(look, dir, frame))
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
 func get_portrait(look: Dictionary) -> ImageTexture:
-	return cached("pt|" + look_key(look), func(): return char_image(look, "down", 0).get_region(Rect2i(0, 1, 16, 18)))
+	return cached("pt|" + look_key(look), func():
+		var im := char_image(look, "down", 0)
+		return im.get_region(Rect2i(0, 0, im.get_width(), 18 if im.get_width() > 16 else 18)) if im.get_width() > 16 else im.get_region(Rect2i(0, 1, 16, 18)))
 
 func _draw_character(L: Dictionary, dir: String, frame: int) -> Image:
 	var x := img(CHAR_W, CHAR_H)
@@ -916,9 +1315,20 @@ func get_icon(id: String, tier: int = 0) -> ImageTexture:
 func icon_image(id: String, tier: int) -> Image:
 	var x := img(16, 16)
 	var it: Dictionary = Data.items.get(id, {})
+	if tier == 0 and has_override("icons/%s.png" % id):
+		var oi: Image = override("icons/%s.png" % id).get_image()
+		if oi.is_compressed(): oi.decompress()
+		oi.convert(Image.FORMAT_RGBA8)
+		return oi
 	if it.has("icon") and it.icon.s == "obj":
 		return outline(obj_icon(it.icon.obj), "#1a1414")
-	if it.has("icon"):
+	if it.has("icon") and it.icon.s == "weapon":
+		IconGen.weapon(x, Data.weapons[it.icon.id])
+	elif it.has("icon") and it.icon.s == "gear":
+		IconGen.gear(x, Data.gear[it.icon.id])
+	elif it.has("icon") and (str(it.icon.s).begins_with("a_") or str(it.icon.s).begins_with("m_")):
+		IconGen.small(x, it.icon)
+	elif it.has("icon"):
 		_draw_icon(x, it.icon, tier)
 	else:
 		R(x, 4, 4, 8, 8, "#ff00ff")
@@ -1006,10 +1416,33 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 			for i in range(4, 13, 3): P(x, i, 6, "#a8703a")
 		"dish": R(x, 1, 10, 14, 3, "#e8e8e0"); R(x, 2, 12, 12, 1, "#b8b8b0"); R(x, 3, 6, 10, 5, c); P(x, 5, 7, shade(c, 0.4)); R(x, 9, 5, 3, 2, "#62b04a")
 		"bowl": R(x, 2, 8, 12, 5, "#a8825a"); R(x, 4, 13, 8, 1, "#8a6a40"); R(x, 3, 6, 10, 3, c); P(x, 5, 6, shade(c, 0.4)); P(x, 9, 7, "#62b04a"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
+		"hay":
+			R(x, 2, 5, 12, 9, "#e0c070"); R(x, 2, 5, 12, 2, "#f0d890"); R(x, 5, 5, 1, 9, "#a8803a"); R(x, 10, 5, 1, 9, "#a8803a")
+			for i in 4:
+				P(x, 3 + i * 3, 9, "#c8a050")
+		"egg":
+			var big: bool = ic.get("big", false)
+			var ew := 8 if big else 6
+			var eh := 10 if big else 8
+			var ex := 8 - ew / 2
+			var ey := 14 - eh
+			R(x, ex + 1, ey, ew - 2, eh, c); R(x, ex, ey + 2, ew, eh - 3, c); P(x, ex + 2, ey + 2, "#ffffff"); R(x, ex + 1, ey + eh - 1, ew - 2, 1, shade(c, -0.15))
+		"fur":
+			R(x, 3, 5, 10, 8, c); R(x, 2, 7, 12, 4, c); R(x, 4, 4, 8, 1, shade(c, 0.15))
+			for i in 5:
+				P(x, 3 + i * 2, 12 + i % 2, shade(c, -0.2)); P(x, 6, 7, shade(c, 0.25))
+		"kit": R(x, 2, 6, 12, 8, "#c8a070"); R(x, 2, 6, 12, 1, "#e0c090"); R(x, 2, 9, 12, 1, "#a8804a"); R(x, 5, 3, 6, 3, "#8a3a2a"); R(x, 4, 4, 8, 2, "#8a3a2a"); R(x, 7, 10, 2, 3, "#6a4a2e")
+		"machete": _diag(x, 3, 13, 10, 2, "#c8ccd4"); _diag(x, 4, 13, 9, 1, "#eef2f8"); R(x, 1, 12, 4, 3, "#5a3a22"); R(x, 2, 13, 2, 1, "#7a5a3a"); P(x, 13, 2, "#9aa0a8")
 		"cup": R(x, 3, 6, 9, 8, "#e8e0d0"); R(x, 4, 7, 7, 3, c); R(x, 12, 8, 2, 4, "#e8e0d0"); R(x, 3, 14, 9, 1, "#b8b0a0"); R(x, 6, 2, 1, 3, Color(1, 1, 1, 0.6)); R(x, 9, 3, 1, 2, Color(1, 1, 1, 0.6))
-		"pie": R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c); for i in 3: R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
+		"pie":
+			R(x, 1, 9, 14, 4, "#c89050"); R(x, 2, 8, 12, 1, "#e0b070"); R(x, 3, 9, 10, 2, c)
+			for i in 3:
+				R(x, 3 + i * 4, 9, 1, 2, "#e0b070"); R(x, 1, 13, 14, 1, "#e8e8e0")
 		"bar_snack": R(x, 2, 6, 12, 6, c); R(x, 2, 6, 12, 1, shade(c, 0.3)); P(x, 4, 8, "#e8d8a0"); P(x, 8, 9, "#8a2a4a"); P(x, 11, 8, "#e8d8a0"); R(x, 2, 12, 12, 1, shade(c, -0.3))
-		"nails": R(x, 2, 6, 12, 8, "#5a6a3e"); R(x, 2, 6, 12, 2, "#7a8a56"); for i in 5: R(x, 3 + i * 2, 2, 1, 5, "#a8a8b0"); P(x, 3 + i * 2, 2, "#d8d8e0")
+		"nails":
+			R(x, 2, 6, 12, 8, "#5a6a3e"); R(x, 2, 6, 12, 2, "#7a8a56")
+			for i in 5:
+				R(x, 3 + i * 2, 2, 1, 5, "#a8a8b0"); P(x, 3 + i * 2, 2, "#d8d8e0")
 		"shells":
 			for i in 3: R(x, 2 + i * 4, 4, 3, 8, "#c83a2a"); R(x, 2 + i * 4, 4, 3, 1, "#e85a4a"); R(x, 2 + i * 4, 12, 3, 2, "#d8b040")
 		"bolts":
@@ -1021,7 +1454,10 @@ func _draw_icon(x: Image, ic: Dictionary, tier: int) -> void:
 		"canister": R(x, 4, 4, 8, 11, "#c83a2a"); R(x, 4, 4, 8, 1, "#e85a4a"); R(x, 4, 8, 8, 2, "#e8c030"); R(x, 6, 2, 4, 2, "#5a5a62")
 		"sack": R(x, 3, 5, 10, 10, c); R(x, 4, 4, 8, 1, c); R(x, 5, 2, 6, 2, shade(c, -0.2)); R(x, 4, 8, 8, 1, shade(c, 0.2)); P(x, 6, 10, "#3f8a2f"); P(x, 9, 11, "#3f8a2f")
 		"tonic": R(x, 5, 6, 6, 9, "#8ad86a"); R(x, 6, 3, 4, 3, "#c8e8c0"); R(x, 6, 2, 4, 1, "#8a6a40"); P(x, 6, 7, "#e8ffe0")
-		"bait": R(x, 3, 6, 10, 8, "#8a6a40"); R(x, 3, 6, 10, 2, "#a8865a"); for i in 3: P(x, 5 + i * 3, 10, "#d87a8a"); P(x, 6 + i * 3, 11, "#d87a8a")
+		"bait":
+			R(x, 3, 6, 10, 8, "#8a6a40"); R(x, 3, 6, 10, 2, "#a8865a")
+			for i in 3:
+				P(x, 5 + i * 3, 10, "#d87a8a"); P(x, 6 + i * 3, 11, "#d87a8a")
 		"jar": R(x, 4, 4, 8, 11, "#c8e0e8"); R(x, 4, 7, 8, 8, c); R(x, 4, 2, 8, 2, "#8a6a40"); P(x, 5, 5, "#ffffff")
 		"chest": R(x, 2, 5, 12, 9, "#8a5a2e"); R(x, 2, 5, 12, 3, "#a06a36"); R(x, 4, 5, 1, 9, "#4a4a52"); R(x, 11, 5, 1, 9, "#4a4a52"); R(x, 7, 8, 2, 2, "#d8b040")
 		"fence": R(x, 2, 3, 3, 11, "#9a7a50"); R(x, 11, 3, 3, 11, "#9a7a50"); R(x, 1, 6, 14, 2, "#8a6a40"); R(x, 1, 10, 14, 2, "#8a6a40")
@@ -1044,6 +1480,9 @@ func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 		k += "|j%d|%d" % [0 if j == null else 1, frame % 4 if j != null else 0]
 		if o.type == "rain_collector": k += "|w%d" % int(o.get("water", 0))
 	if d.has("bomb"): k += "|%d" % (frame % 4)
+	if d.get("container", false) or o.type in ["supply_crate", "car_wreck"]: k += "|s%s" % DistrictArt.searched(o)
+	if o.type == "district_gate": k += "|%s|%s" % [o.get("region", ""), o.get("open", false)]
+	if o.type == "overpass_flare": k += "|%s" % (Game.event.get("id", "") == "overpass")
 	return k
 
 func damage_level(o: Dictionary) -> int:
@@ -1245,6 +1684,13 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 8, 4, 2, 2, "#c83a3a"); R(x, 10, 4, 2, 2, "#c83a3a"); R(x, 8, 4, 4, 1, "#d8b040")   # shells
 			R(x, 4, 12, 6, 3, "#5a6a3e"); P(x, 5, 13, "#d8c040")
 			return [outline(x, "#1a1410"), 0, -1]
+		"armory_bench":
+			R(x, 0, 6, 16, 3, "#6a5a4a"); R(x, 0, 6, 16, 1, "#8a7a64"); R(x, 1, 9, 2, 7, "#4a3a2a"); R(x, 13, 9, 2, 7, "#4a3a2a"); R(x, 3, 11, 10, 1, "#4a3a2a")
+			R(x, 2, 2, 2, 4, "#5a5a62"); R(x, 1, 2, 4, 1, "#7a7a84")          # grinder
+			_diag(x, 7, 5, 6, 1, "#b0b4bc"); R(x, 6, 4, 2, 2, "#5a3a22")       # a blade on the bench
+			R(x, 11, 2, 4, 1, "#3a3a40"); R(x, 11, 3, 1, 3, "#3a3a40")       # a pistol frame
+			R(x, 4, 12, 7, 3, "#7a3a2a"); P(x, 6, 13, "#d8c040")
+			return [outline(x, "#1a1410"), 0, -1]
 		"recycler":
 			R(x, 3, 3, 10, 12, "#4a7a5a"); R(x, 3, 3, 10, 2, "#5a9a6a"); R(x, 2, 2, 12, 2, "#3a5a44")
 			R(x, 6, 7, 4, 4, "#e8e8d8"); R(x, 7, 8, 2, 2, "#4a7a5a")
@@ -1283,6 +1729,13 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			if o.get("job") != null: P(x, 10 + f % 2, 1, "#9a9a9a"); P(x, 11, 0, "#bababa"); R(x, 5, 14, 6, 2, "#a8602a")
 			R(x, 3, 19, 2, 1, "#2a2a30"); R(x, 11, 19, 2, 1, "#2a2a30")
 			return [outline(x, "#121214"), 0, -4]
+		"tanning_rack":
+			x = img(16, 20)
+			R(x, 1, 2, 2, 18, "#6e5232"); R(x, 13, 2, 2, 18, "#6e5232"); R(x, 1, 2, 14, 2, "#8a6a40"); R(x, 1, 15, 14, 2, "#8a6a40")
+			var hide := "#a8703a" if o.get("job") != null else "#c8b8a0"
+			R(x, 4, 5, 8, 9, hide); R(x, 3, 6, 10, 7, hide); P(x, 5, 7, shade(hide, 0.2))
+			for i in 4: P(x, 3 + i * 3, 4, "#c8b080"); P(x, 3 + i * 3, 14, "#c8b080")
+			return [outline(x, "#1e1410"), 0, -4]
 		"preserves_jar":
 			x = img(16, 18)
 			R(x, 2, 15, 12, 3, "#8a6a40"); R(x, 3, 4, 10, 11, "#c8e0e8"); R(x, 4, 3, 8, 1, "#c8e0e8"); R(x, 4, 2, 8, 2, "#8a6a40")
@@ -1298,6 +1751,78 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 			R(x, 8, 1, 1, 2, "#c8b080"); P(x, 8, 0, "#f8e070" if f % 2 else "#f08a2a")
 			return [outline(x, "#121214"), 0, 0]
 	return [x, 0, 0]
+
+# ---------------------------------------------------------------- farm animals (16x16, feet at row 15)
+const ANIMAL_FACING := {"chicken_0": "left", "chicken_1": "right", "rabbit_0": "left"}
+
+func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> ImageTexture:
+	var nm := "%s_%d" % [type, color_i % 2]
+	if not has_override("animals/%s.png" % nm): nm = "%s_0" % type
+	if has_override("animals/%s.png" % nm):
+		return cached("anov|%s|%s|%d|%s" % [nm, dir, frame, adult], func():
+			var im: Image = override("animals/%s.png" % nm).get_image()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			var face: String = ANIMAL_FACING.get(nm, "left")
+			if (dir == "right" and face == "left") or (dir == "left" and face == "right"):
+				im.flip_x()
+			var out := img(16, 16)
+			var w := im.get_width()
+			var h := im.get_height()
+			if not adult:
+				im.resize(int(w * 0.7), int(h * 0.7), Image.INTERPOLATE_NEAREST)
+				w = im.get_width(); h = im.get_height()
+			out.blit_rect(im, Rect2i(0, 0, w, h), Vector2i((16 - w) / 2, 16 - h - (frame % 2)))
+			return out)
+	return cached("an|%s|%d|%s|%d|%s" % [type, color_i, dir, frame, adult], func(): return _draw_animal(type, color_i, dir, frame, adult))
+
+func _draw_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> Image:
+	var x := img(16, 16)
+	var cols: Array = Data.animals[type].colors
+	var c = cols[color_i % cols.size()]
+	var cd := shade(c, -0.18)
+	var cl := shade(c, 0.12)
+	var flip := dir == "right"
+	var side := dir == "left" or dir == "right"
+	var hop := frame % 2
+	match type:
+		"chicken":
+			if side:
+				R(x, 4, 7 - hop, 8, 6, c); R(x, 4, 7 - hop, 8, 1, cl); R(x, 10, 6 - hop, 3, 4, cd)        # body and tail
+				R(x, 2, 3 - hop, 4, 5, c); P(x, 3, 4 - hop, "#1a1a1a"); R(x, 0, 5 - hop, 2, 1, "#e8a030")   # head, eye, beak
+				R(x, 3, 2 - hop, 2, 1, "#d83a2a"); P(x, 3, 8 - hop, "#d83a2a")                              # comb, wattle
+				R(x, 6, 13, 1, 2, "#e8a030"); R(x, 9, 13 - hop, 1, 2, "#e8a030")
+				R(x, 6, 9 - hop, 4, 2, cd)
+			else:
+				R(x, 4, 6 - hop, 8, 7, c); R(x, 5, 6 - hop, 6, 1, cl); R(x, 5, 2 - hop, 6, 5, c)
+				R(x, 7, 1 - hop, 2, 1, "#d83a2a")
+				if dir == "down":
+					P(x, 6, 4 - hop, "#1a1a1a"); P(x, 9, 4 - hop, "#1a1a1a"); R(x, 7, 5 - hop, 2, 1, "#e8a030"); P(x, 7, 6 - hop, "#d83a2a")
+				R(x, 3, 8 - hop, 1, 3, cd); R(x, 12, 8 - hop, 1, 3, cd)
+				R(x, 6, 13, 1, 2, "#e8a030"); R(x, 9, 13, 1, 2, "#e8a030")
+		"rabbit":
+			if side:
+				R(x, 4, 8 - hop, 9, 5, c); R(x, 4, 8 - hop, 9, 1, cl); R(x, 12, 9 - hop, 2, 2, "#f4f0ec")    # body, tail
+				R(x, 1, 6 - hop, 5, 5, c); P(x, 2, 7 - hop, "#1a1a1a"); P(x, 0, 9 - hop, "#e88a9a")
+				R(x, 3, 1 - hop, 1, 5, c); R(x, 5, 1 - hop, 1, 5, cd); P(x, 3, 2 - hop, "#e8b0b8")
+				R(x, 5, 13, 2, 2, cd); R(x, 10, 13, 3, 2, cd)
+			else:
+				R(x, 4, 7 - hop, 8, 7, c); R(x, 5, 7 - hop, 6, 1, cl); R(x, 5, 3 - hop, 6, 5, c)
+				R(x, 5, 0 - hop + 1, 2, 4, c); R(x, 9, 0 - hop + 1, 2, 4, c); P(x, 6, 1, "#e8b0b8"); P(x, 9, 1, "#e8b0b8")
+				if dir == "down":
+					P(x, 6, 5 - hop, "#1a1a1a"); P(x, 9, 5 - hop, "#1a1a1a"); P(x, 7, 6 - hop, "#e88a9a"); P(x, 8, 6 - hop, "#e88a9a")
+				else:
+					R(x, 7, 12 - hop, 2, 2, "#f4f0ec")
+				R(x, 5, 13, 2, 2, cd); R(x, 9, 13, 2, 2, cd)
+	if not adult:
+		# babies are smaller: shrink toward the feet
+		var small := x.duplicate()
+		small.resize(11, 11, Image.INTERPOLATE_NEAREST)
+		x = img(16, 16)
+		x.blit_rect(small, Rect2i(0, 0, 11, 11), Vector2i(3, 5))
+	if flip:
+		x.flip_x()
+	return outline(x, "#22161a")
 
 ## Icon from an object's art: cropped and fitted into 16x16.
 func obj_icon(type: String) -> Image:
@@ -1320,13 +1845,24 @@ func obj_icon(type: String) -> Image:
 # Lived-in places look cared for; empty ones decay. Hostile settlements in later
 # phases reuse the same scale.
 func building_condition(s: Dictionary) -> int:
+	if s.kind == "greenhouse":
+		return 4 if Game.state.get("flags", {}).get("greenhouse", false) else 0
 	if s.kind == "farmhouse" and Game.state.has("flags"):
 		return int(Game.state.flags.get("house_condition", Data.buildings.farmhouse.condition))
 	return int(s.get("condition", Data.buildings[s.kind].get("condition", 2)))
 
-func get_building(s: Dictionary, season: String, night: bool) -> ImageTexture:
+func building_override(s: Dictionary) -> Texture2D:
 	var cond := building_condition(s)
-	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y]
+	var t := override("buildings/%s_%d.png" % [s.kind, cond])
+	if t == null: t = override("buildings/%s.png" % s.kind)
+	return t
+
+func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
+	var ovb := building_override(s)
+	if ovb != null:
+		return ovb
+	var cond := building_condition(s)
+	var k := "b|%s|%dx%d|%s|%d|%s|%d|%d,%d|%s" % [s.kind, s.w, s.h, season, s.door_x - s.x, night, cond, s.x, s.y, s.get("door_open", false)]
 	return cached(k, func(): return _draw_building(s, season, night, cond))
 
 func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Image:
@@ -1520,6 +2056,17 @@ func _draw_building(s: Dictionary, season: String, night: bool, cond: int) -> Im
 			if abs(gx - (dx + 8)) < 6: continue
 			R(x, gx, H - 4 - int(hash2(i, sd, 41) * 3), 1, 4, vine); P(x, gx + 1, H - 3, vineL)
 
+	# ---- the coop's little animal door (bottom row, second tile)
+	if s.kind == "coop":
+		var ax := 18
+		R(x, ax, H - 11, 10, 9, trim)
+		if s.get("door_open", false):
+			R(x, ax + 1, H - 10, 8, 8, "#1a1210")
+			for i in 4: R(x, ax - 1 + i, H - 2 - i / 2, 1, 2, "#a8865a")
+			R(x, ax - 2, H - 2, 12, 2, "#a8865a")
+		else:
+			R(x, ax + 1, H - 10, 8, 8, "#a8865a"); R(x, ax + 1, H - 7, 8, 1, "#8a6a40"); R(x, ax + 1, H - 4, 8, 1, "#8a6a40")
+			P(x, ax + 7, H - 6, "#4a4a52")
 	# ---- sign
 	if B.has("sign"):
 		var tw := text_px_width(B.sign) + 6

@@ -29,11 +29,13 @@ var paused := false
 var clock_acc := 0.0
 var mine_visit := 0
 var mountain_night_spawned := false
+var event := {}                # a running contract event (the Overpass waves), not saved
 var last_warp_tile := ""
 var pass_out_lost := 0
 var projectiles := []          # bolts and turret rounds in flight
 var arcs := []                 # arc pylon lightning, drawn briefly
 var bombs := []                # lit charges on the current map
+var fires := []                # burning ground, acid puddles and gas clouds
 var shake := 0.0
 var rng := RandomNumberGenerator.new()
 
@@ -126,8 +128,13 @@ func new_game_state(opts: Dictionary) -> Dictionary:
 		"forge": {"orders": [], "geodes_opened": 0},
 		"unlocked": {"homestead": true, "town": true, "mountain": true, "mine": true},
 		"weather": "sun", "weather_tomorrow": "sun",
-		"flags": {}, "stats": {"crops_harvested": 0, "fish_caught": 0, "items_shipped": 0, "earned": 0, "infected_defeated": 0, "collapses": 0},
+		"flags": {}, "buildings": [], "animals": [], "stats": {"crops_harvested": 0, "fish_caught": 0, "items_shipped": 0, "earned": 0, "infected_defeated": 0, "collapses": 0},
 		"factions": {}, "story": {"chapter": 0},
+		"equip": {"head": null, "chest": null, "legs": null, "feet": null},
+		"loot_seen": {},
+		"buffs": [],
+		"contracts": {"active": [], "done": [], "progress": {}, "found": {}},
+		"achievements": {"done": []},
 	}
 	for i in st.inv_size:
 		st.inventory.append(null)
@@ -160,6 +167,12 @@ func count_item(id: String) -> int:
 func matches(spec: String, id: String) -> bool:
 	if spec.begins_with("cat:"):
 		return Data.items.has(id) and Data.items[id].cat == spec.substr(4)
+	if spec.begins_with("grp:"):
+		var g := spec.substr(4)
+		if g == "produce": return Data.items.has(id) and (Data.items[id].cat == "crop" or Data.groups.fruit.has(id))
+		if g == "meat_fish": return Data.groups.meat_fish.has(id) or (Data.items.has(id) and Data.items[id].cat == "fish")
+		return Data.groups.get(g, []).has(id)
+	if spec == "milk" and id == "powdered_milk": return true   # the sheet: a substitute for Milk in recipes
 	return spec == id
 
 func count_match(spec: String) -> int:
@@ -202,11 +215,14 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 	if not Data.items.has(id):
 		push_warning("Unknown item " + id)
 		return qty
+	if id == "conspiracy_note" and not opts.has("list") and state.has("stats"):
+		state.stats.notes = int(state.stats.get("notes", 0)) + qty
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
+	var extra: Dictionary = opts.get("extra", {})
 	var left := qty
 	for s in list:
-		if left > 0 and s != null and s.id == id and int(s.qty) < mx:
+		if left > 0 and s != null and s.id == id and int(s.qty) < mx and extra.is_empty() and stack_extras(s).is_empty():
 			var a: int = min(mx - int(s.qty), left)
 			s.qty = int(s.qty) + a
 			left -= a
@@ -216,6 +232,7 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 		if list[i] == null:
 			var a: int = min(mx, left)
 			list[i] = {"id": id, "qty": a}
+			list[i].merge(extra.duplicate(true))
 			left -= a
 	var got := qty - left
 	if got > 0 and not opts.has("list"):
@@ -240,9 +257,12 @@ func remove_from_slot(i: int, qty: int) -> void:
 func sort_inventory() -> void:
 	var tb: int = Balance.inventory.toolbar_size
 	var merged := {}
+	var singles := []   # weapons and gear keep their durability, so they are not merged
 	for i in range(tb, inv().size()):
 		var s = inv()[i]
-		if s != null:
+		if s != null and not stack_extras(s).is_empty():
+			singles.append(s)
+		elif s != null:
 			merged[s.id] = merged.get(s.id, 0) + int(s.qty)
 	var order := Data.categories.keys()
 	var ids := merged.keys()
@@ -253,6 +273,13 @@ func sort_inventory() -> void:
 	for i in range(tb, inv().size()):
 		inv()[i] = null
 	var i := tb
+	singles.sort_custom(func(a, b):
+		var ca := order.find(Data.items[a.id].cat)
+		var cb := order.find(Data.items[b.id].cat)
+		return ca < cb if ca != cb else Data.items[a.id].name < Data.items[b.id].name)
+	for sg in singles:
+		inv()[i] = sg
+		i += 1
 	for id in ids:
 		var q: int = merged[id]
 		while q > 0 and i < inv().size():
@@ -271,11 +298,236 @@ func item_flags(id: String) -> Dictionary:
 		"giftable": not cat.get("protected", false) and it.cat != "placeable",
 	}
 
+# ================================================================ weapons and gear
+## Weapons and gear keep their own data on the stack: "dur" (durability left),
+## "mag" (rounds loaded) and "broken". Missing "dur" means brand new.
+var _gear_cache = null
+
+func stack_extras(s: Dictionary) -> Dictionary:
+	var e := {}
+	for kk in s:
+		if kk != "id" and kk != "qty":
+			e[kk] = s[kk]
+	return e
+
+func max_dur(id: String) -> int:
+	var it: Dictionary = Data.items.get(id, {})
+	if it.has("weapon") and it.weapon.mode != "consumable": return int(it.weapon.dur)
+	if it.has("gear") and not it.gear.cosmetic: return int(it.gear.dur)
+	return 0
+
+func stack_dur(s) -> int:
+	if s == null: return 0
+	var m := max_dur(s.id)
+	return int(s.get("dur", m)) if m > 0 else 0
+
+func is_broken(s) -> bool:
+	return s != null and bool(s.get("broken", false))
+
+func gear_changed() -> void:
+	_gear_cache = null
+
+## Totals from everything you are wearing. Broken gear gives nothing except its pockets.
+func gear_total() -> Dictionary:
+	if _gear_cache != null:
+		return _gear_cache
+	var t := {"armor": 0.0, "hp": 0.0, "move": 0.0, "regen": 0.0, "bite": 0.0, "noise": 0.0, "carry": 0, "fx": {}}
+	if state.is_empty():
+		return t
+	for slot in Arsenal.SLOTS:
+		var s = state.equip.get(slot)
+		if s == null or not Data.gear.has(s.id):
+			continue
+		var g: Dictionary = Data.gear[s.id]
+		t.carry += int(g.carry)
+		if is_broken(s) or g.cosmetic:
+			continue
+		for kk in ["armor", "hp", "move", "regen", "bite", "noise"]:
+			t[kk] += float(g[kk])
+		for kk in g.fx:
+			var v = g.fx[kk]
+			if v is bool: t.fx[kk] = true
+			elif (v is float or v is int) and t.fx.has(kk) and (t.fx[kk] is float or t.fx[kk] is int): t.fx[kk] += v
+			elif not t.fx.has(kk): t.fx[kk] = v
+	_gear_cache = t
+	return t
+
+func max_health() -> float:
+	return float(Balance.player.max_health) + gear_total().hp + (buff("max hp") if not state.is_empty() else 0.0)
+
+## Makes the pack the right size for your pockets. Returns false if items would be lost.
+func apply_carry(extra := -999) -> bool:
+	var carry: int = gear_total().carry if extra == -999 else extra
+	var target := int(state.inv_size) + carry
+	var list := inv()
+	if list.size() > target:
+		# move anything in the slots that would vanish into free slots earlier on
+		for i in range(target, list.size()):
+			if list[i] == null: continue
+			var moved := false
+			for j in range(Balance.inventory.toolbar_size, target):
+				if list[j] == null:
+					list[j] = list[i]
+					list[i] = null
+					moved = true
+					break
+			if not moved:
+				return false
+		while list.size() > target:
+			list.pop_back()
+	while list.size() < target:
+		list.append(null)
+	return true
+
+func equip_from(i: int) -> void:
+	var s = inv()[i]
+	if s == null or not Data.items[s.id].has("gear"):
+		return
+	var slot: String = Data.gear[s.id].slot
+	var old = state.equip.get(slot)
+	state.equip[slot] = s
+	inv()[i] = old
+	gear_changed()
+	if not apply_carry():
+		# the new item has fewer pockets and the pack is full: undo
+		inv()[i] = s
+		state.equip[slot] = old
+		gear_changed()
+		apply_carry()
+		toast("Your pack is too full to swap that. Make room first.", "", "warn")
+		return
+	state.health = min(float(state.health), max_health())
+	Sfx.play("pickup")
+
+func unequip(slot: String) -> bool:
+	var s = state.equip.get(slot)
+	if s == null:
+		return false
+	var carry_after: int = gear_total().carry - int(Data.gear[s.id].carry)
+	var target := int(state.inv_size) + carry_after
+	var free := -1
+	for j in min(target, inv().size()):
+		if inv()[j] == null:
+			free = j
+			break
+	if free < 0:
+		toast("No room in your pack.", "", "warn")
+		return false
+	inv()[free] = s
+	state.equip[slot] = null
+	gear_changed()
+	if not apply_carry():
+		inv()[free] = null
+		state.equip[slot] = s
+		gear_changed()
+		apply_carry()
+		toast("Empty some of those pockets before taking it off.", "", "warn")
+		return false
+	state.health = min(float(state.health), max_health())
+	Sfx.play("pickup")
+	return true
+
+func _remove_stack_ref(s: Dictionary) -> void:
+	var list := inv()
+	for i in list.size():
+		if list[i] != null and is_same(list[i], s):
+			list[i] = null
+			return
+	for slot in Arsenal.SLOTS:
+		if state.equip.get(slot) != null and is_same(state.equip[slot], s):
+			state.equip[slot] = null
+			gear_changed()
+			apply_carry()
+			return
+
+## Wears an item down. At zero it breaks: gone for good in Survivor Mode,
+## unusable until repaired in Adventure Mode.
+func wear_item(s: Dictionary, n := 1) -> void:
+	var m := max_dur(s.id)
+	if m <= 0 or is_broken(s):
+		return
+	var before := stack_dur(s)
+	var d := before - n
+	s.dur = max(d, 0)
+	var nm: String = Data.items[s.id].name
+	if d <= 0:
+		if is_survivor():
+			_remove_stack_ref(s)
+			toast("Your %s broke. It's gone." % nm, s.id, "bad")
+		else:
+			s.broken = true
+			toast("Your %s broke. Repair it at Varga Forge or Mercer Workshop." % nm, s.id, "bad")
+		Sfx.play("error")
+		if Data.items[s.id].has("gear"):
+			gear_changed()
+			state.health = min(float(state.health), max_health())
+	elif before > int(m * 0.15) and d <= int(m * 0.15):
+		toast("Your %s is close to breaking." % nm, s.id, "warn")
+
+## The closer to breaking, the more a repair costs. Broken items cost the most.
+func repair_cost(s: Dictionary) -> Dictionary:
+	var m := max_dur(s.id)
+	if m <= 0:
+		return {}
+	var broken := is_broken(s)
+	var wear: float = 1.0 if broken else 1.0 - float(stack_dur(s)) / float(m)
+	if wear <= 0.0:
+		return {}
+	var it: Dictionary = Data.items[s.id]
+	var price: float = float(it.price)
+	var R: Dictionary = Balance.repair
+	var gold := int(round(price * R.base_pct + price * R.wear_pct * pow(wear, R.curve)))
+	if broken: gold += int(price * R.broken_pct)
+	gold = max(gold, R.min_gold)
+	var rar: String = it.get("rarity", "Normal")
+	var mat: String = R.mats.get(rar, "scrap")
+	if it.has("gear") and rar == "Normal": mat = "cloth"
+	var units = int(ceil(wear * R.units_per_wear)) + (R.broken_units if broken else 0)
+	if mat in ["scrap", "cloth"]: units *= 3
+	return {"gold": gold, "mats": [[mat, units]], "wear": wear}
+
+func repair_item(s: Dictionary) -> String:
+	var c := repair_cost(s)
+	if c.is_empty(): return "Nothing to repair."
+	if int(state.money) < int(c.gold): return "You need %d gold." % int(c.gold)
+	for p in c.mats:
+		if count_item(p[0]) < int(p[1]): return "You need %d %s." % [int(p[1]), Data.items[p[0]].name]
+	state.money = int(state.money) - int(c.gold)
+	for p in c.mats:
+		remove_item(p[0], int(p[1]))
+	s.erase("dur")
+	s.erase("broken")
+	if Data.items[s.id].has("gear"): gear_changed()
+	Sfx.play("buy")
+	return ""
+
+## Every damaged weapon and piece of gear you have on you or are wearing.
+func repairable_items() -> Array:
+	var out := []
+	for s in inv():
+		if s != null and not repair_cost(s).is_empty(): out.append(s)
+	for slot in Arsenal.SLOTS:
+		var s = state.equip.get(slot)
+		if s != null and not repair_cost(s).is_empty(): out.append(s)
+	return out
+
+## Rounds in a weapon's magazine. New weapons come loaded.
+func mag_of(s: Dictionary) -> float:
+	if s.has("mag"):
+		return float(s.mag)
+	return float(Data.weapons[s.id].mag) if Data.weapons.has(s.id) else 0.0
+
 func tool_tier(id: String) -> int:
 	return int(state.tools[id].tier) if state.tools.has(id) else 0
 
 func tool_busy(id: String):
 	return state.tools[id].upgrading if state.tools.has(id) else null
+
+## "cat:fish" -> "any Fish", "grp:fruit" -> "any fruit", otherwise the item's name.
+func spec_name(spec: String) -> String:
+	if spec.begins_with("cat:"): return "any " + Data.categories[spec.substr(4)].label
+	if spec.begins_with("grp:"): return {"produce": "any fruit or vegetable", "meat_fish": "any meat or fish", "raw_meat": "any raw meat"}.get(spec.substr(4), "any " + spec.substr(4).replace("_", " "))
+	return Data.items[spec].name
 
 func item_display_name(id: String) -> String:
 	var it: Dictionary = Data.items[id]
@@ -360,6 +612,18 @@ func migrate_save(d: Dictionary) -> Dictionary:
 		if not d.npcs.has(n): d.npcs[n] = {"points": 0, "talked_day": 0, "gifted_day": 0, "met": false, "known": {}}
 	while d.inventory.size() < int(d.inv_size):
 		d.inventory.append(null)
+	# items renamed to match the item spreadsheet
+	for i in d.inventory.size():
+		var s0 = d.inventory[i]
+		if s0 != null and Catalog.RENAMES.has(s0.get("id", "")): s0.id = Catalog.RENAMES[s0.id]
+	for mid in d.maps_dyn:
+		var objs = d.maps_dyn[mid].get("objects", {})
+		if objs is Dictionary:
+			for kk in objs:
+				var ob: Dictionary = objs[kk]
+				if Catalog.RENAMES.has(ob.get("type", "")): ob.type = Catalog.RENAMES[ob.type]
+				for st2 in ob.get("items", []):
+					if st2 != null and Catalog.RENAMES.has(st2.get("id", "")): st2.id = Catalog.RENAMES[st2.id]
 	for i in d.inventory.size():
 		var s = d.inventory[i]
 		if s != null and not Data.items.has(s.get("id", "")):
@@ -466,28 +730,97 @@ func build_persistent_maps() -> void:
 		"store": MapBuilder.store(),
 		"forge": MapBuilder.forge(),
 		"mountain": MapBuilder.mountain(int(state.seed)),
+		"ranch": MapBuilder.ranch(),
+		"clinic": MapBuilder.room("clinic"),
+		"workshop": MapBuilder.room("workshop"),
+		"guild": MapBuilder.room("guild"),
 	}
+	var gh := {"kind": "greenhouse", "x": 26, "y": 3, "w": 7, "h": 6, "door_x": 29, "door_y": 8,
+		"warp": {"to": "greenhouse", "tx": 7, "ty": 9, "dir": "up", "requires": "greenhouse"},
+		"locked_text": "The old greenhouse. Most of the glass is cracked and vines have taken the benches. Jo at Mercer Workshop could restore it."}
+	maps.homestead.add_structure(gh)
+	maps["greenhouse"] = MapBuilder.room("greenhouse", ["homestead", 29, 9])
+	for b in state.get("buildings", []):
+		maps.homestead.add_structure(b)
+		maps[b.kind] = MapBuilder.coop(b)
+	maps.merge(Districts.all_maps(int(state.seed)))
 	for id in maps:
 		var m: GameMap = maps[id]
 		if state.maps_dyn.has(id) and state.maps_dyn[id].get("objects") is Dictionary:
+			var anchors := []
+			for kk in m.objects:
+				if m.objects[kk].get("anchor", false):
+					anchors.append(m.objects[kk])
 			m.objects = state.maps_dyn[id].objects
 			if not (state.maps_dyn[id].get("soil") is Dictionary):
 				state.maps_dyn[id].soil = {}
 			m.soil = state.maps_dyn[id].soil
+			_reconcile(m, anchors)
 		else:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
+	sync_gates()
+	# older saves: clear anything sitting where a newer building now stands
+	for id in ["homestead", "town"]:
+		var mm: GameMap = maps[id]
+		for st in mm.structures:
+			var tiles := []
+			for y in range(st.y, st.y + st.h):
+				for x in range(st.x, st.x + st.w):
+					tiles.append(Vector2i(x, y))
+			for y in range(st.door_y + 1, st.door_y + 3):       # keep the doorstep clear too
+				for x in range(st.door_x - 1, st.door_x + 2):
+					tiles.append(Vector2i(x, y))
+			for t in tiles:
+				var o = mm.get_obj(t.x, t.y)
+				if o != null and not Data.obj_defs.get(o.type, {}).get("fixture", false):
+					mm.remove_obj(t.x, t.y)
+
+## Older saves: put back fixed things a newer version added (district gates,
+## updated signs) and clear trees and weeds off newly built roads.
+func _reconcile(m: GameMap, anchors: Array) -> void:
+	for a in anchors:
+		var o = m.objects.get(GameMap.k(int(a.x), int(a.y)))
+		if o != null and o.type == a.type and str(o.get("text", "")) == str(a.get("text", "")):
+			continue
+		m.remove_obj(int(a.x), int(a.y))
+		m.objects.erase(GameMap.k(int(a.x), int(a.y)))
+		m.add_obj(int(a.x), int(a.y), a.type, a)
+	for rc in m.purge:
+		for kk in m.objects.keys():
+			var o2 = m.objects.get(kk)
+			if o2 != null and o2.type in ["tree", "pine", "weeds", "twig", "rock", "stump", "boulder", "forage", "dig_spot"] and rc.has_point(Vector2i(int(o2.x), int(o2.y))):
+				m.remove_obj(int(o2.x), int(o2.y))
+
+## District gates in town stand open once that district is unlocked.
+func sync_gates() -> void:
+	if not maps.has("town"):
+		return
+	for kk in maps.town.objects:
+		var o: Dictionary = maps.town.objects[kk]
+		if o.type == "district_gate":
+			o.open = state.unlocked.get(o.region, false)
+
+func unlock_region(id: String, silent := false) -> void:
+	state.unlocked[id] = true
+	state.flags["open_" + id] = true
+	sync_gates()
+	if not silent:
+		toast("%s is open: %s" % [Districts.UNLOCKS[id].gate, Districts.DISTRICTS[id].name], "", "gold")
 
 func start_session() -> void:
+	gear_changed()
+	apply_carry()
 	build_persistent_maps()
 	player = {"pos": Vector2.ZERO, "dir": "down", "frame": 0, "walk_t": 0.0, "moving": false, "swing": null, "iframes": 0.0, "kb": Vector2.ZERO}
 	npcs = {}
 	for id in Data.npcs:
 		npcs[id] = {"id": id, "map": "", "pos": Vector2.ZERO, "dir": "down", "path": null, "entry": null, "frame": 0, "walk_t": 0.0}
-	enemies = []; particles = []; floaters = []; projectiles = []; arcs = []; bombs = []
+	enemies = []; particles = []; floaters = []; projectiles = []; arcs = []; bombs = []; fires = []
 	fishing = null; charge = null; paused = false; clock_acc = 0.0; mountain_night_spawned = false
 	screen = "game"
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 	if ui:
 		ui.enter_game()
 	Sfx.play_music(season())
@@ -520,6 +853,9 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 		quest_event("mine_floor", {"floor": fl})
 	else:
 		m = maps[id]
+	_recover_thrown()
+	if not event.is_empty() and event.get("map", "") != id:
+		fail_event("You left the overpass. The bus won't come without a clear road. Light the flare again to retry.")
 	map = m
 	player.pos = Vector2(tx * 16 + 8, ty * 16 + 14)
 	player.dir = dir
@@ -529,6 +865,9 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 	projectiles = []
 	arcs = []
 	bombs = []
+	fires = []
+	player.reload = null
+	player.boomerangs = 0
 	fishing = null
 	charge = null
 	last_warp_tile = GameMap.k(tx, ty)
@@ -543,6 +882,23 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 		else: label = Data.location_names.get(id, "")
 		if label != "" and ui:
 			ui.banner(label)
+
+## Leaving a map: knives, axes and javelins you threw come back with you.
+func _recover_thrown() -> void:
+	var back := []
+	for pr in projectiles:
+		if pr.has("stack") and pr.get("kind", "") in ["knife", "axe", "javelin"]:
+			back.append(pr.src)
+	if map != null:
+		for d in map.drops:
+			if d.get("retrieve", false):
+				back.append(d.id)
+		map.drops = map.drops.filter(func(d): return not d.get("retrieve", false))
+	for id in back:
+		for s in inv():
+			if s != null and s.id == id and mag_of(s) < float(Data.weapons[id].mag):
+				s.mag = mag_of(s) + 1
+				break
 
 func location_name() -> String:
 	if map == null:
@@ -567,20 +923,222 @@ func update_clock(dt: float) -> void:
 		tick10()
 
 func tick10() -> void:
+	expire_buffs()
+	check_achievements()
 	state.time = int(state.time) + 10
 	survival_tick(10)
 	if state.time == Balance.time.midnight:
 		toast("It's midnight. You're getting very tired. Head to bed before 2:00 am.", "", "warn")
 	if state.time == Balance.time.midnight + 60:
 		toast("1:00 am. You can barely keep your eyes open.", "", "warn")
-	if map and map.id == "mountain" and state.time >= 1200 and not mountain_night_spawned and world:
+	if map and (map.id == "mountain" or map.foes.has("night")) and state.time >= 1200 and not mountain_night_spawned and world:
 		world.spawn_night_infected()
 	if state.time == 1200:
 		start_generators(maps.homestead)
+	if int(state.time) in [Balance.animals.outside_start, Balance.animals.outside_end]:
+		sync_animals()
 	raid_tick()
 	if state.time >= Balance.time.pass_out:
 		pass_out()
 
+
+
+# ================================================================ farm buildings and animals
+const BUILDING_SIZES := {"coop": Vector2i(6, 4)}
+
+func has_building(kind: String) -> bool:
+	return state.get("buildings", []).any(func(b): return b.kind == kind)
+
+func get_building_rec(kind: String):
+	for b in state.get("buildings", []):
+		if b.kind == kind: return b
+	return null
+
+## The footprint a building kit would cover if used now (in front of the player).
+func building_rect(kind: String, t: Vector2i, dir: String) -> Rect2i:
+	var sz: Vector2i = BUILDING_SIZES[kind]
+	match dir:
+		"up": return Rect2i(t.x - 2, t.y - sz.y + 1, sz.x, sz.y)
+		"down": return Rect2i(t.x - 2, t.y, sz.x, sz.y)
+		"left": return Rect2i(t.x - sz.x + 1, t.y - sz.y + 1, sz.x, sz.y)
+		_: return Rect2i(t.x, t.y - sz.y + 1, sz.x, sz.y)
+
+func building_fits(m: GameMap, r: Rect2i) -> bool:
+	if m.id != "homestead":
+		return false
+	for y in range(r.position.y, r.end.y + 1):        # one extra row so the door isn't blocked
+		for x in range(r.position.x, r.end.x):
+			if x < 1 or y < 1 or x >= m.w - 1 or y >= m.h - 1:
+				return false
+			var tt := m.tile_at(x, y)
+			if tt == "water" or Art.tile_solid(tt):
+				return false
+			if m.solid_mask[y * m.w + x] or m.get_obj(x, y) != null or m.soil.has(GameMap.k(x, y)) or m.structure_at(x, y) != null:
+				return false
+	var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
+	return not r.has_point(pt)
+
+func build_building(kind: String, r: Rect2i) -> void:
+	var b := {"kind": kind, "x": r.position.x, "y": r.position.y, "w": r.size.x, "h": r.size.y,
+		"door_x": r.position.x + 3, "door_y": r.position.y + r.size.y - 1, "door_open": false, "hay": 0,
+		"warp": {"to": kind, "tx": 6, "ty": 8, "dir": "up"}}
+	state.buildings.append(b)
+	_attach_building(b)
+
+func _attach_building(b: Dictionary) -> void:
+	maps.homestead.add_structure(b)
+	var inner := MapBuilder.coop(b)
+	maps[b.kind] = inner
+	if state.maps_dyn.has(b.kind) and state.maps_dyn[b.kind].get("objects") is Dictionary:
+		inner.objects = state.maps_dyn[b.kind].objects
+		inner.soil = state.maps_dyn[b.kind].get("soil", {})
+	else:
+		state.maps_dyn[b.kind] = {"objects": inner.objects, "soil": inner.soil}
+
+func animal_door_tile(b: Dictionary) -> Vector2i:
+	return Vector2i(int(b.x) + 1, int(b.y) + int(b.h) - 1)
+
+func animal_room(building: String) -> int:
+	if not has_building(building):
+		return 0
+	return Balance.animals.coop_capacity - state.animals.filter(func(a): return Data.animals[a.type].building == building).size()
+
+func random_animal_name() -> String:
+	var used: Array = state.animals.map(func(a): return a.name)
+	var pool: Array = Data.animal_names.filter(func(n): return not used.has(n))
+	return pool[rng.randi() % pool.size()] if not pool.is_empty() else "Animal %d" % (state.animals.size() + 1)
+
+func adopt_animal(kind: String, name: String) -> Dictionary:
+	var a := {"uid": int(state.get("next_animal", 1)), "type": kind, "name": name.strip_edges().substr(0, 14), "born": int(state.day), "friendship": 100,
+		"petted_day": -1, "fed": true, "last_product": int(state.day), "color": rng.randi() % Data.animals[kind].colors.size()}
+	if a.name == "": a.name = random_animal_name()
+	state.next_animal = int(a.uid) + 1
+	state.animals.append(a)
+	quest_event("animal", {"n": 1})
+	sync_animals(true)
+	return a
+
+func animal_mature(a: Dictionary) -> bool:
+	return int(state.day) - int(a.born) >= int(Data.animals[a.type].mature_days)
+
+func animal_mood(a: Dictionary) -> String:
+	if not a.fed: return "hungry"
+	if int(a.petted_day) == int(state.day): return "happy"
+	return "content" if int(a.friendship) >= 300 else "shy"
+
+func pet_animal(a: Dictionary) -> bool:
+	if int(a.petted_day) == int(state.day):
+		return false
+	a.petted_day = state.day
+	a.friendship = min(1000, int(a.friendship) + Balance.animals.pet_points)
+	add_xp("farming", 5)
+	return true
+
+## Animals go outside on fair days when the coop door is open.
+func animals_outside() -> bool:
+	var b = get_building_rec("coop")
+	if b == null or not b.door_open: return false
+	if season() == "winter" or state.weather in ["rain", "storm", "snow"]: return false
+	return int(state.time) >= Balance.animals.outside_start and int(state.time) < Balance.animals.outside_end
+
+var animals_rt := {}   # uid -> {pos, map, dir, frame, t, goal}
+
+func sync_animals(force := false) -> void:
+	var b = get_building_rec("coop")
+	var out := animals_outside()
+	var keep := {}
+	for a in state.get("animals", []):
+		var uid := int(a.uid)
+		keep[uid] = true
+		var want := "homestead" if out else "coop"
+		var r = animals_rt.get(uid)
+		if r == null or r.map != want or force:
+			var spot := Vector2(rng.randf_range(2, 10) * 16, rng.randf_range(4, 8) * 16)
+			if want == "homestead" and b != null:
+				spot = Vector2((int(b.door_x) + rng.randf_range(-3, 3)) * 16 + 8, (int(b.door_y) + rng.randf_range(2, 4)) * 16 + 12)
+			if r != null and r.map == want and not force:
+				continue
+			animals_rt[uid] = {"pos": spot, "map": want, "dir": "down", "frame": 0, "t": rng.randf() * 2.0, "goal": spot, "home": spot}
+	for uid in animals_rt.keys():
+		if not keep.has(uid): animals_rt.erase(uid)
+
+func update_animals(dt: float) -> void:
+	if state.get("animals", []).is_empty():
+		return
+	for a in state.animals:
+		var r = animals_rt.get(int(a.uid))
+		if r == null or map == null or r.map != map.id:
+			continue
+		r.t -= dt
+		if r.t <= 0:
+			r.t = rng.randf_range(1.5, 4.0)
+			if rng.randf() < 0.6:
+				r.goal = r.home + Vector2(rng.randf_range(-48, 48), rng.randf_range(-32, 32))
+			else:
+				r.goal = r.pos
+		var d: Vector2 = r.goal - r.pos
+		if d.length() > 2:
+			var step: Vector2 = d.normalized() * (14.0 if a.type == "chicken" else 18.0) * dt
+			var np: Vector2 = r.pos + step
+			var tx := int(floor(np.x / 16))
+			var ty := int(floor((np.y - 3) / 16))
+			if map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
+				r.pos = np
+				r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
+				r.frame = int(Time.get_ticks_msec() / 200) % 2
+			else:
+				r.goal = r.pos
+		else:
+			r.frame = 0
+
+## Morning: animals eat from the hopper, grow, and leave products on the coop floor.
+func animals_overnight(rep: Dictionary) -> void:
+	var b = get_building_rec("coop")
+	if b == null or state.animals.is_empty():
+		return
+	var A: Dictionary = Balance.animals
+	var cm: GameMap = maps.coop
+	var hungry := 0
+	var made := 0
+	for a in state.animals:
+		if int(b.hay) > 0:
+			b.hay = int(b.hay) - 1
+			a.fed = true
+			a.friendship = min(1000, int(a.friendship) + A.fed_points)
+		else:
+			a.fed = false
+			a.friendship = max(0, int(a.friendship) + A.unfed_points)
+			hungry += 1
+		if int(a.petted_day) < int(state.day) - 1:
+			a.friendship = max(0, int(a.friendship) + A.unpetted_points)
+	# products appear the next morning (called after the day advances)
+	for a in state.animals:
+		var D: Dictionary = Data.animals[a.type]
+		if not a.fed or not animal_mature(a): continue
+		if int(state.day) - int(a.last_product) < int(D.every): continue
+		var item: String = D.product
+		if D.has("big_product") and int(a.friendship) >= A.big_product_friendship and rng.randf() < A.big_product_chance:
+			item = D.big_product
+		if D.has("rare_product") and int(a.friendship) >= A.rare_friendship and rng.randf() < A.rare_chance:
+			item = D.rare_product
+		for tries in 40:
+			var x := rng.randi_range(1, cm.w - 2)
+			var y := rng.randi_range(3, cm.h - 2)
+			if cm.tile_free(x, y) and not (x == 6 and y >= 8):
+				cm.add_obj(x, y, "animal_product", {"item": item})
+				made += 1
+				break
+		# chickens shed feathers now and then (used for arrows)
+		if a.type == "chicken" and rng.randf() < 0.3:
+			for tries in 40:
+				var fx2 := rng.randi_range(1, cm.w - 2)
+				var fy2 := rng.randi_range(3, cm.h - 2)
+				if cm.tile_free(fx2, fy2) and not (fx2 == 6 and fy2 >= 8):
+					cm.add_obj(fx2, fy2, "animal_product", {"item": "feather"})
+					break
+		a.last_product = state.day
+	if made > 0: rep.lines.append("Your animals left %d item%s in the coop." % [made, "" if made == 1 else "s"])
+	if hungry > 0: rep.lines.append("%d of your animals went hungry. Fill the hay hopper in the coop." % hungry)
 
 # ================================================================ machines, power and defenses
 func abs_min() -> int:
@@ -616,7 +1174,12 @@ func machine_load(o: Dictionary, item_id: String) -> String:
 	var ready: int = abs_min() + int(r.min)
 	if int(r.min) >= 1440:
 		ready = (int(state.day) + int(r.min) / 1440) * 1440 + Balance.time.day_start   # ready by that morning
-	o.job = {"out": r.out, "qty": r.get("out_qty", 1), "ready": ready}
+	var out_id: String = r.out
+	var out_q: int = int(r.get("out_qty", 1))
+	if out_id == "$seed":
+		out_id = item_id + "_seed" if Data.items.has(item_id + "_seed") else "wild_seed_mix"
+		out_q = rng.randi_range(1, 3)
+	o.job = {"out": out_id, "qty": out_q, "ready": ready}
 	return ""
 
 func machine_collect(o: Dictionary) -> int:
@@ -824,6 +1387,15 @@ func resolve_raid(m: GameMap) -> Array:
 			o.ammo_n = int(o.get("ammo_n", 0)) - k * int(d.ammo_per_kill)
 		turret_kills += k
 		left -= k
+	# an open coop door is an invitation
+	var lost_names := []
+	var coop = get_building_rec("coop")
+	if left > 0 and coop != null and coop.door_open and not state.animals.is_empty():
+		var n_lost: int = min(state.animals.size(), int(ceil(left / float(Balance.animals.open_door_losses_per))))
+		for i in n_lost:
+			var a: Dictionary = state.animals[rng.randi() % state.animals.size()]
+			lost_names.append(a.name)
+			state.animals.erase(a)
 	# 2. the perimeter
 	var damaged := 0
 	var broke := 0
@@ -869,6 +1441,8 @@ func resolve_raid(m: GameMap) -> Array:
 	if damaged > 0: parts.append("%d barrier section%s took damage" % [damaged, "" if damaged == 1 else "s"])
 	if broke > 0: parts.append("%d broke" % broke)
 	lines.append(head + (" " + ", ".join(parts).capitalize().substr(0, 1) + ", ".join(parts).substr(1) + "." if not parts.is_empty() else ""))
+	if not lost_names.is_empty():
+		lines.append("The coop door was left open. %s %s gone. Close the animal door before nightfall." % [", ".join(lost_names), "is" if lost_names.size() == 1 else "are"])
 	if trampled > 0:
 		lines.append("They got into your fields and trampled %d crop%s. Fences and turrets will keep them out." % [trampled, "" if trampled == 1 else "s"])
 	elif left > 0 and targets.door:
@@ -879,6 +1453,8 @@ func resolve_raid(m: GameMap) -> Array:
 	if xp > 0:
 		add_xp("survival", xp)
 	state.stats.infected_defeated = int(state.stats.infected_defeated) + turret_kills + wire_kills
+	if turret_kills + wire_kills > 0:
+		quest_event("kill", {"n": turret_kills + wire_kills})
 	return lines
 
 func _raid_targets(m: GameMap, reach: PackedByteArray) -> Dictionary:
@@ -950,6 +1526,10 @@ func status_effects() -> Array:
 	var out := []
 	if state.is_empty():
 		return out
+	for b in state.get("buffs", []):
+		if int(b.until) > abs_min() and b.stat != "crash":
+			var left: int = int(b.until) - abs_min()
+			out.append({"id": "buff_" + str(b.stat), "label": str(b.stat).capitalize(), "desc": buff_text(str(b.stat), float(b.v), left) + " left."})
 	var S: Dictionary = Balance.survival
 	var g := "Health drops after %d hours." % (S.grace_minutes / 60)
 	if is_survivor():
@@ -992,8 +1572,9 @@ func eat_item(id: String) -> bool:
 		return false
 	var e: Dictionary = it.edible
 	var mult := 1.0 + skill_level("cooking") * 0.05 if it.cat == "cooked" else 1.0
+	if it.cat == "medical": mult += float(gear_total().fx.get("med_bonus", 0.0))
 	state.energy = clamp(state.energy + e.get("energy", 0) * mult, 0.0, float(Balance.player.max_energy))
-	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, float(Balance.player.max_health))
+	state.health = clamp(state.health + e.get("hp", 0) * mult, 0.0, max_health())
 	var parts := []
 	if e.get("energy", 0): parts.append("+%d energy" % round(e.energy * mult))
 	if e.get("hp", 0): parts.append("+%d health" % round(e.hp * mult))
@@ -1003,9 +1584,84 @@ func eat_item(id: String) -> bool:
 		if e.get("hunger", 0): parts.append("%+d hunger" % round(e.hunger * mult))
 		if e.get("thirst", 0): parts.append("%+d thirst" % round(e.thirst * mult))
 		add_xp("survival", 3)
-	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + ": " + ", ".join(parts), id)
+	for b in it.get("buffs", []):
+		add_buff(str(b.stat), float(b.v), int(b.min))
+		parts.append(buff_text(str(b.stat), float(b.v), int(b.min)))
+	if it.get("wake_full", false):
+		state.flags.wake_full = true
+		parts.append("you'll wake with full energy")
+	if it.has("crash"):
+		add_buff("crash", float(it.crash), 60)
+	if it.get("dirty", false) and rng.randf() < 0.35:
+		state.health = maxf(1.0, state.health - 8.0)
+		parts.append("your stomach turns (-8 health)")
+	toast(("Used " if it.has("use_word") else ("Drank " if it.get("drink", false) else "Ate ")) + it.name + (": " + ", ".join(parts) if not parts.is_empty() else ""), id)
 	Sfx.play("eat")
 	return true
+
+# ================================================================ timed effects from food and medicine
+## stat names come from the item sheet ("move speed", "crit chance", "stamina regen", ...)
+func add_buff(stat: String, v: float, minutes: int) -> void:
+	if not state.has("buffs"): state.buffs = []
+	state.buffs = state.buffs.filter(func(b): return b.stat != stat)
+	state.buffs.append({"stat": stat, "v": v, "until": abs_min() + max(1, minutes)})
+
+func buff(stat: String) -> float:
+	var t := 0.0
+	for b in state.get("buffs", []):
+		if b.stat == stat and int(b.until) > abs_min():
+			t += float(b.v)
+	return t
+
+func expire_buffs() -> void:
+	if not state.has("buffs"): return
+	var keep := []
+	for b in state.buffs:
+		if int(b.until) > abs_min():
+			keep.append(b)
+		elif b.stat == "crash":
+			state.energy = maxf(0.0, state.energy - float(b.v))
+			toast("The energy drink wears off. You feel drained.", "", "warn")
+	state.buffs = keep
+
+func buff_text(stat: String, v: float, minutes: int) -> String:
+	var dur := "%d min" % minutes if minutes < 1440 else "a day"
+	if stat in ["night vision", "cold resistance", "heat resistance", "easier catches"]:
+		return "%s for %s" % [stat, dur]
+	if stat == "max hp": return "+%d max health for %s" % [int(v), dur]
+	return "%+d%% %s for %s" % [int(v * 100), stat, dur]
+
+## Bags from the item sheet add pack slots for good (one of each kind).
+func use_pack_upgrade(id: String) -> bool:
+	var it: Dictionary = Data.items[id]
+	var key := "pack_" + id
+	if state.flags.get(key, false):
+		toast("You already use a %s." % it.name, id, "warn")
+		return false
+	if not remove_item(id, 1): return false
+	state.flags[key] = true
+	var add: int = int(it.pack_slots)
+	state.inv_size = int(state.inv_size) + add
+	for i in add: inv().append(null)
+	toast("You strap on the %s: +%d pack slots." % [it.name, add], id, "gold")
+	Sfx.play("levelup")
+	return true
+
+## Upgrading a tool yourself at an Anvil: bars only, done on the spot.
+func anvil_upgrade(tool: String) -> String:
+	var up := next_upgrade(tool)
+	if up.is_empty(): return "That tool cannot be upgraded further."
+	if tool_busy(tool) != null: return "That tool is at Varga Forge."
+	var bars := 5
+	if count_item(up.bar) < bars: return "You need %d %s." % [bars, Data.items[up.bar].name]
+	if up.bar == "aurium_bar" and count_item("glimmerite") < 1: return "You also need a Glimmerite."
+	remove_item(up.bar, bars)
+	if up.bar == "aurium_bar": remove_item("glimmerite", 1)
+	state.tools[tool].tier = int(up.tier)
+	if tool == "watering_can": state.can_water = can_capacity()
+	Sfx.play("levelup")
+	quest_event("upgrade", {"n": 1})
+	return ""
 
 # ================================================================ weather and daily content
 func roll_weather(d: int) -> String:
@@ -1020,7 +1676,7 @@ func spawn_daily_content(first: bool) -> void:
 	var cfg := mode_cfg()
 	var r := RandomNumberGenerator.new()
 	r.seed = int(state.seed) + int(state.day) * 7919
-	for mid in ["homestead", "town", "mountain"]:
+	for mid in ["homestead", "town", "mountain", "residential", "riverlands"]:
 		var m: GameMap = maps[mid]
 		var pool := Data.forage.keys().filter(func(f): return Data.forage[f].seasons.has(s) and Data.forage[f].maps.has(mid))
 		if pool.is_empty():
@@ -1060,6 +1716,207 @@ func spawn_daily_content(first: bool) -> void:
 		var v := r.randf()
 		hm.add_obj(x, y, "weeds" if v < 0.6 else ("twig" if v < 0.8 else "rock"))
 		n2 -= 1
+
+# ================================================================ contracts (stage 3)
+## Cole's board: bosses, the Guild's jobs and neighbours' jobs. See scripts/world/contracts.gd.
+func contract_state() -> Dictionary:
+	if not (state.get("contracts") is Dictionary): state.contracts = {}
+	var cs: Dictionary = state.contracts
+	for k in ["active", "done"]:
+		if not (cs.get(k) is Array): cs[k] = []
+	for k in ["progress", "found"]:
+		if not (cs.get(k) is Dictionary): cs[k] = {}
+	return cs
+
+func contract_available(c: Dictionary) -> bool:
+	var cs := contract_state()
+	if cs.active.has(c.id) or cs.done.has(c.id): return false
+	return not c.has("needs") or state.unlocked.get(c.needs, false)
+
+func take_contract(id: String) -> void:
+	var cs := contract_state()
+	if cs.active.has(id) or cs.done.has(id): return
+	cs.active.append(id)
+	var c := Contracts.get_def(id)
+	toast("Contract taken: " + c.title, "", "gold")
+	Sfx.play("coin")
+	check_contracts()
+
+## [have, need] for the journal and the board.
+func contract_progress(c: Dictionary) -> Array:
+	var cs := contract_state()
+	match c.kind:
+		"boss": return [1 if cs.done.has(c.id) else 0, 1]
+		"find":
+			var n := 0
+			for i in c.spots.size():
+				if cs.found.has("%s:%d" % [c.id, i]): n += 1
+			return [n, c.spots.size()]
+		"collect": return [min(count_item(c.item), int(c.count)), int(c.count)]
+		"waves": return [int(cs.progress.get(c.id, 0)), int(c.waves)]
+	return [min(int(cs.progress.get(c.id, 0)), int(c.count)), int(c.count)]
+
+func contract_progress_text(c: Dictionary) -> String:
+	var pr := contract_progress(c)
+	match c.kind:
+		"boss": return "Not yet" if pr[0] == 0 else "Done"
+		"waves": return "Best: wave %d of %d" % [pr[0], pr[1]]
+	return "%d / %d" % pr
+
+## Kills, catches and boss deaths count toward active jobs.
+func contract_event(kind: String, data: Dictionary) -> void:
+	var cs := contract_state()
+	for id in cs.active.duplicate():
+		var c := Contracts.get_def(id)
+		if c.is_empty(): continue
+		if kind == "kill" and c.kind == "kill":
+			if c.has("types") and not c.types.has(data.type): continue
+			if c.get("stealth", false) and not data.get("stealth", false): continue
+			cs.progress[id] = int(cs.progress.get(id, 0)) + 1
+		elif kind == "catch" and c.kind == "fish" and data.map == c.map:
+			cs.progress[id] = int(cs.progress.get(id, 0)) + 1
+		elif kind == "boss" and c.kind == "boss" and c.boss == data.type:
+			complete_contract(c, data.get("at", player.pos))
+			continue
+		else:
+			continue
+		check_contracts()
+
+func check_contracts() -> void:
+	var cs := contract_state()
+	for id in cs.active.duplicate():
+		var c := Contracts.get_def(id)
+		if c.is_empty() or c.kind in ["boss", "waves"]: continue
+		var pr := contract_progress(c)
+		if pr[0] >= pr[1]:
+			complete_contract(c, player.pos)
+
+func complete_contract(c: Dictionary, at: Vector2) -> void:
+	var cs := contract_state()
+	if not cs.active.has(c.id): return
+	cs.active.erase(c.id)
+	cs.done.append(c.id)
+	if c.kind == "collect":
+		remove_item(c.item, int(c.count))
+	if c.kind == "find" and c.get("consume", false):
+		for sp in c.spots:
+			remove_item(sp[0], 1)
+	var r: Dictionary = c.reward
+	var parts := []
+	if r.has("money"):
+		var m := int(round(r.money * mode_cfg().bonus_reward_mult))
+		state.money = int(state.money) + m
+		parts.append("%d gold" % m)
+	for it in r.get("items", []):
+		give_or_drop(it, at)
+		parts.append(Data.items[it].name)
+	toast("Contract complete: %s (%s)" % [c.title, ", ".join(parts)], "", "gold")
+	Sfx.play("coin")
+	add_xp("survival", 80)
+
+func give_or_drop(id: String, at: Vector2) -> void:
+	var left := add_item(id, 1, {"silent": true})
+	if left > 0 and world:
+		world.spawn_drop(id, left, at)
+
+## Quest items waiting in a container for an active "find" job ("" if none).
+func contract_find(map_id: String, o: Dictionary) -> String:
+	var cs := contract_state()
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		if c.get("kind", "") != "find": continue
+		for i in c.spots.size():
+			var sp: Array = c.spots[i]
+			var key := "%s:%d" % [id, i]
+			if sp[1] == map_id and int(sp[2]) == int(o.x) and int(sp[3]) == int(o.y) and not cs.found.has(key):
+				cs.found[key] = true
+				return sp[0]
+	return ""
+
+## Items for "collect" jobs that turn up while you search ([] if none).
+func contract_collect_roll(tags: Array) -> Array:
+	var out := []
+	var cs := contract_state()
+	for id in cs.active:
+		var c := Contracts.get_def(id)
+		if c.get("kind", "") != "collect" or not c.tags.any(func(t): return tags.has(t)): continue
+		if count_item(c.item) < int(c.count) and rng.randf() < 0.6:
+			out.append(c.item)
+	if int(state.stats.get("notes", 0)) < 10 and rng.randf() < 0.035:
+		out.append("conspiracy_note")
+	return out
+
+# ---------------------------------------------------------------- the Overpass: waves
+func start_waves(id: String) -> void:
+	var c := Contracts.get_def(id)
+	if not contract_state().active.has(id):
+		ui.say("", "A road flare in a coffee can, wired to a post. Someone left a note: \"Light it when the road's clear. The bus will see it.\" (Take the Overpass contract from Cole's board first.)")
+		return
+	if not event.is_empty():
+		return
+	event = {"id": id, "map": c.map, "wave": 0, "t": 2.0, "spawned": false}
+	toast("You light the flare. Hold the road!", "", "warn")
+	Sfx.play("boom")
+
+func fail_event(msg: String) -> void:
+	for e in enemies.duplicate():
+		if e.get("hunt", false): enemies.erase(e)
+	event = {}
+	toast(msg, "", "bad")
+
+func update_event(dt: float) -> void:
+	if event.is_empty() or map == null or map.id != event.map:
+		return
+	var c := Contracts.get_def(event.id)
+	var at := Vector2(int(c.at[0]) * 16 + 8, int(c.at[1]) * 16 + 8)
+	if player.pos.distance_to(at) > float(c.radius) * 16.0 * 1.6:
+		fail_event("You fell back too far. The road isn't clear. Light the flare again to retry.")
+		return
+	var left := enemies.filter(func(e): return e.get("hunt", false)).size()
+	if left > 0:
+		return
+	event.t = float(event.t) - dt
+	if float(event.t) > 0:
+		return
+	var cs := contract_state()
+	if int(event.wave) >= int(c.waves):
+		cs.progress[c.id] = int(c.waves)
+		event = {}
+		toast("Headlights on Elm Street. The last bus rattles over the overpass, full of faces at the windows.", "", "gold")
+		complete_contract(c, player.pos)
+		return
+	event.wave = int(event.wave) + 1
+	cs.progress[c.id] = max(int(cs.progress.get(c.id, 0)), int(event.wave) - 1)
+	event.t = 3.0
+	if world: world.spawn_wave(int(event.wave), at)
+	toast("Wave %d of %d" % [int(event.wave), int(c.waves)], "", "warn")
+
+# ---------------------------------------------------------------- achievements
+func achievement_value(stat: String) -> float:
+	var st: Dictionary = state.stats
+	match stat:
+		"sprint_km": return float(st.get("sprint_px", 0.0)) / 16.0 / 1000.0
+		"meals": return float(st.get("meals", 0))
+		"notes": return float(st.get("notes", 0))
+		"wrecks": return float((st.get("wrecks", {}) as Dictionary).size()) if st.get("wrecks") is Dictionary else 0.0
+		"long_crits": return float(st.get("long_crit_kills", 0))
+		"deepest": return float(state.mine.deepest)
+		"unbitten_day": return 0.0 if state.flags.get("bitten", false) else float(state.day)
+		"chainsaw": return float(st.get("chainsaw_kills", 0))
+		"earned": return float(st.get("earned", 0))
+	return 0.0
+
+func check_achievements() -> void:
+	if not (state.get("achievements") is Dictionary): state.achievements = {"done": []}
+	var done: Array = state.achievements.get("done", [])
+	state.achievements.done = done
+	for a in Contracts.ACHIEVEMENTS:
+		if a.has("todo") or done.has(a.id): continue
+		if achievement_value(a.stat) >= float(a.goal):
+			done.append(a.id)
+			give_or_drop(a.reward, player.pos if not player.is_empty() else Vector2.ZERO)
+			toast("Achievement: %s. Reward: %s" % [a.title, Data.items[a.reward].name], "", "gold")
+			Sfx.play("coin")
 
 # ================================================================ NPCs
 func npc_schedule(id: String) -> Array:
@@ -1154,14 +2011,14 @@ func talk_to(id: String) -> void:
 		ui.dialogue(id, d.dialogue.intro.duplicate(), func():
 			if id == "ruth":
 				state.money = int(state.money) + 100
-				toast("+100 scrip from Ruth", "", "gold")
+				toast("+100 gold from Ruth", "", "gold")
 				Sfx.play("coin")
 			if id == "wren":
 				state.flags.got_rod = true
 				var left := add_item("fishing_rod", 1)
 				if left > 0 and world:
 					world.spawn_drop("fishing_rod", 1, player.pos)
-				check_quest_unlocks()
+			check_quest_unlocks()
 			quest_event("talk", {"npc": id}))
 		return
 	var ev := due_heart_event(id)
@@ -1280,6 +2137,8 @@ func check_quest_unlocks(silent := false) -> void:
 			continue
 		if d.has("requires_flag") and not state.flags.get(d.requires_flag, false):
 			continue
+		if d.has("requires_met") and not state.npcs.get(d.requires_met, {}).get("met", false):
+			continue
 		q.active.append(d.id)
 		if not silent:
 			toast("New task: " + d.title, "", "gold")
@@ -1321,12 +2180,15 @@ func complete_quest(d: Dictionary) -> void:
 	if r.has("money"):
 		var m := int(round(r.money * mode_cfg().bonus_reward_mult))
 		state.money = int(state.money) + m
-		parts.append("%d scrip" % m)
+		parts.append("%d gold" % m)
 	for pair in r.get("items", []):
 		var left := add_item(pair[0], pair[1], {"silent": true})
 		if left > 0 and world:
 			world.spawn_drop(pair[0], left, player.pos)
 		parts.append("%d %s" % [pair[1], Data.items[pair[0]].name])
+	if r.has("unlock"):
+		unlock_region(r.unlock, true)
+		parts.append(Districts.UNLOCKS[r.unlock].gate + " opened")
 	toast("Task complete: " + d.title + (" (" + ", ".join(parts) + ")" if parts.size() else ""), "", "gold")
 	Sfx.play("coin")
 	check_quest_unlocks()
@@ -1356,7 +2218,11 @@ func shop_closed_text(shop_id: String) -> String:
 func shop_stock(shop_id: String) -> Array:
 	var sh: Dictionary = Data.shops[shop_id]
 	var s := season()
-	var list: Array = sh.stock.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
+	var list: Array = []
+	for e0 in sh.stock:
+		if e0.has("rotating"): list.append_array(rotating_stock(e0.rotating, int(e0.count)))
+		else: list.append(e0)
+	list = list.filter(func(e): return (not e.has("seasons") or e.seasons.has(s)) and (not e.has("min_deepest") or int(state.mine.deepest) >= e.min_deepest))
 	var sale_idx := -1
 	if sh.daily_sale:
 		var goods := []
@@ -1376,16 +2242,57 @@ func shop_stock(shop_id: String) -> Array:
 			e.price = stage.price
 			e.mats = stage.mats
 			e.desc = stage.desc + " Needs " + ", ".join(stage.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
+		if e.get("service", "") == "coop" and (has_building("coop") or count_item("coop_kit") > 0):
+			continue
+		if e.get("service", "") == "greenhouse" and (state.flags.get("greenhouse", false) or state.flags.get("greenhouse_pending", false)):
+			continue
+		if e.get("service", "") == "unlock" and (state.unlocked.get(e.region, false) or state.flags.get("pending_unlocks", []).has(e.region)):
+			continue
+		if e.get("service", "") == "contracts":
+			var avail := Contracts.CONTRACTS.filter(func(c): return contract_available(c)).size()
+			e.desc = "Bosses, Guild jobs and neighbours' jobs. %d posted, %d in progress, %d done." % [avail, contract_state().active.size(), contract_state().done.size()]
+		if e.get("service", "") == "bounty":
+			var b = state.get("bounty")
+			if b == null or b.is_empty():
+				var done := int(state.flags.get("bounties_done", 0))
+				e.name = "Take a bounty"
+				e.desc = "Put down %d infected anywhere. Reward: %d gold." % [10 + 5 * done, 400 + 150 * done]
+			else:
+				var prog: int = int(state.stats.infected_defeated) - int(b.start)
+				e.name = "Claim bounty" if prog >= int(b.target) else "Bounty in progress"
+				e.desc = "%d of %d infected put down. Reward: %d gold." % [min(prog, int(b.target)), int(b.target), int(b.reward)]
+		if e.get("service", "") == "animal":
+			var room := animal_room(Data.animals[e.animal].building)
+			e.desc = Data.shops[shop_id].stock[i].desc + (" Room in your coop: %d." % room if has_building("coop") else " You need a coop first.")
 		e.sale = i == sale_idx
 		e.final_price = int(e.price * 0.75) if e.sale else int(e.price)
 		out.append(e)
+	return out
+
+## A shop's changing selection: new picks every Monday.
+func rotating_stock(pool_id: String, n: int) -> Array:
+	var pool: Array = []
+	if pool_id == "guild_arms":
+		for tag in ["police", "military", "sports", "hardware", "wilderness", "gun_store", "farm", "pawn", "construction"]:
+			for id in Data.loot_tags.get(tag, []):
+				if Data.items[id].get("rarity", "") == "Normal" and not pool.has(id) and Data.items[id].cat in ["weapon", "gear"] and not id in ["machete", "scrap_crossbow"]:
+					pool.append(id)
+	pool.sort()
+	var r := RandomNumberGenerator.new()
+	r.seed = int(state.seed) ^ (int((int(state.day) - 1) / 7) * 7919)
+	var out := []
+	for i in n:
+		if pool.is_empty(): break
+		var id: String = pool[r.randi() % pool.size()]
+		pool.erase(id)
+		out.append({"id": id, "price": int(Data.items[id].price * 2)})
 	return out
 
 func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 	var cost: int = e.final_price * qty
 	if int(state.money) < cost:
 		Sfx.play("error")
-		return "Not enough scrip."
+		return "Not enough gold."
 	if e.get("service", "") == "house_repair":
 		var stage := next_house_repair()
 		if stage.is_empty():
@@ -1400,6 +2307,90 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		state.flags.house_repair_to = stage.to
 		Sfx.play("coin")
 		toast("Hal will work on the farmhouse tonight.")
+		return ""
+	if e.get("service", "") == "repair":
+		ui.open("repair", {"owner": Data.shops[shop_id].owner})
+		return ""
+	if e.get("service", "") == "treatment":
+		if float(state.health) >= max_health() and float(state.energy) >= Balance.player.max_energy * 0.5:
+			return "Elias looks you over. \"You're fine. Go eat something.\""
+		state.money = int(state.money) - cost
+		state.health = max_health()
+		state.energy = maxf(float(state.energy), Balance.player.max_energy * 0.5)
+		Sfx.play("eat")
+		toast("Elias patches you up. Good as new.")
+		return ""
+	if e.get("service", "") == "greenhouse":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Jo needs %d %s for the greenhouse (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		state.flags.greenhouse_pending = true
+		Sfx.play("coin")
+		toast("Jo will rebuild your greenhouse tonight.")
+		return ""
+	if e.get("service", "") == "contracts":
+		ui.open("contracts")
+		return ""
+	if e.get("service", "") == "unlock":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Jo needs %d %s for this (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		if not (state.flags.get("pending_unlocks") is Array): state.flags.pending_unlocks = []
+		state.flags.pending_unlocks.append(e.region)
+		Sfx.play("coin")
+		toast("Jo will have it done by morning.")
+		return ""
+	if e.get("service", "") == "bounty":
+		var b = state.get("bounty")
+		var kills := int(state.stats.infected_defeated)
+		if b == null or b.is_empty():
+			var done := int(state.flags.get("bounties_done", 0))
+			state.bounty = {"target": 10 + 5 * done, "start": kills, "reward": 400 + 150 * done}
+			toast("Bounty taken: put down %d infected." % int(state.bounty.target))
+			return ""
+		if kills - int(b.start) >= int(b.target):
+			state.money = int(state.money) + int(b.reward)
+			state.flags.bounties_done = int(state.flags.get("bounties_done", 0)) + 1
+			state.bounty = {}
+			add_xp("survival", 40)
+			Sfx.play("coin")
+			toast("Bounty paid: +%d gold." % int(b.reward), "", "gold")
+			return ""
+		return "Not done yet: %d of %d infected." % [kills - int(b.start), int(b.target)]
+	if e.get("service", "") == "coop":
+		for m in e.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Marisol needs %d %s for the coop (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		if not can_fit("coop_kit", 1):
+			return "Not enough room in your pack."
+		for m in e.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		add_item("coop_kit", 1)
+		Sfx.play("coin")
+		return ""
+	if e.get("service", "") == "animal":
+		var kind: String = e.animal
+		if not has_building(Data.animals[kind].building):
+			Sfx.play("error")
+			return "You need a coop first. Marisol sells Coop Kits."
+		if animal_room(Data.animals[kind].building) <= 0:
+			Sfx.play("error")
+			return "Your coop is full."
+		state.money = int(state.money) - cost
+		Sfx.play("coin")
+		var kind2 := kind
+		ui.close()
+		ui.open("name_animal", {"kind": kind2, "name": random_animal_name()})
 		return ""
 	if e.get("service", "") == "backpack":
 		if state.flags.get("backpack", false):
@@ -1437,6 +2428,39 @@ func sprinkler_tiles(o: Dictionary) -> Array:
 					if dx or dy: out.append(Vector2i(x + dx, y + dy))
 	return out
 
+## Bee houses, worm bins, mushroom logs, fruit trees and crab pots work overnight.
+func overnight_object(m: GameMap, o: Dictionary, rep: Dictionary) -> void:
+	var d: Dictionary = Data.obj_defs.get(o.type, {})
+	if d.has("producer") and int(d.producer[1]) > 0:
+		o.days = int(o.get("days", 0)) + 1
+		if int(o.days) >= int(d.producer[1]) and o.get("ready", "") == "" and not (o.type == "bee_house" and season() == "winter"):
+			var item: String = d.producer[0]
+			if o.type == "bee_house" and rng.randf() < 0.35: item = "wildflower_honey"
+			if o.type == "mushroom_log" and rng.randf() < 0.15: item = "morel" if season() == "spring" else "glowcap"
+			o.ready = item
+			o.days = 0
+	if o.type == "fruit_tree":
+		o.age = int(o.get("age", 0)) + (2 if o.get("fed", false) else 1)
+		var fr: String = o.get("fruit", "apple")
+		var seasons: Array = Data.items[fr].get("sheet", {}).get("tree", {}).get("seasons", ["autumn"])
+		if int(o.age) >= Balance.trees.grow_days and seasons.has(season()):
+			o.fruit_n = min(3, int(o.get("fruit_n", 0)) + 1)
+		elif not seasons.has(season()):
+			o.fruit_n = 0
+	if d.get("crab_pot", false) and o.get("bait", false):
+		var zone := ""
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if m.tile_at(int(o.x) + dx, int(o.y) + dy) == "water": zone = m.fish_zone if m.fish_zone != "" else "pond"
+		if zone != "":
+			var pool := []
+			for f in Data.fish:
+				var fd: Dictionary = Data.fish[f]
+				if fd.get("crab", false) and fd.seasons.has(season()): pool.append(f)
+			if not pool.is_empty():
+				o.catch = pool[rng.randi() % pool.size()]
+				o.bait = false
+
 func run_sprinklers() -> int:
 	var n := 0
 	for mid in maps:
@@ -1461,26 +2485,42 @@ func next_house_repair() -> Dictionary:
 	return {}
 
 func shop_buys_item(shop_id: String, id: String) -> bool:
-	return item_flags(id).sellable and Data.shops[shop_id].buys.has(Data.items[id].cat)
+	var cat: String = Data.items[id].cat
+	if cat in ["weapon", "gear"]:
+		return Data.shops[shop_id].buys.has(cat) and Data.items[id].price > 0
+	return item_flags(id).sellable and Data.shops[shop_id].buys.has(cat)
+
+## What a shop pays for one of these. Worn weapons and gear fetch less.
+func sell_price(s: Dictionary) -> int:
+	var it: Dictionary = Data.items[s.id]
+	if it.cat in ["weapon", "gear"]:
+		var md := max_dur(s.id)
+		var frac: float = 1.0 if md <= 0 else float(stack_dur(s)) / float(md)
+		return int(it.price * 0.4 * (0.25 + 0.75 * frac)) if not is_broken(s) else int(it.price * 0.05)
+	return int(it.price)
 
 func shop_sell(shop_id: String, slot: int, qty: int) -> void:
 	var s = inv()[slot]
 	if s == null or not shop_buys_item(shop_id, s.id):
 		return
 	qty = min(qty, int(s.qty))
-	var gain: int = Data.items[s.id].price * qty
+	var gain: int = sell_price(s) * qty
 	state.money = int(state.money) + gain
 	state.stats.earned = int(state.stats.earned) + gain
 	remove_from_slot(slot, qty)
 	Sfx.play("coin")
 
 # ================================================================ Varga Forge
-func forge_open_geode(geode_id: String) -> Dictionary:
-	var fee: int = Balance.services.geode_fee
+## Cracking a geode yourself with a Builder's Hammer: no fee.
+func crack_geode(geode_id: String, free := false) -> Dictionary:
+	return forge_open_geode(geode_id, free)
+
+func forge_open_geode(geode_id: String, free := false) -> Dictionary:
+	var fee: int = 0 if free else Balance.services.geode_fee
 	if count_item(geode_id) < 1:
 		return {"error": "You have no %s." % Data.items[geode_id].name}
 	if int(state.money) < fee:
-		return {"error": "Not enough scrip for the fee."}
+		return {"error": "Not enough gold for the fee."}
 	var pick := MapBuilder.weighted(rng, Data.geode_tables[geode_id])
 	var qty := rng.randi_range(pick.q[0], pick.q[1])
 	remove_item(geode_id, 1)
@@ -1499,7 +2539,7 @@ func forge_refine(bar: String, qty: int) -> String:
 	var fee: int = Balance.services.refine_fee_per_bar[bar] * qty
 	if count_item(r.ore) < r.ore_qty * qty: return "You need %d %s." % [r.ore_qty * qty, Data.items[r.ore].name]
 	if count_item("coal") < r.coal * qty: return "You need %d Coal." % (r.coal * qty)
-	if int(state.money) < fee: return "Not enough scrip for the fee."
+	if int(state.money) < fee: return "Not enough gold for the fee."
 	remove_item(r.ore, r.ore_qty * qty)
 	remove_item("coal", r.coal * qty)
 	state.money = int(state.money) - fee
@@ -1543,7 +2583,7 @@ func forge_upgrade(tool: String) -> String:
 		if state.tools[t].upgrading != null:
 			return "Ines can only work on one tool at a time."
 	if count_item(up.bar) < up.bars: return "You need %d %ss." % [up.bars, Data.items[up.bar].name]
-	if int(state.money) < up.cost: return "You need %d scrip." % up.cost
+	if int(state.money) < up.cost: return "You need %d gold." % up.cost
 	remove_item(up.bar, up.bars)
 	state.money = int(state.money) - up.cost
 	state.tools[tool].upgrading = {"tier": up.tier, "ready_day": int(state.day) + up.days}
@@ -1557,6 +2597,8 @@ func player_bitten() -> void:
 	fishing = null
 	charge = null
 	if reload_checkpoint():
+		state.flags.bitten = true        # for the Unseen achievement; the rollback doesn't undo it
+		write_save()
 		ui.open("death", {"checkpoint": date_label()})
 
 func reload_checkpoint() -> bool:
@@ -1592,7 +2634,7 @@ func collapse(cause: String) -> void:
 
 func recover_from_collapse() -> void:
 	var cfg := mode_cfg()
-	state.health = round(Balance.player.max_health * cfg.collapse_health_restore)
+	state.health = round(max_health() * cfg.collapse_health_restore)
 	if is_survivor():
 		state.hunger = max(state.hunger, 30.0)
 		state.thirst = max(state.thirst, 30.0)
@@ -1604,6 +2646,7 @@ func recover_from_collapse() -> void:
 		return
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 
 func pass_out() -> void:
 	var cfg := mode_cfg()
@@ -1637,15 +2680,18 @@ func end_day(reason: String) -> void:
 	# 1. advance the day
 	state.day = int(state.day) + 1
 	state.time = Balance.time.day_start
+	if state.flags.get("wake_full", false):
+		state.flags.erase("wake_full")
+		restore = 1.0
 	state.energy = round(Balance.player.max_energy * restore)
 	if is_survivor():
-		state.health = min(float(Balance.player.max_health), state.health + round((Balance.player.max_health - state.health) * 0.6))
+		state.health = min(max_health(), state.health + round((max_health() - state.health) * 0.6))
 		state.hunger = max(0.0, state.hunger - Balance.survival.overnight_hunger_drain)
 		state.thirst = max(0.0, state.thirst - Balance.survival.overnight_thirst_drain)
 		if state.hunger <= 0 or state.thirst <= 0:
 			rep.lines.append("You woke up %s. Eat and drink soon." % ("starving" if state.hunger <= 0 else "parched"))
 	else:
-		state.health = float(Balance.player.max_health)
+		state.health = max_health()
 	state.weather = state.weather_tomorrow
 	state.weather_tomorrow = roll_weather(int(state.day) + 1)
 	roll_raid(int(state.day))
@@ -1670,7 +2716,7 @@ func end_day(reason: String) -> void:
 					if s.get("fert", "") == "tonic" and rng.randf() < Balance.farming_extra.tonic_bonus_chance:
 						c.g = int(c.g) + 1
 					grew += 1
-			elif c == null and not int(s.w) and rng.randf() < Balance.farming.empty_soil_revert_chance:
+			elif c == null and not int(s.w) and not s.get("fixed", false) and rng.randf() < Balance.farming.empty_soil_revert_chance:
 				m.soil.erase(kk)
 				continue
 			var keep: bool = s.get("fert", "") == "mulch" and int(s.w) == 1 and rng.randf() < Balance.farming_extra.mulch_keep_chance
@@ -1682,6 +2728,8 @@ func end_day(reason: String) -> void:
 			var o: Dictionary = maps[mid].objects[kk]
 			if o.type == "rain_collector":
 				o.water = min(Balance.farming_extra.rain_collector_cap, int(o.get("water", 0)) + (2 if waters else 1))
+			overnight_object(maps[mid], o, rep)
+	animals_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)
 	if withered: rep.lines.append("%d out-of-season crops withered with the change of season." % withered)
 	if waters: rep.lines.append("%s today. Your outdoor crops are already watered." % Data.weather_info[state.weather].name)
@@ -1696,6 +2744,14 @@ func end_day(reason: String) -> void:
 				state.can_water = can_capacity()
 			rep.lines.append("Ines finished your %s %s. It is back in your pack." % [Data.tool_tiers[int(u.tier)].name, Data.tool_defs[t].name])
 			quest_event("upgrade", {"n": 1})
+	if state.flags.get("greenhouse_pending", false):
+		state.flags.erase("greenhouse_pending")
+		state.flags.greenhouse = true
+		rep.lines.append("Jo rebuilt your greenhouse overnight. Crops planted inside grow in any season.")
+	for reg in state.flags.get("pending_unlocks", []):
+		unlock_region(reg, true)
+		rep.lines.append({"industrial": "Jo got the east gate running overnight. The Industrial District is open.", "riverlands": "Jo rebuilt the far bridge overnight. The Riverlands are open."}.get(reg, "%s is open." % Districts.DISTRICTS[reg].name))
+	state.flags.erase("pending_unlocks")
 	if state.flags.has("house_repair_to"):
 		state.flags.house_condition = int(state.flags.house_repair_to)
 		state.flags.erase("house_repair_to")
@@ -1742,6 +2798,7 @@ func end_day(reason: String) -> void:
 	clock_acc = 0.0
 	change_map("house", 2, 4, "down", {"silent": true})
 	sync_npcs()
+	sync_animals(true)
 	rep.saved = write_save()
 	Sfx.play("sleep")
 	Sfx.play_music(season())

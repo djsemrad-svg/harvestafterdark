@@ -1,0 +1,101 @@
+﻿Name,Rarity,Slot,Weight Class,Armor,Bonus HP,Move Speed %,Stamina Regen %,Bite Resist %,Noise %,Carry Slots,Durability,Base Trait,Passive,Combat Effect,Bonus Abilities (Legendary),Base Item,How to Obtain,Unique Look,Flavor Text,ID
+Baseball Cap,Normal,Head,Light,1,0,0,0,0,0,0,40,Shades eyes: +10% vision range in daylight,,,,,"Homes, gas stations, sporting goods stores",,,HEAD-001
+Beanie,Normal,Head,Light,1,0,0,0,0,0,0,40,Keeps you warm in cold weather,,,,,"Homes, clothing stores",,,HEAD-002
+Bandana Mask,Normal,Head,Light,0,0,0,0,0,0,0,30,Masks your scent: zombies smell you from 10% shorter distance,,,,,"Homes, clothing stores; or craft: Cloth x2",,,HEAD-003
+Bike Helmet,Normal,Head,Light,4,0,0,0,0,0,0,80,Protects against fall stagger,,,,,"Garages, bike shops, suburban homes",,,HEAD-004
+Gas Mask,Normal,Head,Medium,3,0,0,-5,0,0,0,100,Immune to gas and smoke while filters last,,,,,"Military surplus stores, fire stations, labs",,,HEAD-005
+Hard Hat,Normal,Head,Medium,7,0,0,0,0,0,0,120,Flashlight mount,,,,,"Construction sites, factories",,,HEAD-006
+Football Helmet,Normal,Head,Medium,9,0,-2,0,5,0,0,130,Reduces stagger from hits,,,,,"High school locker rooms, sporting goods stores",,,HEAD-007
+Motorcycle Helmet,Normal,Head,Medium,11,0,-2,0,15,0,0,150,"Full face blocks head bites;' -10% vision range",,,,,"Motorcycle shops, crashed bikes, biker bars",,,HEAD-008
+Riot Helmet,Normal,Head,Heavy,14,0,-3,0,15,5,0,200,Visor blocks Spitter acid to the face,,,,,"Police stations, riot vans",,,HEAD-009
+Military Helmet,Normal,Head,Heavy,16,0,-3,-5,10,5,0,220,Night vision mount,,,,,"Military bases, National Guard checkpoints",,,HEAD-010
+Vented Bike Helmet,Rare,Head,Light,5,0,2,0,0,0,0,90,Protects against fall stagger,,,,Bike Helmet,"Uncommon loot; or Bike Helmet + Gear Upgrade Kit",,,HEAD-011
+Filtered Gas Mask,Rare,Head,Medium,4,0,0,-5,0,0,0,130,"Immune to gas and smoke; filters last 2x longer",,,,Gas Mask,"Lab lockers; or Gas Mask + Gear Upgrade Kit",,,HEAD-012
+Padded Hard Hat,Rare,Head,Medium,8,0,0,0,0,0,0,140,Flashlight mount,,,,Hard Hat,"Foreman offices; or Hard Hat + Gear Upgrade Kit",,,HEAD-013
+Tinted Motorcycle Helmet,Rare,Head,Medium,12,0,-2,0,18,0,0,170,"Full face blocks head bites; no vision penalty",,,,Motorcycle Helmet,"Biker bar back rooms; or Motorcycle Helmet + Gear Upgrade Kit",,,HEAD-014
+Reinforced Riot Helmet,Rare,Head,Heavy,16,0,-3,0,17,5,0,240,Visor blocks Spitter acid to the face,,,,Riot Helmet,"Police armories; or Riot Helmet + Gear Upgrade Kit",,,HEAD-015
+Scout's Boonie Hat,Epic,Head,Light,3,10,5,5,0,-10,0,120,Camo pattern,Spot special zombies from 25% farther away,,,Baseball Cap,"Side quest 'Eyes in the Woods' reward; ranger station lockers",,,HEAD-016
+Firefighter's Helmet,Epic,Head,Medium,15,15,-2,0,10,0,0,240,Built-in flashlight,'-50% burn damage,Flash: aiming the light at a zombie for 1 s blinds it for 2 s (10 s cooldown),,Hard Hat,"Rare drop from Charred zombies; locked fire station lockers",,,HEAD-017
+Night Owl Helmet,Epic,Head,Heavy,20,0,-2,0,12,5,0,260,Night vision mount,Night vision: see in darkness without a flashlight,"Counter-flash: when hit, 15% chance to blind the attacker for 2 s",,Military Helmet,"Rare drop from Soldier zombies; military base armories",,,HEAD-018
+The Lighthouse,Legendary,Head,Medium,14,25,0,5,15,0,0,400,Built-in lamp that never needs batteries,Reveals special zombies within 20 tiles,Lamp beam: zombies in the beam move 30% slower and take +10% damage,"Immune to darkness and blinding;' +10% crit chance against lit targets",Hard Hat,Achievement 'Into the Dark': clear every level of the Copper Hollow Mine,"Battered brass miner's helmet with an oversized lighthouse lens where the headlamp should be, throwing a wide golden beam.",The keeper of the Gull Point lighthouse pried the lens out of the tower when the boats stopped coming. Ships could not use the light anymore. Survivors could.,HEAD-019
+Grinning Saint,Legendary,Head,Light,8,20,5,0,20,-20,0,350,Masks your scent,Zombies ignore you until you attack or come within 2 tiles,Dread: each kill makes zombies within 4 tiles flee for 3 s (15 s cooldown),"Immune to gas;' +10% crit chance",Bandana Mask,"0.5% drop from Screamer zombies, or achievement 'Unseen': reach day 100 without being bitten","Porcelain skull mask with a painted gold grin and cracked black eye sockets, tied on with funeral lace and marigolds.","Nobody knows who wore it first. Survivors say the dead step aside for it, the way the living used to step aside for a hearse.",HEAD-020
+Cowboy Hat,Cosmetic,Head,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Ranch houses, western-wear stores",,,HEAD-021
+Traffic Cone,Cosmetic,Head,Cosmetic,,,,,,,,,Cosmetic only,,,,,Achievement 'Road Work': clear 10 highway wrecks,,,HEAD-022
+Viking Horns,Cosmetic,Head,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Costume shops, Halloween stores",,,HEAD-023
+Chef's Hat,Cosmetic,Head,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Restaurants; or achievement 'Head Chef': cook 100 meals",,,HEAD-024
+Tinfoil Hat,Cosmetic,Head,Cosmetic,,,,,,,,,Cosmetic only,,,,,Achievement 'They Knew': find all 10 conspiracy notes,,,HEAD-025
+T-Shirt,Normal,Chest,Light,1,0,0,0,0,0,0,40,No penalties,,,,,"Homes, clothing stores, laundromats",,,CHST-001
+Hoodie,Normal,Chest,Light,2,0,0,0,2,0,1,60,"Hood keeps rain off; front pocket",,,,,"Homes, clothing stores, schools",,,CHST-002
+Flannel Shirt,Normal,Chest,Light,2,0,0,0,2,0,1,70,Keeps you warm in cold weather,,,,,"Rural homes, cabins, hardware stores",,,CHST-003
+Denim Jacket,Normal,Chest,Light,4,0,0,0,8,0,2,100,Thick denim slows bites,,,,,"Homes, clothing stores, thrift stores",,,CHST-004
+Hunting Vest,Normal,Chest,Light,3,0,0,0,2,-5,4,90,Lots of pockets,,,,,"Hunting lodges, sporting goods stores",,,CHST-005
+Hazmat Jacket,Normal,Chest,Medium,5,0,-3,-5,20,5,0,120,"Immune to Spitter acid on the body; tears easily",,,,,"Hospitals, labs, CDC tents",,,CHST-006
+Leather Jacket,Normal,Chest,Medium,7,0,-1,0,15,0,2,140,Bite-resistant leather,,,,,"Biker bars, clothing stores, motorcycle shops",,,CHST-007
+Police Vest,Normal,Chest,Medium,14,0,-2,0,10,0,2,220,Kevlar: -30% damage from raider bullets,,,,,"Police stations, police cars",,,CHST-008
+Firefighter Coat,Normal,Chest,Heavy,12,0,-4,-5,15,5,2,220,'-40% fire damage,,,,,"Fire stations, fire trucks",,,CHST-009
+Military Plate Carrier,Normal,Chest,Heavy,22,0,-5,-10,15,10,4,300,Mag pouches: +10% reload speed,,,,,"Military bases, crashed convoys",,,CHST-010
+Padded Hoodie,Rare,Chest,Light,3,5,0,0,4,0,1,75,"Hood keeps rain off; front pocket",,,,Hoodie,"Uncommon loot; or Hoodie + Gear Upgrade Kit",,,CHST-011
+Camo Hunting Vest,Rare,Chest,Light,3,0,0,0,2,-10,5,100,Lots of pockets,,,,Hunting Vest,"Hunting lodge lockers; or Hunting Vest + Gear Upgrade Kit",,,CHST-012
+Lined Leather Jacket,Rare,Chest,Medium,8,0,-1,0,18,0,2,160,Bite-resistant leather,,,,Leather Jacket,"Biker bar back rooms; or Leather Jacket + Gear Upgrade Kit",,,CHST-013
+Reinforced Police Vest,Rare,Chest,Medium,16,0,-2,0,12,0,2,250,Kevlar: -30% damage from raider bullets,,,,Police Vest,"Police armories; or Police Vest + Gear Upgrade Kit",,,CHST-014
+Upgraded Plate Carrier,Rare,Chest,Heavy,25,0,-5,-8,15,10,4,330,Mag pouches: +10% reload speed,,,,Military Plate Carrier,"Military armories; or Military Plate Carrier + Gear Upgrade Kit",,,CHST-015
+Ghillie Wrap,Epic,Chest,Light,4,0,3,5,5,-25,2,120,Leafy camouflage,Camouflage: zombies detect you from 30% shorter distance while crouched,,,Hunting Vest,"Side quest 'Trophy Season' reward; sniper nests",,,CHST-016
+Biker's Kutte,Epic,Chest,Medium,10,20,0,5,20,5,2,200,Chain-wrapped leather vest,'+10% melee damage,"Chain lash: when grabbed, break free instantly and stagger the zombie (20 s cooldown)",,Leather Jacket,"Rare drop from Raider Captains; biker clubhouse safes",,,CHST-017
+Juggernaut Riot Suit,Epic,Chest,Heavy,30,25,-8,-10,25,15,2,400,Full riot plating,Cannot be knocked down,Shield bash: sprinting into zombies knocks them down,,Police Vest,"Rare drop from Riot zombies; SWAT armory lockers",,,CHST-018
+The Briar King,Legendary,Chest,Heavy,26,30,-4,0,50,10,2,500,Covered in spikes: zombies cannot grab or pin you,Thorns: melee attackers take 30% of the damage they deal back,Spike aura: zombies within 1 tile take 4 dmg/s and Bleed for 3 dmg/s for 3 s,"Shoving a zombie impales it for 20 dmg; Zombies that bite you take 15 dmg",Juggernaut Riot Suit,"Boss drop: defeat The Briar King, raider warlord of the Rose Garden compound","Riot armor shell bristling with hundreds of welded rebar spikes and nails, wrapped in barbed wire, with dried rose vines woven through the gaps.",The raider who wore it took the Rose Garden by walking through the horde instead of around it. Nothing that touched him walked away clean. Nothing gets close to whoever wears it for long.,CHST-019
+Quarantine,Legendary,Chest,Medium,12,40,-2,0,100,5,1,350,Fully sealed suit,Immune to infection: bites can never turn you,"Purge: when HP drops below 30%, vents a corrosive cloud (2-tile radius, 8 dmg/s for 5 s), 60 s cooldown","Immune to acid and gas;' +25% healing from medkits",Hazmat Jacket,"Quest chain 'Clean Room': found in the decontamination vault of Lab 6, Halvorsen Biomedical","Sealed white hazmat suit with orange biohazard seams, a cracked faceplate, glowing green filter canisters on the back, and SUBJECT 0 stenciled across the chest.",Designed to keep the infection out. Lab 6's last researcher sealed herself inside it and walked out through the horde. They sniffed at her and moved on. She never took it off again.,CHST-020
+Hawaiian Shirt,Cosmetic,Chest,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Homes, beach shops, airports",,,CHST-021
+Tuxedo Jacket,Cosmetic,Chest,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Wedding venues, formalwear shops",,,CHST-022
+Burger Mascot Suit,Cosmetic,Chest,Cosmetic,,,,,,,,,Cosmetic only,,,,,Achievement 'Drive-Thru': clear 5 fast food restaurants,,,CHST-023
+Band Tee,Cosmetic,Chest,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Homes, music stores, concert venues",,,CHST-024
+Lab Coat,Cosmetic,Chest,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Hospitals, labs, schools",,,CHST-025
+Running Shorts,Normal,Legs,Light,0,0,4,5,-10,0,0,30,Bare legs: leg bites are more likely to break skin,,,,,"Homes, gyms, sporting goods stores",,,LEGS-001
+Sweatpants,Normal,Legs,Light,1,0,2,5,0,0,1,50,Comfortable and quiet,,,,,"Homes, gyms, clothing stores",,,LEGS-002
+Snow Pants,Normal,Legs,Light,2,0,-1,0,5,0,1,90,Keeps you warm in cold weather,,,,,"Ski lodges, cabins, outdoor stores",,,LEGS-003
+Jeans,Normal,Legs,Light,3,0,0,0,8,0,2,100,Thick denim slows bites,,,,,"Homes, clothing stores, thrift stores",,,LEGS-004
+Cargo Pants,Normal,Legs,Light,3,0,0,0,5,0,4,110,Extra pockets,,,,,"Homes, outdoor stores, army surplus stores",,,LEGS-005
+Canvas Work Pants,Normal,Legs,Medium,5,0,0,0,10,0,3,150,Tool loops: +10% repair speed,,,,,"Construction sites, farms, hardware stores",,,LEGS-006
+Police Tactical Pants,Normal,Legs,Medium,6,0,0,0,10,0,3,160,Holster: +10% weapon swap speed,,,,,"Police stations, SWAT vans",,,LEGS-007
+Motorcycle Pants,Normal,Legs,Medium,7,0,-1,0,15,0,2,160,Knee armor,,,,,"Motorcycle shops, biker bars",,,LEGS-008
+Chainsaw Chaps,Normal,Legs,Medium,8,0,-2,0,25,0,0,180,'-50% damage from blades and chainsaws,,,,,"Lumber yards, tree service trucks, cabins",,,LEGS-009
+Military Leg Guards,Normal,Legs,Heavy,12,0,-3,-5,15,5,2,240,Knee pads: no stagger when landing from jumps,,,,,"Military bases, National Guard checkpoints",,,LEGS-010
+Reinforced Jeans,Rare,Legs,Light,4,0,0,0,10,0,2,120,Thick denim slows bites,,,,Jeans,"Uncommon loot; or Jeans + Gear Upgrade Kit",,,LEGS-011
+Deep-Pocket Cargo Pants,Rare,Legs,Light,3,0,0,0,5,0,6,120,Extra pockets,,,,Cargo Pants,"Army surplus back rooms; or Cargo Pants + Gear Upgrade Kit",,,LEGS-012
+Lightweight Tactical Pants,Rare,Legs,Medium,7,0,2,0,10,0,3,170,Holster: +10% weapon swap speed,,,,Police Tactical Pants,"Police armories; or Police Tactical Pants + Gear Upgrade Kit",,,LEGS-013
+Padded Motorcycle Pants,Rare,Legs,Medium,8,0,-1,0,17,0,2,180,Knee armor,,,,Motorcycle Pants,"Motorcycle shop storage; or Motorcycle Pants + Gear Upgrade Kit",,,LEGS-014
+Reinforced Chainsaw Chaps,Rare,Legs,Medium,9,0,-2,0,28,0,0,200,'-50% damage from blades and chainsaws,,,,Chainsaw Chaps,"Lumber yard lockups; or Chainsaw Chaps + Gear Upgrade Kit",,,LEGS-015
+Compression Leggings,Epic,Legs,Light,2,0,8,15,0,-5,0,80,Lightweight and quiet,'+20% sprint duration,Slide: sprinting into a crouch slides you under grabs,,Sweatpants,Achievement 'Cardio': sprint 25 km total,,,LEGS-016
+Fisherman's Waders,Epic,Legs,Medium,8,10,-2,0,40,0,1,200,Thick rubber,Immune to leg grabs from Crawler zombies,,,Canvas Work Pants,"Side quest 'Low Tide' reward; marina bait shops",,,LEGS-017
+Kneecapper Guards,Epic,Legs,Heavy,14,0,-3,-5,18,5,2,270,Knee pads: no stagger when landing from jumps,'+10% kick damage,Knee strike: shoves deal 25 dmg and knock zombies down,,Military Leg Guards,"Rare drop from Soldier zombies; military base armories",,,LEGS-018
+Appointed Rounds,Legendary,Legs,Light,8,20,12,25,20,-10,6,450,Mailbag pockets,Sprinting costs no stamina for the first 5 s,"Second Wind: when HP drops below 30%, gain +30% movement speed for 6 s (45 s cooldown)","No rain, snow, or heat penalties; Zombies take 20% longer to notice you",Cargo Pants,Quest 'Appointed Rounds': deliver all 40 undelivered letters from the Brookside post office,"Faded blue postal uniform trousers with a black side stripe, reinforced knee patches, and a mailbag strap with a brass whistle.","Belonged to a mail carrier who walked her route every day for two years after the end, delivering letters nobody would read. Neither snow nor rain nor heat nor the dead.",LEGS-019
+Wrecker,Legendary,Legs,Heavy,20,35,-2,0,35,10,2,550,Car-door steel plating,Cannot be grabbed by Crawler zombies,Crushing kicks: kicks deal 40 dmg and knock zombies down,"'-50% fall damage;' +15% damage reduction while sprinting",Military Leg Guards,"Boss drop: Crash, the derby champion turned Brute, at Hollis County Speedway","Heavy pants plated with dented car-door steel, painted with a faded racing number 13 and checkered flags, with tire-tread knee guards.",Pieced together from car doors by a demolition derby champion with 300 wins on the dirt track. He liked his odds against things that could not drive.,LEGS-020
+Kilt,Cosmetic,Legs,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Costume shops, festival grounds",,,LEGS-021
+Pajama Pants,Cosmetic,Legs,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Homes, department stores",,,LEGS-022
+Tuxedo Pants,Cosmetic,Legs,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Wedding venues, formalwear shops",,,LEGS-023
+Plaid Golf Pants,Cosmetic,Legs,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Country clubs, pro shops",,,LEGS-024
+Acid-Wash Jeans,Cosmetic,Legs,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Thrift stores, vintage shops",,,LEGS-025
+Flip-Flops,Normal,Feet,Light,0,0,-5,0,-10,10,0,20,Loud and slippery,,,,,"Homes, beach shops, pool houses",,,FEET-001
+Slippers,Normal,Feet,Light,0,0,0,0,0,-15,0,30,Nearly silent footsteps,,,,,"Homes, hotels, nursing homes",,,FEET-002
+Sneakers,Normal,Feet,Light,1,0,5,5,0,0,0,80,Quick and light,,,,,"Homes, shoe stores, schools",,,FEET-003
+Running Shoes,Normal,Feet,Light,1,0,8,8,0,0,0,70,Built for sprinting,,,,,"Gyms, sporting goods stores",,,FEET-004
+Rain Boots,Normal,Feet,Light,2,0,-2,0,10,5,0,100,No slowdown in mud or shallow water,,,,,"Homes, farms, garden centers",,,FEET-005
+Hiking Boots,Normal,Feet,Medium,3,0,2,5,5,0,0,150,'-50% rough terrain slowdown,,,,,"Outdoor stores, cabins, ranger stations",,,FEET-006
+Snow Boots,Normal,Feet,Medium,3,0,-1,0,5,0,0,140,No slowdown on snow or ice,,,,,"Ski lodges, cabins, outdoor stores",,,FEET-007
+Cowboy Boots,Normal,Feet,Medium,3,0,0,0,6,5,0,160,'+10% stomp damage,,,,,"Ranch houses, western-wear stores",,,FEET-008
+Work Boots,Normal,Feet,Medium,5,0,0,0,8,5,0,200,Steel toe: +20% stomp damage,,,,,"Construction sites, hardware stores, farms",,,FEET-009
+Combat Boots,Normal,Feet,Heavy,6,0,0,0,10,5,0,220,Ankle support: no stagger when landing from jumps,,,,,"Military bases, army surplus stores",,,FEET-010
+Felt-Soled Sneakers,Rare,Feet,Light,1,0,5,5,0,-10,0,90,Quick and light,,,,Sneakers,"Uncommon loot; or Sneakers + Gear Upgrade Kit",,,FEET-011
+Cushioned Running Shoes,Rare,Feet,Light,1,0,9,10,0,0,0,80,Built for sprinting,,,,Running Shoes,"Gym lockers; or Running Shoes + Gear Upgrade Kit",,,FEET-012
+Broken-In Hiking Boots,Rare,Feet,Medium,4,0,3,8,5,0,0,170,'-50% rough terrain slowdown,,,,Hiking Boots,"Ranger station lockers; or Hiking Boots + Gear Upgrade Kit",,,FEET-013
+Treaded Work Boots,Rare,Feet,Medium,6,0,1,0,9,5,0,230,Steel toe: +20% stomp damage,,,,Work Boots,"Foreman offices; or Work Boots + Gear Upgrade Kit",,,FEET-014
+Reinforced Combat Boots,Rare,Feet,Heavy,7,0,0,0,12,5,0,260,Ankle support: no stagger when landing from jumps,,,,Combat Boots,"Military armories; or Combat Boots + Gear Upgrade Kit",,,FEET-015
+Ghost Steps,Epic,Feet,Light,2,0,5,5,0,-30,0,140,Soft wrapped soles,Silent sprinting: sprinting makes no extra noise,,,Sneakers,"Side quest 'The Quiet Dojo' reward; rare drop from Stalker zombies",,,FEET-016
+Marathon Racers,Epic,Feet,Light,1,0,12,15,0,0,0,90,Built for sprinting,'+15% sprint speed,Dash: double-tap sprint for a quick dodge burst (8 s cooldown),,Running Shoes,"Rare drop from Runner zombies; achievement 'Finish Line'",,,FEET-017
+Stompers,Epic,Feet,Heavy,9,10,-1,0,15,10,0,300,Steel-plated soles,'+30% stomp damage,Stomp shockwave: stomping a downed zombie staggers zombies within 1 tile,,Combat Boots,"Rare drop from Brute zombies; military base armories",,,FEET-018
+Starting Gun,Legendary,Feet,Light,3,15,15,20,0,-10,0,400,Spiked track soles,Sprinting costs 50% less stamina,Afterimage: 25% chance to dodge a hit completely while sprinting,"Vault over Crawler zombies and low obstacles without slowing;' +20% sprint speed",Running Shoes,Achievement 'Anchor Leg': sprint a combined 100 km,Gold-and-red track spikes with a stopwatch laced into one shoe and a medal ribbon tied around the other.,"Tessa Ruiz held the state record in the 400 meters. When the sirens started, she ran from the high school to the hospital and back nine times carrying medicine. The record still stands. So do the people she reached.",FEET-019
+Firewalkers,Legendary,Feet,Heavy,8,20,8,0,15,5,0,500,Heat-proof soles,Immune to burning,Fire trail: sprinting leaves burning ground behind you (6 dmg/s for 3 s),"Stomping a downed zombie sets it on fire;' -50% damage from acid puddles",Combat Boots,Boss drop: The Inferno at the Engine Company 9 firehouse,"Scorched black firefighter boots with glowing ember cracks in the soles, melted reflective striping, and smoke curling from the laces.","Engine Company 9 never stopped answering calls. Their captain's boots still smolder, as if nobody told them the fires are winning.",FEET-020
+Bunny Slippers,Cosmetic,Feet,Cosmetic,,,,,,,,,Cosmetic only,,,,,Achievement 'Comfort Zone': sleep in 50 different safehouses,,,FEET-021
+Clown Shoes,Cosmetic,Feet,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Circus trailers, costume shops",,,FEET-022
+Dress Shoes,Cosmetic,Feet,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Office buildings, formalwear shops",,,FEET-023
+Light-Up Sneakers,Cosmetic,Feet,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Toy stores, mall shoe stores",,,FEET-024
+Gold Sneakers,Cosmetic,Feet,Cosmetic,,,,,,,,,Cosmetic only,,,,,"Achievement 'Worthless Fortune': collect $1,000,000 in cash",,,FEET-025
