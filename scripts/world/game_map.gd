@@ -40,6 +40,11 @@ var entry := Vector2i.ZERO
 var spawns := []
 var floor_tiles := []
 var ladder_shown := false
+## How many real tiles one design tile became (see MapScale); design spots go through dt().
+var scale := 1
+
+func dt(x: int, y: int) -> Vector2i:
+	return Vector2i(x * scale, y * scale)
 
 static func k(x: int, y: int) -> String:
 	return "%d,%d" % [x, y]

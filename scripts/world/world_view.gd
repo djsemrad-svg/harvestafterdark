@@ -172,8 +172,10 @@ func _draw() -> void:
 			draw_texture(Art.get_soil(int(m.soil[kk].w) == 1, season), Vector2(tt.x * 16, tt.y * 16))
 			_soil_extras(m.soil[kk], Vector2(tt.x * 16, tt.y * 16))
 	var sorted := []
-	for y in range(y0 - 1, min(m.h - 1, y1 + 3) + 1):
-		for x in range(x0 - 2, x1 + 2):
+	# objects are drawn upward from their base and can be wider than a tile (pack trees are up to 4 tiles
+	# tall and 3 wide), so look well past the screen edges or they pop in and out as the camera moves
+	for y in range(y0 - 1, min(m.h - 1, y1 + 6) + 1):
+		for x in range(x0 - 4, x1 + 5):
 			var o = m.objects.get(GameMap.k(x, y))
 			if o == null or o.type == "part" or Data.obj_defs.get(o.type, {}).get("invisible", false):
 				continue
@@ -214,7 +216,8 @@ func _draw() -> void:
 			2:
 				var bt: Texture2D = Art.get_building(it[2], season, night)
 				var bst: Dictionary = it[2]
-				draw_texture(bt, Vector2(bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2, (bst.y + bst.h) * 16 - bt.get_height()))
+				var bx: float = float(bst.art_x) if bst.has("art_x") and Art.building_override(bst) != null else bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2
+				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height()))
 			3: _draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])

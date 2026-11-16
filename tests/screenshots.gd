@@ -98,10 +98,11 @@ func _ready() -> void:
 		Game.state.time = 640
 		Game.state.weather = "sun"
 		var dps: int = Balance.calendar.days_per_season
-		var spots := [["town", 12, 20], ["homestead", 12, 14], ["residential", 40, 23], ["residential", 8, 31], ["industrial", 44, 30], ["industrial", 22, 25], ["riverlands", 30, 14], ["dry_creek", 25, 21]]
+		var spots := [["town", 12, 20], ["town", 26, 17], ["town", 40, 24], ["homestead", 12, 14], ["residential", 40, 23], ["residential", 8, 31], ["residential", 20, 14], ["industrial", 44, 36], ["industrial", 22, 18], ["riverlands", 30, 14], ["riverlands", 10, 18], ["dry_creek", 25, 21], ["halvorsen", 30, 32]]
 		for i in spots.size():
 			var sp: Array = spots[i]
-			Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+			var spt := MapScale.t(sp[0], sp[1], sp[2])
+			Game.change_map(sp[0], spt.x, spt.y, "down", {"silent": true})
 			Game.enemies.clear()
 			await frames(10)
 			await shot("60_%d_%s" % [i, sp[0]])
@@ -113,7 +114,8 @@ func _ready() -> void:
 			Game.state.day = 1 + si * dps + 3
 			Art._tex.clear(); Art._obj.clear(); Art._ovobj.clear()
 			for sp in [["homestead", 12, 14], ["residential", 8, 22]]:
-				Game.change_map(sp[0], sp[1], sp[2], "down", {"silent": true})
+				var spt2 := MapScale.t(sp[0], sp[1], sp[2])
+				Game.change_map(sp[0], spt2.x, spt2.y, "down", {"silent": true})
 				Game.enemies.clear()
 				await frames(10)
 				await shot("61_%s_%s" % [Game.season(), sp[0]])

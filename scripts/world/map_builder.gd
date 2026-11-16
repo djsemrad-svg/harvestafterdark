@@ -35,9 +35,11 @@ static func homestead(world_seed: int) -> GameMap:
 	m.fill(11, 18, 39, 3, "dirt")
 	m.ellipse(40, 28, 6.4, 4.6, "sand")
 	m.ellipse(40, 28, 5.2, 3.6, "water")
-	m.add_structure({"kind": "farmhouse", "x": 8, "y": 4, "w": 6, "h": 5, "door_x": 11, "door_y": 8, "warp": {"to": "house", "tx": 6, "ty": 8, "dir": "up"}})
+	var fh := {"kind": "farmhouse", "x": 8, "y": 4, "w": 6, "h": 5, "door_x": 11, "door_y": 8, "warp": {"to": "house", "tx": 6, "ty": 8, "dir": "up"}}
+	MapScale.fit_to_art(fh, 1)      # as big as its picture, standing on its door
+	m.add_structure(fh)
 	m.warps.append({"x": 49, "y": 18, "w": 1, "h": 3, "to": "town", "tx": 1, "ty": 19, "dir": "right"})
-	m.add_obj(14, 8, "shipping_box")
+	m.add_obj(int(fh.x) + int(fh.w) + 1, 8, "shipping_box")
 	m.add_obj(6, 9, "pump")
 	m.add_obj(22, 5, "car_wreck", {"w": 2})
 	m.add_obj(46, 17, "sign", {"text": "$PROPERTY"})

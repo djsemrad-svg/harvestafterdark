@@ -208,7 +208,9 @@ static func _open_building(t: GameMap, kind: String, new_kind: String, room: Str
 			t.warps.append(wp)
 			t.solid_mask[int(s.door_y) * t.w + int(s.door_x)] = 0
 
-static func _place_near(m: GameMap, x: int, y: int, type: String, extra := {}) -> void:
+static func _place_near(m: GameMap, dx0: int, dy0: int, type: String, extra := {}) -> void:
+	var x := m.dt(dx0, dy0).x
+	var y := m.dt(dx0, dy0).y
 	for rad in 4:
 		for dy in range(-rad, rad + 1):
 			for dx in range(-rad, rad + 1):

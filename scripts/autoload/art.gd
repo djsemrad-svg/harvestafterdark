@@ -2192,8 +2192,61 @@ func building_override(s: Dictionary) -> Texture2D:
 	if t == null: t = override("buildings/%s.png" % s.kind)
 	return t
 
+## A building picture from the packs, weathered by the building's condition (a ruin is greyer, darker and
+## grimier than a kept-up house) and with snow on its roofs and ledges in winter.
+func building_art(s: Dictionary, season: String) -> Texture2D:
+	var cond := building_condition(s)
+	var exact := override("buildings/%s_%d.png" % [s.kind, cond])
+	var base := exact if exact != null else override("buildings/%s.png" % s.kind)
+	if base == null:
+		return null
+	var winter := season == "winter"
+	if exact != null and not winter:
+		return exact
+	return cached("bo|%s|%d|%s" % [s.kind, cond, winter], func():
+		var im: Image = base.get_image().duplicate()
+		if im.is_compressed(): im.decompress()
+		im.convert(Image.FORMAT_RGBA8)
+		var W := im.get_width()
+		var H := im.get_height()
+		if exact == null and cond < 4:
+			var grey: float = [0.5, 0.36, 0.22, 0.1][cond]
+			var dark: float = [0.72, 0.82, 0.9, 0.96][cond]
+			for y in H:
+				for x in W:
+					var c := im.get_pixel(x, y)
+					if c.a == 0: continue
+					var g := c.get_luminance()
+					im.set_pixel(x, y, Color(lerpf(c.r, g, grey) * dark, lerpf(c.g, g, grey) * dark, lerpf(c.b, g, grey) * dark * 0.97, c.a))
+			# grime and damage: dark specks, more the worse the building is
+			var specks := int(W * H / 180.0) * (4 - cond)
+			for i in specks:
+				var px := int(hash2(i, cond, 91) * W)
+				var py := int(hash2(i, cond, 92) * H)
+				var c2 := im.get_pixel(px, py)
+				if c2.a > 0.5: im.set_pixel(px, py, c2.darkened(0.35))
+		# the building's name on a wooden board over its door, as on the drawn buildings
+		var B: Dictionary = Data.buildings.get(s.kind, {})
+		if B.has("sign"):
+			var meta: Dictionary = MapScale.building_meta().get(str(s.kind), {})
+			var tw := text_px_width(B.sign) + 6
+			var sx: int = clampi(int(meta.get("door", W / 2)) - tw / 2, 1, maxi(1, W - tw - 1))
+			var sy := maxi(1, H - 40)
+			R(im, sx, sy, tw, 9, "#5a4430"); R(im, sx + 1, sy + 1, tw - 2, 7, "#c8a47a" if cond >= 2 else "#a89478")
+			draw_text_px(im, B.sign, sx + 3, sy + 2, "#3a2a1a")
+		if winter:
+			var src := im.duplicate()
+			for x in W:
+				for y in range(1, H):
+					var c3 = src.get_pixel(x, y)
+					var up = src.get_pixel(x, y - 1)
+					if c3.a > 0.5 and up.a < 0.5:
+						im.set_pixel(x, y, Color("#eef3f8"))
+						if y + 1 < H and src.get_pixel(x, y + 1).a > 0.5: im.set_pixel(x, y + 1, Color("#d6dee8"))
+		return im)
+
 func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
-	var ovb := building_override(s)
+	var ovb := building_art(s, season)
 	if ovb != null:
 		return ovb
 	var cond := building_condition(s)

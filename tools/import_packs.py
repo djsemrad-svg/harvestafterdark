@@ -334,3 +334,54 @@ if os.path.isdir(MI):
         bb = im.getbbox()
         save(im.crop(bb) if bb else im, "objects/%s.png" % t)
     print("interiors:", len(FLOORS), "floors,", len(WALLS), "walls,", len(FURNITURE), "furniture")
+
+
+# ---------------------------------------------------------------- buildings (Modern Exteriors)
+# One whole building picture per building kind. The outdoor maps are built at twice their design size
+# (MapScale), and each building's footprint follows its picture, lined up on its door.
+# "door" is the door's centre in pixels from the picture's left edge (default: the middle).
+ME = os.path.join(SRC, "modernexteriors-win", "Modern_Exteriors_16x16", "Modern_Exteriors_Complete_Singles_16x16")
+if os.path.isdir(ME):
+    A = "24_Additional_Houses_%s_16x16.png"
+    S = "ME_Singles_%s_16x16_%s.png"
+    BUILDINGS = {
+        "farmhouse": A % "Post_Apocalyptic_House_1", "greenhouse": S % ("Garden", "Large_Greenhouse_Example"),
+        "house_a": S % ("Camping", "Mobile_House_Big_5"), "house_b": S % ("Camping", "Mobile_House_Big_7"), "ruin": A % "Post_Apocalyptic_House_2",
+        "d_house_blue": A % "Post_Apocalyptic_House_1", "d_house_red": A % "Post_Apocalyptic_House_1",
+        "d_house_green": A % "Post_Apocalyptic_House_2", "d_house_yellow": A % "Post_Apocalyptic_House_2", "d_ruin": A % "Post_Apocalyptic_House_2",
+        "store": S % ("Shopping_Center_and_Markets", "Mall_1"), "tavern": A % "Victorian_House_5", "tavern_open": A % "Victorian_House_5",
+        "forge": "23_MIlitary_Base_16x16_Dormitory_1.png",
+        "ranch": A % "Country_House", "clinic": "22_Post_Office_16x16_Building_2.png", "workshop": S % ("Generic_Building", "Hardware_Store"),
+        "guild": "23_MIlitary_Base_16x16_Dormitory_2.png", "townhall": S % ("Generic_Building", "Condo_6"),
+        "archive": "23_MIlitary_Base_16x16_Dormitory_4.png", "archive_open": "23_MIlitary_Base_16x16_Dormitory_4.png",
+        "baitshack": S % ("Camping", "Mobile_House_Small_1"),
+        "d_diner": S % ("Shopping_Center_and_Markets", "Market_Big_1"), "d_pawn": S % ("Shopping_Center_and_Markets", "Market_Small_1"),
+        "d_guns": S % ("Shopping_Center_and_Markets", "Market_Small_5"), "d_pharmacy": S % ("Shopping_Center_and_Markets", "Market_Small_9"),
+        "d_police": S % ("Police_Station", "Police_Station_Small_1"), "d_church": S % ("Graveyard", "Grace_Chapel"),
+        "d_shed": S % ("City_Props", "Junk_Shack_1"), "d_school": S % ("School", "School_1"),
+        "d_thrift": S % ("Shopping_Center_and_Markets", "Market_Medium_2"), "d_gas": S % ("Shopping_Center_and_Markets", "Market_Medium_3"),
+        "d_burger": S % ("Shopping_Center_and_Markets", "Market_Big_2"), "d_pizza": S % ("Shopping_Center_and_Markets", "Market_Big_3"),
+        "d_chicken": S % ("Shopping_Center_and_Markets", "Market_Medium_4"), "d_taco": S % ("Shopping_Center_and_Markets", "Market_Medium_5"),
+        "d_hotdog": S % ("Shopping_Center_and_Markets", "Market_Small_3"), "d_hardware": S % ("Generic_Building", "Hardware_Store"),
+        "d_garage": "23_MIlitary_Base_16x16_Dormitory_3.png", "d_firehouse": S % ("Fire_Station", "Building"),
+        "d_warehouse": "23_MIlitary_Base_16x16_Hangar.png", "d_bar": "23_MIlitary_Base_16x16_Dormitory_4.png",
+        "d_scrap_office": S % ("City_Props", "Container_House_1"), "d_lumber_office": S % ("Camping", "Mobile_House_Medium_1"),
+        "d_mill": "23_MIlitary_Base_16x16_Hangar.png", "d_farmhouse": A % "One_Story_House",
+        "d_bait": S % ("Camping", "Mobile_House_Small_2"), "d_boathouse": S % ("Camping", "Mobile_House_Big_1"),
+        "d_ranger": S % ("Camping", "Mobile_House_Big_5"), "d_cabin": S % ("Camping", "Mobile_House_Medium_5"),
+        "d_lab": S % ("Hotel_and_Hospital", "Hospital_1"), "d_lab6": "23_MIlitary_Base_16x16_Bunker.png",
+        "d_booth": S % ("Police_Station", "Parking_Booth_2"), "d_clubhouse": A % "Country_House_No_Banisters",
+    }
+    meta = {}
+    for kind, f in BUILDINGS.items():
+        p = os.path.join(ME, f)
+        if not os.path.exists(p):
+            print("missing building art:", kind, f)
+            continue
+        im = load(p)
+        save(im, "buildings/%s.png" % kind)
+        meta[kind] = {"w": im.width, "h": im.height, "door": im.width // 2}
+    with open(os.path.join(OUT, "buildings", "index.json"), "w") as fh:
+        json.dump(meta, fh, indent=1, sort_keys=True)
+    written.append("buildings/index.json")
+    print("buildings:", len(meta))

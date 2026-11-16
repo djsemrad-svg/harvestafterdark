@@ -57,8 +57,10 @@ func start(mode: String, slot: int) -> void:
 	Game.new_game({"mode": mode, "slot": slot, "name": "Tester", "look": LOOK.duplicate(), "property_name": "Testfield Acres"})
 	U.close_all()
 
+## Tests name spots on the design grid; scaled outdoor maps are twice as big (MapScale).
 func at(map: String, x: int, y: int, dir := "down") -> void:
-	Game.change_map(map, x, y, dir, {"silent": true})
+	var t := MapScale.t(map, x, y)
+	Game.change_map(map, t.x, t.y, dir, {"silent": true})
 
 func select(id: String) -> int:
 	for i in Game.state.inventory.size():
@@ -108,7 +110,7 @@ func idx(id: String) -> int:
 
 func walk(dir: Vector2, ms: float) -> void:
 	W.test_input = dir
-	tick(ms)
+	tick(ms * (Game.map.scale if Game.map != null else 1))
 	W.test_input = Vector2.ZERO
 
 func toast_texts() -> String:
@@ -123,7 +125,7 @@ func run_all() -> void:
 	check("Character creation stores name and appearance", c.name == "Tester" and c.look.hair_style == "Ponytail" and c.look.acc == "Cap" and c.look.shirt == "#6b4fa0")
 
 	at("homestead", 45, 17, "right")
-	var sign = G.maps.homestead.get_obj(46, 17)
+	var sign = G.maps.homestead.get_obj(G.maps.homestead.dt(46, 17).x, G.maps.homestead.dt(46, 17).y)
 	if sign != null: W.interact_object(sign)
 	var text: String = U.overlay.lines[0] if ov() == "dialogue" else ""
 	close_all()
@@ -224,7 +226,7 @@ func run_all() -> void:
 	# ---------- bed save
 	start("survivor", 2)
 	at("house", 2, 3, "left")
-	var bed = G.maps.house.get_obj(1, 3)
+	var bed = G.maps.house.get_obj(G.maps.house.dt(1, 3).x, G.maps.house.dt(1, 3).y)
 	if bed != null: W.interact_object(bed)
 	var prompt: bool = ov() == "confirm" and U.overlay.text == "Go to sleep and start the next day?"
 	if prompt: U._confirm(true)
@@ -283,7 +285,7 @@ func run_all() -> void:
 
 	at("homestead", 6, 10, "up")
 	G.state.thirst = 5.0; G.state.can_water = 0
-	var pump = G.map.get_obj(6, 9)
+	var pump = G.map.get_obj(G.map.dt(6, 9).x, G.map.dt(6, 9).y)
 	if pump != null: W.interact_object(pump)
 	check("Survivor: hand pump quenches thirst and refills the watering can", G.state.thirst == Balance.survival.thirst_max and G.state.can_water > 0, "thirst=%.0f can=%d pump=%s" % [G.state.thirst, G.state.can_water, pump != null])
 
@@ -403,7 +405,7 @@ func run_all() -> void:
 	var s0: int = G.count_item("stone")
 	use("pickaxe"); use("pickaxe")
 	tick(1500)
-	check("Tools: pickaxe breaks rock and stone drops are collected", hm.get_obj(21, 24) == null and G.count_item("stone") > s0, "stone=%d" % G.count_item("stone"))
+	check("Tools: pickaxe breaks rock and stone drops are collected", hm.get_obj(hm.dt(21, 24).x, hm.dt(21, 24).y) == null and G.count_item("stone") > s0, "stone=%d" % G.count_item("stone"))
 
 	at("homestead", 20, 26, "right"); clear_tile(hm, 21, 26); hm.add_obj(21, 26, "tree")
 	var w0: int = G.count_item("wood")
@@ -411,19 +413,19 @@ func run_all() -> void:
 		G.state.energy = 100.0
 		use("axe")
 	tick(1500)
-	var o = hm.get_obj(21, 26)
+	var o = hm.get_obj(hm.dt(21, 26).x, hm.dt(21, 26).y)
 	check("Tools: axe chops a tree into a stump and wood", o != null and o.type == "stump" and G.count_item("wood") >= w0 + 5, "obj=%s wood=%d" % [o.type if o != null else "none", G.count_item("wood")])
 
 	at("homestead", 20, 28, "right"); clear_tile(hm, 21, 28); hm.add_obj(21, 28, "weeds")
 	var e0: float = G.state.energy
 	use("scythe")
-	check("Tools: scythe clears weeds; tools cost energy", hm.get_obj(21, 28) == null and G.state.energy < e0, "energy %.1f > %.1f" % [e0, G.state.energy])
+	check("Tools: scythe clears weeds; tools cost energy", hm.get_obj(hm.dt(21, 28).x, hm.dt(21, 28).y) == null and G.state.energy < e0, "energy %.1f > %.1f" % [e0, G.state.energy])
 
 	at("homestead", 18, 27, "right")
-	var boulder = hm.get_obj(19, 27)
+	var boulder = hm.get_obj(hm.dt(19, 27).x, hm.dt(19, 27).y)
 	var bhp = boulder.hp if boulder != null else -1
 	use("pickaxe")
-	check("Tools: basic pickaxe cannot break a boulder (needs copper)", boulder != null and boulder.type == "boulder" and hm.get_obj(19, 27).hp == bhp, "boulder=%s" % (boulder.type if boulder != null else "none"))
+	check("Tools: basic pickaxe cannot break a boulder (needs copper)", boulder != null and boulder.type == "boulder" and hm.get_obj(hm.dt(19, 27).x, hm.dt(19, 27).y).hp == bhp, "boulder=%s" % (boulder.type if boulder != null else "none"))
 
 	# ---------- farming
 	clear_tile(hm, 30, 30)
@@ -451,7 +453,7 @@ func run_all() -> void:
 	G.state.time = 600; G.sync_npcs()
 	at("store", 5, 5, "up")
 	var open_: bool = G.is_shop_open("general")
-	var counter = G.map.get_obj(5, 4)
+	var counter = G.map.get_obj(G.map.dt(5, 4).x, G.map.dt(5, 4).y)
 	if counter != null: W.interact_object(counter)
 	var ui_ok: bool = ov() == "shop"
 	var stock: Array = G.shop_stock("general")
@@ -623,10 +625,10 @@ func run_all() -> void:
 	hm = G.maps.homestead
 	at("homestead", 18, 27, "right")
 	for i in 6:
-		if hm.get_obj(19, 27) == null: break
+		if hm.get_obj(hm.dt(19, 27).x, hm.dt(19, 27).y) == null: break
 		G.state.energy = 100.0
 		use("pickaxe")
-	check("Tool upgrade improves function: copper pickaxe breaks the boulder", hm.get_obj(19, 27) == null and G.tool_tier("pickaxe") == 1)
+	check("Tool upgrade improves function: copper pickaxe breaks the boulder", hm.get_obj(hm.dt(19, 27).x, hm.dt(19, 27).y) == null and G.tool_tier("pickaxe") == 1)
 
 	G.state.tools.hoe.tier = 1
 	at("homestead", 24, 24, "right")
@@ -730,7 +732,7 @@ func run_all() -> void:
 	err = G.load_game("adventure", 3)
 	var again := JSON.stringify(Game.normalize({"inv": G.state.inventory, "tools": G.state.tools, "skills": G.state.skills, "npcs": G.state.npcs, "quests": G.state.quests, "mine": G.state.mine, "money": G.state.money, "day": G.state.day}))
 	var crop = G.maps.homestead.soil.get("33,33")
-	check("Save preserves progression (world, inventory, tools, quests, skills, NPCs)", err == "" and snap == again and crop != null and int(crop.crop.g) == 3 and G.maps.homestead.get_obj(30, 12) == null and G.count_item("emerald") == 1, err if err != "" else ("match=%s" % (snap == again)))
+	check("Save preserves progression (world, inventory, tools, quests, skills, NPCs)", err == "" and snap == again and crop != null and int(crop.crop.g) == 3 and G.maps.homestead.get_obj(G.maps.homestead.dt(30, 12).x, G.maps.homestead.dt(30, 12).y) == null and G.count_item("emerald") == 1, err if err != "" else ("match=%s" % (snap == again)))
 	U.close_all()
 
 	var p := G.slot_path("survivor", 3)
@@ -765,7 +767,7 @@ func run_all() -> void:
 	hm = G.maps.homestead
 	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30)
 	select("chest"); W.use_selected(0, false)
-	var ch = hm.get_obj(21, 30)
+	var ch = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y)
 	var placed: bool = ch != null and ch.type == "chest"
 	var stored := false
 	if placed:
@@ -782,7 +784,7 @@ func run_all() -> void:
 	G.add_item("river_chub", 1, {"silent": true})
 	G.add_item("cooking_oil", 1, {"silent": true})
 	at("house", 9, 3, "up")
-	var stove = G.map.get_obj(9, 2)
+	var stove = G.map.get_obj(G.map.dt(9, 2).x, G.map.dt(9, 2).y)
 	if stove != null: W.interact_object(stove)
 	var cui: bool = ov() == "craft"
 	for x in Data.recipes:
@@ -791,7 +793,7 @@ func run_all() -> void:
 	check("Cooking at the stove", cui and G.count_item("fried_fish") == 1 and G.state.skills.cooking.xp > 0, "ui=%s" % cui)
 
 	at("house", 3, 2, "up")
-	var mirror = G.map.get_obj(3, 1)
+	var mirror = G.map.get_obj(G.map.dt(3, 1).x, G.map.dt(3, 1).y)
 	if mirror != null: W.interact_object(mirror)
 	var mui: bool = ov() == "appearance"
 	if mui:
@@ -829,7 +831,7 @@ func run_all() -> void:
 	U.open("craft", {"station": "workbench"}); U._craft(rbench); close_all()
 	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30)
 	select("ammo_bench"); W.use_selected(0, false)
-	var bench = hm.get_obj(21, 30)
+	var bench = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y)
 	if bench != null: W.interact_object(bench)
 	var bench_ui: bool = ov() == "craft" and U.overlay.station == "ammo_bench"
 	for x in Data.recipes:
@@ -846,7 +848,7 @@ func run_all() -> void:
 	G.enemies.clear()
 	at("homestead", 30, 24, "down"); clear_tile(hm, 30, 25)
 	select("nail_turret"); W.use_selected(0, false)
-	var tur = hm.get_obj(30, 25)
+	var tur = hm.get_obj(hm.dt(30, 25).x, hm.dt(30, 25).y)
 	var lerr2: String = G.turret_load(tur) if tur != null else "no turret"
 	var loaded: int = int(tur.get("ammo_n", 0)) if tur != null else 0
 	G.player.pos = Vector2(30 * 16 + 8, 20 * 16 + 14)
@@ -858,9 +860,9 @@ func run_all() -> void:
 	# barriers: damage, break, repair, gate
 	clear_tile(hm, 24, 30)
 	var fobj: Dictionary = hm.add_obj(24, 30, "fence")
-	var solid0: bool = hm.is_solid(24, 30)
+	var solid0: bool = hm.is_solid(hm.dt(24, 30).x, hm.dt(24, 30).y)
 	G.barrier_hit(fobj, 40)
-	var broken_passable: bool = fobj.get("broken", false) and not hm.is_solid(24, 30)
+	var broken_passable: bool = fobj.get("broken", false) and not hm.is_solid(hm.dt(24, 30).x, hm.dt(24, 30).y)
 	var w_before: int = G.count_item("wood")
 	at("homestead", 23, 30, "right")
 	W.interact_object(fobj)
@@ -869,9 +871,9 @@ func run_all() -> void:
 	var gate: Dictionary = hm.add_obj(25, 32, "wood_gate")
 	at("homestead", 24, 32, "right")
 	W.interact_object(gate)
-	var open_ok: bool = gate.get("open", false) and not hm.is_solid(25, 32)
+	var open_ok: bool = gate.get("open", false) and not hm.is_solid(hm.dt(25, 32).x, hm.dt(25, 32).y)
 	W.interact_object(gate)
-	check("Gates open and close", open_ok and hm.is_solid(25, 32))
+	check("Gates open and close", open_ok and hm.is_solid(hm.dt(25, 32).x, hm.dt(25, 32).y))
 
 	# machines
 	clear_tile(hm, 26, 34)
@@ -953,7 +955,7 @@ func run_all() -> void:
 	G.state.npcs.ruth.points = 300
 	for pair in pie.inputs: G.add_item(pair[0], int(pair[1]), {"silent": true})
 	at("house", 9, 3, "up")
-	W.interact_object(G.map.get_obj(9, 2))
+	W.interact_object(G.map.get_obj(G.map.dt(9, 2).x, G.map.dt(9, 2).y))
 	U._craft(pie)
 	close_all()
 	var cooking_n: int = Data.recipes.filter(func(x): return x.station == "stove").size()
@@ -1043,7 +1045,7 @@ func run_all() -> void:
 	var bun: Dictionary = G.state.animals[1]
 	G.change_map("coop", 6, 6, "up", {"silent": true})
 	G.add_item("hay", 40, {"silent": true})
-	W.interact_object(G.map.get_obj(2, 2))
+	W.interact_object(G.map.get_obj(G.map.dt(2, 2).x, G.map.dt(2, 2).y))
 	var hay_in: int = int(coop_b.hay)
 	var f0: int = int(hen.friendship)
 	var r_h: Dictionary = G.animals_rt[int(hen.uid)]
@@ -1562,7 +1564,7 @@ func run_items() -> void:
 	U.open("craft", {"station": "hand"}); U._craft(rw); close_all()
 	at("homestead", 20, 30, "right"); clear_tile(hm, 21, 30); clear_tile(hm, 21, 31)
 	select("workbench"); W.use_selected(0, false)
-	var wb = hm.get_obj(21, 30)
+	var wb = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y)
 	if wb != null: W.interact_object(wb)
 	var wb_ui: bool = ov() == "craft" and U.overlay.station == "workbench"
 	U._craft(rmill); close_all()
@@ -1571,7 +1573,7 @@ func run_items() -> void:
 	# a machine from the sheet: wheat into flour
 	G.map.remove_obj(21, 30)
 	select("grain_mill"); W.use_selected(0, false)
-	var mill = hm.get_obj(21, 30)
+	var mill = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y)
 	G.add_item("wheat", 2, {"silent": true})
 	select("wheat")
 	if mill != null: W.interact_object(mill)
@@ -1712,14 +1714,14 @@ func run_districts() -> void:
 	check("Districts: 3 outdoor maps and %d buildings to enter; every door, exit and container (%d) can be reached" % [n_rooms, n_cont], bad.is_empty() and n_rooms >= 25 and n_cont >= 150, str(bad.slice(0, 6)))
 
 	# gates in town start closed
-	var g_res = town.get_obj(1, 30)
-	var g_ind = town.get_obj(55, 19)
-	var g_riv = town.get_obj(28, 39)
+	var g_res = town.get_obj(town.dt(1, 30).x, town.dt(1, 30).y)
+	var g_ind = town.get_obj(town.dt(55, 19).x, town.dt(55, 19).y)
+	var g_riv = town.get_obj(town.dt(28, 39).x, town.dt(28, 39).y)
 	var closed: bool = g_res != null and g_res.type == "district_gate" and not g_res.get("open", false) and g_ind != null and g_ind.type == "district_gate" and g_riv != null and g_riv.type == "district_gate"
 	at("town", 2, 30, "left")
 	walk(Vector2(-1, 0), 600)
 	var stayed: bool = G.map.id == "town"
-	check("District gates: the Maple Street barricade, east gate and south road start closed", closed and stayed and town.is_solid(1, 30), "map=%s" % G.map.id)
+	check("District gates: the Maple Street barricade, east gate and south road start closed", closed and stayed and town.is_solid(town.dt(1, 30).x, town.dt(1, 30).y), "map=%s" % G.map.id)
 
 	# Cole's task opens the Residential District
 	var active_before: bool = G.state.quests.active.has("q_maple")
@@ -1728,7 +1730,7 @@ func run_districts() -> void:
 	var active_after: bool = G.state.quests.active.has("q_maple")
 	for i in 15:
 		G.quest_event("kill", {"n": 1})
-	var opened: bool = G.state.unlocked.get("residential", false) and g_res.get("open", false) and not town.is_solid(1, 30)
+	var opened: bool = G.state.unlocked.get("residential", false) and g_res.get("open", false) and not town.is_solid(town.dt(1, 30).x, town.dt(1, 30).y)
 	at("town", 2, 30, "left")
 	walk(Vector2(-1, 0), 600)
 	check("Cole's task Maple Street Sweep: meet Cole, put down 15 infected, and the barricade opens", not active_before and active_after and G.state.quests.done.has("q_maple") and opened and G.map.id == "residential", "map=%s" % G.map.id)
@@ -1789,15 +1791,15 @@ func run_districts() -> void:
 	for k in d0.keys():
 		var o: Dictionary = d0[k]
 		if o.type == "district_gate" or o.type == "sign": d0.erase(k)
-	d0["55,19"] = {"type": "rubble", "x": 55, "y": 19}
-	d0["10,30"] = {"type": "tree", "x": 10, "y": 30}
+	d0["110,38"] = {"type": "rubble", "x": 110, "y": 38}
+	d0["20,60"] = {"type": "tree", "x": 20, "y": 60}
 	G.state.unlocked.erase("industrial")
 	G.write_save()
 	G.quit_to_title()
 	G.load_game("adventure", 2)
 	var t2: GameMap = G.maps.town
-	var fixed: bool = t2.get_obj(55, 19) != null and t2.get_obj(55, 19).type == "district_gate" and t2.get_obj(10, 30) == null and t2.get_obj(28, 39).get("open", false) and not t2.get_obj(55, 19).get("open", false)
-	check("Older saves: district gates and signs are put back, trees on the new road are cleared", fixed, "")
+	var fixed: bool = t2.get_obj(t2.dt(55, 19).x, t2.dt(55, 19).y) != null and t2.get_obj(t2.dt(55, 19).x, t2.dt(55, 19).y).type == "district_gate" and t2.get_obj(t2.dt(10, 30).x, t2.dt(10, 30).y) == null and t2.get_obj(t2.dt(28, 39).x, t2.dt(28, 39).y).get("open", false) and not t2.get_obj(t2.dt(55, 19).x, t2.dt(55, 19).y).get("open", false)
+	check("Older saves: district gates and signs are put back, trees on the new road are cleared", fixed, "%s %s %s" % [t2.get_obj(t2.dt(110, 38).x, t2.dt(110, 38).y), t2.get_obj(t2.dt(20, 60).x, t2.dt(20, 60).y), t2.get_obj(t2.dt(56, 78).x, t2.dt(56, 78).y)])
 
 	# pictures for every container, prop and building
 	var bad_art := []
@@ -1813,7 +1815,7 @@ func run_districts() -> void:
 			if r2.tex == null: bad_art.append("gate " + reg)
 	for k in Districts.LOOKS:
 		var tex: Texture2D = Art.get_building({"kind": k, "x": 1, "y": 1, "w": 7, "h": 5, "door_x": 4, "door_y": 5}, "summer", false)
-		if tex == null or tex.get_width() < 100: bad_art.append(k)
+		if tex == null or tex.get_width() < 48: bad_art.append(k)
 	check("District art: every container, prop, gate and building front draws", bad_art.is_empty(), str(bad_art))
 	U.open("journal", {"tab": "map"})
 	var map_ok: bool = count_nodes(U.overlay_root) > 20
@@ -1840,7 +1842,8 @@ func run_contracts() -> void:
 		if not Data.npcs.has(c.giver): bad.append(c.id + " giver")
 		if c.kind == "find":
 			for sp in c.spots:
-				var o = G.maps[sp[1]].get_obj(int(sp[2]), int(sp[3]))
+				var spt: Vector2i = MapScale.t(str(sp[1]), int(sp[2]), int(sp[3]))
+				var o = G.maps[sp[1]].get_obj(spt.x, spt.y)
 				if o == null or not (Data.obj_defs.get(o.type, {}).get("container", false)): bad.append("%s spot %s" % [c.id, str(sp)])
 		if c.kind == "boss" and not Data.enemies.has(c.boss): bad.append(c.id + " boss")
 	for a in Contracts.ACHIEVEMENTS:
@@ -1911,13 +1914,13 @@ func run_contracts() -> void:
 	G.take_contract("twin_oaks")
 	at("rv_farmhouse", 6, 9, "up")
 	G.enemies.clear()
-	var dresser = G.map.get_obj(2, 1)
+	var dresser = G.map.get_obj(G.map.dt(2, 1).x, G.map.dt(2, 1).y)
 	dresser.searched = int(G.state.day)
 	W.search(dresser, dresser.loot, "the dresser", 0.0, [1, 1])
 	var half_a: bool = G.count_item("journal_half_a") == 1
 	at("rv_barn", 6, 9, "up")
 	G.enemies.clear()
-	var crate = G.map.get_obj(9, 1)
+	var crate = G.map.get_obj(G.map.dt(9, 1).x, G.map.dt(9, 1).y)
 	W.search(crate, crate.loot, "the crate", 0.0, [1, 1])
 	check("Twin Oaks: both journal halves turn up (farmhouse dresser, barn crate) and Marisol's reward is The Twins", half_a and G.contract_state().done.has("twin_oaks") and G.count_item("journal_half_a") == 0 and has_or_dropped("the_twins"), "a=%s" % half_a)
 
@@ -2070,7 +2073,7 @@ func run_livestock() -> void:
 	# feed them and let them grow
 	G.change_map("barn", 6, 6, "up", {"silent": true})
 	G.add_item("hay", 80, {"silent": true})
-	W.interact_object(G.map.get_obj(2, 2))
+	W.interact_object(G.map.get_obj(G.map.dt(2, 2).x, G.map.dt(2, 2).y))
 	var hay_cap: bool = int(barn.hay) == Balance.animals.hopper_cap
 	for i in 8:
 		barn.hay = 40
@@ -2348,7 +2351,7 @@ func run_crop_care() -> void:
 	W.harvest_at(Vector2i(10, 24))
 	var with_trellis: int = G.count_item("snapbean")
 	W.harvest_at(Vector2i(11, 24))
-	check("Trellis: placed on tilled soil, Snap Beans under it give 1 extra", hm.get_obj(10, 24) != null and hm.get_obj(10, 24).type == "trellis" and with_trellis == 2 and G.count_item("snapbean") == 3, "trellis=%d total=%d" % [with_trellis, G.count_item("snapbean")])
+	check("Trellis: placed on tilled soil, Snap Beans under it give 1 extra", hm.get_obj(hm.dt(10, 24).x, hm.dt(10, 24).y) != null and hm.get_obj(hm.dt(10, 24).x, hm.dt(10, 24).y).type == "trellis" and with_trellis == 2 and G.count_item("snapbean") == 3, "trellis=%d total=%d" % [with_trellis, G.count_item("snapbean")])
 	for yy in range(30, 36):
 		for xx in range(18, 24):
 			clear_tile(hm, xx, yy)
@@ -2598,12 +2601,14 @@ func run_hordes() -> void:
 
 # ---------------------------------------------------------------- Halvorsen Biomedical
 func search_at(map_id: String, x: int, y: int) -> void:
-	var o: Dictionary = Game.maps[map_id].get_obj(x, y)
+	var mt: Vector2i = Game.maps[map_id].dt(x, y)
+	var o: Dictionary = Game.maps[map_id].get_obj(mt.x, mt.y)
 	o.erase("searched")
 	W.search(o, o.get("loot", []), "it")
 
 func step_on(x: int, y: int) -> void:
-	Game.player.pos = Vector2(x * 16 + 8, y * 16 + 12)
+	var st: Vector2i = Game.map.dt(x, y)
+	Game.player.pos = Vector2(st.x * 16 + 8, st.y * 16 + 12)
 	Game.last_warp_tile = ""
 	tick(50)
 	U.close_all()
@@ -2840,7 +2845,8 @@ func run_outposts() -> void:
 	# outside: only if nothing awake is close
 	at("residential", 50, 22, "left")
 	G.enemies.clear()
-	var z: Dictionary = W.spawn_enemy("shambler", 53, 22)
+	var zt: Vector2i = G.map.dt(53, 22)
+	var z: Dictionary = W.spawn_enemy("shambler", zt.x, zt.y)
 	var near_refused: bool = not G.eat_item("sleeping_bag")
 	U.close_all()
 	G.enemies.erase(z)
@@ -2888,7 +2894,7 @@ func run_outposts() -> void:
 	Raiders.return_stolen()
 	U.close_all()
 	var got_back: bool = G.state.get("stolen", []).is_empty() and G.count_item("iron_bar") + G.count_item("wood") + G.count_item("stone") > iron0
-	check("Whatever they took is piled up at Dry Creek, and you can take it back", got_back and G.maps.dry_creek.get_obj(19, 24) != null, "")
+	check("Whatever they took is piled up at Dry Creek, and you can take it back", got_back and G.maps.dry_creek.get_obj(G.maps.dry_creek.dt(19, 24).x, G.maps.dry_creek.dt(19, 24).y) != null, "")
 
 # ---------------------------------------------------------------- phase 2: fish journal, bait shack, trees, the Foreman, perks
 func run_phase2() -> void:
@@ -2925,17 +2931,17 @@ func run_phase2() -> void:
 	clear_tile(hm, 21, 30); clear_tile(hm, 23, 30)
 	hm.add_obj(21, 30, "tree")
 	G.map.drops.clear()
-	W.break_object(hm.get_obj(21, 30))
+	W.break_object(hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y))
 	Balance.trees.seed_chance = keep
 	var dropped: bool = G.map.drops.any(func(d): return d.id == "acorn")
-	var stump: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	var stump: bool = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y) != null and hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y).type == "stump"
 	G.add_item("acorn", 1, {"silent": true})
 	W.place_at(Vector2i(23, 30), "acorn")
-	var sap = hm.get_obj(23, 30)
+	var sap = hm.get_obj(hm.dt(23, 30).x, hm.dt(23, 30).y)
 	var planted: bool = sap != null and sap.type == "sapling" and sap.kind == "tree"
 	for i in int(Balance.trees.sapling_days): sleep()
-	var grown = hm.get_obj(23, 30)
-	var farm_stump_stays: bool = hm.get_obj(21, 30) != null and hm.get_obj(21, 30).type == "stump"
+	var grown = hm.get_obj(hm.dt(23, 30).x, hm.dt(23, 30).y)
+	var farm_stump_stays: bool = hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y) != null and hm.get_obj(hm.dt(21, 30).x, hm.dt(21, 30).y).type == "stump"
 	check("Trees: a felled tree can drop an Acorn (or a Pine Cone from a pine); plant it on your farm and it grows into a tree in %d days" % int(Balance.trees.sapling_days), dropped and stump and planted and grown != null and grown.type == "tree" and farm_stump_stays, "drop=%s planted=%s grown=%s" % [dropped, planted, grown.type if grown != null else "none"])
 	# wild stumps sprout
 	var mtn: GameMap = G.maps.mountain
@@ -3052,7 +3058,7 @@ func run_restoration() -> void:
 	var G = Game
 	start("adventure", 2)
 	G.state.inventory.resize(60)
-	var ledger = G.maps.town.get_obj(26, 15)
+	var ledger = G.maps.town.get_obj(G.maps.town.dt(26, 15).x, G.maps.town.dt(26, 15).y)
 	U.open("restoration")
 	var txt := ui_text(U.overlay_root)
 	U.close_all()
@@ -3068,7 +3074,7 @@ func run_restoration() -> void:
 	var tav = null
 	for st in G.maps.town.structures:
 		if st.kind == "tavern_open": tav = st
-	var door_ok: bool = tav != null and G.maps.town.warps.any(func(w): return w.to == "tavern") and reach(G.maps.town, Vector2i(28, 20)).has(Vector2i(20, 30))
+	var door_ok: bool = tav != null and G.maps.town.warps.any(func(w): return w.to == "tavern") and reach(G.maps.town, G.maps.town.dt(28, 20)).has(G.maps.town.dt(20, 30))
 	G.state.time = 1100; G.sync_npcs()
 	var ruth_there: bool = G.npcs.ruth.map == "tavern"
 	var open_now: bool = G.is_shop_open("tavern") and not G.shop_stock("tavern").is_empty()

@@ -1070,7 +1070,8 @@ func spawn_nests(m: GameMap) -> void:
 		if not Game.nest_active(id) or Game.enemies.any(func(o): return o.get("nest_id", "") == id):
 			continue
 		var N: Dictionary = Hordes.NESTS[id]
-		var t := free_tile_near(m, int(N.at[0]), int(N.at[1]))
+		var nt := m.dt(int(N.at[0]), int(N.at[1]))
+		var t := free_tile_near(m, nt.x, nt.y)
 		if t.x < 0: continue
 		var nest := spawn_enemy("horde_nest", t.x, t.y)
 		nest.nest_id = id
@@ -1111,7 +1112,8 @@ func spawn_bosses(m: GameMap) -> void:
 		if c.get("kind", "") != "boss" or c.map != m.id: continue
 		if c.get("night", false) and int(Game.state.time) < 1200: continue
 		if Game.enemies.any(func(e): return e.type == c.boss): continue
-		var t := free_tile_near(m, int(c.at[0]), int(c.at[1]))
+		var ct := m.dt(int(c.at[0]), int(c.at[1]))
+		var t := free_tile_near(m, ct.x, ct.y)
 		if t.x < 0: continue
 		spawn_enemy(c.boss, t.x, t.y)
 		Game.toast("%s is here." % Data.enemies[c.boss].name, "", "bad")

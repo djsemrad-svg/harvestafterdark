@@ -778,16 +778,22 @@ func build_persistent_maps() -> void:
 	var gh := {"kind": "greenhouse", "x": 26, "y": 3, "w": 7, "h": 6, "door_x": 29, "door_y": 8,
 		"warp": {"to": "greenhouse", "tx": 7, "ty": 9, "dir": "up", "requires": "greenhouse"},
 		"locked_text": "The old greenhouse. Most of the glass is cracked and vines have taken the benches. Jo at Mercer Workshop could restore it."}
+	MapScale.fit_to_art(gh, 1)
 	maps.homestead.add_structure(gh)
 	maps["greenhouse"] = MapBuilder.room("greenhouse", ["homestead", 29, 9])
-	for b in state.get("buildings", []):
-		maps.homestead.add_structure(b)
-		maps[b.kind] = Livestock.interior(b)
 	maps.merge(Districts.all_maps(int(state.seed)))
 	maps.merge(Halvorsen.all_maps(int(state.seed)))
 	maps.merge(Raiders.all_maps(int(state.seed)))
 	Angling.add_to_town(maps)
 	Restoration.setup(maps)
+	# outdoor maps are laid out on a design grid and built at twice the size (see MapScale)
+	for sid in MapScale.SCALED:
+		if maps.has(sid): maps[sid] = MapScale.upscale(maps[sid])
+	MapScale.fix_arrivals(maps)
+	_migrate_scale()
+	for b in state.get("buildings", []):
+		maps.homestead.add_structure(b)
+		maps[b.kind] = Livestock.interior(b)
 	for id in maps:
 		var m: GameMap = maps[id]
 		# a room whose layout changed since this save was made is rebuilt fresh
@@ -825,6 +831,38 @@ func build_persistent_maps() -> void:
 
 ## Older saves: put back fixed things a newer version added (district gates,
 ## updated signs) and clear trees and weeds off newly built roads.
+## Saves made before the outdoor maps doubled: the farm keeps what you built and planted, moved onto the
+## new grid; the other scaled maps are rebuilt fresh; farm buildings move with the farm.
+func _migrate_scale() -> void:
+	if int(state.get("map_scale", 0)) >= MapScale.VERSION:
+		return
+	for sid in MapScale.SCALED:
+		if not state.maps_dyn.has(sid): continue
+		var sc = MapScale.f(sid)
+		if sid != "homestead":
+			state.maps_dyn.erase(sid)
+			continue
+		var old_objs: Dictionary = state.maps_dyn[sid].get("objects", {})
+		var tmp := GameMap.new("tmp", 2000, 2000, "grass")
+		for kk in old_objs:
+			var o: Dictionary = old_objs[kk]
+			if o.type == "part": continue
+			var e: Dictionary = o.duplicate(true)
+			e.erase("x"); e.erase("y")
+			tmp.add_obj(int(o.x) * sc, int(o.y) * sc, o.type, e)
+		state.maps_dyn[sid].objects = tmp.objects
+		var old_soil: Dictionary = state.maps_dyn[sid].get("soil", {})
+		var ns := {}
+		for kk in old_soil:
+			var p := GameMap.unk(kk)
+			ns[GameMap.k(p.x * sc, p.y * sc)] = old_soil[kk]
+		state.maps_dyn[sid].soil = ns
+	for b in state.get("buildings", []):
+		for key in ["x", "y", "door_x", "door_y"]:
+			if b.has(key): b[key] = int(b[key]) * MapScale.f("homestead")
+		if b.has("door_y"): b.door_y = int(b.y) + int(b.h) - 1
+	state.map_scale = MapScale.VERSION
+
 func _reconcile(m: GameMap, anchors: Array) -> void:
 	for a in anchors:
 		var o = m.objects.get(GameMap.k(int(a.x), int(a.y)))
@@ -2337,7 +2375,8 @@ func contract_find(map_id: String, o: Dictionary) -> String:
 		for i in c.spots.size():
 			var sp: Array = c.spots[i]
 			var key := "%s:%d" % [id, i]
-			if sp[1] == map_id and int(sp[2]) == int(o.x) and int(sp[3]) == int(o.y) and not cs.found.has(key):
+			var spt := MapScale.t(str(sp[1]), int(sp[2]), int(sp[3]))
+			if sp[1] == map_id and spt.x == int(o.x) and spt.y == int(o.y) and not cs.found.has(key):
 				cs.found[key] = true
 				return sp[0]
 	return ""
@@ -2377,8 +2416,9 @@ func update_event(dt: float) -> void:
 	if event.is_empty() or map == null or map.id != event.map:
 		return
 	var c := Contracts.get_def(event.id)
-	var at := Vector2(int(c.at[0]) * 16 + 8, int(c.at[1]) * 16 + 8)
-	if player.pos.distance_to(at) > float(c.radius) * 16.0 * 1.6:
+	var ct := map.dt(int(c.at[0]), int(c.at[1]))
+	var at := Vector2(ct.x * 16 + 8, ct.y * 16 + 8)
+	if player.pos.distance_to(at) > float(c.radius) * 16.0 * 1.6 * map.scale:
 		fail_event("You fell back too far. The road isn't clear. Light the flare again to retry.")
 		return
 	var left := enemies.filter(func(e): return e.get("hunt", false)).size()
@@ -2508,6 +2548,11 @@ func npc_entry_now(id: String) -> Array:
 	for s in sch:
 		if s[0] <= int(state.time):
 			e = s
+	# schedules are written on the design grid; scaled maps place them on the real one
+	if e.size() >= 4 and MapScale.f(str(e[1])) > 1:
+		var rt = MapScale.t(str(e[1]), int(e[2]), int(e[3]))
+		e = e.duplicate()
+		e[2] = rt.x; e[3] = rt.y
 	return e
 
 func sync_npcs() -> void:
