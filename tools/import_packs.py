@@ -11,7 +11,7 @@ The game picks these files up by name (see Art.override and Art.obj_override). D
 to the generated art for that thing.
 """
 import os, sys
-from PIL import Image
+from PIL import Image, ImageDraw
 
 SRC, OUT = sys.argv[1], sys.argv[2]
 PA = os.path.join(SRC, "PostApocalypse_AssetPack_v1.1.2")
@@ -385,3 +385,145 @@ if os.path.isdir(ME):
         json.dump(meta, fh, indent=1, sort_keys=True)
     written.append("buildings/index.json")
     print("buildings:", len(meta))
+
+
+# ---------------------------------------------------------------- crops and seeds (Sunnyside World)
+# Growth stages for every crop. Crops the pack has use their own art; the rest borrow the closest crop
+# shape and have the vegetable/fruit part recoloured to the crop's colour, so a whole field matches.
+SUN = os.path.join(SRC, "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_Assets", "Elements", "Crops")
+CF = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "crop_fish_colours.json")))
+
+
+def hexrgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def is_leaf(p):
+    r, g, b = p[:3]
+    return g > r + 8 and g >= b
+
+
+def recolour(im, want, part="produce", keep_light=False):
+    """Move one part's shades onto a colour (leaf = green pixels, produce = everything else), keeping shading."""
+    out = im.copy()
+    px = out.load()
+    pix = [px[x, y] for y in range(out.height) for x in range(out.width) if px[x, y][3] > 0 and sum(px[x, y][:3]) > 90
+           and (is_leaf(px[x, y]) == (part == "leaf"))]
+    if not pix:
+        return out
+    base = sum(0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2] for p in pix) / len(pix)
+    w = hexrgb(want)
+    for y in range(out.height):
+        for x in range(out.width):
+            p = px[x, y]
+            if p[3] == 0 or sum(p[:3]) <= 90 or is_leaf(p) != (part == "leaf"):
+                continue
+            k = (0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / max(base, 1)
+            px[x, y] = tuple(min(255, int(c * k)) for c in w) + (p[3],)
+    return out
+
+
+def mute(im, amt=0.15):
+    """Sunnyside is brighter than the post-apocalypse world: take a little of its saturation off."""
+    out = im.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a:
+                l = 0.3 * r + 0.59 * g + 0.11 * b
+                px[x, y] = (int(r + (l - r) * amt), int(g + (l - g) * amt), int(b + (l - b) * amt), a)
+    return out
+
+
+def pad16(im):
+    c = Image.new("RGBA", (16, max(16, im.height)), (0, 0, 0, 0))
+    c.alpha_composite(im, ((16 - im.width) // 2, c.height - im.height))
+    return c
+
+
+if os.path.isdir(SUN):
+    OWN = {"beet": "beetroot", "cabbage": "cabbage", "carrot": "carrot", "cauliflower": "cauliflower", "kale": "kale",
+           "parsnip": "parsnip", "potato": "potato", "pumpkin": "pumpkin", "radish": "radish", "sunflower": "sunflower", "wheat": "wheat"}
+    SHAPE = {"root": "radish", "leafy": "cabbage", "big": "pumpkin", "tall": "wheat", "bush": "kale", "vine": "wheat",
+             "berry": "kale", "flower": "sunflower", "mushroom": "cauliflower", "nut": "potato", "leaf": "kale"}
+    sun = lambda n, i: load(os.path.join(SUN, "%s_%02d.png" % (n, i)))
+    for cid, info in CF["crops"].items():
+        own = OWN.get(cid)
+        tmpl = own or SHAPE.get(info["shape"], "radish")
+        col = info["color"] or "#888888"
+        frames = [sun(tmpl, i) for i in (1, 2, 3, 4)]
+        if not own:
+            if info["shape"] in ("bush", "berry"):
+                # leafy plant with fruit: dots of the crop's colour on the grown plant
+                ripe = frames[3].copy()
+                d = ImageDraw.Draw(ripe)
+                for fx, fy in [(3, 5), (8, 3), (10, 8), (5, 9)]:
+                    if fx < ripe.width - 2 and fy < ripe.height - 2:
+                        d.rectangle([fx, fy, fx + 1, fy + 1], fill=hexrgb(col) + (255,))
+                        ripe.putpixel((fx, fy), tuple(min(255, c + 60) for c in hexrgb(col)) + (255,))
+                frames[3] = ripe
+            elif info["shape"] == "leafy":
+                frames = [recolour(f, col, "produce") for f in frames]
+            elif info["shape"] == "vine":
+                frames = [recolour(f, "#6aa040", "produce") if i < 3 else recolour(f, col, "produce") for i, f in enumerate(frames)]
+            else:
+                frames = [recolour(f, col, "produce") for f in frames]
+        # game stages: 0 just planted .. 4 ready; stage 3 is the grown plant, still unripe
+        unripe = recolour(frames[3], "#7aa850", "produce") if info["shape"] not in ("leafy", "bush", "berry") else frames[2]
+        stages = [frames[0], frames[1], frames[2], unripe, frames[3]]
+        for st, im in enumerate(stages):
+            save(pad16(mute(im)), "crops/%s_%d.png" % (cid, st))
+        # crop and seed icons
+        if not os.path.exists(os.path.join(OUT, "icons", cid + ".png")) and (own or info["shape"] in ("root", "leafy", "big", "tall")):
+            ic = sun(tmpl, 5)
+            icon(mute(ic if own else recolour(ic, col, "produce")), cid)
+        icon(mute(recolour(load(os.path.join(SUN, "seeds_generic.png")), col, "produce")), cid + "_seed")
+    print("crops:", len(CF["crops"]))
+
+# ---------------------------------------------------------------- fish and tackle (Hollow Dolphin fishing icons)
+HD = os.path.join(SRC, "Hollow_Dolphin_Fishing_Icon_Pack", "Separated Sprites", "16x16")
+if os.path.isdir(HD):
+    hd = lambda n: Image.open(os.path.join(HD, "fishing_icons_16x16_%d.png" % n)).convert("RGBA")
+
+    def tint_fish(im, want):
+        """Recolour a fish's body to its colour; outline, eye and highlights stay."""
+        out = im.copy()
+        px = out.load()
+        body = [px[x, y] for y in range(16) for x in range(16) if px[x, y][3] and 120 < sum(px[x, y][:3]) < 640]
+        if not body:
+            return out
+        base = sum(0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2] for p in body) / len(body)
+        w = hexrgb(want)
+        for y in range(16):
+            for x in range(16):
+                p = px[x, y]
+                if p[3] and 120 < sum(p[:3]) < 640:
+                    k = min(1.3, max(0.55, (0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / max(base, 1)))
+                    px[x, y] = tuple(min(255, int(c * k)) for c in w) + (p[3],)
+        return mute(out, 0.22)
+    # body shapes, picked by the kind of fish
+    SHAPES = {"small": 4, "round": 13, "sleek": 25, "long": 16, "big": 38, "flat": 37, "odd": 27, "spiny": 28, "deep": 14}
+    KIND = {"minnow": "small", "shad": "small", "silver_dace": "small", "gold_shiner": "small", "ice_smelt": "small", "stone_loach": "small",
+            "pond_sunfish": "flat", "crappie": "flat", "lake_perch": "spiny", "sunset_bream": "flat", "bramble_bass": "round",
+            "brook_trout": "sleek", "brown_trout": "sleek", "rainbow_trout": "sleek", "chinook_salmon": "sleek", "highland_char": "sleek",
+            "lake_whitefish": "sleek", "walleye": "long", "muskie": "long", "river_gar": "long", "ghost_pike": "long",
+            "mirror_carp": "round", "glow_carp": "round", "golden_koi": "round", "river_chub": "round", "rotgill": "odd",
+            "mud_catfish": "big", "spotted_bullhead": "big", "burbot": "big", "old_whiskers": "big", "bowfin": "big",
+            "pale_sturgeon": "deep", "ridge_lurker": "deep", "lantern_queen": "deep", "cave_blindfish": "odd"}
+    SPECIAL = {"bog_eel": 15, "lamprey": 15, "crayfish": 57, "river_clam": 69, "snapping_turtle": 72, "bullfrog": 27}
+    for fid, info in CF["fish"].items():
+        col = info["color"] or "#7a8a9a"
+        if fid in SPECIAL:
+            im = hd(SPECIAL[fid])
+            im = tint_fish(im, col) if fid not in ("river_clam",) else im
+        else:
+            im = tint_fish(hd(SHAPES[KIND.get(fid, "round")]), col)
+        save(im, "icons/%s.png" % fid)
+    TACKLE = {"bait": 59, "premium_bait": 60, "magnet_bait": 67, "cork_bobber": 53, "trap_bobber": 54, "glow_lure": 55,
+              "spinner": 56, "lead_weight": 82, "treasure_hook": 80, "crab_pot": 89, "fishing_rod": 17,
+              "fishing_rod_bamboo": 5, "fishing_rod_fiberglass": 6, "fishing_rod_ironreel": 7, "fishing_rod_aurium": 8,
+              "empty_bottle": 104, "plastic_bag": 105, "old_can": 106}
+    for gid, n in TACKLE.items():
+        save(hd(n), "icons/%s.png" % gid)
+    print("fish:", len(CF["fish"]), "tackle:", len(TACKLE))

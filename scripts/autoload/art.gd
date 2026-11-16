@@ -815,6 +815,11 @@ func _draw_obj(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 func get_crop(crop_id: String, stage: int) -> Dictionary:
 	var k := "crop|%s|%d" % [crop_id, stage]
 	if not _obj.has(k):
+		# growth stages from the packs: 16 px wide, standing on the bottom of the tile
+		var ct := override("crops/%s_%d.png" % [crop_id, stage])
+		if ct != null:
+			_obj[k] = {"tex": ct, "ox": 0, "oy": 16 - ct.get_height()}
+			return _obj[k]
 		var cr: Dictionary = Data.crops[crop_id]
 		var tall: bool = cr.shape == "tall" or cr.shape == "vine"
 		var x := img(16, 28 if tall else 16)

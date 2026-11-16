@@ -1,0 +1,482 @@
+{
+	"crops": {
+		"amber_yam": {
+			"color": "#c87a3a",
+			"shape": "root",
+			"tree": false
+		},
+		"ashgrain": {
+			"color": "#8a8070",
+			"shape": "tall",
+			"tree": false
+		},
+		"basil": {
+			"color": "#4aa040",
+			"shape": "leafy",
+			"tree": false
+		},
+		"beet": {
+			"color": "#8a2a4a",
+			"shape": "root",
+			"tree": false
+		},
+		"bell_pepper": {
+			"color": "#d8302a",
+			"shape": "bush",
+			"tree": false
+		},
+		"bluebell_berry": {
+			"color": "#4a6ad8",
+			"shape": "bush",
+			"tree": false
+		},
+		"bogberry": {
+			"color": "#c8203a",
+			"shape": "bush",
+			"tree": false
+		},
+		"bok_choy": {
+			"color": "#8ac86a",
+			"shape": "leafy",
+			"tree": false
+		},
+		"cabbage": {
+			"color": "#9fd08a",
+			"shape": "leafy",
+			"tree": false
+		},
+		"carrot": {
+			"color": "#e8822a",
+			"shape": "root",
+			"tree": false
+		},
+		"cauliflower": {
+			"color": "#f0ecd8",
+			"shape": "big",
+			"tree": false
+		},
+		"chamomile": {
+			"color": "#f0e8a0",
+			"shape": "leafy",
+			"tree": false
+		},
+		"cinder_bean": {
+			"color": "#c84a2a",
+			"shape": "vine",
+			"tree": false
+		},
+		"coffee_bean": {
+			"color": "#5a3a22",
+			"shape": "vine",
+			"tree": false
+		},
+		"corn": {
+			"color": "#f0cf4a",
+			"shape": "tall",
+			"tree": false
+		},
+		"cotton": {
+			"color": "#f8f8f0",
+			"shape": "tall",
+			"tree": false
+		},
+		"cucumber": {
+			"color": "#4a9a3a",
+			"shape": "vine",
+			"tree": false
+		},
+		"eggplant": {
+			"color": "#6a3a8a",
+			"shape": "big",
+			"tree": false
+		},
+		"emberroot": {
+			"color": "#e0602a",
+			"shape": "root",
+			"tree": false
+		},
+		"flax": {
+			"color": "#7a9ad8",
+			"shape": "tall",
+			"tree": false
+		},
+		"frost_leek": {
+			"color": "#b8d8b0",
+			"shape": "leafy",
+			"tree": false
+		},
+		"frost_turnip": {
+			"color": "#e8e0f0",
+			"shape": "root",
+			"tree": false
+		},
+		"garlic": {
+			"color": "#f0e8d8",
+			"shape": "root",
+			"tree": false
+		},
+		"hops": {
+			"color": "#9ad050",
+			"shape": "vine",
+			"tree": false
+		},
+		"hot_pepper": {
+			"color": "#e83a2a",
+			"shape": "bush",
+			"tree": false
+		},
+		"kale": {
+			"color": "#3f7a4a",
+			"shape": "leafy",
+			"tree": false
+		},
+		"lettuce": {
+			"color": "#9ad070",
+			"shape": "leafy",
+			"tree": false
+		},
+		"melon": {
+			"color": "#8fcf5a",
+			"shape": "big",
+			"tree": false
+		},
+		"moonbloom": {
+			"color": "#b8a0f0",
+			"shape": "bush",
+			"tree": false
+		},
+		"onion": {
+			"color": "#d8b8a0",
+			"shape": "root",
+			"tree": false
+		},
+		"parsnip": {
+			"color": "#f0e0a0",
+			"shape": "root",
+			"tree": false
+		},
+		"peanut": {
+			"color": "#c8a070",
+			"shape": "root",
+			"tree": false
+		},
+		"potato": {
+			"color": "#c9a066",
+			"shape": "root",
+			"tree": false
+		},
+		"pumpkin": {
+			"color": "#e8822a",
+			"shape": "big",
+			"tree": false
+		},
+		"radish": {
+			"color": "#d8455a",
+			"shape": "root",
+			"tree": false
+		},
+		"snapbean": {
+			"color": "#7cc04a",
+			"shape": "vine",
+			"tree": false
+		},
+		"snowpea": {
+			"color": "#dff0e0",
+			"shape": "vine",
+			"tree": false
+		},
+		"soybean": {
+			"color": "#a8c060",
+			"shape": "vine",
+			"tree": false
+		},
+		"spinach": {
+			"color": "#3a8a3a",
+			"shape": "leafy",
+			"tree": false
+		},
+		"squash": {
+			"color": "#d9a83a",
+			"shape": "big",
+			"tree": false
+		},
+		"strawbloom": {
+			"color": "#e8405a",
+			"shape": "bush",
+			"tree": false
+		},
+		"sunflower": {
+			"color": "#f0c040",
+			"shape": "tall",
+			"tree": false
+		},
+		"tomato": {
+			"color": "#e0452f",
+			"shape": "bush",
+			"tree": false
+		},
+		"wheat": {
+			"color": "#e0c070",
+			"shape": "tall",
+			"tree": false
+		},
+		"yarrow": {
+			"color": "#f0f0e0",
+			"shape": "leafy",
+			"tree": false
+		},
+		"zucchini": {
+			"color": "#3a7a2a",
+			"shape": "bush",
+			"tree": false
+		}
+	},
+	"fish": {
+		"bog_eel": {
+			"color": "#3a4a3a",
+			"legendary": false,
+			"name": "Bog Eel",
+			"sell": 150
+		},
+		"bowfin": {
+			"color": "a0bf69",
+			"legendary": false,
+			"name": "Bowfin",
+			"sell": 120
+		},
+		"bramble_bass": {
+			"color": "#5a8a3a",
+			"legendary": false,
+			"name": "Bramble Bass",
+			"sell": 95
+		},
+		"brook_trout": {
+			"color": "#8aa860",
+			"legendary": false,
+			"name": "Brook Trout",
+			"sell": 70
+		},
+		"brown_trout": {
+			"color": "#8aa860",
+			"legendary": false,
+			"name": "Brown Trout",
+			"sell": 70
+		},
+		"bullfrog": {
+			"color": "#5a8a3a",
+			"legendary": false,
+			"name": "Bullfrog",
+			"sell": 35
+		},
+		"burbot": {
+			"color": "bf6993",
+			"legendary": false,
+			"name": "Burbot",
+			"sell": 70
+		},
+		"cave_blindfish": {
+			"color": "bf698e",
+			"legendary": false,
+			"name": "Cave Blindfish",
+			"sell": 70
+		},
+		"chinook_salmon": {
+			"color": "#e88a6a",
+			"legendary": false,
+			"name": "Chinook Salmon",
+			"sell": 120
+		},
+		"crappie": {
+			"color": "bf8d69",
+			"legendary": false,
+			"name": "Crappie",
+			"sell": 35
+		},
+		"crayfish": {
+			"color": "#c84a2a",
+			"legendary": false,
+			"name": "Crayfish",
+			"sell": 35
+		},
+		"ghost_pike": {
+			"color": "#cfd8e0",
+			"legendary": false,
+			"name": "Ghost Pike",
+			"sell": 160
+		},
+		"glow_carp": {
+			"color": "#80f0a0",
+			"legendary": false,
+			"name": "Glow Carp",
+			"sell": 120
+		},
+		"gold_shiner": {
+			"color": "#f0c040",
+			"legendary": false,
+			"name": "Gold Shiner",
+			"sell": 85
+		},
+		"golden_koi": {
+			"color": "#f0c040",
+			"legendary": false,
+			"name": "Golden Koi",
+			"sell": 120
+		},
+		"highland_char": {
+			"color": "#e86a5a",
+			"legendary": false,
+			"name": "Highland Char",
+			"sell": 110
+		},
+		"ice_smelt": {
+			"color": "#d8e8f0",
+			"legendary": false,
+			"name": "Ice Smelt",
+			"sell": 40
+		},
+		"lake_perch": {
+			"color": "#7a9a50",
+			"legendary": false,
+			"name": "Lake Perch",
+			"sell": 50
+		},
+		"lake_whitefish": {
+			"color": "#e8e8e0",
+			"legendary": false,
+			"name": "Lake Whitefish",
+			"sell": 65
+		},
+		"lamprey": {
+			"color": "69bf7f",
+			"legendary": false,
+			"name": "Lamprey",
+			"sell": 70
+		},
+		"lantern_queen": {
+			"color": "78bf69",
+			"legendary": true,
+			"name": "Lantern Queen",
+			"sell": 1500
+		},
+		"minnow": {
+			"color": "b2bf69",
+			"legendary": false,
+			"name": "Minnow",
+			"sell": 35
+		},
+		"mirror_carp": {
+			"color": "#a08a50",
+			"legendary": false,
+			"name": "Mirror Carp",
+			"sell": 40
+		},
+		"mud_catfish": {
+			"color": "#6a5a4a",
+			"legendary": false,
+			"name": "Mud Catfish",
+			"sell": 90
+		},
+		"muskie": {
+			"color": "69bf6d",
+			"legendary": false,
+			"name": "Muskie",
+			"sell": 250
+		},
+		"old_whiskers": {
+			"color": "#5a4a3a",
+			"legendary": false,
+			"name": "Old Whiskers",
+			"sell": 900
+		},
+		"pale_sturgeon": {
+			"color": "#a8a8b0",
+			"legendary": false,
+			"name": "Pale Sturgeon",
+			"sell": 260
+		},
+		"pond_sunfish": {
+			"color": "#e0b040",
+			"legendary": false,
+			"name": "Pond Sunfish",
+			"sell": 25
+		},
+		"rainbow_trout": {
+			"color": "#d88a9a",
+			"legendary": false,
+			"name": "Rainbow Trout",
+			"sell": 70
+		},
+		"ridge_lurker": {
+			"color": "#2a3a5a",
+			"legendary": false,
+			"name": "The Ridge Lurker",
+			"sell": 1200
+		},
+		"river_chub": {
+			"color": "#8a9a6a",
+			"legendary": false,
+			"name": "River Chub",
+			"sell": 30
+		},
+		"river_clam": {
+			"color": "#c8c0b0",
+			"legendary": false,
+			"name": "River Clam",
+			"sell": 35
+		},
+		"river_gar": {
+			"color": "#7a8a5a",
+			"legendary": false,
+			"name": "River Gar",
+			"sell": 120
+		},
+		"rotgill": {
+			"color": "6994bf",
+			"legendary": true,
+			"name": "Rotgill",
+			"sell": 1500
+		},
+		"shad": {
+			"color": "696dbf",
+			"legendary": false,
+			"name": "Shad",
+			"sell": 35
+		},
+		"silver_dace": {
+			"color": "#c8d0d8",
+			"legendary": false,
+			"name": "Silver Dace",
+			"sell": 45
+		},
+		"snapping_turtle": {
+			"color": "#5a6a3a",
+			"legendary": false,
+			"name": "Snapping Turtle",
+			"sell": 120
+		},
+		"spotted_bullhead": {
+			"color": "#6a5a3a",
+			"legendary": false,
+			"name": "Spotted Bullhead",
+			"sell": 60
+		},
+		"stone_loach": {
+			"color": "#9a8a6a",
+			"legendary": false,
+			"name": "Stone Loach",
+			"sell": 22
+		},
+		"sunset_bream": {
+			"color": "#e88a4a",
+			"legendary": false,
+			"name": "Sunset Bream",
+			"sell": 70
+		},
+		"walleye": {
+			"color": "69bfa3",
+			"legendary": false,
+			"name": "Walleye",
+			"sell": 70
+		}
+	}
+}
