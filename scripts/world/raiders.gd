@@ -199,7 +199,7 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 		"hair_style": _pick(L, "hair_style", ["Short", "Long", "Buzz", "Spiky", "Ponytail", "Curly"], rng), "eyes": "#3b2a1a",
 		"face": _pick(L, "face", ["Plain", "Stubble", "Beard", "Plain"], rng), "shirt_style": _pick(L, "shirt_style", ["Jacket"], rng),
 		"shirt": _pick(L, "shirt", ["#3a3a3a"], rng), "pants": _pick(L, "pants", ["#2a2a32"], rng), "acc": _pick(L, "acc", ["None"], rng),
-		"acc_color": _pick(L, "acc_color", ["#2a2a2a"], rng), "infected": false, "scale": 1.0}
+		"acc_color": _pick(L, "acc_color", ["#2a2a2a"], rng), "infected": false, "scale": 1.0, "raider": true}
 
 static func _pick(L: Dictionary, key: String, fallback: Array, rng: RandomNumberGenerator):
 	var a: Array = L.get(key, fallback)

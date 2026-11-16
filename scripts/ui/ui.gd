@@ -278,9 +278,15 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 		ic.custom_minimum_size = Vector2(16, 32)
 		dirs.add_child(ic)
 	pvv.add_child(dirs)
+	var look_opts: Dictionary = Data.look_options
+	var look_lbls: Dictionary = Data.look_labels
+	if MiChars.available():
+		MiChars.complete(look)
+		look_opts = MiChars.creator_options()
+		look_lbls = MiChars.LABELS
 	pvv.add_child(K.button("Randomize", func():
-		for kk in Data.look_options:
-			look[kk] = Data.look_options[kk][randi() % Data.look_options[kk].size()]
+		for kk in look_opts:
+			look[kk] = look_opts[kk][randi() % look_opts[kk].size()]
 		_refresh_creator(), "small"))
 	pv.add_child(pvv)
 	h.add_child(pv)
@@ -295,10 +301,10 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 		le.custom_minimum_size.x = 150
 		le.text_changed.connect(func(t): flow.name = t)
 		opts.add_child(le)
-	for kk in Data.look_options:
+	for kk in look_opts:
 		var key: String = kk
-		var options: Array = Data.look_options[kk]
-		opts.add_child(K.label(Data.look_labels[kk], 7))
+		var options: Array = look_opts[kk]
+		opts.add_child(K.label(look_lbls[kk], 7))
 		if str(options[0]).begins_with("#"):
 			var sw := K.hbox(1)
 			for c in options:
@@ -320,8 +326,8 @@ func _creator(look: Dictionary, with_name: bool) -> Control:
 			st.add_child(K.button("◀", func():
 				look[key] = options[(options.find(look[key]) - 1 + options.size()) % options.size()]
 				_refresh_creator(), "small"))
-			var val := K.label(str(look[key]), 7)
-			val.custom_minimum_size.x = 50
+			var val := K.label(MiChars.display(key, look[key]) if MiChars.available() else str(look[key]), 7)
+			val.custom_minimum_size.x = 60
 			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			st.add_child(val)
 			st.add_child(K.button("▶", func():

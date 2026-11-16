@@ -182,8 +182,6 @@ save(load(os.path.join(PO, "Garbage-Bin_1.png")), "objects/dumpster.png")
 save(load(os.path.join(PO, "Garbage-Bin_2.png")), "objects/dumpster_open.png")
 for v, b in enumerate(["Barrel_rust_red_1", "Barrel_blue_1", "Barrel_red_1", "Barrel_rust_blue_1"]):
     save(load(os.path.join(PO, b + ".png")), "objects/barrel_%d.png" % v)
-save(load(os.path.join(PO, "Refrigerator.png")), "objects/fridge.png")
-save(load(os.path.join(PO, "Refrigerator.png")), "objects/loot_fridge.png")
 save(load(os.path.join(PO, "Street-Light_1_Side.png")), "objects/lamp_post.png")
 save(load(os.path.join(PO, "2-Tires_Grass_Green.png")), "objects/tire_stack_spring.png")
 save(load(os.path.join(PO, "2-Tires_Grass_Dark-Green.png")), "objects/tire_stack_summer.png")
@@ -242,3 +240,83 @@ for gid, f in AMMO.items():
     icon(load(os.path.join(GUN, "Bullets", f + ".png")), gid)
 
 print(len(written), "files written to", OUT)
+
+
+# ---------------------------------------------------------------- people (Modern Interiors character generator)
+# Each part sheet keeps only its first 3 rows (still frames, idle, walk), 16x32 frames, 24 per row:
+# right 0-5, up 6-11, left 12-17, down 18-23. index.json lists each part with its main colour so the game
+# can match a look ("dark skin, grey curly hair, blue jacket") to the nearest parts.
+import json
+from collections import Counter
+CG = os.path.join(SRC, "moderninteriors-win", "2_Characters", "Character_Generator")
+if os.path.isdir(CG):
+    def main_colour(im, col=3):
+        fr = im.crop((col * 16, 0, col * 16 + 16, 32))
+        c = Counter(p[:3] for p in fr.getdata() if p[3] > 0 and sum(p[:3]) > 175 and p[:3] not in [(70, 70, 94), (58, 58, 80)])
+        if not c:
+            c = Counter(p[:3] for p in fr.getdata() if p[3] > 0)
+        return "#%02x%02x%02x" % c.most_common(1)[0][0] if c else "#000000"
+    index = {}
+    for part, folder, prefix in [("body", "Bodies", "Body_"), ("eyes", "Eyes", "Eyes_"), ("outfit", "Outfits", "Outfit_"),
+                                 ("hair", "Hairstyles", "Hairstyle_"), ("acc", "Accessories", "Accessory_")]:
+        index[part] = {}
+        d = os.path.join(CG, folder, "16x16")
+        for f in sorted(os.listdir(d)):
+            if not f.endswith(".png"):
+                continue
+            im = Image.open(os.path.join(d, f)).convert("RGBA").crop((0, 0, 896, 96))
+            key = f[len(prefix):-4]
+            save(im, "characters/mi/%s/%s.png" % (part, key))
+            index[part][key] = main_colour(im)
+    p = os.path.join(OUT, "characters", "mi", "index.json")
+    with open(p, "w") as fh:
+        json.dump(index, fh, indent=1, sort_keys=True)
+    written.append("characters/mi/index.json")
+    print("people parts:", {k: len(v) for k, v in index.items()})
+
+
+# ---------------------------------------------------------------- interiors (Modern Interiors)
+# Floors and walls from the Room Builder; furniture cut from the shadowless theme sheets (boxes found by
+# segmenting the sheets: sheet, (x0, y0, x1, y1)).
+MI = os.path.join(SRC, "moderninteriors-win", "1_Interiors", "16x16")
+if os.path.isdir(MI):
+    RB = os.path.join(MI, "Room_Builder_subfiles")
+    floors = os.path.join(RB, "Room_Builder_Floors_16x16.png")
+    walls = os.path.join(RB, "Room_Builder_Walls_16x16.png")
+    FLOORS = {"floor": (0, 12), "floor_oak": (12, 26), "floor_tile": (12, 4), "floor_carpet": (9, 18), "floor_concrete": (12, 8), "floor_lab": (12, 30)}
+    for t, (cx, cy) in FLOORS.items():
+        for v, (dx, dy) in enumerate([(1, 0), (1, 1), (1, 0), (1, 1)]):
+            save(tile(floors, cx + dx, cy + dy), "tiles/%s_%d.png" % (t, v))
+    # the lower half of each 2-tile wall, which carries the baseboard
+    WALLS = {"wall": (0, 6), "wall_paper": (24, 24), "wall_rose": (24, 0), "wall_panel": (12, 0), "wall_brick": (12, 22), "wall_concrete": (0, 30), "wall_lab": (24, 14)}
+    for t, (cx, cy) in WALLS.items():
+        save(tile(walls, cx + 1, cy + 1), "tiles/%s.png" % t)
+    FURNITURE = {
+    "loot_fridge": ("12_Kitchen_16x16", (144, 375, 160, 411)),
+    "fridge": ("12_Kitchen_16x16", (144, 375, 160, 411)),
+    "loot_cabinet": ("12_Kitchen_16x16", (1, 177, 15, 191)),
+    "counter": ("12_Kitchen_16x16", (152, 242, 168, 256)),
+    "stove": ("12_Kitchen_16x16", (128, 210, 144, 235)),
+    "sink": ("12_Kitchen_16x16", (133, 113, 157, 127)),
+    "table": ("1_Generic_16x16", (81, 81, 95, 95)),
+    "chair": ("12_Kitchen_16x16", (66, 177, 79, 198)),
+    "loot_dresser": ("1_Generic_16x16", (113, 1016, 128, 1034)),
+    "loot_desk": ("5_Classroom_and_library_16x16", (64, 81, 77, 103)),
+    "loot_shelf": ("5_Classroom_and_library_16x16", (192, 210, 208, 231)),
+    "shelf": ("5_Classroom_and_library_16x16", (192, 210, 208, 231)),
+    "bookshelf": ("5_Classroom_and_library_16x16", (49, 210, 63, 250)),
+    "loot_locker": ("18_Jail_16x16", (209, 32, 223, 59)),
+    "loot_medicine": ("18_Jail_16x16", (225, 73, 240, 87)),
+    "loot_gun_case": ("25_Shooting_Range", (66, 19, 78, 32)),
+    "old_bed": ("4_Bedroom_16x16", (231, 386, 251, 426)),
+    "bed": ("4_Bedroom_16x16", (167, 385, 187, 425)),
+    "lamp": ("2_LivingRoom_16x16", (193, 200, 206, 233)),
+    "mirror": ("1_Generic_16x16", (226, 1056, 238, 1081)),
+    "flower_pot": ("2_LivingRoom_16x16", (193, 322, 207, 345))
+    }
+    for t, (sheet_name, box) in FURNITURE.items():
+        sh = os.path.join(MI, "Theme_Sorter_Shadowless", sheet_name.replace("_16x16", "") + "_Shadowless.png")
+        im = Image.open(sh).convert("RGBA").crop(box)
+        bb = im.getbbox()
+        save(im.crop(bb) if bb else im, "objects/%s.png" % t)
+    print("interiors:", len(FLOORS), "floors,", len(WALLS), "walls,", len(FURNITURE), "furniture")

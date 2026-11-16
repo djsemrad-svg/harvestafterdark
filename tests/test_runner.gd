@@ -3191,3 +3191,31 @@ func run_packart() -> void:
 		for season in ["spring", "summer", "autumn", "winter"]:
 			if Art.obj_override({"type": t, "v": 0, "x": 0, "y": 0}, season).is_empty(): missing.append(t + "/" + season)
 	check("Every new prop has art in every season", missing.is_empty(), str(missing))
+	# people from the Modern Interiors character generator
+	var me: Image = Art.char_image(G.state.character.look, "down", 0)
+	var ruth: Dictionary = MiChars.parts(Data.npcs.ruth.look)
+	check("People are built from the character generator: body, eyes, outfit, hair and accessory", MiChars.available() and me.get_width() == 16 and me.get_height() == 32 and ruth.hair == "13_05" and ruth.acc == "15_Glasses_01", str(ruth))
+	var walk := []
+	for f in 4: walk.append(Art.char_image(G.state.character.look, "down", f).get_data())
+	check("Walking uses four different frames, and every direction has its own picture", walk[0] != walk[1] and walk[1] != walk[3] and Art.char_image(G.state.character.look, "left", 0).get_data() != Art.char_image(G.state.character.look, "right", 0).get_data(), "")
+	var zl: Dictionary = Infected.make_look("shambler", G.rng)
+	var z: Image = Art.char_image(zl, "down", 0)
+	var greenish := 0
+	for yy in 32:
+		for xx in 16:
+			var c := z.get_pixel(xx, yy)
+			if c.a > 0 and c.g > c.r + 0.03: greenish += 1
+	check("The infected use the same people with sickly skin, glowing eyes and faded clothes", greenish >= 20, "green px=%d" % greenish)
+	var raider: Dictionary = MiChars.parts(Raiders.make_look("raider", G.rng))
+	check("Raiders are people too, in dark knit caps rather than ball caps", not str(raider.acc).begins_with("04_Snapback"), str(raider))
+	var opts: Dictionary = MiChars.creator_options()
+	var look2: Dictionary = Data.default_look.duplicate(true)
+	MiChars.complete(look2)
+	look2.mi_hair_style = "13"; look2.mi_outfit_style = "08"; look2.mi_outfit_color = "2"; look2.mi_acc_style = "15_Glasses"
+	var p2: Dictionary = MiChars.parts(look2)
+	check("The character creator offers the generator's hair styles, outfits and accessories", opts.mi_hair_style.size() >= 29 and opts.mi_outfit_style.size() >= 33 and p2.hair.begins_with("13_") and p2.outfit == "08_02" and p2.acc.begins_with("15_Glasses"), str(p2))
+	var pt: Image = Art.get_portrait(Data.npcs.hal.look).get_image()
+	check("Portraits frame the generator people's heads", pt.get_used_rect().size.y >= 12, str(pt.get_used_rect()))
+	# interiors
+	var ft: Image = Art.get_tile("floor_tile", "spring", 0).get_image()
+	check("Room floors, walls and furniture come from Modern Interiors", ft.get_pixel(3, 3) == Art.override("tiles/floor_tile_0.png").get_image().get_pixel(3, 3) and Art.has_override("tiles/wall_brick.png") and Art.has_override("objects/loot_locker.png") and Art.has_override("objects/old_bed.png"), "")

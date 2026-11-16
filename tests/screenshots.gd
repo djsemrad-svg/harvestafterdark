@@ -48,6 +48,51 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "people":
+		main.ui.close_all()
+		var outd := "/home/claude/packs_review/people/"
+		DirAccess.make_dir_recursive_absolute(outd)
+		for npc in Data.npcs:
+			for d in ["down", "right", "up"]:
+				Art.char_image(Data.npcs[npc].look, d, 0).save_png(outd + "npc_%s_%s.png" % [npc, d])
+			Art.get_portrait(Data.npcs[npc].look).get_image().save_png(outd + "portrait_%s.png" % npc)
+		for t in Data.enemies:
+			if Data.enemies[t].get("nest", false): continue
+			for k in 3:
+				Art.char_image(Infected.make_look(t, Game.rng), "down", 0).save_png(outd + "enemy_%s_%d.png" % [t, k])
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		main.ui.flow = {"view": "create", "mode": "survivor", "slot": 1, "look": Data.default_look.duplicate(true), "name": "Dana"}
+		Game.screen = "title"; main.ui.render_title(); await frames(4); await shot("63_creator")
+		Game.screen = "game"; main.ui.close_all()
+		Game.change_map("town", 26, 17, "up", {"silent": true})
+		Game.state.time = 700; Game.sync_npcs()
+		# line up every neighbour in the square for a group shot
+		var i := 0
+		for n in Game.npcs.values():
+			n.pos = Game.player.pos + Vector2(-80 + i * 22, 30)
+			n.dir = "down"
+			i += 1
+		await frames(6); await shot("64_neighbours")
+		Game.change_map("residential", 30, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Game.player.iframes = 999.0
+		var types := ["shambler", "lurcher", "runner", "brute", "spitter", "charred", "stalker", "riot", "soldier", "screamer", "crawler", "hazmat", "raider", "raider_gunner", "raider_captain"]
+		for j in types.size():
+			var e: Dictionary = main.world.spawn_enemy(types[j], 0, 0)
+			e.pos = Game.player.pos + Vector2(-140 + (j % 8) * 40, -40 + (j / 8) * 56)
+			e.state = "asleep"; e.dir = "down"
+		await frames(6); await shot("65_infected_lineup")
+		Game.enemies.clear()
+		var bi := 0
+		for b in ["boss_groundskeeper", "boss_undertaker", "boss_juggernaut", "boss_crash", "boss_inferno", "boss_briar_king", "boss_dutch", "boss_foreman"]:
+			var e2: Dictionary = main.world.spawn_enemy(b, 0, 0)
+			e2.pos = Game.player.pos + Vector2(-150 + bi * 42, 20)
+			e2.state = "asleep"; e2.dir = "down"
+			bi += 1
+		await frames(6); await shot("66_bosses")
+		get_tree().quit()
+		return
 	if only == "packs":
 		main.ui.close_all()
 		Game.state.time = 640

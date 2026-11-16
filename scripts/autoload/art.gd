@@ -1296,16 +1296,19 @@ func look_key(l: Dictionary) -> String:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
 	parts.append(str(l.get("sprite", "")))
-	for k in ["body", "extra", "scale", "lying"]:
-		if l.has(k): parts.append(str(l[k]))
+	for k in ["body", "extra", "scale", "lying", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc"]:
+		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 	var ovr := char_override(look, dir, frame)
 	if ovr != null:
 		return ovr
-	var im: Image
-	if dir == "right":
+	# people from the Modern Interiors generator when its parts are installed
+	var im: Image = MiChars.compose(look, dir, frame)
+	if im != null:
+		pass
+	elif dir == "right":
 		im = _draw_character(look, "left", frame)
 		im.flip_x()
 	else:
@@ -1328,6 +1331,10 @@ func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
 func get_portrait(look: Dictionary) -> ImageTexture:
 	return cached("pt|" + look_key(look), func():
 		var im := char_image(look, "down", 0)
+		if MiChars.available() and im.get_width() == 16:
+			# generator people are shorter: frame the head and shoulders from the top of the sprite
+			var top := im.get_used_rect().position.y
+			return im.get_region(Rect2i(0, maxi(0, top - 1), 16, 18))
 		return im.get_region(Rect2i(0, 0, im.get_width(), 18 if im.get_width() > 16 else 18)) if im.get_width() > 16 else im.get_region(Rect2i(0, 1, 16, 18)))
 
 func _draw_character(L: Dictionary, dir: String, frame: int) -> Image:
