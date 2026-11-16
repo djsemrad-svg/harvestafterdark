@@ -318,6 +318,16 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 - Buildings line up on their pictures' real doors (`DOOR` in the importer; it was always the middle). Reyes Ranch's door is its left steps; the porch below them hangs in front and is solid (`BASE`, `art_drop`, `over`). Footprints stop at the solid part of a picture, not its shadow. A test checks no buildings overlap and every door has open ground in front. Older saves rebuild outdoor maps once more (`MapScale.VERSION` 2).
 - Trees no longer swap places in dense stands: things on the same row are drawn left to right in a fixed order (the sort wasn't stable). `tests/screenshots.gd --only=treeshift` slides the view through a forest and counts changed pixels.
 
+### World objects and tiles from Modern Exteriors and Interiors (added Nov 16)
+
+`OBJ` in the importer (end of `tools/import_packs.py`) maps 58 object types to Modern Exteriors singles (by file name, `me()`) or Modern Interiors sheet cells (`mi(sheet, x, y, w, h)`): power and mines, campfires, stoves, bee house, doghouse, signs, benches, crates, tents, police car, fire truck, crashed helicopter, boat, fuel pump, sandbags, barricades, fryer, server racks, lab benches, cell bars, barrels, compost bin, smoker, water purifier, lockers and shelves, gravestones (4 kinds), stumps and boulders.
+
+- Walls and fences join their neighbours: `objects/<type>_c<mask>.png` (mask 1 west, 2 east, 4 north, 8 south), built by `joined()` from a straight piece across and a straight piece down. `Art.joined_override` draws them and adds cracks as barriers wear. Done for wood fence, electric fence, stone wall, sandbag wall, barbed wire and the Riverlands rail fence (`WorldView.JOINED_FIXTURES` lets placed-by-map fences join too).
+- Placeable items whose object now has pack art get an inventory icon made from it (`tools/place_map.json`, exported from `Data`).
+- Ground: water, town paving (grey cobbles) and sand from the Terrains sheet.
+- `tests/screenshots.gd --only=objects` lays out a showroom of the objects and fence rings.
+- Still code-drawn: turrets and traps, most crafting machines, sprinklers and other farm equipment, paths and floors, gates, mine rocks and ladders, a few district props (display cases, museum desk, ledger, lookouts).
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

@@ -473,6 +473,9 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 	if t in ["torch_post", "furnace", "crystal"]: k += "|%d" % (frame % 4)
 	if t == "window": k += "|%d" % (1 if frame > 0 else 0)
 	k += obj_state_key(o, nb, frame)
+	var jo := joined_override(o, nb)
+	if not jo.is_empty():
+		return jo
 	var ov := obj_override(o, season)
 	if not ov.is_empty():
 		return ov
@@ -919,6 +922,37 @@ var _ovobj := {}
 ## Objects that have hand-made art. Returns {} when there is none.
 ## Looks for objects/<type>_<season>_<v>.png, then <type>_<v>, <type>_<season>, <type>.
 ## A searched container uses <type>_open.png if there is one, or a dimmed copy of its art.
+## Walls and fences from the packs: one picture per way they join their neighbours
+## (objects/<type>_c<mask>.png, mask 1 west, 2 east, 4 north, 8 south), with cracks as they wear.
+var _ovjoin := {}
+func joined_override(o: Dictionary, nb: int) -> Dictionary:
+	var t: String = o.type
+	var d: Dictionary = Data.obj_defs.get(t, {})
+	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
+		return {}
+	var dmg := damage_level(o) if d.get("barrier", false) else 0
+	var key := "%s|%d|%d" % [t, nb, dmg]
+	if _ovjoin.has(key):
+		return _ovjoin[key]
+	var res := {}
+	var tex := override("objects/%s_c%d.png" % [t, nb])
+	if tex != null:
+		if dmg > 0:
+			var im: Image = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+			var cracked := img(im.get_width(), im.get_height())
+			cracked.blit_rect(im, Rect2i(0, 0, im.get_width(), im.get_height()), Vector2i.ZERO)
+			_crack(cracked, dmg, int(o.get("x", 0)) * 31 + int(o.get("y", 0)), im.get_height() - 14, im.get_height() - 3)
+			# cracks only where there's wall
+			for yy in im.get_height():
+				for xx in im.get_width():
+					if im.get_pixel(xx, yy).a == 0: cracked.set_pixel(xx, yy, Color(0, 0, 0, 0))
+			tex = ImageTexture.create_from_image(cracked)
+		res = {"tex": tex, "ox": int((16 - tex.get_width()) / 2), "oy": 16 - tex.get_height()}
+	_ovjoin[key] = res
+	return res
+
 func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var t: String = o.type
 	var d: Dictionary = Data.obj_defs.get(t, {})

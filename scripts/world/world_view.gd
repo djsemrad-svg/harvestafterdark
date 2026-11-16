@@ -280,13 +280,17 @@ func _draw() -> void:
 				for tt in tiles:
 					draw_rect(Rect2(tt.x * 16 + 0.5, tt.y * 16 + 0.5, 15, 15), Color(1, 1, 1, 0.55), false, 1.0)
 
+## Fences placed by the map makers that join up like the ones you build.
+const JOINED_FIXTURES := ["rail_fence"]
+
 func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 	var nb := 0
-	if Data.obj_defs.get(o.type, {}).get("barrier", false):
+	var is_bar: bool = Data.obj_defs.get(o.type, {}).get("barrier", false)
+	if is_bar or JOINED_FIXTURES.has(o.type):
 		var i := 0
 		for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 			var n = m.objects.get(GameMap.k(int(o.x) + d.x, int(o.y) + d.y))
-			if n != null and Data.obj_defs.get(n.type, {}).get("barrier", false):
+			if n != null and ((is_bar and Data.obj_defs.get(n.type, {}).get("barrier", false)) or n.type == o.type):
 				nb |= 1 << i
 			i += 1
 	var fr := (1 if is_night(e) else 0) if o.type == "window" else int(anim_t / 0.15) % 4

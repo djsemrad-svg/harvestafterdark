@@ -168,6 +168,46 @@ func _ready() -> void:
 		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("81_weapons_inventory")
 		get_tree().quit()
 		return
+	if only == "objects":
+		# a showroom of pack objects and fences on a cleared field
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		Game.change_map("homestead", 30, 30, "down", {"silent": true})
+		var m = Game.map
+		for y in range(16, 46):
+			for x in range(8, 58):
+				m.objects.erase(GameMap.k(x, y))
+		var row1 := ["generator", "battery_bank", "solar_panel", "floodlight", "landmine", "nail_mine", "campfire", "campfire_ring", "cookstove", "bee_house", "doghouse", "sleeping_bag", "bench", "ladder_up", "sign", "wood_sign", "notice_board", "crate", "loot_crate"]
+		for i in row1.size():
+			m.objects[GameMap.k(10 + i * 2, 19)] = {"type": row1[i], "x": 10 + i * 2, "y": 19}
+		var row2 := ["tent", "field_tent", "medical_tent", "police_car", "boat", "log_pile"]
+		for i in row2.size():
+			m.objects[GameMap.k(10 + i * 4, 24)] = {"type": row2[i], "x": 10 + i * 4, "y": 24, "w": 2, "h": 1}
+		m.objects[GameMap.k(36, 24)] = {"type": "fire_truck", "x": 36, "y": 24, "w": 3, "h": 1}
+		m.objects[GameMap.k(42, 25)] = {"type": "heli_wreck", "x": 42, "y": 24, "w": 3, "h": 2}
+		var row3 := ["fuel_pump", "sandbags", "barricade", "jersey_barrier", "fryer", "server_rack", "lab_bench", "cell_bars", "watchtower", "gravestone", "gravestone", "gravestone", "gravestone"]
+		for i in row3.size():
+			m.objects[GameMap.k(10 + i * 2, 29)] = {"type": row3[i], "x": 10 + i * 2, "y": 29, "v": i}
+		# fences: a ring of each kind
+		var kinds := ["fence", "electric_fence", "stone_wall", "sandbag_wall", "barbed_fence", "rail_fence"]
+		for ki in kinds.size():
+			var ox := 10 + ki * 7
+			for xx in range(ox, ox + 5):
+				for yy in [33, 37]:
+					m.objects[GameMap.k(xx, yy)] = {"type": kinds[ki], "x": xx, "y": yy}
+			for yy in range(34, 37):
+				m.objects[GameMap.k(ox, yy)] = {"type": kinds[ki], "x": ox, "y": yy}
+				m.objects[GameMap.k(ox + 4, yy)] = {"type": kinds[ki], "x": ox + 4, "y": yy}
+			m.objects[GameMap.k(ox + 2, 40)] = {"type": kinds[ki], "x": ox + 2, "y": 40}
+			m.objects[GameMap.k(ox + 2, 37)]["hp"] = 1
+		for sp in [[25, 21], [25, 27], [16, 36], [40, 36]]:
+			Game.player.pos = Vector2(sp[0] * 16 + 8, sp[1] * 16 + 8)
+			main.world.view.snap_camera()
+			await frames(8)
+			await shot("88_objects_%d_%d" % [sp[0], sp[1]])
+		get_tree().quit()
+		return
 	if only == "doors":
 		# stand just below each building's door, then walk in
 		main.ui.close_all()

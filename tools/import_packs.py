@@ -868,3 +868,161 @@ if os.path.isdir(PROPS):
             im = hue_set(im, "#6a707a", lambda p: sum(p[:3]) > 120 and (max(p[:3]) - min(p[:3])) > 25)
         save(mute(im, 0.22), "objects/%s.png" % oid)
     print("props:", n)
+
+
+# ---------------------------------------------------------------- world objects from Modern Exteriors and Modern Interiors
+# Single pictures for props, machines and vehicles; walls and fences are built as 16 joining pieces
+# (objects/<type>_c<mask>.png, mask bits 1 = west, 2 = east, 4 = north, 8 = south) from a straight piece
+# across and a straight piece down.
+MEROOT = os.path.join(SRC, "modernexteriors-win", "Modern_Exteriors_16x16", "ME_Theme_Sorter_16x16")
+MIROOT = os.path.join(SRC, "moderninteriors-win", "1_Interiors", "16x16", "Theme_Sorter_Shadowless")
+if os.path.isdir(MEROOT) and os.path.isdir(MIROOT):
+    import glob as _glob
+    _me_cache = {}
+
+    def me(name):
+        """A Modern Exteriors single by the end of its file name, trimmed to what's drawn."""
+        if name not in _me_cache:
+            hits = sorted(_glob.glob(os.path.join(MEROOT, "*Singles*", "*_16x16_" + name + ".png")))
+            if not hits:
+                raise SystemExit("no exterior single: " + name)
+            _me_cache[name] = hits[0]
+        im = load(_me_cache[name])
+        return im.crop(im.getbbox())
+
+    def sheet_tile(path, x, y, w=1, h=1, trim=True):
+        im = Image.open(path).convert("RGBA").crop((x * 16, y * 16, (x + w) * 16, (y + h) * 16))
+        return im.crop(im.getbbox()) if trim and im.getbbox() else im
+
+    TERR = os.path.join(MEROOT, "1_Terrains_and_Fences_16x16.png")
+    mi = lambda sheet, x, y, w=1, h=1: sheet_tile(os.path.join(MIROOT, sheet + "_Shadowless.png"), x, y, w, h)
+
+    def put_over(base, top, dx=0, dy=0):
+        out = base.copy()
+        out.alpha_composite(top, ((base.width - top.width) // 2 + dx, base.height - top.height + dy))
+        return out
+
+    OBJ = {
+        # power and defenses
+        "generator": me("Electric_Box_1"), "battery_bank": me("Electric_Box_2"), "solar_panel": me("Solar_Panel"),
+        "floodlight": me("Light_Tower_1"), "landmine": me("Mine_1"), "nail_mine": me("Mine_2"),
+        # camp, farm and home
+        "campfire": me("Campfire_3"), "campfire_ring": me("Campfire_1"), "cookstove": mi("12_Kitchen", 8, 11, 1, 2),
+        "bee_house": me("Brown_Little_Bird_House"), "doghouse": me("Brown_Wood_Storage"), "sleeping_bag": me("Sleeping_Bag_3"),
+        "log_pile": me("Cut_Wood_Bench_2"), "bench": me("Bench_7"), "ladder_up": me("Villa_Ladder_1"),
+        # signs and boards
+        "sign": me("Sign_6"), "wood_sign": me("Sign_4"), "notice_board": me("Sign_8"),
+        # scavenging props
+        "crate": me("Pier_Crates_1"), "loot_crate": me("Pier_Crates_2"), "tent": me("Tent_3"),
+        "field_tent": me("Tent_2"), "medical_tent": put_over(me("Tent_3"), me("Military_Tent_Brown_Cross_1").crop((0, 0, me("Military_Tent_Brown_Cross_1").width, 14)), 0, -4),
+        "police_car": me("Police_Car_1"), "fire_truck": me("Fire_Truck_Left"), "heli_wreck": mute(me("Helicopter_1"), 0.35),
+        "boat": me("Boat_2_Left_1"), "fuel_pump": me("Gas_Station_Petrol_Pump_Props_5"),
+        "sandbags": me("Sandbag_Pile_Horizontal"), "barricade": me("Traffic_Barrier_1"), "jersey_barrier": me("Barrier_1"),
+        "fryer": mi("12_Kitchen", 7, 32, 2, 2), "server_rack": mi("18_Jail", 8, 21, 1, 2), "lab_bench": mi("19_Hospital", 10, 65, 2, 2),
+        "cell_bars": mi("18_Jail", 1, 5, 1, 2),
+        # machines and stations
+        "smoker": me("Barbecue_1"), "ferment_barrel": me("Brown_Barrel_1"), "rain_collector": me("Barrel_1"), "compost_bin": me("Green_Closed_Trash_Can"),
+        "water_purifier": me("Drinking_Fountain_1"), "chem_station": me("Military_Tent_Shelf_2"), "electronics_bench": me("Military_Tent_Shelf_3"),
+        "weapon_rack": me("Military_Tent_Locker_1"), "table_set": me("Benched_Table_1"), "oil_lantern": me("Lantern_1"),
+        # district props
+        "biohazard_bin": me("Barrel_9"), "decon_shower": me("Portable_Toilet_2"), "stolen_goods": me("Pier_Crates_5"),
+        "big_stump": me("Stump_2"), "boulder": me("Rock_8"),
+    }
+    for oid, im in OBJ.items():
+        save(im, "objects/%s.png" % oid)
+    # gravestones: four kinds, picked per stone
+    for v, nm in enumerate(["Grey_Cross_1", "Marble_Grey_Tombstone_1", "Small_Black_Tombstone_1", "Long_Tombstone_1"]):
+        save(me(nm), "objects/gravestone_%d.png" % v)
+
+    def joined(H, V, post=None):
+        """16 joining pieces from a straight piece across (H) and a straight piece down (V, 16 tall)."""
+        ch = max(16, H.height, post.height if post else 0)
+        pieces = {}
+        for nb in range(16):
+            c = Image.new("RGBA", (16, ch), (0, 0, 0, 0))
+            w, e, n, s = nb & 1, nb & 2, nb & 4, nb & 8
+            vx = (16 - V.width) // 2
+            if n and s:
+                c.alpha_composite(V, (vx, ch - 16))
+            elif n:
+                c.alpha_composite(V.crop((0, 0, V.width, 10)), (vx, ch - 16))
+            elif s:
+                c.alpha_composite(V.crop((0, 6, V.width, 16)), (vx, ch - 10))
+            hy = ch - H.height
+            if w:
+                c.alpha_composite(H.crop((0, 0, 8, H.height)), (0, hy))
+            if e:
+                c.alpha_composite(H.crop((8, 0, 16, H.height)), (8, hy))
+            if post is not None:
+                c.alpha_composite(post, ((16 - post.width) // 2, ch - post.height))
+            elif not (w or e or n or s):
+                c.alpha_composite(H, (0, hy))
+            elif (n or s) and not (w or e):
+                pass
+            pieces[nb] = c
+        return pieces
+
+    def full16(im):
+        """Stretch a short vertical run to a full tile by repeating its middle (keeps it seamless top to bottom)."""
+        if im.height >= 16:
+            return im.crop((0, im.height - 16, im.width, im.height))
+        out = Image.new("RGBA", (im.width, 16), (0, 0, 0, 0))
+        mid = im.crop((0, im.height // 2, im.width, im.height // 2 + 1))
+        for yy in range(16):
+            out.alpha_composite(mid, (0, yy))
+        return out
+
+    T = lambda x, y: sheet_tile(TERR, x, y)
+    TN = lambda x, y: sheet_tile(TERR, x, y, trim=False)
+    fence_v = full16(T(22, 71))
+    JOIN = {
+        "fence": (TN(23, 70).crop(TN(23, 70).getbbox()), fence_v, T(22, 71).crop((0, 0, T(22, 71).width, min(T(22, 71).height, TN(23, 70).getbbox()[3] - TN(23, 70).getbbox()[1])))),
+        "electric_fence": (TN(23, 60).crop(TN(23, 60).getbbox()), full16(T(22, 61)), None),
+        "stone_wall": (TN(9, 16).crop(TN(9, 16).getbbox()), full16(T(8, 17)), None),
+        "sandbag_wall": (me("Sandbag_Horizontal_Single"), full16(me("Sandbag_Vertical_Single")), None),
+        "barbed_fence": (me("Barbed_Wire_1_Horizontal"), full16(me("Barbed_Wire_1_Vertical")), None),
+        "rail_fence": (me("Dormitory_Fence_1_Horizontal_1"), full16(me("Dormitory_Fence_1_Left_1")), None),
+    }
+    for oid, (H, V, P) in JOIN.items():
+        if H.width != 16:
+            # pieces narrower or wider than a tile: take a 16 wide slice from the middle, or centre it
+            if H.width > 16:
+                H = H.crop(((H.width - 16) // 2, 0, (H.width - 16) // 2 + 16, H.height))
+            else:
+                c = Image.new("RGBA", (16, H.height), (0, 0, 0, 0)); c.alpha_composite(H, ((16 - H.width) // 2, 0)); H = c
+        for nb, im in joined(H, V, P).items():
+            save(im, "objects/%s_c%d.png" % (oid, nb))
+    print("objects:", len(OBJ) + 4, "joined:", len(JOIN))
+
+    # ground tiles
+    for v, (x, y) in enumerate([(25, 5), (26, 5), (28, 5), (29, 5)]):
+        save(sheet_tile(TERR, x, y, trim=False), "tiles/water_%d.png" % v)
+    for v, (x, y) in enumerate([(25, 9), (26, 9), (25, 9), (26, 9)]):
+        save(sheet_tile(TERR, x, y, trim=False), "tiles/pave_%d.png" % v)
+    for v, (x, y) in enumerate([(17, 56), (18, 56), (19, 56), (20, 56)]):
+        save(sheet_tile(TERR, x, y, trim=False), "tiles/sand_%d.png" % v)
+    print("tiles: water, pave, sand")
+
+
+# ---------------------------------------------------------------- icons for placeable things, from their new world pictures
+# tools/place_map.json (item id -> object it places) is exported from the game's Data.
+PLACE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "place_map.json")
+if os.path.isfile(PLACE) and "PI" in globals():
+    n = 0
+    for iid, oid in json.load(open(PLACE)).items():
+        if os.path.exists(os.path.join(OUT, "icons", iid + ".png")):
+            continue
+        src = None
+        for nm in ["objects/%s.png" % oid, "objects/%s_c3.png" % oid, "objects/%s_0.png" % oid]:
+            if os.path.exists(os.path.join(OUT, nm)):
+                src = Image.open(os.path.join(OUT, nm)).convert("RGBA")
+                break
+        if src is None:
+            continue
+        src = src.crop(src.getbbox())
+        if src.width > 16 or src.height > 16:
+            k = min(16 / src.width, 16 / src.height)
+            src = PI.shrink(src, max(1, round(src.width * k)), max(1, round(src.height * k)), cover=0.3, reoutline=False)
+        icon(src, iid)
+        n += 1
+    print("placeable icons:", n)
