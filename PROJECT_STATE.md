@@ -269,12 +269,34 @@ Daniel bought Modern Interiors (full) and Modern Exteriors (LimeZu). Unzipped co
 - Interiors: Room Builder floors and walls (`tiles/floor_*`, `tiles/wall_*`) and 21 furniture pieces cut from the shadowless theme sheets (boxes in the importer).
 - Not used: Fantasy Battlers (front-view JRPG monsters), Fungus Cave (chibi RPG Maker style), Cozy Fae base (different style), Modern Interiors RPG Maker copy (duplicate).
 
-### Next: bigger buildings (decided Nov 16)
+### Bigger maps and pack buildings (added Nov 16)
 
-Modern Exteriors buildings are 2 to 3 times the game's footprints (a pack house is about 160x150 to 290x255 px; a game house is 96x80). Daniel chose to enlarge the maps so buildings use the pack's real sizes. Plan:
-1. Pick a pack building for each of the ~58 building kinds (Complete_Singles has whole buildings: houses, Post Apocalyptic House 1/2, police station, fire station, hardware store, markets, school, hospital, hotel, military dormitory and hangar, chapel, greenhouse; modular shop floors for the rest). Record each one's size in tiles and its door column.
-2. Re-lay out each outdoor map around the new footprints: town, homestead, mountain (mine), the three districts, Halvorsen, Dry Creek. Building interiors stay 14x11.
-3. Update everything that names a map coordinate: NPC schedules, warps, signs, quests and contracts, fixed infected, nests, tests.
+Daniel chose to enlarge the maps so Modern Exteriors buildings keep their real sizes.
+
+- `scripts/world/map_scale.gd` (MapScale): town, residential, industrial, riverlands, halvorsen and dry_creek are laid out on the old design grid, then built 2x bigger. The homestead is not scaled. `GameMap.scale` and `map.dt(x, y)` (or `MapScale.t(map_id, x, y)`) turn design coordinates into real ones; use them for anything placed by coordinate (NPC schedules, contracts, nests, bosses, events, tests).
+- Doors become 2x2 warps. Each building's footprint is fitted to its art (`fit_to_art`), with the door lined up to the art's door column from `art/buildings/index.json`.
+- Trees, rocks, weeds and bushes are re-sprinkled at a matching density; fences, walls and gates are filled in so they stay solid. Infected counts are 3x.
+- `art/buildings/<kind>.png`: 54 building kinds use Modern Exteriors singles. Condition (ruined to maintained) is shown by weathering the picture; the name board is drawn on above the door; winter adds snow on the roof edges.
+- Older saves: outdoor maps for the scaled maps are rebuilt once on load (`Game._migrate_scale`, `map_scale` version 1).
+- Fix: trees no longer pop in and out at the edge of the screen (the draw margin was too small for tall trees).
+
+### Crops, seeds, fish and tackle art (added Nov 16)
+
+From Sunnyside World and the Hollow Dolphin fishing icons.
+
+- Every crop (46) has 5 growth stages in `art/crops/<id>_<stage>.png` (0 planted to 4 ready), loaded by `Art.get_crop`. Crops the pack has use their own art; the rest use the closest crop shape with the produce recoloured to the crop's colour (bushes get fruit dots). Stage 3 is the grown plant with unripe, green produce. All slightly desaturated to sit in the world.
+- Every seed packet icon is the pack's seed pouch tinted to its crop. Crops without an icon get one from the pack.
+- Every fish (41) uses one of the pack's fish shapes, tinted to its colour. Crayfish, clam, turtle, eel and lamprey have their own shapes.
+- Tackle, bait, rods, crab pot and fishing junk use the pack's icons.
+- `tools/crop_fish_colours.json` holds each crop's shape and colour and each fish's colour (exported from `Data`).
+
+### Packs looked at and not used (Nov 16)
+
+- Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
+- Sunnyside World characters and its human animation file: chibi proportions; the game uses the 16x32 generator people.
+- Sunnyside World tiles and buildings: much brighter and more saturated than the post-apocalypse look. Only the crops and seed pouch were used. Its animals are a possible later fit.
+- Farm Game Dungeon Cellar: a candidate for mine floors and walls.
+- Kenney UI Pack Pixel Adventure and Free Basic Pixel Art UI: possible menu reskin; asked Daniel.
 
 ## Code layout
 
@@ -304,7 +326,7 @@ Modern Exteriors buildings are 2 to 3 times the game's footprints (a pack house 
 ## Visual direction (agreed with Daniel)
 
 - Currency is gold (renamed from scrip on Nov 13).
-- Outdoor art and many icons come from the PostApocalypse pack and matching icon packs (Nov 16); characters, buildings, interiors and most icons are still code-drawn.
+- Outdoor art, people, interiors, buildings, crops and many icons come from asset packs (Nov 16). Still code-drawn: animals, machines, fences and walls, water and sand, the mine entrance, weapon and gear icons.
 
 - Stardew-like 16-bit look, adapted to a small community in an outbreak.
 - Colour mood: warm and saturated in safe areas, greyer and colder in dangerous ones (mine, ridge, ruins). Done with a per-map grade (`GameMap.mood`).
