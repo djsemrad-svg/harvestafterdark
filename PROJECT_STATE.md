@@ -308,6 +308,10 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 - Guns, bows and crossbows also get `art/held/<id>.png`, a side-on picture (at most 22 wide) drawn in the player's hands when aiming. Weapons without one still use the small icon.
 - Still code-drawn (32): crowbars, golf club, baton, lead pipes, tire iron, pipe wrench, shovel and Grave Digger, chainsaw and Redline, frying pan, hockey stick, garden rake, brass knuckles and Brute Force, riot shield, slingshots, boomerangs, nail guns, speargun, Molotov, pipe bomb.
 
+### 150+ Props Items side view (added Nov 16)
+
+64 item icons (`PROP_ICONS` in the importer): bags, boots, chests, canned food, jars (honey, pickles, kimchi), teas and drinks, stews, medicine bottles, sprays, frying pan (on the diagonal like the weapons), milk pail, a few forage plants and fruit (pear, plum, bluebell berry, moonbloom). The storage chest, large chest and lockbox also use the pack's chests on the farm. All muted a little to fit the darker art.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

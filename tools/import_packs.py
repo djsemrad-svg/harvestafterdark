@@ -795,3 +795,54 @@ if os.path.isdir(GUNS) and os.path.isfile(SWORDS):
         save(PI.icon16(sp, -45), "icons/%s.png" % wid)
         n += 1
     print("weapons:", n)
+
+
+# ---------------------------------------------------------------- 150+ PROPS ITEMS (side view) 16x16
+# Cosy side-view props: chests, jars, bottles, cans, boots, bags, pots. Used as item icons (and the chests as
+# world objects), muted a little to sit with the post-apocalypse art. id: (folder, number, recolour or None)
+PROPS = os.path.join(SRC, "Props150_side", "PNG")
+if os.path.isdir(PROPS):
+    D = {"acc": "1-ACCESSORIES", "chest": "3-CHESTS and LOCKS", "food": "4-FOOD", "jar": "5-BOTTLES CANS JARS KETTLES VASES", "misc": "6-MISCELLANEOUS"}
+    prop = lambda f, n: load(os.path.join(PROPS, D[f], "%d.png" % n))
+    PROP_ICONS = {
+        # bags and boots
+        "satchel": ("acc", 7, None), "hiking_pack": ("acc", 8, None), "military_rucksack": ("acc", 9, "#5a6a3a"), "ammo_pouch": ("acc", 4, "#6a5a3a"),
+        "hiking_boots": ("misc", 1, None), "broken_in_hiking_boots": ("misc", 1, None), "work_boots": ("misc", 2, None), "treaded_work_boots": ("misc", 2, None),
+        "combat_boots": ("misc", 3, "#3a3a34"), "reinforced_combat_boots": ("misc", 3, "#2a2a2a"), "snow_boots": ("misc", 4, None), "torn_boot": ("misc", 2, "#6a5a4a"),
+        "broken_umbrella": ("acc", 19, "#5a5a5a"),
+        # storage
+        "chest": ("chest", 8, None), "large_chest": ("chest", 7, None), "lockbox": ("chest", 12, None),
+        # food and drink
+        "canned_meat": ("misc", 5, None), "canned_peaches": ("misc", 6, None), "canned_tuna": ("misc", 7, None), "soda": ("misc", 8, None),
+        "crackers": ("food", 16, "#c89858"), "chocolate_bar": ("food", 9, None), "pear": ("food", 15, "#c8b048"), "plum": ("food", 1, "#6a2a6a"),
+        "cherry_tart": ("food", 4, None), "apple_biscuits": ("food", 5, None), "pancakes": ("food", 13, "#d8a050"), "flatbread": ("misc", 15, None),
+        "blackberry": ("food", 11, None), "wild_raspberry": ("food", 12, None), "cranberry": ("food", 12, "#a82a3a"), "bluebell_berry": ("food", 10, None),
+        "honey": ("jar", 9, None), "wildflower_honey": ("jar", 8, None), "peanut_butter": ("jar", 12, None),
+        "pickles": ("jar", 16, None), "sauerkraut": ("jar", 17, "#c8c070"), "kimchi": ("jar", 18, None),
+        "dandelion_tea": ("jar", 21, None), "pine_tea": ("jar", 29, None), "willow_tea": ("jar", 19, None),
+        "cooking_oil": ("jar", 35, None), "truffle_oil": ("jar", 30, None), "elderflower_cordial": ("jar", 37, None), "melon_chill": ("jar", 36, None),
+        "hard_cider": ("jar", 38, None), "bean_pot": ("jar", 39, None), "veggie_stew": ("jar", 48, None), "rabbit_stew": ("jar", 49, None), "trout_chowder": ("jar", 50, None),
+        # medicine and farm supplies
+        "antibiotics": ("jar", 22, None), "iodine_tablets": ("jar", 23, None), "vitamins": ("jar", 24, None), "painkillers": ("jar", 25, None),
+        "antiseptic": ("jar", 3, None), "soap": ("jar", 1, None), "pest_spray": ("jar", 5, None), "growth_tonic": ("jar", 6, None),
+        # tools, forage, flowers
+        "frying_pan": ("misc", 36, None), "milk_pail": ("misc", 41, None), "wild_mint": ("misc", 34, None), "elderflower": ("misc", 43, None),
+        "moonbloom": ("misc", 45, None), "chickweed": ("misc", 46, None),
+    }
+    n = 0
+    for iid, (f, num, tint) in PROP_ICONS.items():
+        im = prop(f, num)
+        if tint:
+            im = hue_set(im, tint, lambda p: sum(p[:3]) > 120 and (max(p[:3]) - min(p[:3])) > 25)
+        if iid == "frying_pan" and "PI" in globals():
+            save(PI.icon16(mute(im, 0.22), 45), "icons/frying_pan.png")   # held like the other weapons
+        else:
+            icon(mute(im, 0.22), iid)
+        n += 1
+    # the chests double as the placed chests on the farm
+    for oid, num in [("chest", 8), ("large_chest", 7), ("lockbox", 3)]:
+        im = prop("chest", num)
+        if oid == "lockbox":
+            im = hue_set(im, "#6a707a", lambda p: sum(p[:3]) > 120 and (max(p[:3]) - min(p[:3])) > 25)
+        save(mute(im, 0.22), "objects/%s.png" % oid)
+    print("props:", n)
