@@ -928,6 +928,15 @@ if os.path.isdir(MEROOT) and os.path.isdir(MIROOT):
         "biohazard_bin": me("Barrel_9"), "decon_shower": me("Portable_Toilet_2"), "stolen_goods": me("Pier_Crates_5"),
         "big_stump": me("Stump_2"), "boulder": me("Rock_8"),
     }
+    OBJ.update({
+        "ladder_down": me("Bunker_Base_Trapdoor_Open_Props"),
+        "loot_toolbox": me("Tool_Box_1"), "loot_toolbox_open": me("Tool_Box_2"),
+        "window": mi("1_Generic", 15, 44, 1, 1),
+        "gravel_path": sheet_tile(TERR, 29, 9, trim=False), "stone_path": sheet_tile(TERR, 25, 9, trim=False),
+        "wood_floor": load(os.path.join(OUT, "tiles", "floor_oak_0.png")) if os.path.exists(os.path.join(OUT, "tiles", "floor_oak_0.png")) else sheet_tile(TERR, 29, 9, trim=False),
+    })
+    for v, nm in enumerate(["Crack_1", "Crack_2", "Crack_3", "Crack_5"]):
+        save(me(nm), "objects/road_crack_%d.png" % v)
     for oid, im in OBJ.items():
         save(im, "objects/%s.png" % oid)
     # gravestones: four kinds, picked per stone
@@ -993,6 +1002,19 @@ if os.path.isdir(MEROOT) and os.path.isdir(MIROOT):
         for nb, im in joined(H, V, P).items():
             save(im, "objects/%s_c%d.png" % (oid, nb))
     print("objects:", len(OBJ) + 4, "joined:", len(JOIN))
+    # garden tools: shovels and rake as weapons, the watering can as the basic tool; axe, pick and hoe from the sword pack
+    for iid, nm, tint in [("shovel", "Ground_Brown_Shovel_Right", None), ("grave_digger", "Ground_Red_Shovel_Right", "#3a3438"),
+                          ("garden_rake", "Ground_Red_Rake_Right", None), ("watering_can", "Grey_Watering_Can_Full_Right", None)]:
+        im = me(nm)
+        if tint:
+            im = hue_set(im, tint, lambda p: sum(p[:3]) > 120 and (max(p[:3]) - min(p[:3])) > 40)
+        if (im.width > 16 or im.height > 16) and "PI" in globals():
+            k = min(16 / im.width, 16 / im.height)
+            im = PI.shrink(im, max(1, round(im.width * k)), max(1, round(im.height * k)), cover=0.3, reoutline=False)
+        icon(im, iid)
+    if "PI" in globals():
+        for iid, si in [("axe", 107), ("pickaxe", 146), ("hoe", 135)]:
+            save(PI.icon16(sword(si), -45), "icons/%s.png" % iid)
 
     # ground tiles
     for v, (x, y) in enumerate([(25, 5), (26, 5), (28, 5), (29, 5)]):

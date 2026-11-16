@@ -1619,10 +1619,19 @@ func get_icon(id: String, tier: int = 0) -> ImageTexture:
 func icon_image(id: String, tier: int) -> Image:
 	var x := img(16, 16)
 	var it: Dictionary = Data.items.get(id, {})
-	if tier == 0 and has_override("icons/%s.png" % id):
-		var oi: Image = override("icons/%s.png" % id).get_image()
+	if has_override("icons/%s.png" % id) and (tier == 0 or Data.tool_defs.has(id)):
+		var oi: Image = override("icons/%s.png" % id).get_image().duplicate()
 		if oi.is_compressed(): oi.decompress()
 		oi.convert(Image.FORMAT_RGBA8)
+		if tier > 0:
+			# upgraded tools: the grey metal takes the tier's colour, shading kept
+			var tc := Color(Data.tool_tiers[clampi(tier, 0, 5)].color)
+			for yy in oi.get_height():
+				for xx in oi.get_width():
+					var c := oi.get_pixel(xx, yy)
+					if c.a > 0 and c.s < 0.22 and c.v > 0.3:
+						var k := c.v / 0.75
+						oi.set_pixel(xx, yy, Color(minf(1.0, tc.r * k), minf(1.0, tc.g * k), minf(1.0, tc.b * k), c.a))
 		return oi
 	if it.has("icon") and it.icon.s == "obj":
 		return outline(obj_icon(it.icon.obj), "#1a1414")
