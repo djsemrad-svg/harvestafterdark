@@ -290,13 +290,21 @@ From Sunnyside World and the Hollow Dolphin fishing icons.
 - Tackle, bait, rods, crab pot and fishing junk use the pack's icons.
 - `tools/crop_fish_colours.json` holds each crop's shape and colour and each fish's colour (exported from `Data`).
 
+### Interface from the packs (added Nov 16)
+
+- `UIKit.textured` is on when `art/ui/` exists and high contrast is off. `UIKit.tsb(name, margin, pad)` makes a nine-slice style from `art/ui/<name>.png`; `UIKit.tinted()` tints one toward a colour.
+- Kenney UI Pack Pixel Adventure: window frames (`panel_plain`), wood buttons (green for big buttons, red for danger), parchment tooltips and selected tabs, list rows (`row`), portrait frames, the red bite screen frame (`panel_danger`), status badges.
+- PostApocalypse UI: HUD bars with icons (`UIKit.HudBar`; the energy bolt and water drop are drawn by the importer in the pack's style), item slots in the hotbar and every menu, the hotbar backing, the boss bar.
+- Modern Interiors emotes (`art/ui/emote_<id>.png`, `Game.emote(entity, id, secs)`): red "!" when an infected notices you (yellow for raiders), a "Z" bubble over sleepers, heart / dots / angry after gifts, heart when petting an animal.
+- Daniel's "Art Still Needed" doc was rewritten as a streamlined list of everything still drawn in code (about 700 icons, 158 objects, 12 tile kinds, 5 buildings, animals and effects).
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
 - Sunnyside World characters and its human animation file: chibi proportions; the game uses the 16x32 generator people.
 - Sunnyside World tiles and buildings: much brighter and more saturated than the post-apocalypse look. Only the crops and seed pouch were used. Its animals are a possible later fit.
 - Farm Game Dungeon Cellar: a candidate for mine floors and walls.
-- Kenney UI Pack Pixel Adventure and Free Basic Pixel Art UI: possible menu reskin; asked Daniel.
+- Free Basic Pixel Art UI: fantasy look with words baked into the buttons.
 
 ## Code layout
 
