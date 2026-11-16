@@ -98,7 +98,7 @@ func _title_main() -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	# wooden sign logo
 	var sign := PanelContainer.new()
-	var ss := K.sb(Color("#b8682a"), Color("#6a3412"), 3, 4, K.OUTLINE, 3, 8)
+	var ss: StyleBox = K.tsb("button", 4, 10) if K.textured else K.sb(Color("#b8682a"), Color("#6a3412"), 3, 4, K.OUTLINE, 3, 8)
 	sign.add_theme_stylebox_override("panel", ss)
 	var lv := K.vbox(0)
 	var t1 := K.label("HARVEST", 26, Color("#ffe6b0"))
@@ -471,7 +471,7 @@ func build_hud() -> void:
 	tb_name.add_theme_color_override("font_outline_color", Color(0.1, 0.05, 0.02, 0.9))
 	bottom.add_child(tb_name)
 	var tbp := PanelContainer.new()
-	tbp.add_theme_stylebox_override("panel", K.sb(Color("#b8682a"), K.WOOD_DARK, 2, 3, K.OUTLINE, 1, 2))
+	tbp.add_theme_stylebox_override("panel", K.tsb("hud_panel", 5, 3) if K.textured else K.sb(Color("#b8682a"), K.WOOD_DARK, 2, 3, K.OUTLINE, 1, 2))
 	toolbar = K.hbox(1)
 	tbp.add_child(toolbar)
 	var cc := CenterContainer.new()
@@ -501,8 +501,18 @@ func build_hud() -> void:
 	boss_bar = ProgressBar.new()
 	boss_bar.show_percentage = false
 	boss_bar.custom_minimum_size = Vector2(160, 6)
-	boss_bar.add_theme_stylebox_override("background", K.sb(Color("#2a1c14"), K.OUTLINE, 1, 1, Color(0, 0, 0, 0), 0, 0))
-	boss_bar.add_theme_stylebox_override("fill", K.sb(Color("#b8302a"), Color("#6a1a14"), 1, 1, Color(0, 0, 0, 0), 0, 0))
+	if K.textured:
+		boss_bar.custom_minimum_size.y = 12
+		var btr := K.tsb("bar_track", 4, 0)
+		btr.texture_margin_left = 3; btr.texture_margin_right = 3
+		boss_bar.add_theme_stylebox_override("background", btr)
+		var bfl := StyleBoxTexture.new()
+		bfl.texture = K.ui_tex("bar_health")
+		bfl.expand_margin_top = -4; bfl.expand_margin_bottom = -4; bfl.expand_margin_left = -2; bfl.expand_margin_right = -2
+		boss_bar.add_theme_stylebox_override("fill", bfl)
+	else:
+		boss_bar.add_theme_stylebox_override("background", K.sb(Color("#2a1c14"), K.OUTLINE, 1, 1, Color(0, 0, 0, 0), 0, 0))
+		boss_bar.add_theme_stylebox_override("fill", K.sb(Color("#b8302a"), Color("#6a1a14"), 1, 1, Color(0, 0, 0, 0), 0, 0))
 	boss_box.add_child(boss_bar)
 	boss_box.visible = false
 	hud.add_child(boss_box)
@@ -542,6 +552,13 @@ func update_hud(dt: float) -> void:
 		_last.bars = bkey
 		_clear(bars_box)
 		for b in bars:
+			if K.textured:
+				var hb := K.hbox(3)
+				hb.add_child(K.HudBar.new(String(b[0]).to_lower(), float(b[1]) / float(b[2])))
+				var nl := K.label(str(int(ceil(b[1]))), 6, K.EMBER if b[1] / b[2] <= 0.25 else K.INK)
+				hb.add_child(nl)
+				bars_box.add_child(hb)
+				continue
 			var h := K.hbox(2)
 			var lab := K.label(b[0], 6, K.EMBER if b[1] / b[2] <= 0.25 else K.INK)
 			lab.custom_minimum_size.x = 26
@@ -560,7 +577,7 @@ func update_hud(dt: float) -> void:
 		var tag := K.label(Balance.modes[st.mode].label.to_upper(), 5, Color.WHITE)
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var tagp := PanelContainer.new()
-		tagp.add_theme_stylebox_override("panel", K.sb(Color("#8a3a2a") if st.mode == "survivor" else Color("#3f7a2c"), Color(0, 0, 0, 0), 0, 1, Color(0, 0, 0, 0), 0, 1))
+		tagp.add_theme_stylebox_override("panel", K.tsb("badge_bad" if st.mode == "survivor" else "badge_good", 3, 2) if K.textured else K.sb(Color("#8a3a2a") if st.mode == "survivor" else Color("#3f7a2c"), Color(0, 0, 0, 0), 0, 1, Color(0, 0, 0, 0), 0, 1))
 		tagp.add_child(tag)
 		bars_box.add_child(tagp)
 	var effs := Game.status_effects()
@@ -570,7 +587,7 @@ func update_hud(dt: float) -> void:
 		_clear(status_box)
 		for e in effs:
 			var pc := PanelContainer.new()
-			pc.add_theme_stylebox_override("panel", K.sb(K.DANGER if e.get("bad", false) else K.EMBER, K.OUTLINE, 1, 2, Color(0, 0, 0, 0), 0, 2))
+			pc.add_theme_stylebox_override("panel", (K.tsb("badge_bad" if e.get("bad", false) else "badge", 3, 2) if K.textured else K.sb(K.DANGER if e.get("bad", false) else K.EMBER, K.OUTLINE, 1, 2, Color(0, 0, 0, 0), 0, 2)))
 			pc.add_child(K.label(e.label, 6, Color.WHITE))
 			pc.tooltip_text = e.desc
 			pc.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -586,7 +603,7 @@ func update_hud(dt: float) -> void:
 			var idx: int = i
 			var tier := Game.tool_tier(Data.items[s.id].tool) if (s != null and Data.items[s.id].has("tool")) else 0
 			var sl := K.slot(s, func(_b): if not overlay_open(): Game.state.selected = idx, tier, i == int(st.selected), false, 20)
-			var kl := K.label(keys[i], 5, K.INK_SOFT)
+			var kl := K.label(keys[i], 5, Color("#c8bcae") if K.textured else K.INK_SOFT)
 			kl.position = Vector2(1, -1)
 			sl.add_child(kl)
 			if s != null and s.id == "watering_can":
@@ -646,7 +663,7 @@ func toast(text: String, icon := "", style := "") -> void:
 	var colors := {"": [Color(0.97, 0.89, 0.72, 0.95), K.WOOD], "gold": [Color("#fff0b8"), Color("#a87a10")], "warn": [Color("#f8dcb8"), K.EMBER], "bad": [Color("#f4c4bc"), K.DANGER]}
 	var c: Array = colors.get(style, colors[""])
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", K.sb(c[0], c[1], 1, 2, Color(0, 0, 0, 0.3), 1, 2))
+	p.add_theme_stylebox_override("panel", (K.tsb("tooltip", 3, 3) if style == "" else K.tinted("row", 3, 3, c[0])) if K.textured else K.sb(c[0], c[1], 1, 2, Color(0, 0, 0, 0.3), 1, 2))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := K.hbox(3)
 	if icon != "" and Data.items.has(icon):
@@ -951,7 +968,7 @@ func _ov_message() -> Control:
 
 func _ov_dialogue() -> Control:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", K.sb(K.PARCH, K.WOOD, 3, 3, K.OUTLINE, 2, 6))
+	p.add_theme_stylebox_override("panel", K.tsb("panel_plain", 5, 7) if K.textured else K.sb(K.PARCH, K.WOOD, 3, 3, K.OUTLINE, 2, 6))
 	p.custom_minimum_size = Vector2(380, 64)
 	var h := K.hbox(8)
 	var npc: String = overlay.get("npc", "")
@@ -965,7 +982,7 @@ func _ov_dialogue() -> Control:
 	if npc != "":
 		var pv := K.vbox(1)
 		var frame := PanelContainer.new()
-		frame.add_theme_stylebox_override("panel", K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
+		frame.add_theme_stylebox_override("panel", K.tsb("portrait", 5, 2) if K.textured else K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
 		var pi := K.icon(Art.get_portrait(Data.npcs[npc].look), 40)
 		pi.custom_minimum_size = Vector2(44, 38)
 		frame.add_child(pi)
@@ -1005,7 +1022,7 @@ func _ov_choice() -> Control:
 
 func _ov_death() -> Control:
 	var p := K.panel(280)
-	p.add_theme_stylebox_override("panel", K.sb(K.PARCH, Color("#6a1a14"), 3, 3, Color("#2a0a08"), 3, 8))
+	p.add_theme_stylebox_override("panel", K.tsb("panel_danger", 5, 8) if K.textured else K.sb(K.PARCH, Color("#6a1a14"), 3, 3, Color("#2a0a08"), 3, 8))
 	var v := K.vbox(5)
 	v.add_child(K.label("You were bitten", 13, Color("#8a2a1e")))
 	for t in ["An infected caught you. In Survivor Mode, a bite is the end of the road.",
@@ -1498,7 +1515,7 @@ func _shop_box(shop_id: String) -> Control:
 func _shop_head(owner: String, title: String, sub: String) -> HBoxContainer:
 	var h := K.hbox(6)
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
+	frame.add_theme_stylebox_override("panel", K.tsb("portrait", 5, 2) if K.textured else K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
 	var pi := K.icon(Art.get_portrait(Data.npcs[owner].look), 26)
 	pi.custom_minimum_size = Vector2(28, 25)
 	frame.add_child(pi)
@@ -1776,7 +1793,10 @@ func _ov_journal() -> Control:
 			overlay.erase("pick")
 			render_overlay(), "small")
 		if tid == tab:
-			b.add_theme_stylebox_override("normal", K.sb(K.PARCH, K.WOOD, 1, 2, Color(0, 0, 0, 0), 0, 3))
+			var tsel: StyleBox = K.tsb("tooltip", 3, 3) if K.textured else K.sb(K.PARCH, K.WOOD, 1, 2, Color(0, 0, 0, 0), 0, 3)
+			if K.textured: tsel.content_margin_left = 7; tsel.content_margin_right = 7
+			b.add_theme_stylebox_override("normal", tsel)
+			b.add_theme_stylebox_override("hover", tsel)
 			b.add_theme_color_override("font_color", K.WOOD_DARK)
 			b.add_theme_constant_override("outline_size", 0)
 		tabs.add_child(b)
@@ -2050,13 +2070,17 @@ func _tab_map() -> Control:
 	var cell := 26.0
 	var wm := Panel.new()
 	wm.custom_minimum_size = Vector2(9 * cell + 4, 6 * cell + 4)
-	wm.add_theme_stylebox_override("panel", K.sb(Color("#6a9a50"), K.WOOD, 2, 3, K.OUTLINE, 1, 0))
+	wm.add_theme_stylebox_override("panel", K.tinted("portrait", 5, 0, Color("#6a9a50"), Color("#8fbf70")) if K.textured else K.sb(Color("#6a9a50"), K.WOOD, 2, 3, K.OUTLINE, 1, 0))
 	for r in Data.regions:
 		var unlocked: bool = st.unlocked.get(r.id, false)
 		var name: String = st.property_name if r.id == "homestead" else r.name
 		var rp := PanelContainer.new()
 		var col := Color("#f8e2b0") if unlocked else Color(0.18, 0.14, 0.1, 0.65)
-		rp.add_theme_stylebox_override("panel", K.sb(col, Color("#e8402a") if r.id == here else (K.WOOD if unlocked else Color("#8a7a6a")), 2 if r.id == here else 1, 3, Color(0, 0, 0, 0), 0, 1))
+		if K.textured:
+			rp.add_theme_stylebox_override("panel", K.tsb("badge_bad", 3, 1) if r.id == here else K.tinted("row", 3, 1, Color("#f8e2b0") if unlocked else Color(0.35, 0.3, 0.26, 0.8)))
+			if r.id == here: rp.self_modulate = Color(1, 1, 1, 0.95)
+		else:
+			rp.add_theme_stylebox_override("panel", K.sb(col, Color("#e8402a") if r.id == here else (K.WOOD if unlocked else Color("#8a7a6a")), 2 if r.id == here else 1, 3, Color(0, 0, 0, 0), 0, 1))
 		rp.position = Vector2(2 + r.gx * cell + 1, 2 + r.gy * cell + 1)
 		rp.size = Vector2(r.gw * cell - 2, r.gh * cell - 2)
 		rp.custom_minimum_size = rp.size
@@ -2162,7 +2186,7 @@ func _tab_social() -> Control:
 		b.custom_minimum_size.x = 210
 		var h := K.hbox(4)
 		var frame := PanelContainer.new()
-		frame.add_theme_stylebox_override("panel", K.sb(Color("#8fbf70"), K.WOOD_DARK, 1, 2, Color(0, 0, 0, 0), 0, 1))
+		frame.add_theme_stylebox_override("panel", K.tsb("portrait", 5, 2) if K.textured else K.sb(Color("#8fbf70"), K.WOOD_DARK, 1, 2, Color(0, 0, 0, 0), 0, 1))
 		var pi := K.icon(Art.get_portrait(d.look), 22)
 		pi.custom_minimum_size = Vector2(24, 21)
 		frame.add_child(pi)
@@ -2226,7 +2250,7 @@ func _tab_collections() -> Control:
 		var flow_c := HFlowContainer.new()
 		for id in ids:
 			var cell := PanelContainer.new()
-			cell.add_theme_stylebox_override("panel", K.sb(Color("#f0c88a") if found.has(id) else Color("#8a7a6a"), Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1))
+			cell.add_theme_stylebox_override("panel", (K.tinted("slot", 4, 1, Color.WHITE if found.has(id) else Color(0.5, 0.5, 0.5), Color.WHITE)) if K.textured else K.sb(Color("#f0c88a") if found.has(id) else Color("#8a7a6a"), Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1))
 			cell.custom_minimum_size = Vector2(18, 18)
 			cell.mouse_filter = Control.MOUSE_FILTER_PASS
 			if found.has(id):
@@ -2270,7 +2294,7 @@ func _tab_collections() -> Control:
 	var sf := HFlowContainer.new()
 	for id in ship_ids:
 		var cell := PanelContainer.new()
-		cell.add_theme_stylebox_override("panel", K.sb(Color("#f0c88a") if shipped.has(id) else Color("#8a7a6a"), Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1))
+		cell.add_theme_stylebox_override("panel", (K.tinted("slot", 4, 1, Color.WHITE if shipped.has(id) else Color(0.5, 0.5, 0.5), Color.WHITE)) if K.textured else K.sb(Color("#f0c88a") if shipped.has(id) else Color("#8a7a6a"), Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1))
 		cell.custom_minimum_size = Vector2(18, 18)
 		cell.mouse_filter = Control.MOUSE_FILTER_PASS
 		var ic := K.icon(Art.get_icon(id), 16)
@@ -2306,15 +2330,15 @@ func _tab_calendar() -> Control:
 		var ad := Game.abs_day(si, d, y)
 		var c := PanelContainer.new()
 		var today := ad == int(st.day)
-		c.add_theme_stylebox_override("panel", K.sb(Color("#fff4c8") if today else K.PARCH_2, Color("#e8402a") if today else K.PARCH_3, 1, 1, Color(0, 0, 0, 0), 0, 1))
+		c.add_theme_stylebox_override("panel", (K.tsb("tooltip" if today else "row", 3, 2)) if K.textured else K.sb(Color("#fff4c8") if today else K.PARCH_2, Color("#e8402a") if today else K.PARCH_3, 1, 1, Color(0, 0, 0, 0), 0, 1))
 		c.custom_minimum_size = Vector2(60, 24)
 		if ad < int(st.day): c.modulate = Color(1, 1, 1, 0.55)
 		var txt := "[b]%d[/b] [font_size=4]%s[/font_size]" % [d, Balance.calendar.weekdays[(ad - 1) % 7]]
 		for f in Data.festivals:
-			if f.season == season and f.day == d: txt += "\n[bgcolor=#f0c860][font_size=4]%s[/font_size][/bgcolor]" % f.name
+			if f.season == season and f.day == d: txt += "\n[color=#8a5200][font_size=4]★ %s[/font_size][/color]" % f.name
 		for id in Data.npcs:
 			var b: Dictionary = Data.npcs[id].birthday
-			if b.season == season and b.day == d: txt += "\n[bgcolor=#f8c8d4][font_size=4]%s's birthday[/font_size][/bgcolor]" % Data.npcs[id].name.split(" ")[0]
+			if b.season == season and b.day == d: txt += "\n[color=#b0304a][font_size=4]♥ %s's birthday[/font_size][/color]" % Data.npcs[id].name.split(" ")[0]
 		c.add_child(K.rich(txt, 6))
 		g.add_child(c)
 	v.add_child(g)

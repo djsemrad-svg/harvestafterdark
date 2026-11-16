@@ -1393,10 +1393,18 @@ func animal_mood(a: Dictionary) -> String:
 	if int(a.petted_day) == int(state.day): return "happy"
 	return "content" if int(a.friendship) >= 300 else "shy"
 
+## A speech-bubble emote over someone's head (art/ui/emote_<id>.png): heart, angry, dots,
+## alert, alarm, question, sleep, music, sweat.
+func emote(ent, id: String, secs := 1.8) -> void:
+	if ent is Dictionary:
+		ent.emote = id
+		ent.emote_t = secs
+
 func pet_animal(a: Dictionary) -> bool:
 	if int(a.petted_day) == int(state.day):
 		return false
 	a.petted_day = state.day
+	emote(animals_rt.get(int(a.uid)), "heart")
 	a.friendship = min(1000, int(a.friendship) + Balance.animals.pet_points)
 	add_xp("farming", 5)
 	return true
@@ -2739,6 +2747,7 @@ func give_gift(id: String, item_id: String) -> void:
 		rel.talked_day = state.day
 		rel.points = min(1000, int(rel.points) + F.talk_points)
 	rel.known[item_id] = taste
+	emote(npcs.get(id), {"love": "heart", "like": "heart", "neutral": "dots", "dislike": "angry"}[taste], 2.5)
 	ui.dialogue(id, [d.dialogue.gift[taste]])
 
 # ================================================================ quests

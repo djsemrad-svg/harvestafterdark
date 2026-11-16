@@ -93,6 +93,60 @@ func _ready() -> void:
 		await frames(6); await shot("66_bosses")
 		get_tree().quit()
 		return
+	if only == "uiskin":
+		main.ui.close_all()
+		Game.state.time = 1000
+		Game.state.weather = "sun"
+		Game.sync_npcs()
+		var hal := "hal"
+		var ht: Vector2 = Game.npcs[hal].pos / 16.0
+		Game.change_map(Game.npcs[hal].map, int(ht.x) - 2, int(ht.y), "right", {"silent": true})
+		Game.sync_npcs()
+		Game.enemies.clear()
+		Game.emote(Game.npcs[hal], "heart", 30.0)
+		var en: Dictionary = Game.world.spawn_enemy("shambler", int(ht.x) + 3, int(ht.y) + 2)
+		en.state = "chase"
+		Game.emote(en, "alarm", 30.0)
+		Game.paused = false
+		await frames(10)
+		await shot("70_emotes")
+		Game.enemies.clear()
+		main.ui.dialogue(hal, ["Thanks! This is just what I needed."])
+		await frames(4); await shot("71_dialogue")
+		main.ui.close_all()
+		main.ui.open("shop", {"shop": "general"}); await frames(4); await shot("72_shop")
+		main.ui.close_all()
+		main.ui.open("craft", {"station": "hand"}); await frames(4); await shot("73_craft")
+		main.ui.close_all()
+		main.ui.open_pause(); await frames(4); await shot("74_pause")
+		get_tree().quit()
+		return
+	if only == "uiskin2":
+		main.ui.close_all()
+		Game.state.time = 1000
+		Game.state.weather = "sun"
+		Game.add_condition("bleed", true); Game.add_condition("fracture", true)
+		var spt := MapScale.t("town", 26, 20)
+		Game.change_map("town", spt.x, spt.y, "down", {"silent": true})
+		Game.enemies.clear()
+		var b: Dictionary = Game.world.spawn_enemy("boss_groundskeeper", spt.x + 4, spt.y + 3)
+		b.hp = float(b.max_hp) * 0.6
+		b.state = "chase"
+		main.ui.toast("A storm is coming in tonight.", "", "warn")
+		main.ui.toast("Sold 12 Potatoes for 240 gold", "potato", "gold")
+		main.ui.toast("New discovery: Potato added to Collections", "potato")
+		Game.paused = true
+		await frames(10)
+		await shot("75_hud_extras")
+		Game.paused = false
+		Game.enemies.clear()
+		Game.add_item("potato", 3, {"silent": true}); Game.add_item("ruby", 1, {"silent": true})
+		for t in ["map", "social", "collections", "calendar", "quests"]:
+			main.ui.open("journal", {"tab": t}); await frames(4); await shot("76_tab_" + t)
+			main.ui.close_all()
+		main.ui.open("death", {"checkpoint": "Monday, Spring 1"}); await frames(4); await shot("77_death")
+		get_tree().quit()
+		return
 	if only == "packs":
 		main.ui.close_all()
 		Game.state.time = 640

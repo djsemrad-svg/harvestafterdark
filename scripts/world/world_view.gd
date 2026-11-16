@@ -108,8 +108,11 @@ func current_map() -> GameMap:
 				title_map.soil[GameMap.k(x, y)] = {"w": 1 if (x + y) % 3 else 0, "crop": {"id": ["potato", "radish", "snapbean"][x % 3], "g": (x * 7 + y) % 9}}
 	return title_map
 
+var _dt := 0.016
+
 func _process(dt: float) -> void:
 	anim_t += dt
+	_dt = dt
 	var m := current_map()
 	if Game.screen == "game" and Game.map != null:
 		var target := clamp_cam(m, Game.player.pos - Vector2(0, 16) - view_size() / 2.0)
@@ -218,7 +221,9 @@ func _draw() -> void:
 				var bst: Dictionary = it[2]
 				var bx: float = float(bst.art_x) if bst.has("art_x") and Art.building_override(bst) != null else bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2
 				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height()))
-			3: _draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
+			3:
+				_draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
+				_draw_emote(it[2], 32)
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
 			6: _draw_player()
@@ -228,6 +233,7 @@ func _draw() -> void:
 				var tex: Texture2D = Art.get_animal(a.type, int(a.color), r.dir, int(r.frame), Game.animal_mature(a))
 				var tl: Vector2 = (r.pos - Vector2(tex.get_width() / 2, tex.get_height() - 1)).round()
 				draw_texture(tex, tl)
+				_draw_emote(r, tex.get_height())
 				if a.get("ready", false):
 					# ready for the milk pail or shears
 					var bob = round(sin(anim_t * 4.0))
@@ -373,8 +379,32 @@ func _draw_enemy(en: Dictionary) -> void:
 		var top: Vector2 = en.pos - Vector2(bw / 2, ct.get_height() + 3)
 		draw_rect(Rect2(top.round(), Vector2(bw, 2)), Color(0, 0, 0, 0.6))
 		draw_rect(Rect2(top.round(), Vector2(bw * clampf(float(en.hp) / float(en.get("max_hp", d.hp)), 0, 1), 2)), Color("#e04a3a") if not en.get("boss", false) else Color("#e8a020"))
-	if en.state == "asleep" and int(anim_t * 2) % 2 == 0:
-		draw_string(ThemeDB.fallback_font, en.pos + Vector2(4, -20), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1, 0.7))
+	if alpha > 0.3:
+		if en.state == "asleep" and not en.has("emote") and Art.override("ui/emote_sleep.png") != null:
+			# a slow "Z" bubble over sleepers, so stealth kills are easy to spot
+			if int(anim_t * 1.2) % 3 != 2:
+				_bubble("sleep", en.pos, ct.get_height(), 0.85)
+		elif en.state == "asleep" and not en.has("emote") and int(anim_t * 2) % 2 == 0:
+			draw_string(ThemeDB.fallback_font, en.pos + Vector2(4, -20), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, 6, Color(1, 1, 1, 0.7))
+		_draw_emote(en, ct.get_height())
+
+## Draws (and counts down) an emote set with Game.emote().
+func _draw_emote(ent: Dictionary, h: float) -> void:
+	if not ent.has("emote"):
+		return
+	ent.emote_t = float(ent.emote_t) - _dt
+	if float(ent.emote_t) <= 0:
+		ent.erase("emote")
+		ent.erase("emote_t")
+		return
+	_bubble(String(ent.emote), ent.pos, h, minf(1.0, float(ent.emote_t) * 4.0))
+
+func _bubble(id: String, pos: Vector2, h: float, alpha := 1.0) -> void:
+	var t := Art.override("ui/emote_%s.png" % id)
+	if t == null:
+		return
+	var bob := roundf(sin(anim_t * 5.0))
+	draw_texture(t, (pos - Vector2(t.get_width() / 2.0 - 3, h + t.get_height() - 2 + bob)).round(), Color(1, 1, 1, alpha))
 
 ## A horde nest: junk the infected dragged together (a mattress, planks, a cart,
 ## tyres, rags) bound up in black, root-like growth with pods that glow faintly.
@@ -547,7 +577,7 @@ func draw_overlay(ci: CanvasItem) -> void:
 	var p: Dictionary = Game.player
 	for id in Game.npcs:
 		var n: Dictionary = Game.npcs[id]
-		if n.map == Game.map.id and not Game.state.npcs[id].met:
+		if n.map == Game.map.id and not Game.state.npcs[id].met and not n.has("emote"):
 			_text(ci, "!", n.pos + Vector2(-1, -35 + (int(anim_t / 0.3) % 2)), Color("#f8e070"), 9)
 	for en in Game.enemies:
 		if en.state == "telegraph":

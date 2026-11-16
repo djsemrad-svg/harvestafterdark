@@ -15,6 +15,25 @@ const MOSS := Color("#3f7a2c")
 const EMBER := Color("#c8642a")
 const DANGER := Color("#b3392e")
 const GOLD := Color("#e8b83a")
+const PAPER_INK := Color("#f2e6d0")
+
+## True when the pack interface art is installed (art/ui/) and high contrast is off: panels,
+## buttons and slots then use Kenney's wood-and-parchment frames and the PostApocalypse slate cells.
+static var textured := false
+
+static func ui_tex(name: String) -> Texture2D:
+	return Art.override("ui/%s.png" % name)
+
+## A nine-slice style from an interface picture: m = the frame's width in pixels.
+static func tsb(name: String, m: int, pad := -1) -> StyleBoxTexture:
+	var t := ui_tex(name)
+	if t == null:
+		return null
+	var s := StyleBoxTexture.new()
+	s.texture = t
+	s.set_texture_margin_all(m)
+	s.set_content_margin_all(m if pad < 0 else pad)
+	return s
 
 static func sb(bg: Color, border: Color, bw := 2, radius := 3, shadow := OUTLINE, shadow_size := 2, pad := 4) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
@@ -62,6 +81,15 @@ static func make_theme(large_text: bool, high_contrast: bool) -> Theme:
 	t.set_stylebox("scroll", "VScrollBar", sb(PARCH_3, PARCH_3, 0, 2, Color(0, 0, 0, 0), 0, 0))
 	t.set_stylebox("grabber", "VScrollBar", sb(WOOD, WOOD, 0, 2, Color(0, 0, 0, 0), 0, 0))
 	t.set_stylebox("grabber_highlight", "VScrollBar", sb(EMBER, EMBER, 0, 2, Color(0, 0, 0, 0), 0, 0))
+	textured = not high_contrast and ui_tex("panel") != null
+	if textured:
+		t.set_stylebox("panel", "PanelContainer", tsb("panel_plain", 5, 7))
+		t.set_stylebox("panel", "Panel", tsb("panel_plain", 5, 7))
+		for st in [["normal", "button"], ["hover", "button_hover"], ["pressed", "button_pressed"], ["disabled", "button_disabled"]]:
+			var b := tsb(st[1], 4, 3)
+			b.content_margin_left = 7; b.content_margin_right = 7
+			t.set_stylebox(st[0], "Button", b)
+		t.set_stylebox("panel", "TooltipPanel", tsb("tooltip", 4, 4))
 	t.set_constant("separation", "VBoxContainer", 3)
 	t.set_constant("separation", "HBoxContainer", 4)
 	t.set_constant("h_separation", "GridContainer", 2)
@@ -72,6 +100,8 @@ static func make_theme(large_text: bool, high_contrast: bool) -> Theme:
 class WornPanel extends PanelContainer:
 	var tape := true
 	func _draw() -> void:
+		if UIKit.textured:
+			return
 		var s := size
 		for p in [Vector2(3, 3), Vector2(s.x - 5, 3), Vector2(3, s.y - 5), Vector2(s.x - 5, s.y - 5)]:
 			draw_rect(Rect2(p, Vector2(2, 2)), Color("#6a6a72"))
@@ -121,7 +151,15 @@ static func button(text: String, cb: Callable, kind := "", min_w := 0.0) -> Butt
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size.x = min_w
-	if kind == "big":
+	if textured and kind in ["big", "danger"]:
+		var nm := "button_green" if kind == "big" else "button_red"
+		for st in [["normal", nm], ["hover", nm + "_hover"], ["pressed", nm]]:
+			var ts := tsb(st[1], 4, 3)
+			ts.content_margin_left = 10 if kind == "big" else 7; ts.content_margin_right = ts.content_margin_left
+			if kind == "big": ts.content_margin_top = 4; ts.content_margin_bottom = 4
+			b.add_theme_stylebox_override(st[0], ts)
+		if kind == "big": b.add_theme_font_size_override("font_size", 9)
+	elif kind == "big":
 		var s := sb(Color("#5e9a44"), Color("#2c5a1c"), 1, 2, OUTLINE, 1, 4)
 		s.content_margin_left = 10; s.content_margin_right = 10
 		b.add_theme_stylebox_override("normal", s)
@@ -169,9 +207,16 @@ static func scroll(child: Control, h: float) -> ScrollContainer:
 	s.add_child(child)
 	return s
 
+## A pack frame tinted toward a colour (base = the frame's own fill colour), or null without pack art.
+static func tinted(name: String, m: int, pad: int, color: Color, base := PARCH_2) -> StyleBoxTexture:
+	var ts := tsb(name, m, pad)
+	if ts != null and color != base:
+		ts.modulate_color = Color(color.r / maxf(base.r, 0.01), color.g / maxf(base.g, 0.01), color.b / maxf(base.b, 0.01), color.a)
+	return ts
+
 static func row_box(color := PARCH_2) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", sb(color, PARCH_3, 1, 2, Color(0, 0, 0, 0), 0, 3))
+	p.add_theme_stylebox_override("panel", tinted("row", 3, 3, color) if textured else sb(color, PARCH_3, 1, 2, Color(0, 0, 0, 0), 0, 3))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return p
 
@@ -180,11 +225,17 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 	var b := Button.new()
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(size, size)
-	var bg := Color("#fbe3b4") if selected else Color("#f0c88a")
-	var s := sb(bg, Color("#e8402a") if selected else Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1)
-	b.add_theme_stylebox_override("normal", s)
-	var h := s.duplicate(); h.border_color = GOLD; b.add_theme_stylebox_override("hover", h)
-	b.add_theme_stylebox_override("pressed", s)
+	if textured:
+		var ts := tsb("slot_selected" if selected else "slot", 4, 1)
+		b.add_theme_stylebox_override("normal", ts)
+		b.add_theme_stylebox_override("pressed", ts)
+		b.add_theme_stylebox_override("hover", tsb("slot_selected" if selected else "slot_hover", 4, 1))
+	else:
+		var bg := Color("#fbe3b4") if selected else Color("#f0c88a")
+		var s := sb(bg, Color("#e8402a") if selected else Color("#c0803e"), 1, 1, Color(0, 0, 0, 0), 0, 1)
+		b.add_theme_stylebox_override("normal", s)
+		var h := s.duplicate(); h.border_color = GOLD; b.add_theme_stylebox_override("hover", h)
+		b.add_theme_stylebox_override("pressed", s)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if stack != null and Data.items.has(stack.id):
 		var it: Dictionary = Data.items[stack.id]
@@ -257,3 +308,28 @@ static func hearts(n: int) -> String:
 	for i in Balance.friendship.max_hearts:
 		s += "[color=#e0405a]♥[/color]" if i < n else "[color=#c8a888]♥[/color]"
 	return s
+
+## A HUD bar from the PostApocalypse pack: an icon, then a framed track with a coloured fill.
+class HudBar extends Control:
+	var kind := "health"
+	var frac := 1.0
+	var text := ""  # the bar's name, shown as its tooltip
+	func _init(k: String, f: float, w := 52.0) -> void:
+		kind = k
+		text = k.capitalize()
+		tooltip_text = text
+		frac = clampf(f, 0.0, 1.0)
+		custom_minimum_size = Vector2(15 + w, 12)
+		mouse_filter = Control.MOUSE_FILTER_PASS
+	func _draw() -> void:
+		var ic := UIKit.ui_tex("icon_" + kind)
+		if ic != null:
+			draw_texture(ic, Vector2(0, roundf((12 - ic.get_height()) / 2.0)))
+		var tw := size.x - 15
+		var tr := UIKit.tsb("bar_track", 4, 0)
+		tr.texture_margin_top = 4; tr.texture_margin_bottom = 4; tr.texture_margin_left = 3; tr.texture_margin_right = 3
+		draw_style_box(tr, Rect2(15, 0, tw, 12))
+		var fill := UIKit.ui_tex("bar_" + kind)
+		var fw := roundf((tw - 4) * frac)
+		if fill != null and fw > 0:
+			draw_texture_rect(fill, Rect2(17, 4, fw, 4), false)

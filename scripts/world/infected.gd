@@ -90,6 +90,13 @@ func update(dt: float) -> void:
 		if ai == "nest":
 			_nest(e, dt, (p.pos - e.pos).length())
 			continue
+		var ps: String = e.get("_ps", e.state)
+		if ps != e.state:
+			if ps in ["wander", "asleep"] and e.state == "chase":
+				Game.emote(e, "alert" if e.get("raider", false) else "alarm", 1.2)
+			e._ps = e.state
+		elif not e.has("_ps"):
+			e._ps = e.state
 		e.zap = maxf(0.0, e.get("zap", 0.0) - dt)
 		e.alert_t = maxf(0.0, float(e.get("alert_t", 0.0)) - dt)
 		e.spit_cd = maxf(0.0, float(e.get("spit_cd", 0.0)) - dt)

@@ -527,3 +527,129 @@ if os.path.isdir(HD):
     for gid, n in TACKLE.items():
         save(hd(n), "icons/%s.png" % gid)
     print("fish:", len(CF["fish"]), "tackle:", len(TACKLE))
+
+
+# ---------------------------------------------------------------- interface (Kenney UI Pack Pixel Adventure, PostApocalypse UI, Modern Interiors emotes)
+# Menus: Kenney's wood-and-parchment frames (16x16 nine-slice tiles). On-screen bars and the hotbar: the
+# PostApocalypse pack's slate cells and bars. Speech-bubble emotes over heads: Modern Interiors.
+KEN = os.path.join(SRC, "kenney_ui-pack-pixel-adventure", "Tiles", "Small tiles", "Thick outline")
+PAUI = os.path.join(SRC, "PostApocalypse_AssetPack_v1.1.2", "UI")
+MIUI = os.path.join(SRC, "moderninteriors-win", "4_User_Interface_Elements", "UI_16x16.png")
+
+
+def shade(im, k):
+    out = im.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a:
+                px[x, y] = (min(255, int(r * k)), min(255, int(g * k)), min(255, int(b * k)), a)
+    return out
+
+
+def hue_to(im, want, only=lambda p: True):
+    """Recolour pixels (keeping their lightness) toward a colour."""
+    out = im.copy()
+    px = out.load()
+    w = hexrgb(want)
+    lw = 0.3 * w[0] + 0.59 * w[1] + 0.11 * w[2]
+    for y in range(out.height):
+        for x in range(out.width):
+            p = px[x, y]
+            if p[3] and only(p):
+                k = (0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / max(lw, 1)
+                px[x, y] = tuple(min(255, int(c * k)) for c in w) + (p[3],)
+    return out
+
+
+def hue_set(im, want, only=lambda p: True):
+    """Like hue_to, but the chosen pixels average out to exactly the wanted colour."""
+    out = im.copy()
+    px = out.load()
+    sel = [(x, y) for y in range(out.height) for x in range(out.width) if px[x, y][3] and only(px[x, y])]
+    if not sel:
+        return out
+    lum = lambda p: 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
+    avg = sum(lum(px[x, y]) for x, y in sel) / len(sel)
+    w = hexrgb(want)
+    for x, y in sel:
+        p = px[x, y]
+        k = lum(p) / max(avg, 1)
+        px[x, y] = tuple(min(255, int(c * k)) for c in w) + (p[3],)
+    return out
+
+
+def pix_icon(rows, pal):
+    im = Image.new("RGBA", (len(rows[0]), len(rows)), (0, 0, 0, 0))
+    for y, r in enumerate(rows):
+        for x, ch in enumerate(r):
+            if ch in pal:
+                im.putpixel((x, y), pal[ch])
+    return im
+
+
+if os.path.isdir(KEN):
+    kt = lambda n: load(os.path.join(KEN, "tile_%04d.png" % n))
+    save(kt(33), "ui/panel.png")          # parchment in a nailed wood frame
+    save(kt(10), "ui/panel_plain.png")
+    save(kt(58), "ui/panel_metal.png")    # riveted grey metal
+    save(kt(49), "ui/tooltip.png")
+    wood = kt(11)
+    save(wood, "ui/button.png")
+    save(shade(wood, 1.15), "ui/button_hover.png")
+    save(shade(wood, 0.82), "ui/button_pressed.png")
+    save(shade(wood, 0.7).convert("LA").convert("RGBA"), "ui/button_disabled.png")
+    save(hue_to(wood, "#5e9a44"), "ui/button_green.png")
+    save(hue_to(shade(wood, 1.15), "#5e9a44"), "ui/button_green_hover.png")
+    save(kt(3), "ui/button_red.png")
+    save(shade(kt(3), 1.12), "ui/button_red_hover.png")
+    light = lambda p: 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2] > 200
+    save(hue_set(kt(49), "#efc584", light), "ui/row.png")                       # list rows: darker parchment
+    save(hue_set(kt(10), "#8fbf70", light), "ui/portrait.png")                  # portrait frame, sky inside
+    save(hue_set(kt(10), "#8a2a1e", lambda p: not light(p) and sum(p[:3]) > 200), "ui/panel_danger.png")
+    save(hue_set(kt(3), "#c8642a", lambda p: sum(p[:3]) > 200), "ui/badge.png")
+    save(kt(3), "ui/badge_bad.png")
+    save(kt(98), "ui/badge_good.png")
+    for n, nm in [(83, "l"), (84, "m"), (85, "r")]:
+        save(kt(n), "ui/ribbon_%s.png" % nm)
+    print("ui: kenney")
+if os.path.isdir(PAUI):
+    save(load(os.path.join(PAUI, "Inventory", "Inventory-Cell.png")), "ui/slot.png")
+    save(load(os.path.join(PAUI, "Inventory", "Inventory-Chosen.png")), "ui/slot_selected.png")
+    save(shade(load(os.path.join(PAUI, "Inventory", "Inventory-Cell.png")), 1.18), "ui/slot_hover.png")
+    save(load(os.path.join(PAUI, "Inventory", "Inventory_1.png")), "ui/hud_panel.png")
+    hp = load(os.path.join(PAUI, "HP", "HP-Bar.png"))
+    tr = hp.crop((12, 0, hp.width, hp.height))
+    end = tr.crop((tr.width - 5, 0, tr.width, tr.height)).transpose(Image.FLIP_LEFT_RIGHT)
+    tr.paste(end, (0, 0))
+    for y in range(4, 8):                       # dark inside, so the empty part reads as empty
+        for x in range(2, tr.width - 2):
+            if tr.getpixel((x, y))[3] == 0:
+                tr.putpixel((x, y), (43, 32, 51, 235))
+    save(tr, "ui/bar_track.png")
+    fill = load(os.path.join(PAUI, "HP", "HP.png"))
+    save(fill, "ui/bar_health.png")
+    save(load(os.path.join(PAUI, "Hunger", "Hunger.png")).resize((fill.width, fill.height), Image.NEAREST), "ui/bar_hunger.png")
+    save(hue_to(fill, "#e8c03a"), "ui/bar_energy.png")
+    save(hue_to(fill, "#3a90d8"), "ui/bar_thirst.png")
+    save(load(os.path.join(PAUI, "HP", "Heart_Full.png")), "ui/icon_health.png")
+    save(load(os.path.join(PAUI, "Hunger", "Hunger_Full.png")), "ui/icon_hunger.png")
+    # energy and thirst have no icon in the pack: drawn here in its palette (dark plum outline, soft highlight)
+    pal = {"o": (43, 32, 51, 255), "y": (232, 192, 58, 255), "Y": (255, 232, 140, 255), "d": (176, 128, 30, 255),
+           "b": (58, 144, 216, 255), "B": (160, 210, 245, 255), "n": (34, 90, 150, 255)}
+    save(pix_icon(["....oooo.....", "...oYyyo.....", "..oYyyo......", "..oyyo.......", ".oyyyoooo....", ".oyyyyyyyo...",
+                   "..ooooyydo...", ".....oydo....", "....oydo.....", "...oydo......", "...odo.......", "...oo........"], pal), "ui/icon_energy.png")
+    save(pix_icon([".....oo......", "....obbo.....", "...obbbbo....", "...obbbbo....", "..obBbbbbo...", "..obBbbbbo...",
+                   ".obBbbbbbbo..", ".obbbbbbbbo..", ".obbbbbbbno..", "..obbbbbno...", "...onnnno....", "....oooo....."], pal), "ui/icon_thirst.png")
+    print("ui: postapoc")
+if os.path.isfile(MIUI):
+    sheet = Image.open(MIUI).convert("RGBA")
+    EMOTE = {"heart": (6, 6), "question": (8, 6), "alert": (9, 6), "alarm": (10, 6), "sleep": (11, 6), "music": (12, 6),
+             "sweat": (15, 38), "angry": (11, 130), "dots": (7, 194)}
+    for name, (col, y) in EMOTE.items():
+        t = sheet.crop((col * 16, y, col * 16 + 16, y + 30))
+        b = t.getbbox()
+        if b:
+            save(t.crop((0, b[1], 16, b[3])), "ui/emote_%s.png" % name)
+    print("ui: emotes", len(EMOTE))

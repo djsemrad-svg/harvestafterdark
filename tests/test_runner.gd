@@ -2537,8 +2537,13 @@ func run_hordes() -> void:
 	for id in Hordes.NESTS:
 		var N: Dictionary = Hordes.NESTS[id]
 		var D: Dictionary = Districts.DISTRICTS[N.map]
-		var seen := reach(G.maps[N.map], Vector2i(D.entry[0], D.entry[1]))
-		if not seen.has(Vector2i(N.at[0], N.at[1])): bad.append(id)
+		var seen := reach(G.maps[N.map], MapScale.t(N.map, D.entry[0], D.entry[1]))
+		var nt := MapScale.t(N.map, N.at[0], N.at[1])
+		# the nest itself is solid: any open tile next to it counts
+		var ok := false
+		for dd in [Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 2), Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, -2)]:
+			if seen.has(nt + dd): ok = true
+		if not (ok or seen.has(nt)): bad.append(id)
 	check("Horde nests: one in each district, and each can be walked to", Hordes.NESTS.size() == 3 and bad.is_empty(), str(bad))
 	# arriving: the nest and its sleeping horde
 	var D2: Dictionary = Districts.DISTRICTS.residential
