@@ -21,9 +21,9 @@ var grade: ColorRect
 var grade_now := Vector4(1.0, 1.0, 1.0, 1.0)   # saturation, r, g, b tint
 
 const MOODS := {
-	"warm": Vector4(1.1, 1.03, 1.0, 0.95),
-	"cold": Vector4(0.7, 0.93, 0.98, 1.06),
-	"deep": Vector4(0.55, 0.9, 0.96, 1.08),
+	"warm": Vector4(1.15, 1.03, 1.0, 0.96),
+	"cold": Vector4(0.9, 0.95, 0.99, 1.04),
+	"deep": Vector4(0.72, 0.92, 0.97, 1.06),
 }
 
 class Painter extends Node2D:
@@ -158,8 +158,11 @@ func _draw() -> void:
 		for x in range(x0, x1 + 1):
 			var t := m.tile_at(x, y)
 			var v := int(Art.hash2(x, y, 5) * 4)
+			if t == "grass" and Art.hash2(x, y, 11) < 0.14: v += 4   # wildflowers or mushrooms
 			var pos := Vector2(x * 16, y * 16)
 			draw_texture(Art.get_tile(t, season, v, (wf + v) % 4 if t == "water" else 0), pos)
+			if t == "road" or t == "dirt":
+				_ground_edges(m, t, x, y, pos, season)
 			if t == "water":
 				var above := m.tile_at(x, y - 1)
 				if above != "water" and above != "bridge":
@@ -774,3 +777,18 @@ func draw_weather(ci: CanvasItem) -> void:
 		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.86, 0.88, 0.9, 0.18))
 	if flash > 0:
 		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(1, 1, 1, flash * 2.5))
+
+
+## Curbs where a road meets pavement or grass, and a ragged grass lip where dirt meets grass.
+const EDGE_SIDES := [["n", 0, -1], ["s", 0, 1], ["w", -1, 0], ["e", 1, 0]]
+func _ground_edges(m: GameMap, t: String, x: int, y: int, pos: Vector2, season: String) -> void:
+	for sd in EDGE_SIDES:
+		if not m.in_bounds(x + sd[1], y + sd[2]): continue
+		var nt := m.tile_at(x + sd[1], y + sd[2])
+		var tex: Texture2D = null
+		if t == "road" and nt in ["pave", "grass", "sand"]:
+			tex = Art.override("tiles/road_edge_%s.png" % sd[0])
+		elif t == "dirt" and nt == "grass":
+			tex = Art.override("tiles/dirt_edge_%s_%s.png" % [season, sd[0]])
+		if tex != null:
+			draw_texture(tex, pos)

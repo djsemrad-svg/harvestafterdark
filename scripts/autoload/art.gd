@@ -968,9 +968,11 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var names: Array = []
 	match t:
 		"tree":
-			var tn := "tree" if v % 2 == 0 else "tree2"
+			var tn: String = ["tree", "tree2", "tree3", "tree4"][v]
 			names = ["trees/%s_%s.png" % [tn, season], "trees/tree_%s.png" % season]
-		"pine": names = ["trees/pine_%s.png" % season, "trees/pine.png"]
+		"pine":
+			var pn: String = ["pine", "pine2", "pine", "pine3"][v]
+			names = ["trees/%s_%s.png" % [pn, season], "trees/pine_%s.png" % season, "trees/pine.png"]
 		"rock": names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
 		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
 	var tex: Texture2D = null

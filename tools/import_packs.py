@@ -71,6 +71,35 @@ def tint(im, dark, light):
 ramp_tint = tint   # kept under its own name: later loops reuse the name "tint"
 
 
+def tone(im, want):
+    """Recolour so the picture's average colour becomes the wanted one; light and dark detail stays."""
+    out = im.copy()
+    px = out.load()
+    w = tuple(int(want[i:i + 2], 16) for i in (1, 3, 5))
+    lum = lambda p: 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
+    pts = [(x, y) for y in range(out.height) for x in range(out.width) if px[x, y][3]]
+    avg = sum(lum(px[x, y]) for x, y in pts) / max(1, len(pts))
+    for x, y in pts:
+        k = lum(px[x, y]) / max(avg, 1)
+        px[x, y] = tuple(min(255, int(c * k)) for c in w) + (px[x, y][3],)
+    return out
+
+
+def vivid(im, sat=1.3, val=1.0):
+    """More colour: scale saturation (and brightness) of every pixel."""
+    import colorsys
+    out = im.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a:
+                h, s_, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+                r2, g2, b2 = colorsys.hsv_to_rgb(h, min(1.0, s_ * sat), min(1.0, v * val))
+                px[x, y] = (int(r2 * 255), int(g2 * 255), int(b2 * 255), a)
+    return out
+
+
 def snowify(im):
     """Winter version of a plant: settle snow on the top edge of every clump of leaves."""
     out = im.copy()
@@ -130,7 +159,29 @@ for season, setname in SEASON_SET.items():
     # the only tiles in the sheet with no edging on them
     for v, (cx, cy) in enumerate([(14, 0), (16, 0), (14, 2), (16, 2)]):
         t = tile(sheet, cx, cy)
-        save(warm(t) if setname == "Bleak-Yellow" else t, "tiles/grass_%s_%d.png" % (season, v))
+        t = warm(t) if setname == "Bleak-Yellow" else t
+        # richer, deeper green than the pack's (closer to Pixel Crawler's lush grass, but not as loud)
+        t = vivid(t, 1.2, 0.97) if season == "autumn" else tone(t, {"spring": "#5e8e40", "summer": "#4c7c36"}[season])
+        save(t, "tiles/grass_%s_%d.png" % (season, v))
+# grass with wildflowers (spring, summer) or mushrooms (autumn): variants 4-7, drawn on about 1 tile in 7
+SV = os.path.join(SRC, "Serene_Village_revamped_v1.9", "SERENE_VILLAGE_REVAMPED", "Serene_Village_16x16.png")
+if os.path.isfile(SV):
+    svs = Image.open(SV).convert("RGBA")
+    def sv_bit(x, y, w, h):
+        return svs.crop((x, y, x + w, y + h))
+    PINK, WHITE, BLUE, DAISY = sv_bit(281, 375, 6, 6), sv_bit(297, 376, 6, 6), sv_bit(289, 387, 6, 6), sv_bit(37, 211, 6, 5)
+    PINK2, WHITE2, BLUE2 = sv_bit(291, 409, 6, 6), sv_bit(274, 402, 6, 6), sv_bit(278, 388, 6, 6)
+    RED_SH, BROWN_SH, WHITE_SH = sv_bit(284, 429, 7, 7), sv_bit(276, 462, 6, 6), sv_bit(291, 492, 7, 8)
+    BITS = {"spring": [[PINK, WHITE2], [BLUE, DAISY], [WHITE, PINK2], [DAISY, BLUE2, PINK]],
+            "summer": [[DAISY, BLUE], [WHITE, DAISY], [BLUE2, PINK], [DAISY, WHITE2, BLUE]],
+            "autumn": [[RED_SH], [BROWN_SH, BROWN_SH], [WHITE_SH], [RED_SH, BROWN_SH]]}
+    SPOTS = [[(2, 3), (9, 9)], [(8, 2), (3, 10)], [(4, 8), (10, 3)], [(1, 2), (9, 6), (4, 10)]]
+    for season in ["spring", "summer", "autumn"]:
+        for v in range(4):
+            t = Image.open(os.path.join(OUT, "tiles", "grass_%s_%d.png" % (season, v))).convert("RGBA")
+            for bit, (bx, by) in zip(BITS[season][v], SPOTS[v]):
+                t.alpha_composite(bit, (bx, by))
+            save(t, "tiles/grass_%s_%d.png" % (season, v + 4))
 green = os.path.join(PA, "Tiles", "Background_Green_TileSet.png")
 # road and dirt have one plain tile each: flips of it make the other variants
 FLIPS = [lambda t: t, lambda t: t.transpose(Image.FLIP_LEFT_RIGHT), lambda t: t.transpose(Image.FLIP_TOP_BOTTOM), lambda t: t.transpose(Image.ROTATE_180)]
@@ -167,6 +218,61 @@ for v in range(4):
     a = ["Orange", "Red", "Yellow", "Bleak-Yellow"][v]
     save(bleak(os.path.join(NAT, a, "Bush_1_%s.png" % a)), "objects/bush_autumn_%d.png" % v)
 save(snow_laden(load(os.path.join(NAT, "Bleak-Yellow", "Bush_1_Bleak-Yellow.png"))), "objects/bush.png")
+# a little more colour in living plants, and one bush in four flowering in spring and summer (Serene Village clumps)
+for rel in [r for r in written if (r.startswith("trees/") or r.startswith("objects/bush_") or r.startswith("objects/weeds_"))
+            and ("spring" in r or "summer" in r)]:
+    save(vivid(Image.open(os.path.join(OUT, rel)).convert("RGBA"), 1.25, 0.98), rel)
+if os.path.isfile(SV):
+    save(svs.crop((33, 194, 47, 207)), "objects/bush_spring_3.png")    # pink
+    save(svs.crop((65, 194, 79, 207)), "objects/bush_summer_3.png")    # yellow
+# trees and pines from Pixel Crawler: full, leafy and seasonal (green, orange and gold, snowy)
+PCT = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Props", "Static", "Trees")
+if os.path.isdir(PCT):
+    def pc_cell(rel, x, y, w, h):
+        im = Image.open(os.path.join(PCT, rel)).convert("RGBA").crop((x, y, x + w, y + h))
+        return im.crop(im.getbbox())
+    def pc_big(rel, row, idx):
+        """The idx-th largest-to-smallest-by-x full tree in a growth-stage row of Size_02 (32 x 64 rows)."""
+        import numpy as np
+        from scipy import ndimage
+        a = np.array(Image.open(os.path.join(PCT, rel)).convert("RGBA").crop((0, row * 64, 256, row * 64 + 64)))
+        lab, n = ndimage.label(a[..., 3] > 0, structure=np.ones((3, 3)))
+        sl = sorted([s_ for s_ in ndimage.find_objects(lab) if (s_[0].stop - s_[0].start) > 40], key=lambda s_: s_[1].start)[idx]
+        im = Image.fromarray(a[sl])
+        return im
+    pc_shade = lambda im, k: vivid(im, 1.0, k)
+    # the old PostApocalypse trees stay as a fourth, scruffier kind
+    for season in ["spring", "summer", "autumn", "winter"]:
+        old_p = os.path.join(OUT, "trees", "tree_%s.png" % season)
+        if os.path.exists(old_p):
+            save(Image.open(old_p).convert("RGBA"), "trees/tree4_%s.png" % season)
+    oak = lambda c, r: pc_cell("Model_01/Size_03.png", c * 48, r * 96, 48, 96)
+    save(vivid(oak(0, 0), 0.85, 0.97), "trees/tree_spring.png")
+    save(pc_shade(oak(0, 0), 0.9), "trees/tree_summer.png")
+    save(oak(0, 1), "trees/tree_autumn.png")
+    save(oak(3, 0), "trees/tree_winter.png")
+    save(vivid(pc_big("Model_01/Size_02.png", 0, 0), 0.85, 0.97), "trees/tree2_spring.png")
+    save(pc_shade(pc_big("Model_01/Size_02.png", 0, 0), 0.9), "trees/tree2_summer.png")
+    save(pc_big("Model_01/Size_02.png", 1, 1), "trees/tree2_autumn.png")
+    save(pc_big("Model_01/Size_02.png", 0, 3), "trees/tree2_winter.png")
+    pine = lambda c, r: pc_cell("Model_02/Size_03.png", c * 48, r * 80, 48, 80)
+    save(pine(1, 1), "trees/pine_spring.png")
+    save(pine(0, 1), "trees/pine_summer.png")
+    save(pine(1, 0), "trees/pine_autumn.png")
+    save(snowify(pine(0, 0)), "trees/pine_winter.png")
+    # slim, tall trees (green, red in autumn) and short round pines
+    slim = lambda x, y: pc_cell("Model_03/Size_02.png", x, y, 30, 75)
+    save(slim(0, 5), "trees/tree3_spring.png")
+    save(pc_shade(slim(0, 5), 0.88), "trees/tree3_summer.png")
+    save(slim(64, 85), "trees/tree3_autumn.png")
+    save(Image.open(os.path.join(OUT, "trees", "tree2_winter.png")).convert("RGBA"), "trees/tree3_winter.png")
+    for season, c in [("spring", 1), ("summer", 0), ("autumn", 0)]:
+        save(pine(0, 0) if season != "spring" else pine(1, 0), "trees/pine2_%s.png" % season)
+    save(snowify(pine(1, 0)), "trees/pine2_winter.png")
+    short = lambda x, y: pc_cell("Model_02/Size_02.png", x, y, 45, 47)
+    for season in ["spring", "summer", "autumn"]:
+        save(short(3, 1) if season != "autumn" else short(67, 1), "trees/pine3_%s.png" % season)
+    save(snowify(short(3, 1)), "trees/pine3_winter.png")
 
 # ---------------------------------------------------------------- street props and wrecks
 V = os.path.join(PO, "Vehicles")
@@ -1291,3 +1397,89 @@ if os.path.isdir(MIS) and os.path.isdir(KY) and "PI" in globals():
         icon(mute(im, m) if m else im, iid)
         n += 1
     print("kitbashed icons:", n)
+
+
+# ---------------------------------------------------------------- car and bus wrecks at people scale (Modern Exteriors vehicles)
+# The PostApocalypse wrecks are drawn for its tiny characters; these match the 16x32 people. Paint fades to
+# a wreck colour with rust speckles, glass goes dark, and some get soot from a fire.
+VEH = os.path.join(MEROOT, "10_Vehicles_Singles_16x16", "ME_Singles_Vehicles_16x16_")
+if os.path.isfile(VEH + "Car_Right_1.png"):
+    import colorsys, random
+
+    def wreck(im, paint, seed, burn=0.0, speck=0.10):
+        r = random.Random(seed)
+        out = im.copy()
+        px = out.load()
+        pr, pg, pb = hexrgb(paint)
+        pl = max(1, 0.3 * pr + 0.59 * pg + 0.11 * pb)
+        for y in range(out.height):
+            for x in range(out.width):
+                R, G, B, A = px[x, y]
+                if not A:
+                    continue
+                h, s_, v = colorsys.rgb_to_hsv(R / 255, G / 255, B / 255)
+                if B > R + 25 and v > 0.55 and s_ < 0.6:          # glass: dark and cracked
+                    k = 0.7 + 0.3 * r.random()
+                    px[x, y] = (int(46 * k), int(54 * k), int(62 * k), A)
+                elif s_ > 0.25 and v > 0.25:                     # paint: faded to the wreck colour
+                    l = min(1.25, (0.3 * R + 0.59 * G + 0.11 * B) / pl)
+                    c = [min(255, int(ch * l * 0.92)) for ch in (pr, pg, pb)]
+                    if r.random() < speck:
+                        c = [int(c[0] * 0.75 + 30), int(c[1] * 0.55 + 12), int(c[2] * 0.4)]
+                    px[x, y] = tuple(c) + (A,)
+                else:                                              # trim, tyres, chrome: dull grey
+                    g = int((0.3 * R + 0.59 * G + 0.11 * B) * 0.9)
+                    px[x, y] = (g, int(g * 0.97), int(g * 0.93), A)
+                if burn and r.random() < burn * (0.4 + 0.6 * y / out.height):
+                    R, G, B, A = px[x, y]
+                    px[x, y] = (int(R * 0.35), int(G * 0.32), int(B * 0.3), A)
+        return out
+    veh = lambda n: load(VEH + n + ".png")
+    for v, (n, c, b) in enumerate([("Car_Right_1", "#7a3a30", 0), ("Car_Left_2", "#4a5a6a", 0.25),
+                                    ("Car_Right_3", "#6a6a4a", 0), ("Car_Left_4", "#5a4a40", 0.5)]):
+        save(wreck(veh(n), c, v + 1, b), "objects/car_wreck_%d.png" % v)
+    for v, (n, c, b) in enumerate([("Bus_Right_1", "#b8902a", 0.15), ("Bus_Left_1", "#b8902a", 0.3),
+                                    ("Bus_Right_1", "#4a6a8a", 0.1), ("Bus_Left_1", "#6a7a4a", 0.2)]):
+        save(wreck(veh(n), c, v + 11, b, 0.03), "objects/bus_wreck_%d.png" % v)
+    print("wrecks: 8")
+
+
+# ---------------------------------------------------------------- roads and dirt with detail and edges
+# Roads: Modern Exteriors cracked asphalt, with a concrete curb drawn where a road meets pavement or grass
+# (tiles/road_edge_<side>.png). Dirt: Pixel Crawler's lumpy dirt, toned down, with a ragged fringe of grass
+# drawn over it where it meets grass (tiles/dirt_edge_<season>_<side>.png). Sides: n, s, e, w.
+CITY = os.path.join(MEROOT, "2_City_Terrains_16x16.png")
+PCF = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Tilesets", "Floors_Tiles.png")
+if os.path.isfile(CITY) and os.path.isfile(PCF):
+    import random
+    city = Image.open(CITY).convert("RGBA")
+    for v, (cx, cy) in enumerate([(0, 4), (1, 5), (2, 6), (3, 7)]):
+        save(city.crop((cx * 16, cy * 16, cx * 16 + 16, cy * 16 + 16)), "tiles/road_%d.png" % v)
+    pcf = Image.open(PCF).convert("RGBA")
+    for v, (x, y) in enumerate([(176, 160), (192, 160), (208, 176), (192, 176)]):
+        save(tone(pcf.crop((x, y, x + 16, y + 16)), "#80603f"), "tiles/dirt_%d.png" % v)
+    def rot(im, side):
+        return {"n": im, "s": im.transpose(Image.ROTATE_180), "w": im.transpose(Image.ROTATE_90), "e": im.transpose(Image.ROTATE_270)}[side]
+    # curb: drawn for the north side, turned for the others
+    curb = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for x in range(16):
+        curb.putpixel((x, 0), (206, 198, 190, 255))
+        curb.putpixel((x, 1), (170, 160, 156, 255))
+        curb.putpixel((x, 2), (60, 54, 62, 150))
+    for side in "nsew":
+        save(rot(curb, side), "tiles/road_edge_%s.png" % side)
+    for season in ["spring", "summer", "autumn"]:
+        g = Image.open(os.path.join(OUT, "tiles", "grass_%s_0.png" % season)).convert("RGBA")
+        r = random.Random(season)
+        fr = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+        depth = [2 + r.randint(0, 2) for _ in range(16)]
+        for x in range(1, 15):
+            if r.random() < 0.3:
+                depth[x] = max(depth[x], depth[x - 1] + 1)
+        for x in range(16):
+            for y in range(depth[x]):
+                fr.putpixel((x, y), g.getpixel((x, y)))
+            fr.putpixel((x, depth[x]), (40, 30, 20, 110))      # a soft shadow under the grass lip
+        for side in "nsew":
+            save(rot(fr, side), "tiles/dirt_edge_%s_%s.png" % (season, side))
+    print("roads and dirt: 4 + 4 tiles, edges")

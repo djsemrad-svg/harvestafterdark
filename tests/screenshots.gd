@@ -48,6 +48,42 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "scenes":
+		# daytime views of the farm, town, a district and the Riverlands, for colour checks
+		main.ui.close_all()
+		Game.state.weather = "sun"
+		var tag := ""
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--tag="): tag = a.substr(6)
+		for sd in [[1, "spring"], [29, "summer"]]:
+			Game.state.day = sd[0]
+			for spot in [["homestead", 30, 30], ["town", 26, 17], ["residential", 30, 22], ["riverlands", 30, 22]]:
+				Game.change_map(spot[0], MapScale.t(spot[0], spot[1], spot[2]).x if spot[0] != "homestead" else spot[1], MapScale.t(spot[0], spot[1], spot[2]).y if spot[0] != "homestead" else spot[2], "down", {"silent": true})
+				Game.state.time = 720
+				Game.enemies.clear()
+				await frames(30)
+				await shot("sc_%s_%s%s" % [sd[1], spot[0], tag])
+		# a car wreck next to the player, for size
+		Game.state.day = 1
+		Game.change_map("residential", MapScale.t("residential", 30, 22).x, MapScale.t("residential", 30, 22).y, "down", {"silent": true})
+		Game.enemies.clear()
+		var m: GameMap = Game.map
+		var p: Vector2 = Game.player.pos
+		var tx := int(p.x / 16) + 2; var ty := int(p.y / 16)
+		for kk in m.objects.keys():
+			var o: Dictionary = m.objects[kk]
+			if abs(int(o.x) - tx) < 8 and abs(int(o.y) - ty) < 5: m.objects.erase(kk)
+		var cw := {"type": "car_wreck", "x": tx, "y": ty, "v": 0, "w": 4, "h": 2}
+		for kk2 in Data.obj_defs.get("car_wreck", {}): if kk2 in ["w", "h"]: cw[kk2] = Data.obj_defs.car_wreck[kk2]
+		m.objects[GameMap.k(tx, ty)] = cw
+		var bw := {"type": "bus_wreck", "x": tx + 6, "y": ty, "v": 0, "w": 7, "h": 3}
+		for kk3 in Data.obj_defs.get("bus_wreck", {}): if kk3 in ["w", "h"]: bw[kk3] = Data.obj_defs.bus_wreck[kk3]
+		m.objects[GameMap.k(tx + 4, ty)] = bw
+		Game.state.time = 720
+		await frames(30)
+		await shot("sc_car_size%s" % tag)
+		get_tree().quit()
+		return
 	if only == "people":
 		main.ui.close_all()
 		var outd := "/home/claude/packs_review/people/"

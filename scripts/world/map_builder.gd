@@ -41,7 +41,7 @@ static func homestead(world_seed: int) -> GameMap:
 	m.warps.append({"x": 49, "y": 18, "w": 1, "h": 3, "to": "town", "tx": 1, "ty": 19, "dir": "right"})
 	m.add_obj(int(fh.x) + int(fh.w) + 1, 8, "shipping_box")
 	m.add_obj(6, 9, "pump")
-	m.add_obj(22, 5, "car_wreck", {"w": 2})
+	m.add_obj(21, 5, "car_wreck", {"w": 4, "h": 2})
 	m.add_obj(46, 17, "sign", {"text": "$PROPERTY"})
 	m.add_obj(30, 12, "big_stump")
 	m.add_obj(19, 27, "boulder"); m.add_obj(33, 24, "boulder")
@@ -283,7 +283,7 @@ static func mountain(world_seed: int) -> GameMap:
 	for y in range(12, 19):
 		m.add_obj(39, y, "rubble")
 	m.add_obj(37, 14, "sign", {"text": "Ridge trail east. Closed by a rockslide."})
-	m.add_obj(22, 22, "car_wreck", {"w": 2}); m.add_obj(16, 26, "toppled_sign")
+	m.add_obj(21, 22, "car_wreck", {"w": 4, "h": 2}); m.add_obj(16, 26, "toppled_sign")
 	m.add_obj(21, 24, "suitcase"); m.add_obj(24, 18, "suitcase"); m.add_obj(15, 12, "tire_stack")
 	m.add_obj(18, 15, "road_crack"); m.add_obj(20, 20, "road_crack"); m.add_obj(19, 27, "road_crack")
 	m.warps.append({"x": 18, "y": 31, "w": 3, "h": 1, "to": "town", "tx": 28, "ty": 1, "dir": "down"})

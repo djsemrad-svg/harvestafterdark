@@ -10,7 +10,7 @@ extends RefCounted
 
 const SCALED := {"town": 2, "residential": 2, "industrial": 2, "riverlands": 2, "halvorsen": 2, "dry_creek": 2}
 ## Bump when the layout of the scaled maps changes, so older saves rebuild their outdoor objects.
-const VERSION := 2      # 2: buildings line up on their real doors
+const VERSION := 3      # 2: buildings line up on their real doors; 3: narrower roads, bigger wrecks
 
 ## Sprinkled again after scaling: [chance for each of the 4 tiles of a design tile].
 const NATURE := {"tree": 0.45, "pine": 0.45, "weeds": 0.8, "twig": 0.4, "rock": 0.4, "bush": 0.5, "stump": 0.3,
@@ -73,6 +73,25 @@ static func upscale(src: GameMap) -> GameMap:
 	for y in src.h:
 		for x in src.w:
 			m.fill(x * s, y * s, s, s, src.tile_at(x, y))
+	# wide roads and dirt tracks would come out twice as wide as looks right next to the people: the outer
+	# tile row of a run 3+ design tiles wide (2+ for dirt) goes back to the ground beside it (6 tiles -> 4)
+	for y in src.h:
+		for x in src.w:
+			var t := src.tile_at(x, y)
+			if t != "road" and t != "dirt": continue
+			for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+				if not src.in_bounds(x + d.x, y + d.y): continue
+				var nt := src.tile_at(x + d.x, y + d.y)
+				if nt == t or nt == "water" or nt == "bridge" or nt == "road" or nt == "dirt": continue
+				var run := 0
+				var cx := x; var cy := y
+				while src.in_bounds(cx, cy) and src.tile_at(cx, cy) == t and run < 8:
+					run += 1; cx -= d.x; cy -= d.y
+				if run < (3 if t == "road" else 2): continue
+				for i in s:
+					var rx: int = (x * s + (0 if d.x < 0 else s - 1)) if d.x != 0 else x * s + i
+					var ry: int = (y * s + (0 if d.y < 0 else s - 1)) if d.y != 0 else y * s + i
+					m.set_tile(rx, ry, nt)
 	# buildings double and rebuild their own door warps
 	var door_tiles := {}
 	for st in src.structures:
@@ -137,7 +156,18 @@ static func upscale(src: GameMap) -> GameMap:
 			if placed == 0:
 				_put(m, x * s + r.randi_range(0, s - 1), y * s + r.randi_range(0, s - 1), o.type, extra)
 			continue
-		_put(m, x * s, y * s, o.type, extra)
+		var px := x * s; var py := y * s
+		if o.type == "car_wreck" or o.type == "bus_wreck":
+			# people-sized wrecks: a bigger footprint, nudged left if it would run into a building
+			var ww := 4 if o.type == "car_wreck" else 7
+			var hh := 2 if o.type == "car_wreck" else 3
+			var placed_big := false
+			for nudge in [0, -1, -2, -3]:
+				if _clear_of_buildings(m, px + nudge, py, ww, hh):
+					px += nudge; extra.w = ww; extra.h = hh; placed_big = true
+					break
+			if not placed_big: extra.w = mini(int(extra.get("w", 1)), s); extra.h = 1
+		_put(m, px, py, o.type, extra)
 		if LINES.has(o.type) or Data.obj_defs.get(o.type, {}).get("barrier", false):
 			var right = src.get_obj(x + 1, y)
 			var down = src.get_obj(x, y + 1)
@@ -173,3 +203,10 @@ static func fix_arrivals(maps: Dictionary) -> void:
 				wp.tx = int(wp.tx) * s
 				wp.ty = int(wp.ty) * s
 				wp.scaled_tx = true
+
+static func _clear_of_buildings(m: GameMap, x: int, y: int, w: int, h: int) -> bool:
+	if x < 0 or y < 0 or x + w > m.w or y + h > m.h: return false
+	for st in m.structures:
+		if x < int(st.x) + int(st.w) and x + w > int(st.x) and y < int(st.y) + int(st.h) and y + h > int(st.y):
+			return false
+	return true

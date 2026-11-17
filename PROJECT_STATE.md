@@ -349,11 +349,26 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 - Watch out: later loops in the importer reuse the names `tint` and `GUN`; use `ramp_tint` and the full gun path in new code.
 - Still code-drawn (biggest groups): materials and crafting parts, weapons (28), artifacts (fossils, gadgets, toys), defenses, nuts and cones, packaged sacks and boxes, fuel cans.
 
+### A brighter world (added Nov 16)
+
+Daniel asked for more colour and life, balanced against the run-down look.
+
+- Grass is a richer, deeper green (`tone()` in the importer). About 1 grass tile in 7 has Serene Village wildflowers (spring, summer) or mushrooms (autumn): grass variants 4-7, picked in `WorldView` by `hash2(x, y, 11)`.
+- One bush in four flowers in spring and summer (Serene Village clumps). Living plants are a little more saturated.
+- Trees from Pixel Crawler, four kinds picked by the object's `v`: full oak (`tree`), smaller oak (`tree2`), slim tree that turns red in autumn (`tree3`), the old PostApocalypse tree (`tree4`). Pines: green, teal (`pine2`), short (`pine3`). All seasonal, snowy in winter.
+- Colour grade: districts and other cold places keep a cooler, greyer look but less washed out (`MOODS` in `world_view.gd`).
+- Roads: Modern Exteriors cracked asphalt with a concrete curb where they meet pavement or grass. Dirt: Pixel Crawler dirt, toned down, with a ragged grass lip where it meets grass (`_ground_edges`, `tiles/road_edge_<side>`, `tiles/dirt_edge_<season>_<side>`).
+- Narrower roads on the scaled maps: wide runs lose their outer tile row on each side (a 6-tile road is now 4, a 4-tile dirt track 2). `MapScale.VERSION` 3.
+- Car and bus wrecks are Modern Exteriors vehicles at people scale, faded, rusted and some burned. Cars take 4x2 tiles, buses 7x3 (nudged away from buildings, or kept small if there's no room).
+- `tests/screenshots.gd --only=scenes` takes daytime views of the farm, town, Residential and Riverlands plus a wreck next to the player, for colour checks.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
 - Sunnyside World characters and its human animation file: chibi proportions; the game uses the 16x32 generator people.
-- Sunnyside World tiles and buildings: much brighter and more saturated than the post-apocalypse look. Only the crops and seed pouch were used. Its animals are a possible later fit.
+- Sunnyside World tiles and buildings: much brighter and more saturated than the post-apocalypse look. Crops, seed pouch, ore nuggets, egg, milk and mushrooms were used. Still useful later: fruit trees, mine rocks with crystals, animals.
+- Pixel Crawler (used Nov 16 for trees and dirt): also has snow tiles, sapling growth stages and seasonal bushes.
+- Serene Village (used for wildflowers and flowering bushes).
 - Farm Game Dungeon Cellar: a candidate for mine floors and walls.
 - Free Basic Pixel Art UI: fantasy look with words baked into the buttons.
 
