@@ -48,6 +48,26 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "swing":
+		# the swing frozen at points along the way, for each tool and direction (cropped and stitched later)
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		for tool in ["scythe", "axe", "pickaxe", "watering_can", "kitchen_knife", "baseball_bat"]:
+			for dir in ["down", "up", "left", "right"]:
+				for pr in [0.0, 0.2, 0.35, 0.5, 0.6, 0.8]:
+					Game.player.dir = dir
+					var sw := {"t": pr * 1000.0, "dur": 1000.0, "tool": tool, "tier": 0, "applied": true, "apply": func(): pass}
+					if Data.weapons.has(tool): sw.weapon = tool; sw.tool = "club"
+					Game.player.swing = sw
+					await frames(2)
+					Game.player.swing.t = pr * 1000.0
+					await shot("sw_%s_%s_%d" % [tool, dir, int(pr * 100)])
+		get_tree().quit()
+		return
 	if only == "weather":
 		main.ui.close_all()
 		Game.state.time = 720

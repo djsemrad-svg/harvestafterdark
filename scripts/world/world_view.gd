@@ -375,6 +375,101 @@ func _pick_log(m: GameMap) -> Vector2i:
 			if hh < bh: bh = hh; best = Vector2i(x, y)
 	return best
 
+# ---------------------------------------------------------------- tools in hand
+## A swing has three beats: the wind-up (tool drawn back and up), the strike (fast, with a faint smear) and
+## the follow-through. The tool's grip sits in the player's hand, which moves along with it, and a little
+## hand is drawn over the grip so it reads as held. Keyframes are [progress, hand offset from the feet,
+## angle]; the icons point up and to the right, so angle 0 is up-right, -0.79 straight up, 0.79 right.
+const SWING_KEYS := {
+	"down": [[0.0, Vector2(4, -12), -0.5], [0.35, Vector2(3, -19), -1.7], [0.6, Vector2(3, -7), 2.1], [1.0, Vector2(4, -9), 1.7]],
+	"up": [[0.0, Vector2(3, -11), 2.0], [0.35, Vector2(1, -21), 2.6], [0.6, Vector2(1, -19), 5.5], [1.0, Vector2(1, -17), 5.7]],
+	"right": [[0.0, Vector2(-1, -12), -0.9], [0.35, Vector2(-3, -17), -1.9], [0.6, Vector2(6, -9), 1.3], [1.0, Vector2(5, -10), 0.9]],
+	"left": [[0.0, Vector2(1, -12), -0.9], [0.35, Vector2(3, -17), -1.9], [0.6, Vector2(-6, -9), 1.3], [1.0, Vector2(-5, -10), 0.9]],
+}
+## The scythe sweeps across in front of you instead of chopping down.
+const SWEEP_KEYS := {
+	"down": [[0.0, Vector2(-6, -9), 3.4], [0.3, Vector2(-7, -10), 3.7], [0.65, Vector2(6, -8), 1.2], [1.0, Vector2(5, -9), 0.9]],
+	"up": [[0.0, Vector2(6, -13), -0.1], [0.3, Vector2(7, -13), 0.3], [0.65, Vector2(-6, -15), -2.0], [1.0, Vector2(-5, -15), -2.3]],
+	"right": [[0.0, Vector2(0, -15), -1.6], [0.3, Vector2(-1, -16), -1.9], [0.65, Vector2(5, -6), 1.9], [1.0, Vector2(4, -7), 1.6]],
+	"left": [[0.0, Vector2(0, -15), -1.6], [0.3, Vector2(1, -16), -1.9], [0.65, Vector2(-5, -6), 1.9], [1.0, Vector2(-4, -7), 1.6]],
+}
+
+func _swing_pose(keys: Array, pr: float) -> Array:
+	var a: Array = keys[0]
+	var b: Array = keys[keys.size() - 1]
+	for i in keys.size() - 1:
+		if pr >= float(keys[i][0]) and pr <= float(keys[i + 1][0]):
+			a = keys[i]; b = keys[i + 1]
+			break
+	var span := maxf(float(b[0]) - float(a[0]), 0.001)
+	var k := clampf((pr - float(a[0])) / span, 0.0, 1.0)
+	# ease out of the wind-up, snap through the strike, settle after
+	if float(a[0]) == 0.0: k = 1.0 - pow(1.0 - k, 2.0)
+	elif float(b[0]) <= 0.65: k = k * k
+	return [(a[1] as Vector2).lerp(b[1], k), lerpf(float(a[2]), float(b[2]), k)]
+
+func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
+	if p.swing == null or p.swing.get("shove", false):
+		return
+	var sw: Dictionary = p.swing
+	var wid: String = str(sw.get("weapon", sw.tool))
+	var wt: String = str(Data.weapons.get(wid, {}).get("type", "")) if sw.has("weapon") else ""
+	if wt == "Fist":
+		return
+	var pr: float = clampf(float(sw.t) / maxf(float(sw.dur), 0.01), 0.0, 1.0)
+	var flip: bool = p.dir == "left"
+	var hand: Vector2
+	var ang: float
+	var stab: bool = wt in ["Blade", "Polearm"] and not wid.begins_with("scythe")
+	var watering := wid == "watering_can"
+	if stab:
+		# a thrust: drawn back, then straight out where you face
+		var dv: Vector2 = {"up": Vector2(0, -1), "down": Vector2(0, 1), "left": Vector2(-1, 0), "right": Vector2(1, 0)}[p.dir]
+		var reach := (-3.0 + 9.0 * (pr / 0.45)) if pr < 0.45 else (6.0 - 4.0 * (pr - 0.45) / 0.55)
+		hand = Vector2(0, -9) + dv * reach + (Vector2(3, -1) if p.dir in ["up", "down"] else Vector2.ZERO)
+		ang = {"up": -0.79, "down": 2.36, "right": 0.79, "left": 0.79}[p.dir]
+	elif watering:
+		# held out in front and tipped
+		var tip := sin(minf(pr / 0.7, 1.0) * PI * 0.5) * 0.9
+		hand = {"down": Vector2(4, -8), "up": Vector2(3, -14), "right": Vector2(5, -10), "left": Vector2(-5, -10)}[p.dir]
+		ang = tip
+	else:
+		var keys: Array = (SWEEP_KEYS if wid.begins_with("scythe") else SWING_KEYS)[p.dir]
+		var pose := _swing_pose(keys, pr)
+		hand = pose[0]; ang = pose[1]
+	# facing away, the tool is in front of you and so behind you on screen; facing you, it's raised behind
+	# your head during the wind-up and in front for the strike
+	var back: bool = (p.dir == "up" and (stab or watering or pr >= 0.42)) or (p.dir == "down" and not stab and not watering and pr < 0.42)
+	if back != behind:
+		return
+	var icon: Texture2D = Art.get_icon(wid, int(sw.get("tier", 0)))
+	var sc := Vector2(-1, 1) if flip else Vector2.ONE
+	var angd := -ang if flip else ang
+	# a faint smear behind the head of the tool through the strike
+	if not stab and not watering and pr > 0.3 and pr < 0.7:
+		var keys2: Array = (SWEEP_KEYS if wid.begins_with("scythe") else SWING_KEYS)[p.dir]
+		for gi in [2, 1]:
+			var gp := _swing_pose(keys2, maxf(0.0, pr - 0.06 * gi))
+			var ga: float = -float(gp[1]) if flip else float(gp[1])
+			draw_set_transform((p.pos + (gp[0] as Vector2)).round(), ga, sc)
+			draw_texture(icon, Vector2(-2, -14), Color(1, 1, 1, 0.12 * (3 - gi)))
+	draw_set_transform((p.pos + hand).round(), angd, sc)
+	draw_texture(icon, Vector2(-2, -14))
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	# the hand over the grip
+	var skin := Color(str(Game.state.character.look.get("skin", "#e8b48f")))
+	var hp: Vector2 = (p.pos + hand).round() + Vector2(-1, -1)
+	draw_rect(Rect2(hp + Vector2(0, 2), Vector2(3, 1)), skin.darkened(0.45))
+	draw_rect(Rect2(hp, Vector2(3, 2)), skin)
+	draw_rect(Rect2(hp, Vector2(1, 1)), skin.lightened(0.15))
+	if watering and pr > 0.35:
+		# water pouring out of the spout
+		var dv2: Vector2 = {"up": Vector2(0, -1), "down": Vector2(0, 1), "left": Vector2(-1, 0), "right": Vector2(1, 0)}[p.dir]
+		var spout: Vector2 = p.pos + hand + Vector2(9 if not flip else -9, -4) + dv2 * 2.0
+		for i in 4:
+			var t := fmod(anim_t * 3.0 + i * 0.25, 1.0)
+			draw_rect(Rect2((spout + Vector2(0, t * 9.0) + dv2 * t * 3.0).round(), Vector2(1, 2)), Color(0.62, 0.82, 1.0, 0.8 * (1.0 - t)))
+
 ## A guard's rifle, held across the body at the ready, muzzle up.
 func _draw_folk_gun(f: Dictionary) -> void:
 	var tex := Art.override("held/%s.png" % f.gun)
@@ -680,6 +775,7 @@ func _draw_player() -> void:
 		draw_texture(ct, Vector2(-ct.get_width() / 2, -ct.get_height() + 1), Color(1, 1, 1, 0.35 if blink else 1.0))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	else:
+		_draw_tool_swing(p, true)
 		_draw_char(Game.state.character.look, p.pos, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
 	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0:
 		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
@@ -711,14 +807,7 @@ func _draw_player() -> void:
 	if p.swing != null and p.swing.get("shove", false):
 		pass
 	elif p.swing != null:
-		var sw: Dictionary = p.swing
-		var pr: float = clamp(sw.t / sw.dur, 0.0, 1.0)
-		var icon = Art.get_icon(sw.get("weapon", sw.tool), sw.tier)
-		var piv: Vector2 = {"down": Vector2(3, -9), "up": Vector2(-3, -15), "left": Vector2(-3, -11), "right": Vector2(3, -11)}[p.dir]
-		var ang: float = {"down": lerp(-1.4, 1.2, pr), "up": lerp(-1.2, 0.6, pr), "left": lerp(0.6, -1.8, pr), "right": lerp(-0.6, 1.8, pr)}[p.dir]
-		draw_set_transform((p.pos + piv).round(), ang, Vector2(-1, 1) if p.dir == "left" else Vector2.ONE)
-		draw_texture(icon, Vector2(-3, -14))
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		_draw_tool_swing(p, false)
 	var f = Game.fishing
 	if f != null and f.phase in ["cast", "wait", "bite", "mini"]:
 		var hand: Vector2 = p.pos + Vector2(-6 if p.dir == "left" else (6 if p.dir == "right" else 3), -10)

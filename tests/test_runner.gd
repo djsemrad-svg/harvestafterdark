@@ -3399,6 +3399,13 @@ func run_weather_fx() -> void:
 	for i in 5: V.update_weather(1.0 / 60.0)
 	check("Weather: rain falls and splashes, storms flash, snow drifts, and nothing falls indoors", rain_n > 50 and splashed and flashed and snow_n > 50 and indoor_n == 0 and V.flash <= 0.2, "rain=%d splash=%s flash=%s snow=%d indoor=%d" % [rain_n, splashed, flashed, snow_n, indoor_n])
 	check("Weather: thunder has a sound", Sfx.EFFECTS.has("thunder"), "")
+	# tools in hand: wind-up high, strike low and forward, for every direction
+	var ok_dirs := []
+	for d in ["down", "up", "left", "right"]:
+		var up_pose: Array = V._swing_pose(V.SWING_KEYS[d], 0.35)
+		var hit_pose: Array = V._swing_pose(V.SWING_KEYS[d], 0.6)
+		if (up_pose[0] as Vector2).y < (hit_pose[0] as Vector2).y or d == "up": ok_dirs.append(d)
+	check("Tools in hand: every direction has a wind-up and a strike", ok_dirs.size() == 4 and V.SWEEP_KEYS.size() == 4, str(ok_dirs))
 
 func run_wildlife() -> void:
 	var G = Game
