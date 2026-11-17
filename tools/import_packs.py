@@ -1980,3 +1980,78 @@ if os.path.isdir(MEROOT):
             if v == 0:
                 save(im, "objects/salvage_wall_c%d.png" % nb)
     print("town dressing: %d props, salvage wall" % len(DRESS))
+
+
+# ---------------------------------------------------------------- water details (Nov 17)
+# River rocks (Modern Exteriors camping rocks, shrunk), lily pads, a sunken log and reeds (drawn here).
+if os.path.isdir(MEROOT):
+    for v, nm in enumerate(["Rock_1", "Rock_2", "Rock_3", "Rock_5"]):
+        im = me(nm)
+        if im.width > 12 and "PI" in globals():
+            im = PI.shrink(im, 12, max(1, round(im.height * 12 / im.width)))
+        elif im.width > 12:
+            im = im.resize((12, max(1, round(im.height * 12 / im.width))), Image.NEAREST)
+        im = im.copy()
+        rp = im.load()
+        for yy in range(im.height):
+            for xx in range(im.width):
+                q = rp[xx, yy]
+                if q[3] and q[1] > q[0] + 8 and q[1] >= q[2]:      # the grass it sat in
+                    rp[xx, yy] = (0, 0, 0, 0)
+        im = im.crop(im.getbbox())
+        save(shade(im, 0.92) if "shade" in globals() else im, "tiles/water_rock_%d.png" % v)
+
+    def _px(rows, pal):
+        h = len(rows); w = max(len(r) for r in rows)
+        im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        p = im.load()
+        for y, r in enumerate(rows):
+            for x, ch in enumerate(r):
+                if ch in pal: p[x, y] = _hx(pal[ch])
+        return im
+
+    LILY = ["..oooo.o..",
+            ".oggggo.o.",
+            "ogglggoggo",
+            "oglllggggo",
+            "ogglgggddo",
+            ".oggggddo.",
+            "..oooooo.."]
+    LILY2 = ["..oooo..",
+             ".oggggo.",
+             "oglggo.o",
+             "ogggggdo",
+             ".oggddo.",
+             "..oooo.."]
+    FLOWER = [".w.", "wpw", ".w."]
+    lp = {"o": "#2e4a26", "g": "#5e9a3c", "l": "#86bf56", "d": "#467a30"}
+    for v in range(4):
+        base = _px(LILY if v % 2 == 0 else LILY2, lp)
+        if v >= 2:
+            c = Image.new("RGBA", (base.width + 1, base.height + 1), (0, 0, 0, 0))
+            c.alpha_composite(base, (0, 1))
+            fl = _px(FLOWER, {"w": "#f4eef2" if v == 2 else "#f2a6c4", "p": "#f2d04a"})
+            c.alpha_composite(fl, (3, 0))
+            base = c
+        save(base, "tiles/water_lily_%d.png" % v)
+    # a log, half under: bark above the waterline, a drowned blue-green below
+    LOG = ["..oooooooooooooooooooooooo..",
+           ".obbbBbbbbbbBbbbbbbBbbbbbbbo",
+           "ocrrbbbbBbbbbbbbBbbbbbbbbbbo",
+           "orcrbbbbbbbbBbbbbbbbbBbbbbbo",
+           "ocrrbbBbbbbbbbbbbbbbbbbbbbbo",
+           ".owwwwwwwwwwwwwwwwwwwwwwwwwo",
+           "..uuuuuuuuuuuuuuuuuuuuuuuuu."]
+    save(_px(LOG, {"o": "#2a1e16", "b": "#6e4a2c", "B": "#4e3420", "r": "#b88a5a", "c": "#8a6440",
+                   "w": "#cfe6ee", "u": "#2f6a78"}), "tiles/water_log.png")
+    REEDS = [".b...b..",
+             ".b..bb.b",
+             ".bb.bb.b",
+             ".gg..g.g",
+             "g.g.g.gg",
+             "g.gg..g.",
+             ".gg.g.g.",
+             "..ggggg.",
+             "..dgdgd."]
+    save(_px(REEDS, {"b": "#6a4a2a", "g": "#6aa04a", "d": "#3e6a2e"}), "tiles/water_reeds.png")
+    print("water details: rocks, lilies, log, reeds")

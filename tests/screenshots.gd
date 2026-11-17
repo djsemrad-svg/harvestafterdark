@@ -48,6 +48,19 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "water":
+		main.ui.close_all()
+		Game.state.time = 600; Game.state.weather = "sun"
+		for id in ["residential", "industrial", "riverlands"]: Game.unlock_region(id, true)
+		var n := 0
+		for at in [["town", 40, 64], ["town", 80, 64], ["homestead", 40, 25], ["mountain", 8, 12], ["riverlands", 80, 36]]:
+			Game.change_map(str(at[0]), int(at[1]), int(at[2]), "down", {"silent": true})
+			Game.enemies.clear()
+			await frames(8)
+			await shot("water_%02d" % n)
+			n += 1
+		get_tree().quit()
+		return
 	if only == "dress":
 		# up close: the square, a yard, a gate guard, the bridge
 		main.ui.close_all()

@@ -3330,6 +3330,8 @@ func run_town_dress() -> void:
 	var armed := Townsfolk.folk.filter(func(f): return f.role == "guard" and f.has("gun"))
 	var have_art := armed.all(func(f): return Art.override("held/%s.png" % f.gun) != null)
 	check("Town dress: armed guards stand at the roads into town", armed.size() >= 7 and have_art, "armed=%d" % armed.size())
+	var wart := ["tiles/water_rock_0.png", "tiles/water_lily_0.png", "tiles/water_lily_3.png", "tiles/water_log.png", "tiles/water_reeds.png"]
+	check("Water details: river rocks, lily pads, a sunken log and reeds have pictures", wart.all(func(p): return Art.override(p) != null), str(wart.filter(func(p): return Art.override(p) == null)))
 
 func run_wildlife() -> void:
 	var G = Game

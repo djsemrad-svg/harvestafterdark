@@ -154,6 +154,7 @@ func _draw() -> void:
 	var bd: Texture2D = Art.override(m.backdrop) if m.backdrop != "" else null
 	if bd != null:
 		draw_texture(bd, Vector2.ZERO)
+	var wd: Array = []     # water tiles with details, drawn once all the ground is down (a log spans two tiles)
 	for y in range(y0, y1 + 1) if bd == null else []:
 		for x in range(x0, x1 + 1):
 			var t := m.tile_at(x, y)
@@ -171,10 +172,13 @@ func _draw() -> void:
 				if above != "water" and above != "bridge":
 					draw_rect(Rect2(pos, Vector2(16, 1)), Color(1, 1, 1, 0.35))
 					draw_rect(Rect2(pos + Vector2(0, 1), Vector2(16, 2)), Color(0, 0, 0, 0.18))
+				if m.outdoor: wd.append(Vector2i(x, y))
 			var s = m.soil.get(GameMap.k(x, y))
 			if s != null:
 				draw_texture(Art.get_soil(int(s.w) == 1, season), pos)
 				_soil_extras(s, pos)
+	for w in wd:
+		_water_detail(m, w.x, w.y, Vector2(w.x * 16, w.y * 16), season)
 	if bd != null:
 		for kk in m.soil:
 			var tt := GameMap.unk(kk)
@@ -305,6 +309,71 @@ func _draw() -> void:
 				var tiles: Array = world.area_tiles(t, world.charge_level()) if Game.charge != null else [t]
 				for tt in tiles:
 					draw_rect(Rect2(tt.x * 16 + 0.5, tt.y * 16 + 0.5, 15, 15), Color(1, 1, 1, 0.55), false, 1.0)
+
+## Rivers get rocks with a little white water round them; ponds and lakes get lily pads, reeds along the
+## banks and one sunken log. Only pictures: nothing here gets in the way of fishing or swimming.
+var _logs := {}
+func _water_detail(m: GameMap, x: int, y: int, pos: Vector2, season: String) -> void:
+	var river: bool = m.fish_zone == "river"
+	var land := func(dx: int, dy: int) -> bool:
+		var tt := m.tile_at(x + dx, y + dy)
+		return m.in_bounds(x + dx, y + dy) and tt != "water" and tt != "bridge"
+	var near_bridge := false
+	for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-2, 0), Vector2i(2, 0)]:
+		if m.tile_at(x + d.x, y + d.y) == "bridge": near_bridge = true
+	if near_bridge: return
+	var h := Art.hash2(x, y, 31)
+	if river:
+		var bank: bool = land.call(0, -1) or land.call(0, 1)
+		if h < (0.07 if bank else 0.025):
+			var rk := Art.override("tiles/water_rock_%d.png" % int(Art.hash2(x, y, 32) * 4))
+			if rk != null:
+				var off := Vector2(int(Art.hash2(x, y, 33) * (16 - rk.get_width())), 16 - rk.get_height() - (1 if bank else 3))
+				draw_texture(rk, pos + off)
+				# water breaking round it, flickering with the current
+				var fy := pos.y + off.y + rk.get_height()
+				var ph := int(anim_t * 3.0 + h * 10.0) % 3
+				draw_rect(Rect2(pos.x + off.x - 1 + ph, fy - 1, rk.get_width() - 1, 1), Color(1, 1, 1, 0.55))
+				draw_rect(Rect2(pos.x + off.x + rk.get_width() + ph % 2, fy - 3, 2, 1), Color(1, 1, 1, 0.4))
+		elif season != "winter" and land.call(0, -1) and Art.hash2(x, y, 34) < 0.12:
+			var rd := Art.override("tiles/water_reeds.png")
+			if rd != null: draw_texture(rd, pos + Vector2(int(Art.hash2(x, y, 35) * 8), -2))
+		return
+	if season == "winter": return
+	# ponds and lakes
+	if not _logs.has(m.id): _logs[m.id] = _pick_log(m)
+	var lg: Vector2i = _logs[m.id]
+	if lg.x == x and lg.y == y:
+		var lt := Art.override("tiles/water_log.png")
+		if lt != null: draw_texture(lt, pos + Vector2(2, 6 + roundf(sin(anim_t * 1.3) * 0.6)))
+		return
+	if lg.y == y and (x == lg.x + 1): return
+	var edge: bool = land.call(-1, 0) or land.call(1, 0) or land.call(0, 1)
+	if edge and Art.hash2(x, y, 36) < 0.3:
+		var rd2 := Art.override("tiles/water_reeds.png")
+		if rd2 != null:
+			var rx := 0 if land.call(-1, 0) else (8 if land.call(1, 0) else int(Art.hash2(x, y, 35) * 8))
+			draw_texture(rd2, pos + Vector2(rx, 7))
+	elif not land.call(0, -1) and h < 0.16:
+		var ly := Art.override("tiles/water_lily_%d.png" % int(Art.hash2(x, y, 38) * 4))
+		if ly != null:
+			var bob := roundf(sin(anim_t * 0.9 + h * 20.0) * 0.5)
+			draw_texture(ly, pos + Vector2(int(Art.hash2(x, y, 39) * (16 - ly.get_width())), int(Art.hash2(x, y, 40) * 8) + bob))
+
+## The pond's sunken log: a water tile with open water either side of it, two tiles long.
+func _pick_log(m: GameMap) -> Vector2i:
+	var best := Vector2i(-99, -99)
+	var bh := 2.0
+	for y in range(1, m.h - 1):
+		for x in range(1, m.w - 2):
+			if m.tile_at(x, y) != "water": continue
+			var ok := true
+			for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, -1), Vector2i(1, -1), Vector2i(0, 1), Vector2i(1, 1)]:
+				if m.tile_at(x + d.x, y + d.y) != "water": ok = false; break
+			if not ok: continue
+			var hh := Art.hash2(x, y, 41)
+			if hh < bh: bh = hh; best = Vector2i(x, y)
+	return best
 
 ## A guard's rifle, held across the body at the ready, muzzle up.
 func _draw_folk_gun(f: Dictionary) -> void:
