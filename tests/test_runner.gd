@@ -1244,6 +1244,7 @@ func run_all() -> void:
 	run_rooms()
 	run_restoration()
 	run_packart()
+	run_townsfolk()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -3254,3 +3255,32 @@ func run_packart() -> void:
 	# interiors
 	var ft: Image = Art.get_tile("floor_tile", "spring", 0).get_image()
 	check("Room floors, walls and furniture come from Modern Interiors", ft.get_pixel(3, 3) == Art.override("tiles/floor_tile_0.png").get_image().get_pixel(3, 3) and Art.has_override("tiles/wall_brick.png") and Art.has_override("objects/loot_locker.png") and Art.has_override("objects/old_bed.png"), "")
+
+func run_townsfolk() -> void:
+	var G = Game
+	if G.state.is_empty(): start("survivor", 1)
+	close_all()
+	G.state.time = 720
+	at("town", 26, 17, "down")
+	Townsfolk.refresh(G.map)
+	var roles := {}
+	for f in Townsfolk.folk: roles[f.role] = roles.get(f.role, 0) + 1
+	var out_now := Townsfolk.folk.filter(func(f): return Townsfolk.present(f)).size()
+	check("Townsfolk: Brightwater has people repairing, guarding, chatting and walking about by day", roles.get("repair", 0) > 0 and roles.get("guard", 0) > 0 and roles.get("chat", 0) >= 2 and roles.get("walk", 0) > 0 and out_now == Townsfolk.folk.size(), str(roles))
+	# talking to one opens a line with their name
+	var f: Dictionary = Townsfolk.folk[0]
+	G.player.pos = f.pos + Vector2(0, 14)
+	G.player.dir = "up"
+	W.interact(false)
+	var talked: bool = ov() == "dialogue" and U.overlay.get("speaker", {}).get("name", "") == f.name
+	close_all()
+	# walkers move, and only guards stay out at night
+	var walker = null
+	for g in Townsfolk.folk: if g.role == "walk": walker = g
+	var p0: Vector2 = walker.pos if walker != null else Vector2.ZERO
+	for i in 120: Townsfolk.update(0.1)
+	var moved: bool = walker != null and walker.pos.distance_to(p0) > 4.0
+	G.state.time = 1380
+	var night_out := Townsfolk.folk.filter(func(g): return Townsfolk.present(g))
+	check("Townsfolk: E talks to them; walkers wander; at night only the guards are out", talked and moved and not night_out.is_empty() and night_out.all(func(g): return g.role == "guard"), "talked=%s moved=%s night=%d" % [talked, moved, night_out.size()])
+	G.state.time = 720

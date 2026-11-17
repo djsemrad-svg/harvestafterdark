@@ -693,6 +693,9 @@ func hint_text() -> String:
 			"wait": return "Waiting for a bite... (move to reel in)"
 		return ""
 	var w = Game.world
+	var tf = Townsfolk.in_front(Game.player.pos, w.DIRS[Game.player.dir])
+	if tf != null and w.npc_in_front() == null:
+		return "E: Talk to " + str(tf.name)
 	var npc = w.npc_in_front()
 	if npc != null:
 		var s = Game.selected_stack()
@@ -788,6 +791,10 @@ func open_pause() -> void:
 
 func say(npc: String, text: String, after = null) -> void:
 	dialogue(npc, [text], after)
+
+## A line from someone who isn't a neighbour (townsfolk): their name and face, no hearts.
+func say_as(name: String, look: Dictionary, text: String) -> void:
+	open("dialogue", {"npc": "", "speaker": {"name": name, "look": look}, "lines": [text], "idx": 0, "after": null})
 
 func dialogue(npc: String, lines: Array, after = null) -> void:
 	open("dialogue", {"npc": npc, "lines": lines, "idx": 0, "after": after})
@@ -982,6 +989,20 @@ func _ov_dialogue() -> Control:
 	tv.add_child(K.label("Click or press Enter ▼" if overlay.idx < overlay.lines.size() - 1 else "Click or press Enter to close", 6, K.INK_SOFT))
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(tv)
+	var spk: Dictionary = overlay.get("speaker", {})
+	if npc == "" and not spk.is_empty():
+		line.custom_minimum_size = Vector2(290, 40)
+		var pv2 := K.vbox(1)
+		var frame2 := PanelContainer.new()
+		frame2.add_theme_stylebox_override("panel", K.tsb("portrait", 5, 2) if K.textured else K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
+		var pi2 := K.icon(Art.get_portrait(spk.look), 40)
+		pi2.custom_minimum_size = Vector2(44, 38)
+		frame2.add_child(pi2)
+		pv2.add_child(frame2)
+		var nl2 := K.label(str(spk.name), 8, K.WOOD_DARK)
+		nl2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pv2.add_child(nl2)
+		h.add_child(pv2)
 	if npc != "":
 		var pv := K.vbox(1)
 		var frame := PanelContainer.new()

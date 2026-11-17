@@ -48,6 +48,25 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "folk":
+		main.ui.close_all()
+		Game.state.time = 700
+		for spot in [["town", 26, 17], ["town", 40, 30], ["residential", 30, 22]]:
+			Game.change_map(spot[0], MapScale.t(spot[0], spot[1], spot[2]).x, MapScale.t(spot[0], spot[1], spot[2]).y, "down", {"silent": true})
+			Game.enemies.clear()
+			Townsfolk.refresh(Game.map)
+			# stand next to the first few townsfolk for the picture
+			await frames(20)
+			await shot("93_folk_%s_%d" % [spot[0], spot[1]])
+		if not Townsfolk.folk.is_empty():
+			Game.change_map("town", 26, 17, "down", {"silent": true})
+			Townsfolk.refresh(Game.map)
+			for f in Townsfolk.folk:
+				Game.player.pos = f.pos + Vector2(0, 30)
+				await frames(30)
+				await shot("94_folk_%s" % f.role)
+		get_tree().quit()
+		return
 	if only == "ranch":
 		main.ui.close_all()
 		for st in Game.maps.town.structures:

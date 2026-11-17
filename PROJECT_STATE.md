@@ -391,6 +391,10 @@ Daniel could walk through the ranch's wall and never reach its door up the porch
 
 The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, walk, hit, punch, stab, hurt, pick up. `MiChars.compose(look, dir, frame, anim)` takes an animation name (`MiChars.ANIMS`; "walk", the default, still maps a 0-3 counter onto 4 of the 6 walk frames for infected and older code). `WorldView.player_anim()` picks the player's: hurt for 0.36 s after damage (`hurt_t`), the swing while using a tool or melee weapon (stab for blades and polearms, punch for fists and shoves, hit for the rest), pick up after harvesting or foraging (`pick_t`), the full 6-frame walk, and breathing idle when standing. Neighbours walk with 6 frames and breathe when standing. Guns, bows and the swinging tool picture are still drawn over the character as before.
 
+### Townsfolk (added Nov 16)
+
+`scripts/world/townsfolk.gd` (Townsfolk): background survivors so places feel lived in. Brightwater has 3 repairing barricades, sandbags or fences (swinging animation, a sweat bubble now and then), 2 guards on the roads by the district gates (they look around, and stay out all night), 2 pairs chatting with speech bubbles, and 3 who wander. The Residential and Riverlands camps have 3 and 2 people round the campfire. Each is a random generator person with a first name; press E for a line (`UI.say_as` shows their face and name). They aren't neighbours (no friendship, gifts or quests) and aren't saved: each map's people are made again from the world seed and the day (`PLACES`, `LINES`). Out from 6 am to 9 pm. Tests: `run_townsfolk`.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
@@ -419,6 +423,7 @@ The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, wa
 - `scripts/world/angling.gd`: fish sizes, the Fish Journal and Wren's Bait Shack.
 - `scripts/world/woodland.gd`: tree seeds and regrowth.
 - `scripts/world/deep_mine.gd`: the Foreman, cave pools and mining perks.
+- `scripts/world/townsfolk.gd`: background townsfolk.
 - `scripts/world/restoration.gd`: rebuilding Brightwater (projects, tavern, museum).
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.

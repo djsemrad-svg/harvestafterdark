@@ -210,6 +210,9 @@ func _draw() -> void:
 				sorted.append([n.pos.y, 3, n])
 		for en in Game.enemies:
 			sorted.append([en.pos.y, 4, en])
+		if Townsfolk.map_id == m.id:
+			for f in Townsfolk.folk:
+				if Townsfolk.present(f): sorted.append([f.pos.y, 8, f])
 		for a in Game.state.get("animals", []):
 			var r = Game.animals_rt.get(int(a.uid))
 			if r != null and r.map == m.id:
@@ -245,6 +248,11 @@ func _draw() -> void:
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
 			6: _draw_player()
+			8:
+				var f: Dictionary = it[2]
+				var fa := Townsfolk.anim(f, anim_t)
+				_draw_char(f.look, f.pos, f.dir, int(fa[1]), 1.0, str(fa[0]))
+				_draw_emote(f, 32)
 			7:
 				var a: Dictionary = it[2][0]
 				var r: Dictionary = it[2][1]

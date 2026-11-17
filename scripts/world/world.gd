@@ -113,6 +113,7 @@ func step(dt: float) -> void:
 	var mini: bool = Game.fishing != null and Game.fishing.phase == "mini"
 	if not mini:
 		Game.update_npcs(dt)
+		Townsfolk.update(dt)
 		Game.update_animals(dt)
 		inf.update(dt)
 	if Game.overlay_open():
@@ -1756,6 +1757,10 @@ func interact(from_mouse: bool) -> void:
 	var npc = npc_in_front()
 	if npc != null:
 		Game.talk_to(npc)
+		return
+	var tf = Townsfolk.in_front(Game.player.pos, DIRS[Game.player.dir])
+	if tf != null:
+		Townsfolk.talk(tf)
 		return
 	var an = animal_in_front()
 	if an != null:
