@@ -363,6 +363,10 @@ Daniel asked for more colour and life, balanced against the run-down look.
 - Tilled soil: a Sunnyside World mound on dark dirt (`tiles/soil_dry.png`, `tiles/soil_wet.png`, used by `Art.get_soil`). Sand is paler and gets the grass lip too. The one-tile tooth at road crossings is removed after trimming.
 - `tests/screenshots.gd --only=scenes` takes daytime views of the farm, town, Residential and Riverlands plus a wreck next to the player, for colour checks.
 
+### Farm animals (added Nov 16, to revisit)
+
+Daniel wants to revisit these later. `art/animals/<type>_<0|1>.png` are strips of walk frames; `art/animals/index.json` gives frame size, frame count, which row faces side / down / up and which way the side view faces (`Art.get_animal`). Cows and chickens from Farm RPG (cows have front and back views), pigs, sheep and ducks from Sunnyside World, quail from the Sunnyside bird, goats are the Farm RPG bull shrunk and recoloured (weakest). Animals walk with 4 frames. Rabbits, the guard dog and the barn cat are still code-drawn. `tests/screenshots.gd --only=animals` shows them on the farm.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

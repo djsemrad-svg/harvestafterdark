@@ -1506,7 +1506,7 @@ func _walk_animal(a: Dictionary, r: Dictionary, goal: Vector2, step_len: float) 
 				break
 		if moved:
 			r.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
-			r.frame = int(Time.get_ticks_msec() / 200) % 2
+			r.frame = int(Time.get_ticks_msec() / 160) % 4
 		else:
 			r.goal = r.pos
 	else:

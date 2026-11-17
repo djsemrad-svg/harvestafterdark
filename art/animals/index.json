@@ -1,0 +1,136 @@
+{
+ "chicken_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "chicken_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "cow_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "cow_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "goat_0": {
+  "fw": 24,
+  "fh": 24,
+  "n": 4,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "goat_1": {
+  "fw": 24,
+  "fh": 24,
+  "n": 4,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "pig_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "pig_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "sheep_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "sheep_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "duck_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "duck_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "quail_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ },
+ "quail_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 4,
+  "rows": {
+   "side": 0
+  },
+  "face": "left"
+ }
+}

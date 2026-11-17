@@ -48,6 +48,31 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "animals":
+		main.ui.close_all()
+		var hm2: GameMap = Game.maps.homestead
+		for xx in range(4, 34):
+			for yy in range(10, 30):
+				hm2.remove_obj(xx, yy)
+				hm2.soil.erase(GameMap.k(xx, yy))
+		Game.build_building("coop", Rect2i(6, 11, 6, 4))
+		Game.build_building("barn", Rect2i(20, 10, 8, 5))
+		var kinds := ["chicken", "chicken", "duck", "quail", "cow", "cow", "goat", "goat", "sheep", "sheep", "pig", "pig"]
+		for i in kinds.size():
+			Game.adopt_animal(kinds[i], "A%d" % i)
+		for a in Game.state.animals:
+			a.born = -10
+			a.color = Game.state.animals.find(a) % 2
+		Game.get_building_rec("coop").door_open = true
+		Game.get_building_rec("barn").door_open = true
+		Game.state.time = 700; Game.state.weather = "sun"
+		Game.sync_animals(true)
+		Game.change_map("homestead", 17, 20, "up", {"silent": true})
+		Game.sync_animals(true)
+		await frames(240)
+		await shot("90_animals")
+		get_tree().quit()
+		return
 	if only == "scenes":
 		# daytime views of the farm, town, a district and the Riverlands, for colour checks
 		main.ui.close_all()

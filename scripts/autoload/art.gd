@@ -2084,9 +2084,43 @@ func _draw_defense(o: Dictionary, season: String, frame: int, nb: int) -> Array:
 # ---------------------------------------------------------------- farm animals (16x16, feet at row 15)
 const ANIMAL_FACING := {"chicken_0": "left", "chicken_1": "right", "rabbit_0": "left"}
 
+var _anim_index = null
+func _animal_meta(nm: String) -> Dictionary:
+	if _anim_index == null:
+		_anim_index = {}
+		var f := FileAccess.open("res://art/animals/index.json", FileAccess.READ)
+		if f != null:
+			var j = JSON.parse_string(f.get_as_text())
+			if j is Dictionary: _anim_index = j
+	return _anim_index.get(nm, {})
+
 func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> ImageTexture:
 	var nm := "%s_%d" % [type, color_i % 2]
 	if not has_override("animals/%s.png" % nm): nm = "%s_0" % type
+	var meta := _animal_meta(nm)
+	if not meta.is_empty() and has_override("animals/%s.png" % nm):
+		# a strip of walk frames: rows for side / down / up
+		return cached("anstrip|%s|%s|%d|%s" % [nm, dir, frame, adult], func():
+			var sheet: Image = override("animals/%s.png" % nm).get_image()
+			if sheet.is_compressed(): sheet.decompress()
+			sheet.convert(Image.FORMAT_RGBA8)
+			var fw: int = int(meta.fw); var fh: int = int(meta.fh)
+			var rows: Dictionary = meta.get("rows", {"side": 0})
+			var row: int = int(rows.get(dir, rows.get("side", 0))) if dir in ["up", "down"] else int(rows.get("side", 0))
+			var fi: int = posmod(frame, int(meta.get("n", 1)))
+			var im := sheet.get_region(Rect2i(fi * fw, row * fh, fw, fh))
+			if not (dir in ["up", "down"] and rows.has(dir)):
+				var face: String = str(meta.get("face", "left"))
+				if (dir == "right" and face == "left") or (dir == "left" and face == "right"):
+					im.flip_x()
+			var used := im.get_used_rect()
+			if used.size.x > 0: im = im.get_region(Rect2i(used.position.x, 0, used.size.x, used.end.y))
+			if not adult:
+				var k := minf(1.0, maxf(0.65, 9.0 / maxf(1.0, im.get_width())))    # young: smaller, but still readable from the front
+				im.resize(maxi(1, int(im.get_width() * k)), maxi(1, int(im.get_height() * k)), Image.INTERPOLATE_NEAREST)
+			var out := img(maxi(16, im.get_width()), maxi(16, im.get_height()))
+			out.blit_rect(im, Rect2i(Vector2i.ZERO, im.get_size()), Vector2i((out.get_width() - im.get_width()) / 2, out.get_height() - im.get_height()))
+			return out)
 	if has_override("animals/%s.png" % nm):
 		return cached("anov|%s|%s|%d|%s" % [nm, dir, frame, adult], func():
 			var im: Image = override("animals/%s.png" % nm).get_image()

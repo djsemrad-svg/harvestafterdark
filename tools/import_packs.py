@@ -1493,3 +1493,63 @@ if os.path.isfile(CITY) and os.path.isfile(PCF):
         if f.startswith("sand") and f.endswith(".png"):
             save(tone(Image.open(os.path.join(OUT, "tiles", f)).convert("RGBA"), "#c4ae84"), "tiles/" + f)
     print("roads and dirt: 4 + 4 tiles, edges")
+
+
+# ---------------------------------------------------------------- farm animals
+# Strips of walk frames in art/animals/<type>_<0|1>.png; art/animals/index.json gives each strip's frame
+# size, frame count, which row faces down / up / sideways, and which way the side view faces.
+# Cows: Farm RPG (four directions). Chickens: Farm RPG. Pigs, sheep, ducks: Sunnyside World. Quail: the
+# Sunnyside bird, recoloured. Goats: the Farm RPG bull, recoloured and smaller. All muted a little.
+FRPG = os.path.join(SRC, "Farm_RPG_FREE_16x16_-_Tiny_Asset_Pack", "Farm RPG FREE 16x16 - Tiny Asset Pack", "Farm Animals")
+if os.path.isdir(FRPG) and os.path.isdir(SUNE):
+    AN = {}
+    def an_save(nm, im, fw, fh, n, rows, face):
+        save(mute(im, 0.12), "animals/%s.png" % nm)
+        AN[nm] = {"fw": fw, "fh": fh, "n": n, "rows": rows, "face": face}
+    frpg = lambda f: Image.open(os.path.join(FRPG, f)).convert("RGBA")
+    sun = lambda f: Image.open(os.path.join(SUNE, "Animals", f)).convert("RGBA")
+    def recol(im, pick, want):
+        out = im.copy()
+        px = out.load()
+        for y in range(out.height):
+            for x in range(out.width):
+                p = px[x, y]
+                if p[3] and pick(p):
+                    lum = (0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / 255
+                    w = hexrgb(want)
+                    k = 0.55 + 0.9 * lum
+                    px[x, y] = tuple(min(255, int(c * k)) for c in w) + (p[3],)
+        return out
+    brownish = lambda p: p[0] > p[2] + 30 and p[0] < 220 and sum(p[:3]) > 140
+    whiteish = lambda p: min(p[:3]) > 170
+    side_only = {"side": 0}
+    an_save("chicken_0", frpg("Chicken Blonde  Green.png").crop((0, 0, 64, 16)), 16, 16, 4, side_only, "left")
+    an_save("chicken_1", frpg("Chicken Red.png").crop((0, 0, 64, 16)), 16, 16, 4, side_only, "left")
+    cow = frpg("Female Cow Brown.png")
+    an_save("cow_0", cow, 32, 32, 4, {"side": 0, "down": 1, "up": 2}, "left")
+    an_save("cow_1", recol(cow, brownish, "#2a2a2e"), 32, 32, 4, {"side": 0, "down": 1, "up": 2}, "left")
+    bull = frpg("Male Cow Brown.png")
+    small = lambda im: im.resize((im.width * 3 // 4, im.height * 3 // 4), Image.NEAREST)
+    an_save("goat_0", small(recol(recol(bull, brownish, "#8a8278"), whiteish, "#e8e0d0")), 24, 24, 4, {"side": 0, "down": 1, "up": 2}, "left")
+    an_save("goat_1", small(recol(recol(bull, brownish, "#5a3e28"), whiteish, "#a88a64")), 24, 24, 4, {"side": 0, "down": 1, "up": 2}, "left")
+    pig = sun("spr_deco_pig_01_strip4.png")
+    an_save("pig_0", pig, 32, 32, 4, side_only, "left")
+    an_save("pig_1", hue_set(pig, "#8a6a5a", lambda p: p[0] > p[2] + 20), 32, 32, 4, side_only, "left")
+    sheep = sun("spr_deco_sheep_01_strip4.png")
+    an_save("sheep_0", sheep, 32, 32, 4, side_only, "left")
+    an_save("sheep_1", recol(sheep, whiteish, "#5a5458"), 32, 32, 4, side_only, "left")
+    duck = sun("spr_deco_duck_01_strip4.png")
+    dpx = duck.load()
+    for y in range(duck.height):          # the strip shows it swimming: drop the water line
+        for x in range(duck.width):
+            p = dpx[x, y]
+            if p[3] and p[2] > p[0] + 40 and p[1] > p[0] + 20:
+                dpx[x, y] = (0, 0, 0, 0)
+    an_save("duck_0", recol(duck, lambda p: p[0] > 180 and p[1] > 150 and p[2] < 140, "#f0ece0"), 16, 16, 4, side_only, "left")
+    an_save("duck_1", recol(duck, lambda p: p[0] > 180 and p[1] > 150, "#9a7a50"), 16, 16, 4, side_only, "left")
+    bird = sun("spr_deco_bird_01_strip4.png")
+    an_save("quail_0", recol(bird, lambda p: sum(p[:3]) > 300, "#a88a62"), 16, 16, 4, side_only, "left")
+    an_save("quail_1", recol(bird, lambda p: sum(p[:3]) > 300, "#6a5a44"), 16, 16, 4, side_only, "left")
+    os.makedirs(os.path.join(OUT, "animals"), exist_ok=True)
+    json.dump(AN, open(os.path.join(OUT, "animals", "index.json"), "w"), indent=1)
+    print("animals:", len(AN))
