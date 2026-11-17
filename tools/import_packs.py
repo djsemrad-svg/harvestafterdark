@@ -2055,3 +2055,74 @@ if os.path.isdir(MEROOT):
              "..dgdgd."]
     save(_px(REEDS, {"b": "#6a4a2a", "g": "#6aa04a", "d": "#3e6a2e"}), "tiles/water_reeds.png")
     print("water details: rocks, lilies, log, reeds")
+
+
+# ---------------------------------------------------------------- Aurium in rainbow (Nov 17)
+# Everything made of Aurium (ore, bar, the mine rock's flecks, top-tier tools, the Aurium Rod) gets a rainbow
+# sweep across its metal, keeping the picture's own shading. Runs last, on the finished files.
+import colorsys as _cs
+
+
+def rainbow(im, mask, sat=0.85, span=0.83, lift=0.22):
+    out = im.copy()
+    px = out.load()
+    pts = [(x, y) for y in range(out.height) for x in range(out.width) if px[x, y][3] and mask(px[x, y], x, y)]
+    if not pts:
+        return out
+    # run the colours along the shape's longest direction, so a bar laid either way gets the whole spectrum
+    best = None
+    for dx, dy in [(1, 0), (0, -1), (1, -1), (1, 1)]:
+        vals = [dx * x + dy * y for x, y in pts]
+        sp = max(vals) - min(vals)
+        if best is None or sp > best[0]:
+            best = (sp, dx, dy, min(vals))
+    sp, ddx, ddy, lo = best
+    for x, y in pts:
+        r, g, b, a = px[x, y]
+        v = max(r, g, b) / 255.0
+        hue = (ddx * x + ddy * y - lo) / max(1, sp) * span
+        nr, ng, nb = _cs.hsv_to_rgb(hue % 1.0, sat, min(1.0, lift + v * (1.0 - lift) * 1.05))
+        px[x, y] = (int(nr * 255), int(ng * 255), int(nb * 255), a)
+    return out
+
+
+def _hsv(p):
+    return _cs.rgb_to_hsv(p[0] / 255.0, p[1] / 255.0, p[2] / 255.0)
+
+
+def _ld(rel):
+    p = os.path.join(OUT, rel)
+    return Image.open(p).convert("RGBA") if os.path.exists(p) else None
+
+
+not_outline = lambda p, x, y: _hsv(p)[2] > 0.2
+n = 0
+for rel in ["icons/aurium_bar.png", "icons/aurium_ore.png"]:
+    im = _ld(rel)
+    if im is not None:
+        save(rainbow(im, not_outline), rel); n += 1
+# the mine rock: only its blue flecks
+im = _ld("objects/ore_rock_aurium_ore.png")
+if im is not None:
+    save(rainbow(im, lambda p, x, y: _hsv(p)[1] > 0.3 and 0.45 < _hsv(p)[0] < 0.75), "objects/ore_rock_aurium_ore.png"); n += 1
+# top-tier tools: the head is where the Aurium picture differs from the Basic one
+for tool in ["axe", "hoe", "pickaxe", "shovel", "scythe"]:
+    t5 = _ld("icons/%s_t5.png" % tool); t0 = _ld("icons/%s.png" % tool)
+    if t5 is None:
+        continue
+    def head(p, x, y):
+        h, sa, va = _hsv(p)
+        return va > 0.2 and sa > 0.2 and 0.38 < h < 0.62       # the teal metal, not the wooden handle
+    rb = rainbow(t5, head)
+    save(rb, "icons/%s_t5.png" % tool)
+    save(rb, "icons/%s_aurium.png" % tool); n += 1
+# the watering can: its grey metal (the same pixels the game tints for upgrades)
+wc = _ld("icons/watering_can.png")
+if wc is not None:
+    rb = rainbow(wc, not_outline)
+    save(rb, "icons/watering_can_t5.png"); save(rb, "icons/watering_can_aurium.png"); n += 1
+# the Aurium Rod: the rod itself, not the line or reel
+rod = _ld("icons/fishing_rod_aurium.png")
+if rod is not None:
+    save(rainbow(rod, lambda p, x, y: _hsv(p)[1] > 0.3 and _hsv(p)[2] > 0.25), "icons/fishing_rod_aurium.png"); n += 1
+print("aurium rainbow: %d pictures" % n)
