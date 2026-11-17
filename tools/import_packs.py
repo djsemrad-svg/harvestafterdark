@@ -1615,3 +1615,63 @@ if os.path.isfile(PCW) and os.path.isfile(SUNTS) and os.path.isfile(PCF):
             g.putpixel((x, y), (154, 106, 208, 255))
     save(g, "objects/geode_rock.png")
     print("mine: walls, floors, %d rocks" % (len(ORE) + 5))
+
+
+# ---------------------------------------------------------------- farm equipment
+# Pixel Crawler's farm props: the scarecrow (and a tin one), troughs (cut down to one tile: both ends of the
+# long trough), the worm bin and nest box (its small planter box), the shipping crate. Sprinklers are drawn
+# here as small pixel pictures. The crab pot uses its Hollow Dolphin icon.
+PCFARM = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Props", "Static", "Farm.png")
+if os.path.isfile(PCFARM) and "PI" in globals():
+    fm = Image.open(PCFARM).convert("RGBA")
+    piece = lambda x, y, w, h: fm.crop((236 + x, y, 236 + x + w, y + h))
+    def trim(im):
+        return im.crop(im.getbbox())
+    sc = trim(piece(8, 32, 24, 48))
+    sc = PI.shrink(sc, round(sc.width * 0.72), round(sc.height * 0.72), reoutline=False)
+    save(sc, "objects/scarecrow.png")
+    save(hue_set(sc, "#8a9098", lambda p: (max(p[:3]) - min(p[:3])) > 20 and sum(p[:3]) > 120), "objects/tin_scarecrow.png")
+    def ends(im):
+        """A long trough cut down to one tile: its left and right ends side by side."""
+        out = Image.new("RGBA", (16, im.height), (0, 0, 0, 0))
+        out.alpha_composite(im.crop((0, 0, 8, im.height)), (0, 0))
+        out.alpha_composite(im.crop((im.width - 8, 0, im.width, im.height)), (8, 0))
+        return out
+    empty = ends(piece(84, 0, 48, 16))
+    water = empty.copy()
+    wp = water.load()
+    for y in range(3, 13):
+        for x in range(2, 14):
+            if wp[x, y][3] and sum(wp[x, y][:3]) < 120:      # the dark inside fills with water
+                wp[x, y] = (58, 104, 150, 255) if (x + y) % 5 else (120, 170, 210, 255)
+    save(water, "objects/water_trough.png")
+    feed = ends(piece(84, 16, 48, 16))
+    save(feed, "objects/feed_trough.png")
+    save(feed, "objects/hay_hopper.png")
+    box = trim(piece(116, 32, 16, 16))
+    worms = hue_set(box, "#3e2a1c", lambda p: p[1] > 50 and abs(p[0] - p[1]) < 60 and sum(p[:3]) > 150)
+    for x, y in [(5, 6), (6, 6), (10, 8), (11, 8)]:
+        if worms.getpixel((x, y))[3]: worms.putpixel((x, y), (200, 120, 120, 255))
+    save(worms, "objects/worm_bin.png")
+    save(hue_set(box, "#c8a85a", lambda p: p[1] > 60 and abs(p[0] - p[1]) < 60 and sum(p[:3]) > 150), "objects/nest_box.png")
+    save(trim(piece(68, 8, 16, 24)), "objects/shipping_box.png")
+    if os.path.exists(os.path.join(OUT, "icons", "crab_pot.png")):
+        save(Image.open(os.path.join(OUT, "icons", "crab_pot.png")).convert("RGBA"), "objects/crab_pot.png")
+    SPR = {
+        "bucket_sprinkler": ["................", "................", "................", "......oooo......", ".....oBbbBo.....",
+                             "......oooo......", "....oooooooo....", "...oLLLLLLLLo...", "...oMMMMMMMMo...", "....oMMMMMMo....",
+                             "....oMDMMDMo....", "....oMMMMMMo....", ".....oMMMMo.....", ".....oDDDDo.....", "......oooo......", "................"],
+        "pressure_sprinkler": ["................", "................", "......oooo......", ".....oCccCo.....", "..oo.oCCCCo.oo..",
+                               ".oCcooCHHCooCco.", "..ooCCCHHCCCoo..", ".....oCCCCo.....", "......oCCo......", ".......oo.......",
+                               "......oMMo......", "......oMMo......", "....ooMMMMoo....", "...oDDDDDDDDo...", "....oooooooo....", "................"],
+        "drip_array": ["................", "................", "................", "..oooooooooooo..", ".oLLLLLLLLLLLLo.",
+                       ".oMMBMMBMMBMMMo.", ".oMMMMMMMMMMMMo.", ".oDDDDDDDDDDDDo.", "..oooooooooooo..", "...oCo.oCo.oCo..",
+                       "...oCo.oCo.oCo..", "....w...w...w...", "...........w....", "....w...........", "................", "................"],
+    }
+    SPAL = {"o": (30, 28, 32, 255), "L": (196, 200, 206, 255), "M": (138, 144, 152, 255), "D": (88, 92, 100, 255),
+            "B": (120, 170, 210, 255), "b": (70, 110, 160, 255), "C": (200, 122, 64, 255), "c": (236, 170, 110, 255),
+            "H": (150, 84, 40, 255), "w": (120, 170, 210, 200)}
+    for oid, rows in SPR.items():
+        im = pix_icon(rows, SPAL)
+        save(im.crop(im.getbbox()), "objects/%s.png" % oid)
+    print("farm equipment: 14")

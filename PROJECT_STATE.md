@@ -375,6 +375,10 @@ Daniel wants to revisit these later. `art/animals/<type>_<0|1>.png` are strips o
 - `tests/screenshots.gd --only=mine` shows floors 2 and 7.
 - Two tests depend on random rolls and fail now and then (a Precinct 9 locker roll, a fish-size record). Both passed 6 of 6 when repeated.
 
+### Farm equipment (added Nov 16)
+
+Pixel Crawler farm props: scarecrow (and a grey tin one), water and feed troughs and the hay hopper (the long trough cut to one tile), worm bin and nest box (the small planter box), shipping crate. Sprinklers (bucket, pressure, drip array) are small pixel pictures drawn in the importer (`SPR`). The crab pot uses its icon. Still code-drawn: trellis, cold frame, raised bed, hay silo, well, fruit trees.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
