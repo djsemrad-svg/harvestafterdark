@@ -387,6 +387,10 @@ Daniel could walk through the ranch's wall and never reach its door up the porch
 
 1,244 unnamed icons (`item<N>.png`) in one consistent style, copied to `<packs>/Item_Pack_16x16/`. `ITEM_PACK` (last section of the importer) maps 134 game items to pack numbers, some recoloured: crafting parts (gears, springs, magnet, coil, rope, thread, circuit board, nails, pipe), finds (cassette, vinyl, ammonite, pocket watch, radio, toy robot), slingshots, boomerangs, crowbars, riot shield, Molotov, pipe bomb, nuts, beans, sacks of flour, feed and fertilizer, saplings, fuel cans, masks. It also replaces the weakest kitbashed icons so they match: ores, coal, stone, gravel, clay, geode, glass shards, five soups, mushrooms, dandelion, holly, wild leek. About 87 icons are still code-drawn, mostly placeables whose icon comes from their world picture.
 
+### Player animations (added Nov 16)
+
+The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, walk, hit, punch, stab, hurt, pick up. `MiChars.compose(look, dir, frame, anim)` takes an animation name (`MiChars.ANIMS`; "walk", the default, still maps a 0-3 counter onto 4 of the 6 walk frames for infected and older code). `WorldView.player_anim()` picks the player's: hurt for 0.36 s after damage (`hurt_t`), the swing while using a tool or melee weapon (stab for blades and polearms, punch for fists and shoves, hit for the rest), pick up after harvesting or foraging (`pick_t`), the full 6-frame walk, and breathing idle when standing. Neighbours walk with 6 frames and breathe when standing. Guns, bows and the swinging tool picture are still drawn over the character as before.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
