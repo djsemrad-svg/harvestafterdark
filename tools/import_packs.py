@@ -460,7 +460,7 @@ if os.path.isdir(ME):
         "d_house_green": A % "Post_Apocalyptic_House_2", "d_house_yellow": A % "Post_Apocalyptic_House_2", "d_ruin": A % "Post_Apocalyptic_House_2",
         "store": S % ("Shopping_Center_and_Markets", "Mall_1"), "tavern": A % "Victorian_House_5", "tavern_open": A % "Victorian_House_5",
         "forge": "23_MIlitary_Base_16x16_Dormitory_1.png",
-        "ranch": A % "Country_House", "clinic": "22_Post_Office_16x16_Building_2.png", "workshop": S % ("Generic_Building", "Hardware_Store"),
+        "ranch": A % "One_Story_House", "clinic": "22_Post_Office_16x16_Building_2.png", "workshop": S % ("Generic_Building", "Hardware_Store"),
         "guild": "23_MIlitary_Base_16x16_Dormitory_2.png", "townhall": S % ("Generic_Building", "Condo_6"),
         "archive": "23_MIlitary_Base_16x16_Dormitory_4.png", "archive_open": "23_MIlitary_Base_16x16_Dormitory_4.png",
         "baitshack": S % ("Camping", "Mobile_House_Small_1"),
@@ -479,18 +479,18 @@ if os.path.isdir(ME):
         "d_bait": S % ("Camping", "Mobile_House_Small_2"), "d_boathouse": S % ("Camping", "Mobile_House_Big_1"),
         "d_ranger": S % ("Camping", "Mobile_House_Big_5"), "d_cabin": S % ("Camping", "Mobile_House_Medium_5"),
         "d_lab": S % ("Hotel_and_Hospital", "Hospital_1"), "d_lab6": "23_MIlitary_Base_16x16_Bunker.png",
-        "d_booth": S % ("Police_Station", "Parking_Booth_2"), "d_clubhouse": A % "Country_House_No_Banisters",
+        "d_booth": S % ("Police_Station", "Parking_Booth_2"), "d_clubhouse": S % ("Camping", "Mobile_House_Big_3"),
     }
     # where each picture's door (or the foot of its steps) is, in pixels from the left; default the middle
     DOOR = {"archive": 32, "archive_open": 32, "d_bar": 32, "forge": 32, "guild": 33, "baitshack": 40, "d_bait": 40,
-            "d_boathouse": 40, "d_booth": 24, "d_cabin": 42, "d_clubhouse": 48, "ranch": 48, "d_farmhouse": 145, "d_firehouse": 46,
+            "d_boathouse": 40, "d_booth": 24, "d_cabin": 42, "d_clubhouse": 42, "ranch": 145, "d_farmhouse": 145, "d_firehouse": 46,
             "d_guns": 24, "d_hotdog": 24, "d_pawn": 24, "d_pharmacy": 24, "d_hardware": 40, "workshop": 40,
             "d_house_blue": 124, "d_house_red": 124, "farmhouse": 124, "d_house_green": 123, "d_house_yellow": 123, "d_ruin": 123, "ruin": 123,
             "d_lab": 65, "d_lab6": 67, "d_lumber_office": 40, "d_mill": 77, "d_warehouse": 77, "d_ranger": 42, "house_a": 42, "house_b": 42,
             "d_scrap_office": 35, "d_shed": 68, "store": 138, "tavern": 45, "tavern_open": 45, "townhall": 55}
     # pictures whose steps end above the picture's bottom edge: the ground line at the door, in pixels from the top.
     # Whatever is drawn below it (a porch) hangs in front and is solid.
-    BASE = {"ranch": 208, "d_clubhouse": 208}
+    BASE = {}     # (Reyes Ranch and the Dry Creek clubhouse used porch pictures; both now have front doors)
     meta = {}
     for kind, f in BUILDINGS.items():
         p = os.path.join(ME, f)

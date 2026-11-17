@@ -10,7 +10,7 @@ extends RefCounted
 
 const SCALED := {"town": 2, "residential": 2, "industrial": 2, "riverlands": 2, "halvorsen": 2, "dry_creek": 2}
 ## Bump when the layout of the scaled maps changes, so older saves rebuild their outdoor objects.
-const VERSION := 3      # 2: buildings line up on their real doors; 3: narrower roads, bigger wrecks
+const VERSION := 5      # 2: buildings line up on their real doors; 3: narrower roads, bigger wrecks; 4: new ranch and clubhouse; 5: paths keep their ends
 
 ## Sprinkled again after scaling: [chance for each of the 4 tiles of a design tile].
 const NATURE := {"tree": 0.45, "pine": 0.45, "weeds": 0.8, "twig": 0.4, "rock": 0.4, "bush": 0.5, "stump": 0.3,
@@ -74,20 +74,22 @@ static func upscale(src: GameMap) -> GameMap:
 		for x in src.w:
 			m.fill(x * s, y * s, s, s, src.tile_at(x, y))
 	# wide roads and dirt tracks would come out twice as wide as looks right next to the people: the outer
-	# tile row of a run 3+ design tiles wide (2+ for dirt) goes back to the ground beside it (6 tiles -> 4)
+	# tile row along each side of a strip 3+ design tiles wide (2+ for dirt) goes back to the ground beside it
+	# (6 tiles -> 4). Only the long sides of a strip are trimmed, never its ends, so paths still meet doors.
 	for y in src.h:
 		for x in src.w:
 			var t := src.tile_at(x, y)
 			if t != "road" and t != "dirt": continue
+			var across_x := _run(src, x, y, Vector2i(1, 0), t)      # how wide the strip is left to right
+			var across_y := _run(src, x, y, Vector2i(0, 1), t)      # and top to bottom
+			var need := 3 if t == "road" else 2
 			for d in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
 				if not src.in_bounds(x + d.x, y + d.y): continue
 				var nt := src.tile_at(x + d.x, y + d.y)
 				if nt == t or nt == "water" or nt == "bridge" or nt == "road" or nt == "dirt": continue
-				var run := 0
-				var cx := x; var cy := y
-				while src.in_bounds(cx, cy) and src.tile_at(cx, cy) == t and run < 8:
-					run += 1; cx -= d.x; cy -= d.y
-				if run < (3 if t == "road" else 2): continue
+				var width := across_x if d.x != 0 else across_y
+				var length := across_y if d.x != 0 else across_x
+				if width < need or width > length: continue
 				for i in s:
 					var rx: int = (x * s + (0 if d.x < 0 else s - 1)) if d.x != 0 else x * s + i
 					var ry: int = (y * s + (0 if d.y < 0 else s - 1)) if d.y != 0 else y * s + i
@@ -222,3 +224,12 @@ static func _clear_of_buildings(m: GameMap, x: int, y: int, w: int, h: int) -> b
 		if x < int(st.x) + int(st.w) and x + w > int(st.x) and y < int(st.y) + int(st.h) and y + h > int(st.y):
 			return false
 	return true
+
+## How many tiles of type t run through (x, y) along direction d (both ways).
+static func _run(src: GameMap, x: int, y: int, d: Vector2i, t: String) -> int:
+	var n := 1
+	for sgn: int in [1, -1]:
+		var cx: int = x + d.x * sgn; var cy: int = y + d.y * sgn
+		while src.in_bounds(cx, cy) and src.tile_at(cx, cy) == t and n < 40:
+			n += 1; cx += d.x * sgn; cy += d.y * sgn
+	return n

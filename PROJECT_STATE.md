@@ -358,7 +358,7 @@ Daniel asked for more colour and life, balanced against the run-down look.
 - Trees from Pixel Crawler, four kinds picked by the object's `v`: full oak (`tree`), smaller oak (`tree2`), slim tree that turns red in autumn (`tree3`), the old PostApocalypse tree (`tree4`). Pines: green, teal (`pine2`), short (`pine3`). All seasonal, snowy in winter.
 - Colour grade: districts and other cold places keep a cooler, greyer look but less washed out (`MOODS` in `world_view.gd`).
 - Roads: Modern Exteriors cracked asphalt with a concrete curb where they meet pavement or grass. Dirt: Pixel Crawler dirt, toned down, with a ragged grass lip where it meets grass (`_ground_edges`, `tiles/road_edge_<side>`, `tiles/dirt_edge_<season>_<side>`).
-- Narrower roads on the scaled maps: wide runs lose their outer tile row on each side (a 6-tile road is now 4, a 4-tile dirt track 2). `MapScale.VERSION` 3.
+- Narrower roads on the scaled maps: wide strips lose their outer tile row along each long side (a 6-tile road is now 4, a 4-tile dirt track 2). Ends are never trimmed, so paths still meet doors (`MapScale._run`). `MapScale.VERSION` 5.
 - Car and bus wrecks are Modern Exteriors vehicles at people scale, faded, rusted and some burned. Cars take 4x2 tiles, buses 7x3 (nudged away from buildings, or kept small if there's no room).
 - Tilled soil: a Sunnyside World mound on dark dirt (`tiles/soil_dry.png`, `tiles/soil_wet.png`, used by `Art.get_soil`). Sand is paler and gets the grass lip too. The one-tile tooth at road crossings is removed after trimming.
 - `tests/screenshots.gd --only=scenes` takes daytime views of the farm, town, Residential and Riverlands plus a wreck next to the player, for colour checks.
@@ -378,6 +378,10 @@ Daniel wants to revisit these later. `art/animals/<type>_<0|1>.png` are strips o
 ### Farm equipment (added Nov 16)
 
 Pixel Crawler farm props: scarecrow (and a grey tin one), water and feed troughs and the hay hopper (the long trough cut to one tile), worm bin and nest box (the small planter box), shipping crate. Sprinklers (bucket, pressure, drip array) are small pixel pictures drawn in the importer (`SPR`). The crab pot uses its icon. Still code-drawn: trellis, cold frame, raised bed, hay silo, well, fruit trees.
+
+### Reyes Ranch fix (Nov 16)
+
+Daniel could walk through the ranch's wall and never reach its door up the porch steps. Reyes Ranch is now the Modern Exteriors One Story House (front door at ground level, door column 145) and the Dry Creek clubhouse a big mobile home (door 42). Nothing uses the porch `BASE` setup any more. `tests/screenshots.gd --only=ranch` shows the ranch door.
 
 ### Packs looked at and not used (Nov 16)
 

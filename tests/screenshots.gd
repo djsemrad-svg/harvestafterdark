@@ -48,6 +48,17 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "ranch":
+		main.ui.close_all()
+		for st in Game.maps.town.structures:
+			if st.kind == "ranch":
+				Game.change_map("town", int(st.door_x), int(st.door_y) + 3, "up", {"silent": true})
+		Game.state.time = 700
+		Game.enemies.clear()
+		await frames(30)
+		await shot("92_ranch")
+		get_tree().quit()
+		return
 	if only == "mine":
 		main.ui.close_all()
 		for fl in [2, 7]:
