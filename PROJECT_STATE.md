@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 16, 2026)
+## Status (Nov 17, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 261 / 261 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 278 / 278 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -400,6 +400,40 @@ The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, wa
 `scripts/world/wildlife.gd` (Wildlife): small animals around you outdoors, just for life, never saved. Birds fly over (with a shadow below), pigeons and crows peck and fly off when you come within 44 px, squirrels dash round a tree and vanish, rabbits and rats bolt, butterflies flutter in spring and summer, fireflies glow on summer nights. Farm, town and other warm places get birds, pigeons, squirrels, rabbits and butterflies; districts and cold places get crows, rats and birds; nothing underground, fewer in rain. At most 7 at once (`CAP`). Pictures in `art/critters/` (drawn in the importer, pigeon and crow from the Sunnyside bird). Tests: `run_wildlife`.
 
 Weeds and bushes are now Pixel Crawler plants (leafy clumps and ferns, seasonal bushes); one bush in four is dotted with Serene Village blossoms in spring and summer.
+
+### Brightwater, small town and lived in (Nov 17)
+- Town buildings use small-town pictures with ground-level front doors (store, forge, townhall, tavern,
+  archive, houses, guild, workshop). The clinic is a small corner shop with a red cross sign.
+- `scripts/world/town_dress.gd` (TownDress) runs after MapScale on the real town map: ten neighbours'
+  homes (not enterable, each with a line at the door), yards with mailboxes, flower beds, hedges and sheds,
+  a fountain and a statue on the square, shrubs and flowers over open grass. It keeps door steps, warps
+  and every spot a neighbour's schedule uses clear. MapScale.VERSION 7 rebuilds the town in old saves.
+- A patchwork salvage wall (sheet metal, rusted panels, planks) runs round town with gaps at every road;
+  joined walls can have variants (`objects/<type>_c<mask>_<v>.png`).
+- Armed guards (rifles at the ready) stand at each road into town (TownDress.POSTS); townsfolk roles rebalanced.
+
+### Water details (Nov 17)
+River rocks with white water, reeds; ponds and lakes get lily pads, reeds and one sunken log. Pictures
+only (drawn after the ground in world_view `_water_detail`), nothing affects fishing.
+
+### Livelier first morning (Nov 17)
+Day 1: Hal meets you at the farm gate at 6 am with his own hello, then opens the store. Every neighbour
+spends the early morning outside before work. The store, forge, ranch and clinic open at 8.
+
+### Weather (Nov 17)
+Rain in three depths with splashes and rings on water, storms with lightning and thunder (synth rumble),
+layered snow on a gusting wind, tumbling leaves or petals on windy days, fog in soft banks. All screen
+space with a little camera parallax; nothing indoors.
+
+### Tools in hand (Nov 17)
+Swings have a wind-up, strike (with a smear) and follow-through; the grip sits in the hand with a hand drawn
+over it. Scythe sweeps, blades and spears thrust, the watering can tips and pours. Keyframes in world_view
+`SWING_KEYS` / `SWEEP_KEYS`. Screenshot mode `swing`.
+
+### Pending (Nov 17)
+- Font: Tiny5 for UI, Jersey 10 for titles, preview sent to Daniel; files in `art/fonts/` and the
+  ui_kit.gd / world_view.gd font lines are uncommitted until he approves.
+- Animals: revisit later (Daniel).
 
 ### Packs looked at and not used (Nov 16)
 
