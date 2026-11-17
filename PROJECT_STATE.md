@@ -431,8 +431,9 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 `SWING_KEYS` / `SWEEP_KEYS`. Screenshot mode `swing`.
 
 ### Pending (Nov 17)
-- Font: Tiny5 for UI, Jersey 10 for titles, preview sent to Daniel; files in `art/fonts/` and the
-  ui_kit.gd / world_view.gd font lines are uncommitted until he approves.
+- Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
+- Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`).
+- Aurium ore, bar and rod: rainbow flattened them; offered to rebuild from the item pack ore and ingot first.
 - Animals: revisit later (Daniel).
 
 ### Packs looked at and not used (Nov 16)
