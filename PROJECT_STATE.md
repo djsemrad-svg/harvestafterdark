@@ -511,4 +511,9 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
    - Mine progression less like Stardew: every floor has a way down from the start (stairs, sometimes guarded or hidden behind rubble), so you choose to fight or sneak past. Optional: some floors lock the stairs until the floor's infected are cleared.
    - Mine loot: small loot boxes scattered on floors (gold, healing, common parts, food, common gems; 1-5% for something rarer); a big chest every 10 floors (more gold, rare and epic weapons and gear, rare parts and dishes, 10% legendary); a legendary chest on the last floor (1 legendary weapon, 1 legendary armour piece, a lot of gold). The mine is 20 floors now, so the last floor is 20 until more are added.
    - Mine elevator on floor 1 and every 10th floor (10, 20, and later 30, 40...): visiting a floor unlocks it; the elevator rides between unlocked floors with a rumble sound and a shaking screen.
-   - Artifacts: already in the game. The Community Archive (a Restoration project) takes minerals, gems and artifacts with rewards at 5, 10, 20 and 30 donations. Could add: Ruth or the Archive buys extra relics for gold, and a "pre-Fall relics" collection with its own rewards.
+   - Antique and oddities shop (agreed Nov 17; replaces the Archive museum idea): the restored Archive becomes an antique / oddities shop with a keeper.
+     - 75-100 relics (pre-outbreak finds: old tech, toys, keepsakes, documents, oddities). Art made first from Daniel's packs (Item Pack 16x16, Kyrise, props pack, Modern Interiors/Exteriors pieces) so every relic has a picture.
+     - Relics turn up again and again (scavenging, digging, the mine, fishing junk). The first of each goes on display for collection rewards; repeats sell to the shop for gold.
+     - A display wall with one bar of every metal and one of every gem (diamond, ruby, pearl, amethyst, emerald, sapphire, topaz, etc.), with its own reward when complete.
+     - Existing museum donations carry over to the new shop.
+     - To settle when building: the shop's name and keeper, and whether it still needs the Archive restoration project first.
