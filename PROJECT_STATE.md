@@ -337,6 +337,17 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 - Shoes: the props pack's four, recoloured per item.
 - Also: shovel, Grave Digger, garden rake and watering can from Modern Exteriors garden tools; axe, pickaxe and hoe from the sword pack. Upgraded tools tint the icon's metal to their tier colour (`Art.icon_image`).
 
+### Kitbashed icons (added Nov 16)
+
+161 more item icons from pieces of the packs, recoloured (`KIT` in the importer, last section). About 235 icons are still code-drawn.
+
+- Ores, coal, stone, clay, sulfur, salt: Sunnyside World ore nuggets, recoloured by brightness ramp. Minerals and geodes: Kyrise shards, gems, stone block and pearl. Wood types: Kyrise log.
+- Cooked dishes: Modern Interiors kitchen plates and grocery trays, the props pack's pots for soups, pies from one grocery pie in four colours.
+- Meat, eggs, milk: grocery meats, Sunnyside egg and milk. Mushrooms: Sunnyside mushrooms.
+- Medicine and samples: hospital syringes, Kyrise potions. Notes and journals: Kyrise scrolls in their colours.
+- Watch out: later loops in the importer reuse the names `tint` and `GUN`; use `ramp_tint` and the full gun path in new code.
+- Still code-drawn (biggest groups): materials and crafting parts, weapons (28), artifacts (fossils, gadgets, toys), defenses, hides and furs, cloth, nuts and cones, packaged sacks and boxes, fuel cans.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

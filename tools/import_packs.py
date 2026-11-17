@@ -68,6 +68,9 @@ def tint(im, dark, light):
     return out
 
 
+ramp_tint = tint   # kept under its own name: later loops reuse the name "tint"
+
+
 def snowify(im):
     """Winter version of a plant: settle snow on the top edge of every clump of leaves."""
     out = im.copy()
@@ -1113,3 +1116,161 @@ if os.path.isdir(GEN32) and "PI" in globals():
             icon(mute(im, 0.22), iid)
             n += 1
     print("gear icons:", n)
+
+
+# ---------------------------------------------------------------- kitbashed icons: food, materials, ores and finds
+# Pieces taken from the packs above and recoloured to fit: Modern Interiors kitchen, grocery, hospital and
+# Halloween props, Kyrise's gems and odds, Sunnyside's ore nuggets and mushrooms, the food and props packs.
+# Each entry: id -> (source, recolour). Sources: "ky:<name>", "food:<name>", "prop:<folder>:<n>", "mi:<theme>:<n>",
+# "ore:<kind>", "shroom:<kind>", "pa:<name>", "sun:<name>", "hd:<n>". Recolours: ("ramp", dark, light) maps
+# brightness onto a ramp (keeps outlines); ("hue", colour) recolours the coloured parts; ("all", colour)
+# recolours everything but the outline.
+SUNG = os.path.join(SRC, "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_Gamemaker", "sprites")
+SUNE = os.path.join(SRC, "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_Assets", "Elements")
+MIS = os.path.join(SRC, "moderninteriors-win", "1_Interiors", "16x16", "Theme_Sorter_Singles")
+MI_THEME = {"kit": ("12_Kitchen_Singles", "Kitchen_Singles"), "gro": ("16_Grocery_Store_Singles", "Grocery_Store_Singles"),
+            "hos": ("19_Hospital_SIngles", "Hospital_Singles"), "hal": ("11_Halloween_Singles", "Halloween_Singles"),
+            "bas": ("14_Basement_Singles", "Basement_Singles")}
+KIT = {
+    # ores, stone and minerals
+    "gold_ore": ("ore:gold", None), "silver_ore": ("ore:silver", None), "aurium_ore": ("ore:bluestone", None),
+    "copper_ore": ("ore:gold", ("ramp", "#5a2410", "#f0a070")), "iron_ore": ("ore:stone", ("ramp", "#3a2620", "#c8987c")),
+    "lead_ore": ("ore:silver", ("ramp", "#22242e", "#8a90a4")), "tin_ore": ("ore:silver", ("ramp", "#4a5050", "#e8eeee")),
+    "zinc_ore": ("ore:silver", ("ramp", "#2a3a44", "#b8d4dc")),
+    "coal": ("ore:coal", None), "stone": ("ore:stone", None), "gravel": ("pa:Icon_Rock", None),
+    "clay": ("ore:stone", ("ramp", "#5a2a18", "#d88a5a")), "sulfur": ("ore:stone", ("ramp", "#5a5010", "#f0e060")),
+    "salt": ("ore:stone", ("ramp", "#8a8c96", "#ffffff")),
+    "amber": ("ky:shard_01g", ("ramp", "#6a3008", "#f8c050")), "calcite": ("ky:gem_01e", ("ramp", "#8a6a5a", "#fff0e0")),
+    "fluorite": ("ky:shard_01j", ("ramp", "#2a4a6a", "#b8f0e8")), "jasper": ("ky:shard_01d", ("ramp", "#5a1a10", "#e07050")),
+    "malachite": ("ky:shard_01a", ("ramp", "#0a3a20", "#60d090")), "mica": ("ky:shard_01h", None),
+    "obsidian": ("ky:shard_01i", ("ramp", "#0e0c14", "#6a6080")), "pyrite": ("ky:gem_01b", ("ramp", "#5a4a10", "#e8d888")),
+    "marble": ("ky:stoneblock_01a", ("ramp", "#8a8c94", "#ffffff")), "limestone": ("ky:stoneblock_01a", ("ramp", "#7a6a50", "#efe4c8")),
+    "brick": ("ky:stoneblock_01a", ("ramp", "#5a2018", "#d8704a")), "cement": ("ky:stoneblock_01a", ("ramp", "#5a5c60", "#c8ccd0")),
+    "petrified_wood": ("ky:wood_01a", ("ramp", "#3a3434", "#b8b0a4")), "hardwood": ("ky:wood_01a", ("ramp", "#2a160c", "#a06438")),
+    "bamboo": ("ky:wood_01a", ("ramp", "#3a4a10", "#d8e080")), "wooden_pole": ("ky:staff_01a", ("ramp", "#3a2414", "#c89060")),
+    "fiber": ("ky:cotton_01a", ("ramp", "#2a4a18", "#b8d888")), "glass_shards": ("ky:shard_01c", ("ramp", "#3a6a7a", "#e8faff")),
+    "resin": ("ky:coin_01a", ("ramp", "#5a2a04", "#e8a030")), "sap": ("ky:coin_01a", ("ramp", "#7a4a08", "#f8d060")),
+    # geodes
+    "geode": ("ky:pearl_01a", None), "frost_geode": ("ky:pearl_01a", ("ramp", "#2a3a5a", "#d0ecff")),
+    "ember_geode": ("ky:pearl_01a", ("ramp", "#4a1a0a", "#f08050")), "deep_geode": ("ky:pearl_01a", ("ramp", "#1e1430", "#8a70b0")),
+    "crystal_geode": ("ky:pearl_01a", ("ramp", "#3a3050", "#e0d0ff")), "fossil_nodule": ("ky:pearl_01a", ("ramp", "#4a3a24", "#d8c8a0")),
+    # finds and keepsakes
+    "old_coin": ("ky:coin_01d", None), "rusted_key": ("ky:key_02a", ("ramp", "#3a1a0a", "#c06a30")),
+    "wedding_ring": ("ky:ring_01d", None), "war_medal": ("ky:necklace_03d", None), "dog_tags": ("ky:necklace_01b", None),
+    "arrowhead": ("ky:gem_01i", ("ramp", "#2a2a2e", "#a8a8b0")), "charred_bone": ("ky:bone01a", ("ramp", "#140e0c", "#5a4a40")),
+    "diary_page": ("ky:scroll_01h", None), "letter": ("ky:scroll_01b", None), "sheriff_page": ("ky:scroll_01a", None),
+    "smith_notes": ("ky:scroll_01c", None), "halvorsen_notes": ("ky:scroll_01d", None), "conspiracy_note": ("ky:scroll_01f", None),
+    "journal_half": ("ky:scroll_01e", None), "journal_half_a": ("ky:scroll_01g", None), "journal_half_b": ("ky:scroll_01g", ("hue", "#3a6a8a")),
+    "soggy_paper": ("ky:scroll_01h", ("ramp", "#3a3a34", "#a8a890")),
+    "lab_keycard": ("mi:hos:51", None),
+    # medicine, samples and zombie parts
+    "adrenaline_shot": ("mi:hos:529", None), "antiviral": ("mi:hos:530", None), "ammo_serum": ("mi:hos:531", None),
+    "serum_sample": ("ky:potion_02c", None), "infected_sample": ("ky:potion_01c", None), "blood_bag": ("ky:potion_03a", None),
+    "burn_salve": ("prop:jar:10", ("hue", "#7ac08a")), "sterile_bandage": ("pa:Icon_Bandage", ("all", "#e8eef4")),
+    "screamer_sac": ("mi:hal:210", None), "rotten_flesh": ("mi:hal:209", ("ramp", "#2a2a18", "#a0a070")),
+    "stalker_eye": ("ky:pearl_01e", None),
+    # drinks, fuels and jars
+    "water_bottle": ("prop:jar:31", None), "dirty_water": ("prop:jar:34", ("hue", "#7a6a40")),
+    "lamp_oil": ("prop:jar:33", ("hue", "#d89830")), "biofuel": ("prop:jar:32", ("hue", "#9ac030")),
+    "mayonnaise": ("prop:jar:13", ("hue", "#e8e0c0")), "aged_roe": ("prop:jar:11", ("hue", "#e86a2a")),
+    "powdered_milk": ("prop:jar:14", ("hue", "#e8ecf0")), "ale": ("ky:cup_02a", ("hue", "#d8902a")),
+    "energy_drink": ("food:soda_sprite", None), "flare": ("ky:candle_01b", ("hue", "#d83a2a")),
+    "incendiary_shell": ("gun:ShotgunShellBig", ("hue", "#e8602a")), "ball_bearings": ("ky:coin_02c", None),
+    # cooked dishes: plates, trays and bowls
+    "apple_crumble": ("mi:gro:386", None), "pumpkin_pie": ("mi:gro:386", ("hue", "#e07a2a")), "berry_cobbler": ("mi:gro:386", ("hue", "#8a2a5a")),
+    "tomato_soup": ("prop:jar:49", ("hue", "#d83a2a")), "beet_borscht": ("prop:jar:49", ("hue", "#a01a4a")),
+    "onion_soup": ("prop:jar:49", ("hue", "#c08a3a")), "ashgrain_porridge": ("prop:jar:49", ("hue", "#d8c8a0")),
+    "fishermans_stew": ("prop:jar:48", ("hue", "#c8a060")), "ember_chili": ("mi:kit:385", None),
+    "baked_potato": ("mi:kit:400", None), "breakfast_skillet": ("mi:kit:387", None), "skillet_hash": ("mi:kit:386", None),
+    "morel_skillet": ("mi:kit:388", ("hue", "#8a5a3a")), "snowpea_stirfry": ("mi:kit:389", None), "stuffed_peppers": ("mi:kit:390", None),
+    "fish_tacos": ("mi:kit:384", None), "survivor_plate": ("mi:kit:401", None), "deviled_eggs": ("food:eggs_softboiled", None),
+    "garden_omelette": ("food:eggs_scrambled", None), "pb_toast": ("food:pastry_brioche", None), "mushroom_toast": ("mi:kit:214", None),
+    "cabbage_rolls": ("mi:gro:211", ("hue", "#7aa04a")), "chestnut_stuffing": ("mi:gro:213", None), "honey_cornbread": ("mi:gro:217", None),
+    "potato_gratin": ("mi:gro:215", None), "ratatouille": ("mi:gro:219", None), "trail_bar": ("mi:gro:210", None),
+    "field_rations": ("mi:gro:117", None), "forager_salad": ("mi:gro:122", None), "radish_slaw": ("mi:gro:120", None),
+    "harvest_feast": ("mi:gro:136", None), "instant_noodles": ("mi:gro:242", None), "mre": ("mi:gro:117", ("hue", "#6a7a3a")),
+    "venison_steak": ("mi:gro:304", None), "boar_roast": ("mi:gro:303", None), "salmon_bake": ("mi:gro:279", ("hue", "#e88a5a")),
+    "roast_poultry": ("mi:gro:283", ("hue", "#c8803a")), "glazed_carrots": ("mi:kit:213", None),
+    "roast_corn": ("food:vegetable_corn", ("ramp", "#4a2a08", "#f0c860")), "squash_bake": ("mi:gro:388", ("hue", "#e0902a")),
+    "fried_fish": ("hd:25", ("ramp", "#4a2408", "#e8b060")), "smoked_fish": ("hd:25", ("ramp", "#1e1008", "#9a6a3a")),
+    # meat, eggs, milk and animal goods
+    "venison": ("mi:kit:215", None), "boar_meat": ("mi:gro:278", None), "rabbit_meat": ("mi:gro:282", None), "poultry": ("mi:gro:283", None),
+    "animal_fat": ("mi:gro:282", ("ramp", "#6a5a40", "#fff4dc")), "jerky": ("mi:gro:280", ("ramp", "#2a1008", "#a05a30")),
+    "smoked_meat": ("mi:gro:278", ("ramp", "#2a140a", "#b07048")),
+    "duck_egg": ("sun:egg", ("ramp", "#4a5a50", "#e8f4e8")), "quail_egg": ("sun:egg", ("ramp", "#5a4a3a", "#f4ead8")),
+    "golden_egg": ("sun:egg", ("ramp", "#6a4a08", "#ffe070")), "goat_milk": ("sun:milk", None), "large_milk": ("food:coffee_milkjug", ("hue", "#e8d8a0")),
+    "butter": ("mi:gro:384", ("hue", "#f0e080")), "beeswax": ("mi:gro:385", ("hue", "#d8a030")),
+    "truffle": ("ky:shard_01h", ("ramp", "#140c08", "#6a5040")),
+    # forage and crops
+    "glowcap": ("shroom:blue_01", None), "field_mushroom": ("shroom:red_01", ("all", "#e8dcc8")), "chanterelle": ("shroom:red_01", ("all", "#e8a030")),
+    "morel": ("shroom:red_01", ("all", "#8a6040")), "puffball": ("shroom:blue_03", ("all", "#f0ece0")),
+    "dried_mushrooms": ("shroom:red_01", ("all", "#6a4a30")),
+    "holly_berry": ("ky:flower_01a", None), "dandelion": ("ky:flower_02a", None),
+    "rose_hip": ("prop:food:6", ("hue", "#d0402a")), "sunberry": ("prop:food:6", ("hue", "#f0b030")),
+    "wild_ginseng": ("food:vegetable_ginger", None), "winter_root": ("food:vegetable_ginger", ("ramp", "#4a4a5a", "#e8e4f0")),
+    "wild_leek": ("prop:food:14", ("hue", "#d8e0b0")), "frost_lichen": ("ky:leaf_01a", ("ramp", "#3a4a5a", "#d0e8f0")),
+    "willow_bark": ("ky:wood_01a", ("ramp", "#2a2a1a", "#8a8a60")), "dried_fruit": ("prop:food:11", ("hue", "#8a4a2a")),
+    "bogberry": ("food:fruit_blueberry", ("hue", "#5a3a6a")), "strawbloom": ("food:fruit_strawberry", None),
+    "zucchini": ("food:vegetable_cucumber", ("ramp", "#0e2a0e", "#6aa04a")),
+    # packaged food and junk
+    "hardtack": ("ky:cookie_01a", ("ramp", "#5a4a30", "#f0e0b8")), "moldy_bread": ("food:pastry_bread", ("ramp", "#2a3a20", "#a8b880")),
+    "rotten_food": ("food:fruit_apple", ("ramp", "#2a2010", "#8a7a40")), "wet_cardboard": ("mi:hos:53", ("ramp", "#2a2014", "#8a7050")),
+}
+
+
+def kit_src(spec):
+    kind, _, rest = spec.partition(":")
+    if kind == "ky":
+        return load(os.path.join(KY, rest + ".png")), 0.12
+    if kind == "food":
+        return load(os.path.join(FOOD, rest + ".png")), 0.0
+    if kind == "prop":
+        f, n = rest.split(":")
+        D2 = {"food": "4-FOOD", "jar": "5-BOTTLES CANS JARS KETTLES VASES", "misc": "6-MISCELLANEOUS"}
+        return load(os.path.join(PROPS, D2[f], n + ".png")), 0.22
+    if kind == "mi":
+        t, n = rest.split(":")
+        d, stem = MI_THEME[t]
+        return load(os.path.join(MIS, d, "%s_%s.png" % (stem, n))), 0.18
+    if kind == "ore":
+        d = os.path.join(SUNG, "spr_deco_ore_" + rest)
+        return load(os.path.join(d, [f for f in os.listdir(d) if f.endswith(".png")][0])), 0.1
+    if kind == "shroom":
+        im = Image.open(os.path.join(SUNE, "Plants", "spr_deco_mushroom_%s_strip4.png" % rest)).convert("RGBA")
+        im = im.crop((0, 0, im.width // 4, im.height))
+        return im.crop(im.getbbox()), 0.1
+    if kind == "sun":
+        return load(os.path.join(SUNE, "Crops", rest + ".png")), 0.1
+    if kind == "pa":
+        return load(os.path.join(INV, rest + ".png")), 0.0
+    if kind == "gun":
+        return load(os.path.join(SRC, "GunsPack", "GunsPack", "Bullets", rest + ".png")), 0.0
+    if kind == "hd":
+        return load(os.path.join(HD, "fishing_icons_16x16_%s.png" % rest)), 0.0
+    raise SystemExit("unknown source " + spec)
+
+
+def kit_recolour(im, op):
+    if op is None:
+        return im
+    if op[0] == "ramp":
+        return ramp_tint(im, op[1], op[2])
+    coloured = lambda p: sum(p[:3]) > 110 and (max(p[:3]) - min(p[:3])) > 22
+    if op[0] == "hue":
+        return hue_set(im, op[1], coloured)
+    if op[0] == "all":
+        return hue_set(im, op[1], lambda p: sum(p[:3]) > 110)
+    raise SystemExit("unknown recolour %r" % (op,))
+
+
+if os.path.isdir(MIS) and os.path.isdir(KY) and "PI" in globals():
+    n = 0
+    for iid, (spec, op) in KIT.items():
+        im, m = kit_src(spec)
+        im = kit_recolour(im, op)
+        if im.width > 16 or im.height > 16:
+            k = 16 / max(im.width, im.height)
+            im = PI.shrink(im, max(1, round(im.width * k)), max(1, round(im.height * k)))
+        icon(mute(im, m) if m else im, iid)
+        n += 1
+    print("kitbashed icons:", n)
