@@ -1675,3 +1675,70 @@ if os.path.isfile(PCFARM) and "PI" in globals():
         im = pix_icon(rows, SPAL)
         save(im.crop(im.getbbox()), "objects/%s.png" % oid)
     print("farm equipment: 14")
+
+
+# ---------------------------------------------------------------- the 16x16 item pack (Daniel, Nov 16; 1,244 unnamed icons item<N>.png)
+# One consistent style. Used for icons the other packs had nothing for, and in place of the weakest kitbashed
+# ones (ores, stone, soups, mushrooms) so those match. id -> (item number, recolour or None).
+ITEMPACK = os.path.join(SRC, "Item_Pack_16x16")
+ITEM_PACK = {
+ # weapons
+ "crowbar": (940, None), "reinforced_crowbar": (940, ("ramp", "#1e2230", "#9aa8c0")), "pipe_wrench": (803, None),
+ "lead_pipe": (930, None), "live_wire_pipe": (930, ("ramp", "#10243a", "#80c8f0")), "tire_iron": (724, None),
+ "slingshot": (734, None), "ball_bearing_slingshot": (734, ("ramp", "#2a2a30", "#c8ccd4")), "firestarter_slingshot": (734, ("hue", "#d0502a")),
+ "bile_sling": (734, ("hue", "#7aa030")), "wooden_boomerang": (828, None), "steel_boomerang": (828, ("ramp", "#2a2e38", "#c8d0dc")),
+ "razor_boomerang": (828, ("ramp", "#3a1010", "#e07060")), "comet": (828, ("ramp", "#4a3008", "#ffe080")),
+ "riot_shield": (199, None), "molotov_cocktail": (708, None), "pipe_bomb": (909, None), "police_baton": (821, ("ramp", "#101014", "#5a5a66")),
+ # crafting parts
+ "bell_bronze": (613, None), "feather": (1176, None), "gear_assembly": (934, None), "spring": (935, None), "magnet": (711, None),
+ "copper_coil": (948, None), "metal_pipe": (930, None), "nails": (932, None), "precision_parts": (933, None), "rope": (689, None),
+ "thread": (979, None), "circuit_board": (960, None), "fuse": (950, None), "car_battery": (911, None), "saw_blade": (769, None),
+ "rebar": (922, ("ramp", "#3a2014", "#b07a5a")), "duct_tape": (936, None), "y_branch": (1010, None), "broken_katana_blade": (923, None),
+ "copper_wire": (689, ("ramp", "#4a1e08", "#f0a060")), "rubber_tubing": (689, ("ramp", "#101010", "#5a5a5a")), "barbed_wire": (736, None),
+ # finds
+ "ammonite": (1116, None), "cassette_tape": (849, None), "vinyl_record": (847, None), "pocket_watch": (941, None), "radio_dial": (846, None),
+ "toy_robot": (912, None), "snow_globe": (880, None), "game_cartridge": (977, None), "childs_drawing": (646, None), "evac_flyer": (642, None),
+ "faded_postcard": (641, None), "mammoth_tooth": (1205, None), "zombie_tooth": (1185, None),
+ # gadgets, resources, forage
+ "binoculars": (732, None), "flashlight": (728, None), "builders_hammer": (710, None), "shears": (759, None), "gold_pan": (806, None),
+ "lockpick_set": (778, None), "pine_cone": (621, None), "hay": (916, None), "e_scrap": (963, None), "ash": (780, None),
+ "acorn": (1000, None), "hazelnut": (493, None), "chestnut": (1014, ("ramp", "#2a1408", "#a8603a")), "walnut": (493, ("ramp", "#2a1a0a", "#b08a5a")),
+ "fiddlehead": (488, None), "pine_needles": (1036, ("hue", "#3a6a3a")),
+ "snapbean": (363, None), "snowpea": (363, ("hue", "#9ad07a")), "soybean": (363, ("hue", "#a8a050")), "cinder_bean": (363, ("hue", "#a83a2a")),
+ # sacks and supplies
+ "flour": (683, None), "cornmeal": (683, ("hue", "#e0c060")), "beet_sugar": (683, ("hue", "#e8d8d0")), "rice_bag": (683, ("hue", "#e8e4d0")),
+ "fertilizer": (683, ("hue", "#7a5a3a")), "quality_fertilizer": (683, ("hue", "#5a7a3a")), "tree_fertilizer": (683, ("hue", "#3a6a4a")),
+ "bone_meal": (683, ("hue", "#f0ece0")), "mixed_feed": (683, ("hue", "#c8a060")), "compost": (1193, None), "moisture_mulch": (1019, None),
+ "frost_cloth": (669, None), "granola_bar": (354, ("hue", "#b08a50")),
+ "bent_fork": (797, None), "dead_battery": (947, ("ramp", "#1a1a1a", "#7a7a72")), "shredded_tire": (752, None),
+ "herbal_poultice": (997, None), "suture_kit": (633, None),
+ "gasoline": (939, None), "diesel": (939, ("hue", "#4a6a3a")), "propane_tank": (938, ("hue", "#c8ccd0")),
+ "grinning_saint": (302, None), "viking_horns": (207, None), "lucky_paw": (1212, None), "sinew": (1217, ("hue", "#d8a090")),
+ "runner_tendon": (1217, ("hue", "#a83a3a")), "sleeping_bag": (1161, None), "trail_camera": (755, None),
+ "torch_post": (719, None), "ham_radio": (846, ("ramp", "#202420", "#8a9a7a")), "anvil": (747, None),
+ "apple_sapling": (1003, None), "cherry_sapling": (1003, None), "peach_sapling": (1003, None), "pear_sapling": (1003, None),
+ "plum_sapling": (1003, None), "walnut_sapling": (1003, None),
+ # replacing weaker kitbashed icons so they match
+ "copper_ore": (1133, None), "gold_ore": (1121, None), "coal": (1126, None), "stone": (1137, None), "gravel": (1127, None),
+ "clay": (1128, None), "geode": (1142, None), "glass_shards": (545, None),
+ "iron_ore": (1133, ("ramp", "#2a1a14", "#c89a80")), "tin_ore": (1133, ("ramp", "#3a4040", "#e8ecec")), "zinc_ore": (1133, ("ramp", "#283840", "#b8d4dc")),
+ "lead_ore": (1133, ("ramp", "#1a1c24", "#8a90a0")), "silver_ore": (1133, ("ramp", "#3a3c48", "#f4f6fa")),
+ "tomato_soup": (476, None), "onion_soup": (497, None), "fishermans_stew": (498, None), "ashgrain_porridge": (475, None),
+ "beet_borscht": (476, ("hue", "#a01a4a")),
+ "morel": (412, None), "chanterelle": (469, None), "glowcap": (389, None), "field_mushroom": (327, None), "dandelion": (1042, None),
+ "holly_berry": (617, None), "wild_leek": (474, None),
+}
+
+if os.path.isdir(ITEMPACK):
+    n = 0
+    for iid, (num, op) in ITEM_PACK.items():
+        p = os.path.join(ITEMPACK, "item%d.png" % num)
+        if not os.path.exists(p):
+            print("missing pack item", num, "for", iid)
+            continue
+        im = Image.open(p).convert("RGBA")
+        if op is not None:
+            im = ramp_tint(im, op[1], op[2]) if op[0] == "ramp" else hue_set(im, op[1], lambda q: (max(q[:3]) - min(q[:3])) > 22 and sum(q[:3]) > 110)
+        save(mute(im, 0.06), "icons/%s.png" % iid)
+        n += 1
+    print("item pack icons:", n)

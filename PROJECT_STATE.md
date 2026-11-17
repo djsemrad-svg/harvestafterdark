@@ -383,6 +383,10 @@ Pixel Crawler farm props: scarecrow (and a grey tin one), water and feed troughs
 
 Daniel could walk through the ranch's wall and never reach its door up the porch steps. Reyes Ranch is now the Modern Exteriors One Story House (front door at ground level, door column 145) and the Dry Creek clubhouse a big mobile home (door 42). Nothing uses the porch `BASE` setup any more. `tests/screenshots.gd --only=ranch` shows the ranch door.
 
+### Daniel's 16x16 item pack (added Nov 16)
+
+1,244 unnamed icons (`item<N>.png`) in one consistent style, copied to `<packs>/Item_Pack_16x16/`. `ITEM_PACK` (last section of the importer) maps 134 game items to pack numbers, some recoloured: crafting parts (gears, springs, magnet, coil, rope, thread, circuit board, nails, pipe), finds (cassette, vinyl, ammonite, pocket watch, radio, toy robot), slingshots, boomerangs, crowbars, riot shield, Molotov, pipe bomb, nuts, beans, sacks of flour, feed and fertilizer, saplings, fuel cans, masks. It also replaces the weakest kitbashed icons so they match: ores, coal, stone, gravel, clay, geode, glass shards, five soups, mushrooms, dandelion, holly, wild leek. About 87 icons are still code-drawn, mostly placeables whose icon comes from their world picture.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
