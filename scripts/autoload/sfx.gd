@@ -44,6 +44,7 @@ const EFFECTS := {
 	"spit": [["noise", 0, 0.1, "", 0.2, 1.0, 0.0], ["tone", 260, 0.08, "sine", 0.15, 0.5, 0.0]],
 	"crit": [["tone", 1300, 0.05, "sq", 0.15, 1.0, 0.0], ["tone", 160, 0.08, "sq", 0.3, 0.5, 0.0], ["noise", 0, 0.05, "", 0.3, 1.0, 0.0]],
 	"stomp": [["tone", 90, 0.1, "sq", 0.35, 0.5, 0.0], ["noise", 0, 0.08, "", 0.35, 1.0, 0.0]],
+	"thunder": [["rumble", 0, 2.2, "", 0.55, 1.0, 0.0], ["rumble", 0, 1.4, "", 0.35, 1.0, 0.35], ["tone", 42, 1.6, "sine", 0.25, 0.7, 0.05]],
 }
 
 var _cache := {}
@@ -114,6 +115,10 @@ func _add_part(buf: PackedFloat32Array, kind: String, freq: float, dur: float, w
 		var s: float
 		if kind == "noise":
 			s = randf_range(-1.0, 1.0)
+		elif kind == "rumble":
+			# low, rolling noise: white noise through a slow low-pass, swelling as it goes
+			phase += (randf_range(-1.0, 1.0) - phase) * 0.025
+			s = clampf(phase * 7.0, -1.0, 1.0) * (0.6 + 0.4 * sin(t * 9.0))
 		else:
 			var f = freq * lerp(1.0, slide, t)
 			phase += f / rate

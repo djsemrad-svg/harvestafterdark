@@ -1247,6 +1247,7 @@ func run_all() -> void:
 	run_townsfolk()
 	run_town_dress()
 	run_day_one()
+	run_weather_fx()
 	run_wildlife()
 
 	# ---------- title screens render
@@ -3367,6 +3368,37 @@ func run_day_one() -> void:
 	G.sync_npcs()
 	check("Day one: from day two Hal is behind his counter by mid-morning", G.npcs.hal.map == "store", G.npcs.hal.map)
 	G.state.day = 1
+
+func run_weather_fx() -> void:
+	var G = Game
+	if G.state.is_empty(): start("survivor", 1)
+	close_all()
+	var V = W.view
+	at("town", 26, 17, "down")
+	G.state.weather = "rain"
+	for i in 60: V.update_weather(1.0 / 60.0)
+	var rain_n: int = V.drops_fx.size()
+	var splashed := false
+	for i in 120:
+		V.update_weather(1.0 / 60.0)
+		if not V.splash_fx.is_empty(): splashed = true
+	G.state.weather = "storm"
+	var flashed := false
+	for i in 60 * 40:
+		V.update_weather(1.0 / 60.0)
+		if V.flash > 0: flashed = true
+		if flashed: break
+	G.state.weather = "snow"
+	for i in 30: V.update_weather(1.0 / 60.0)
+	var snow_n: int = V.drops_fx.size()
+	at("store", 6, 8, "up")
+	G.state.weather = "rain"
+	for i in 30: V.update_weather(1.0 / 60.0)
+	var indoor_n: int = V.drops_fx.size()
+	G.state.weather = "sun"
+	for i in 5: V.update_weather(1.0 / 60.0)
+	check("Weather: rain falls and splashes, storms flash, snow drifts, and nothing falls indoors", rain_n > 50 and splashed and flashed and snow_n > 50 and indoor_n == 0 and V.flash <= 0.2, "rain=%d splash=%s flash=%s snow=%d indoor=%d" % [rain_n, splashed, flashed, snow_n, indoor_n])
+	check("Weather: thunder has a sound", Sfx.EFFECTS.has("thunder"), "")
 
 func run_wildlife() -> void:
 	var G = Game

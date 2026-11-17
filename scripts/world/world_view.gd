@@ -880,31 +880,101 @@ func update_lighting(m: GameMap) -> void:
 		light_pool[i].visible = false
 
 # ---------------------------------------------------------------- weather (screen space)
+## Rain falls in three depths (far drops shorter, fainter and slower) and splashes where it lands, with
+## rings on open water; storms add heavier, slanted rain, a darker sky and lightning that flickers twice
+## before the thunder rolls in; snow drifts in layers on a slow, gusting wind; windy days carry tumbling
+## leaves or petals; fog rolls through in soft banks. Everything moves a little with the camera so it
+## feels like it's out in the world, and it all stays light enough to see through.
+var splash_fx := []          # [{p, t}] screen space
+var ripple_fx := []          # [{w (world pos), t}]
+var fog_fx := []
+var bolt := {}               # the current lightning: {t, flicks}
+var thunder_in := -1.0
+var _cam_last := Vector2.INF
+var _gust := 0.0
+var _fog_tex: ImageTexture = null
+
 func update_weather(dt: float) -> void:
 	var w: String = env().weather
 	var m := current_map()
 	if not m.outdoor:
 		w = "sun"
-	var want = {"storm": 160, "rain": 90, "snow": 70, "wind": 14}.get(w, 0)
+	var want = {"storm": 150, "rain": 105, "snow": 110, "wind": 22}.get(w, 0)
 	var vs := view_size()
+	var cd := Vector2.ZERO if _cam_last == Vector2.INF else cam.position - _cam_last
+	if cd.length() > 64.0: cd = Vector2.ZERO          # a map change, not a walk
+	_cam_last = cam.position
+	_gust = sin(anim_t * 0.37) * 0.6 + sin(anim_t * 1.13) * 0.4
 	while drops_fx.size() < want:
-		drops_fx.append({"p": Vector2(randf() * vs.x, randf() * vs.y), "s": 0.6 + randf() * 0.6})
+		drops_fx.append(_new_drop(vs, true))
 	if drops_fx.size() > want:
 		drops_fx.resize(want)
 	for d in drops_fx:
+		var depth: float = d.s
+		d.p -= cd * (0.4 + depth * 0.6)              # nearer things slide past faster
 		match w:
-			"snow": d.p += Vector2(sin(anim_t * 1.4 + d.s * 13.0) * 8.0, 22.0 * d.s) * dt
-			"wind": d.p += Vector2(90.0 * d.s, sin(anim_t * 3.3 + d.s * 13.0) * 20.0) * dt
-			_: d.p += Vector2(-50.0, 260.0 * d.s) * dt
-		if d.p.y > vs.y: d.p = Vector2(randf() * vs.x, -4)
-		if d.p.x < -4: d.p.x = vs.x
-		if d.p.x > vs.x + 4: d.p.x = -4
+			"snow":
+				d.p += Vector2(sin(anim_t * 1.1 + depth * 17.0) * 6.0 + _gust * 14.0 * depth, 10.0 + 20.0 * depth) * dt
+			"wind":
+				d.p += Vector2((70.0 + _gust * 40.0) * depth, sin(anim_t * 2.6 + depth * 23.0) * 22.0 + 6.0) * dt
+				d.spin = float(d.get("spin", 0.0)) + dt * (4.0 + depth * 4.0)
+			"storm":
+				d.p += Vector2(-95.0, 300.0) * depth * dt
+			_:
+				d.p += Vector2(-30.0, 230.0) * depth * dt
+		if (w == "rain" or w == "storm") and d.p.y >= float(d.land):
+			if randf() < 0.55 and depth > 0.7:
+				splash_fx.append({"p": d.p.round(), "t": 0.0})
+			var nd := _new_drop(vs, false)
+			d.p = nd.p; d.s = nd.s; d.land = nd.land
+		if d.p.y > vs.y + 6 or d.p.y < -40: d.p = Vector2(randf() * vs.x, -4.0)
+		if d.p.x < -6: d.p.x += vs.x + 12
+		if d.p.x > vs.x + 6: d.p.x -= vs.x + 12
+	for sp in splash_fx:
+		sp.t += dt
+		sp.p -= cd
+	splash_fx = splash_fx.filter(func(sp): return sp.t < 0.24)
+	# rings on open water while it rains
+	ripple_fx = ripple_fx.filter(func(r): return r.t < 0.9)
+	for r in ripple_fx: r.t += dt
+	if (w == "rain" or w == "storm") and ripple_fx.size() < (24 if w == "storm" else 14):
+		for tries in 3:
+			var wp := cam.position + Vector2(randf() * vs.x, randf() * vs.y)
+			var tx := int(wp.x / 16); var ty := int(wp.y / 16)
+			if m.in_bounds(tx, ty) and m.tile_at(tx, ty) == "water":
+				ripple_fx.append({"w": wp.round(), "t": 0.0})
+				break
+	# fog banks
+	if w == "fog":
+		while fog_fx.size() < 7:
+			fog_fx.append({"p": Vector2(randf() * vs.x, randf() * vs.y), "r": randf_range(60, 120), "v": randf_range(4, 10)})
+		for f in fog_fx:
+			f.p += Vector2(f.v, sin(anim_t * 0.2 + f.r) * 1.5) * dt - cd * 0.8
+			if f.p.x - f.r > vs.x: f.p.x = -f.r
+			if f.p.x + f.r < 0: f.p.x = vs.x + f.r
+	else:
+		fog_fx.clear()
+	# lightning: a flicker, a pause, a brighter flash, then the thunder a moment later
 	if w == "storm":
-		flash = max(0.0, flash - dt)
-		if randf() < dt / 9.0:
-			flash = 0.16
+		if bolt.is_empty() and randf() < dt / 11.0:
+			bolt = {"t": 0.0}
+			thunder_in = randf_range(0.5, 1.8)
+		if not bolt.is_empty():
+			bolt.t += dt
+			if bolt.t > 0.55: bolt = {}
+		if thunder_in > 0:
+			thunder_in -= dt
+			if thunder_in <= 0: Sfx.play("thunder")
+		var ft: float = bolt.get("t", 9.0)
+		flash = 0.10 if ft < 0.05 else (0.0 if ft < 0.12 else (0.16 * (1.0 - (ft - 0.12) / 0.43) if ft < 0.55 else 0.0))
 	else:
 		flash = 0.0
+		bolt = {}
+
+func _new_drop(vs: Vector2, anywhere: bool) -> Dictionary:
+	var depth: float = float([0.55, 0.8, 1.05][randi() % 3]) + randf() * 0.15
+	var p := Vector2(randf() * (vs.x + 40), randf() * vs.y if anywhere else randf_range(-30, -4))
+	return {"p": p, "s": depth, "land": p.y + randf_range(40, vs.y + 20), "spin": randf() * 6.0}
 
 func draw_weather(ci: CanvasItem) -> void:
 	var w: String = env().weather
@@ -912,15 +982,74 @@ func draw_weather(ci: CanvasItem) -> void:
 		return
 	var vs := view_size()
 	var season: String = env().season
+	if w == "storm":
+		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.10, 0.12, 0.2, 0.10))
+	elif w == "rain":
+		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.35, 0.42, 0.55, 0.05))
+	# rings on water first, they're on the ground
+	for r in ripple_fx:
+		var k: float = r.t / 0.9
+		var c: Vector2 = (r.w - cam.position).round()
+		var rad := 1.0 + k * 5.0
+		var col := Color(0.88, 0.95, 1.0, 0.45 * (1.0 - k))
+		ci.draw_rect(Rect2(c + Vector2(-rad, 0), Vector2(rad * 2, 1)), col)
+		ci.draw_rect(Rect2(c + Vector2(-rad + 1, -1), Vector2(1, 1)), col)
+		ci.draw_rect(Rect2(c + Vector2(rad - 2, -1), Vector2(1, 1)), col)
+	for sp in splash_fx:
+		var c2: Vector2 = sp.p
+		var a: float = 0.5 * (1.0 - float(sp.t) / 0.24)
+		var col2 := Color(0.85, 0.92, 1.0, a)
+		if sp.t < 0.08:
+			ci.draw_rect(Rect2(c2 + Vector2(-1, -1), Vector2(1, 1)), col2)
+			ci.draw_rect(Rect2(c2 + Vector2(1, -1), Vector2(1, 1)), col2)
+		elif sp.t < 0.16:
+			ci.draw_rect(Rect2(c2 + Vector2(-2, -2), Vector2(1, 1)), col2)
+			ci.draw_rect(Rect2(c2 + Vector2(2, -2), Vector2(1, 1)), col2)
+			ci.draw_rect(Rect2(c2 + Vector2(-1, 0), Vector2(3, 1)), col2)
+		else:
+			ci.draw_rect(Rect2(c2 + Vector2(-3, 0), Vector2(1, 1)), col2)
+			ci.draw_rect(Rect2(c2 + Vector2(3, 0), Vector2(1, 1)), col2)
 	for d in drops_fx:
+		var depth: float = d.s
+		var p: Vector2 = d.p.round()
 		match w:
-			"rain", "storm": ci.draw_rect(Rect2(d.p.round(), Vector2(1, 4)), Color(0.67, 0.78, 1.0, 0.55))
-			"snow": ci.draw_rect(Rect2(d.p.round(), Vector2(2, 2) if d.s > 0.9 else Vector2.ONE), Color(1, 1, 1, 0.9))
-			"wind": ci.draw_rect(Rect2(d.p.round(), Vector2(2, 1)), Color("#d8843a") if season == "autumn" else (Color("#f4b8d0") if season == "spring" else Color("#7cc060")))
+			"rain", "storm":
+				var slant := Vector2(-0.38, 1.0) if w == "storm" else Vector2(-0.13, 1.0)
+				var ln := 3.0 + depth * 4.0
+				var a := 0.16 + depth * 0.26
+				ci.draw_line(p, p + slant * ln, Color(0.70, 0.80, 0.95, a), 1.0)
+				ci.draw_rect(Rect2(p + slant * ln, Vector2(1, 1)), Color(0.9, 0.95, 1.0, a + 0.1))
+			"snow":
+				var sa := 0.45 + depth * 0.45
+				if depth > 1.0:
+					ci.draw_rect(Rect2(p, Vector2(2, 2)), Color(1, 1, 1, sa))
+					ci.draw_rect(Rect2(p + Vector2(-1, 0), Vector2(1, 1)), Color(1, 1, 1, sa * 0.4))
+					ci.draw_rect(Rect2(p + Vector2(2, 1), Vector2(1, 1)), Color(1, 1, 1, sa * 0.4))
+				else:
+					ci.draw_rect(Rect2(p, Vector2.ONE), Color(0.95, 0.97, 1.0, sa * (0.7 if depth < 0.7 else 1.0)))
+			"wind":
+				var lc := Color("#d8843a") if season == "autumn" else (Color("#f4b8d0") if season == "spring" else (Color("#e8eef4") if season == "winter" else Color("#7cc060")))
+				var lc2 := lc.darkened(0.25)
+				var fr := int(d.get("spin", 0.0)) % 4
+				match fr:
+					0: ci.draw_rect(Rect2(p, Vector2(2, 1)), lc); ci.draw_rect(Rect2(p + Vector2(2, 0), Vector2(1, 1)), lc2)
+					1: ci.draw_rect(Rect2(p, Vector2(1, 1)), lc); ci.draw_rect(Rect2(p + Vector2(1, 1), Vector2(1, 1)), lc2)
+					2: ci.draw_rect(Rect2(p, Vector2(1, 2)), lc)
+					_: ci.draw_rect(Rect2(p + Vector2(1, 0), Vector2(1, 1)), lc); ci.draw_rect(Rect2(p + Vector2(0, 1), Vector2(1, 1)), lc2)
 	if w == "fog":
-		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.86, 0.88, 0.9, 0.18))
+		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.86, 0.88, 0.9, 0.08))
+		if _fog_tex == null:
+			var im := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+			for yy in 64:
+				for xx in 64:
+					var dd := Vector2(xx - 31.5, yy - 31.5).length() / 32.0
+					var al := clampf(1.0 - dd, 0.0, 1.0)
+					im.set_pixel(xx, yy, Color(0.92, 0.93, 0.95, al * al * 0.30))
+			_fog_tex = ImageTexture.create_from_image(im)
+		for f in fog_fx:
+			ci.draw_texture_rect(_fog_tex, Rect2(f.p - Vector2(f.r, f.r * 0.6), Vector2(f.r * 2, f.r * 1.2)), false)
 	if flash > 0:
-		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(1, 1, 1, flash * 2.5))
+		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0.92, 0.95, 1.0, flash))
 
 
 ## Curbs where a road meets pavement or grass, and a ragged grass lip where dirt meets grass.

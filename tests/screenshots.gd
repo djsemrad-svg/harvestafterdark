@@ -48,6 +48,19 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "weather":
+		main.ui.close_all()
+		Game.state.time = 720
+		Game.change_map("town", 46, 62, "down", {"silent": true})
+		Game.enemies.clear()
+		for w in ["rain", "storm", "snow", "wind", "fog"]:
+			Game.state.weather = w
+			if w == "snow": Game.state.day = 100
+			else: Game.state.day = 1
+			await frames(90)
+			await shot("wx_%s" % w)
+		get_tree().quit()
+		return
 	if only == "dayone":
 		main.ui.close_all()
 		Game.state.weather = "sun"
