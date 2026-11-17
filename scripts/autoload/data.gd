@@ -419,7 +419,7 @@ var npcs := {
 		"look": {"sprite": "ruth", "mi_hair": "13_05", "mi_outfit": "24_01", "mi_acc": "15_Glasses_01", "skin": "#7a4a2c", "hair": "#d8d8d8", "hair_style": "Curly", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#3f6fb5", "pants": "#333a44", "acc": "Glasses", "acc_color": "#222222"},
 		"loves": ["pumpkin", "amethyst", "veggie_stew", "sunflower"], "likes": ["potato", "bread_loaf", "cat:crop", "faded_postcard"], "dislikes": ["soggy_paper", "old_can", "fiber", "cat:junk"],
 		"schedules": {
-			"default": [[360, ""], [480, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
+			"default": [[360, "town", 23, 10, "down"], [600, "town", 26, 17, "down"], [780, "town", 39, 31, "up"], [960, "town", 25, 21, "left"], [1200, "town", 23, 10, "up"], [1290, ""]],
 			"rain": [[360, ""], [540, "town", 23, 10, "down"], [720, "store", 8, 6, "up"], [900, "town", 23, 10, "down"], [1200, ""]],
 		},
 		"dialogue": {
@@ -439,11 +439,13 @@ var npcs := {
 		"look": {"sprite": "hal", "mi_hair": "06_02", "mi_outfit": "31_01", "mi_acc": "04_Snapback_01", "skin": "#e8b48f", "hair": "#5a3a22", "hair_style": "Short", "eyes": "#2e6da4", "face": "Beard", "shirt_style": "Overalls", "shirt": "#d9a43a", "pants": "#3f6fb5", "acc": "Cap", "acc_color": "#b5442f"},
 		"loves": ["melon", "baked_potato", "topaz"], "likes": ["canned_beans", "cat:forage", "tomato", "hot_pepper"], "dislikes": ["stone", "cat:junk", "clay"],
 		"schedules": {
-			"default": [[360, ""], [510, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
+			"default": [[360, "town", 14, 17, "down"], [470, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
 			"Sun": [[360, ""], [600, "town", 30, 17, "down"], [840, "mountain", 10, 22, "up"], [1080, "town", 6, 29, "up"], [1200, ""]],
+			"day1": [[360, "homestead", 44, 19, "left"], [480, "store", 5, 3, "down"], [1020, "town", 13, 21, "down"], [1200, "town", 6, 29, "up"], [1260, ""]],
 		},
 		"dialogue": {
-			"intro": ["Welcome to Brennan's. Seeds, water, beans, a bit of everything. I'll buy your crops and forage too, fair prices.", "Store's open nine to five, closed Sundays. Even the end of the world needs a day off."],
+			"gate": ["Morning! You must be the new face at the old homestead. Hal Brennan. I run the general store in Brightwater, straight east down this road.", "Thought I'd walk out and say hello before I open up. Town's awake: Ruth's on the square, Ines is firing up the forge, and there's coffee if you're quick.", "Store opens at eight. Seeds, water, beans, a bit of everything, and I'll buy your crops and forage too. Come by once you've had a look around."],
+			"intro": ["Welcome to Brennan's. Seeds, water, beans, a bit of everything. I'll buy your crops and forage too, fair prices.", "Store's open eight to five, closed Sundays. Even the end of the world needs a day off."],
 			"generic": ["Seeds change with the season. Come by on the first of the month to see what's new.", "I trade salvage runs for seed stock with a caravan out east. When they show up, anyway.", "Whatever you grow, I'll sell. People here are tired of tinned food.", "My knees say rain tomorrow. My knees are usually right.", "Running a store now is half bookkeeping, half guessing."],
 			"spring": ["Radishes are the fastest earners this time of year. Potatoes fill a belly better."],
 			"summer": ["Sun Melons are worth the wait. Good money, and they keep you hydrated."],
@@ -459,11 +461,11 @@ var npcs := {
 		"look": {"sprite": "ines", "mi_hair": "11_04", "mi_outfit": "23_01", "mi_acc": "", "skin": "#c98e66", "hair": "#2b1d16", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Plain", "shirt_style": "Vest", "shirt": "#8a5a3a", "pants": "#333a44", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["emerald", "ruby", "iron_bar", "glimmerite"], "likes": ["cat:ore", "cat:gem", "coal", "fried_fish"], "dislikes": ["cat:forage", "dandelion", "cat:junk"],
 		"schedules": {
-			"default": [[360, ""], [480, "forge", 6, 3, "down"], [960, "mountain", 24, 10, "up"], [1140, "town", 31, 22, "down"], [1260, ""]],
+			"default": [[360, "town", 41, 17, "left"], [470, "forge", 6, 3, "down"], [960, "mountain", 24, 10, "up"], [1140, "town", 31, 22, "down"], [1260, ""]],
 			"Sat": [[360, ""], [540, "mountain", 24, 10, "up"], [900, "town", 31, 22, "down"], [1200, ""]],
 		},
 		"dialogue": {
-			"intro": ["Varga Forge. Bring me geodes and I'll crack them. Bring me ore and coal and I'll refine it. Bring me bars and money and I'll make your tools worth carrying.", "Open nine to four. Closed Saturdays. I spend those in the mine."],
+			"intro": ["Varga Forge. Bring me geodes and I'll crack them. Bring me ore and coal and I'll refine it. Bring me bars and money and I'll make your tools worth carrying.", "Open eight to four. Closed Saturdays. I spend those in the mine."],
 			"generic": ["Copper first. Then iron. Then we talk about the good stuff.", "The old mine goes deeper than the town maps show. I've heard machines down there.", "A sharp tool is a safe tool. A dull one makes you swing twice.", "Geodes are little gifts from the earth. Mostly gifts of rock, but still.", "If you go deep, mind the dark corners. They don't make noise until they're close."],
 			"spring": ["Spring thaw opens up the lower tunnels. Water everywhere."],
 			"summer": ["Forge plus summer heat. Bring water if you visit in the afternoon."],
@@ -499,7 +501,7 @@ var npcs := {
 		"look": {"sprite": "marisol", "mi_hair": "11_04", "mi_outfit": "02_01", "mi_acc": "", "skin": "#c88a5a", "hair": "#2a1a12", "hair_style": "Ponytail", "eyes": "#3b2a1a", "face": "Freckles", "shirt_style": "Vest", "shirt": "#a8402a", "pants": "#4a5a7a", "acc": "Headband", "acc_color": "#3f7a32"},
 		"loves": ["sunflower", "strawbloom", "tanned_pelt"], "likes": ["egg", "large_egg", "cat:crop", "hay"], "dislikes": ["cat:junk", "coal", "scrap"],
 		"schedules": {
-			"default": [[360, ""], [480, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
+			"default": [[360, "town", 33, 10, "up"], [470, "ranch", 6, 3, "down"], [960, "town", 32, 9, "up"], [1080, "ranch", 3, 6, "left"], [1200, ""]],
 			"Tue": [[360, ""], [540, "town", 32, 9, "up"], [720, "mountain", 12, 24, "up"], [960, "town", 25, 21, "left"], [1140, ""]],
 			"rain": [[360, ""], [480, "ranch", 6, 3, "down"], [1140, ""]],
 		},
@@ -520,7 +522,7 @@ var npcs := {
 		"look": {"sprite": "elias", "mi_hair": "06_07", "mi_outfit": "08_01", "mi_acc": "", "skin": "#7a4a2c", "hair": "#1a1210", "hair_style": "Buzz", "eyes": "#3b2a1a", "face": "Plain", "shirt_style": "Jacket", "shirt": "#e8e8e0", "pants": "#333a44", "acc": "None", "acc_color": "#222222"},
 		"loves": ["med_kit", "mint_tea", "garlic"], "likes": ["cat:forage", "bandage", "dandelion_tea"], "dislikes": ["cat:junk", "pipe_charge", "hot_pepper"],
 		"schedules": {
-			"default": [[360, ""], [510, "clinic", 10, 3, "down"], [1020, "town", 26, 21, "left"], [1140, ""]],
+			"default": [[360, "town", 9, 9, "down"], [470, "clinic", 10, 3, "down"], [1020, "town", 26, 21, "left"], [1140, ""]],
 			"Sat": [[360, ""], [600, "town", 31, 32, "down"], [900, "mountain", 14, 20, "up"], [1080, ""]],
 		},
 		"dialogue": {
@@ -540,7 +542,7 @@ var npcs := {
 		"look": {"sprite": "jo", "mi_hair": "04_01", "mi_outfit": "19_01", "mi_acc": "", "skin": "#f6d3b3", "hair": "#c8502a", "hair_style": "Long", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Overalls", "shirt": "#3f6fb5", "pants": "#3f6fb5", "acc": "None", "acc_color": "#222222"},
 		"loves": ["iron_bar", "copper_bar", "smoked_fish"], "likes": ["scrap", "wood", "cat:bar"], "dislikes": ["cat:junk", "soggy_paper", "sunflower"],
 		"schedules": {
-			"default": [[360, ""], [480, "workshop", 6, 5, "down"], [1020, "town", 47, 16, "down"], [1200, ""]],
+			"default": [[360, "town", 50, 16, "down"], [470, "workshop", 6, 5, "down"], [1020, "town", 47, 16, "down"], [1200, ""]],
 			"Wed": [[360, ""], [600, "town", 46, 19, "left"], [840, "mountain", 22, 22, "down"], [1080, ""]],
 		},
 		"dialogue": {
@@ -560,7 +562,7 @@ var npcs := {
 		"look": {"sprite": "guildmaster", "mi_hair": "01_01", "mi_outfit": "05_04", "mi_acc": "13_Beard_02", "skin": "#e8b48f", "hair": "#8a3a22", "hair_style": "Short", "eyes": "#3b2a1a", "face": "Beard", "shirt_style": "Jacket", "shirt": "#6a4a2e", "pants": "#3f5a8a", "acc": "Bandana", "acc_color": "#b5442f"},
 		"loves": ["ember_chili", "iron_bar", "survivor_plate"], "likes": ["cat:cooked", "bolts", "nail_rounds"], "dislikes": ["cat:junk", "sunflower", "mint_tea"],
 		"schedules": {
-			"default": [[360, ""], [600, "guild", 8, 2, "down"], [1320, "town", 12, 31, "down"], [1440, ""]],
+			"default": [[360, "town", 20, 21, "right"], [600, "guild", 8, 2, "down"], [1320, "town", 12, 31, "down"], [1440, ""]],
 			"Mon": [[360, ""], [480, "mountain", 18, 14, "up"], [900, "town", 12, 31, "down"], [1200, ""]],
 		},
 		"dialogue": {
@@ -580,16 +582,16 @@ var npcs := {
 # ---------------- Shops ----------------
 var shops := {
 	"general": {
-		"name": "Brennan's General", "owner": "hal", "map": "store", "open": 540, "close": 1020, "closed_days": ["Sun"],
+		"name": "Brennan's General", "owner": "hal", "map": "store", "open": 480, "close": 1020, "closed_days": ["Sun"],
 		"buys": ["crop", "forage", "food", "cooked", "resource"], "daily_sale": true, "stock": [],
 	},
 	"forge": {
-		"name": "Varga Forge", "owner": "ines", "map": "forge", "open": 540, "close": 960, "closed_days": ["Sat"],
+		"name": "Varga Forge", "owner": "ines", "map": "forge", "open": 480, "close": 960, "closed_days": ["Sat"],
 		"buys": ["ore", "bar", "mineral", "gem"], "daily_sale": false,
 		"stock": [{"id": "coal", "price": 45}, {"id": "copper_ore", "price": 30}, {"id": "iron_ore", "price": 60, "min_deepest": 5}],
 	},
 	"ranch": {
-		"name": "Reyes Ranch", "owner": "marisol", "map": "ranch", "open": 540, "close": 960, "closed_days": ["Tue"],
+		"name": "Reyes Ranch", "owner": "marisol", "map": "ranch", "open": 480, "close": 960, "closed_days": ["Tue"],
 		"buys": ["animal"], "daily_sale": false,
 		"stock": [
 			{"id": "hay", "price": 50}, {"id": "feather", "price": 15},
@@ -599,7 +601,7 @@ var shops := {
 		],
 	},
 	"clinic": {
-		"name": "Brightwater Clinic", "owner": "elias", "map": "clinic", "open": 540, "close": 1020, "closed_days": ["Sat"],
+		"name": "Brightwater Clinic", "owner": "elias", "map": "clinic", "open": 480, "close": 1020, "closed_days": ["Sat"],
 		"buys": ["medical"], "daily_sale": false,
 		"stock": [
 			{"service": "treatment", "name": "Full treatment", "desc": "Elias patches you up: restores all health and half your energy.", "price": 150},

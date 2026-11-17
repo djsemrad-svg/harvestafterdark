@@ -170,8 +170,9 @@ static func _walk(m: GameMap, f: Dictionary, dt: float) -> void:
 		f.moving = false
 		if float(f.t) > 0: return
 		# pick somewhere nearby that can be walked to in a straight line
-		for tries in 8:
-			var g: Vector2 = f.home + Vector2(randf_range(-120, 120), randf_range(-90, 90))
+		for tries in 20:
+			var reach := 120.0 if tries < 10 else 60.0
+			var g: Vector2 = f.home + Vector2(randf_range(-reach, reach), randf_range(-reach * 0.75, reach * 0.75))
 			var ok := true
 			for s in 12:
 				var q: Vector2 = f.pos.lerp(g, (s + 1) / 12.0)

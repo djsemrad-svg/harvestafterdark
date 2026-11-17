@@ -48,6 +48,25 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "dayone":
+		main.ui.close_all()
+		Game.state.weather = "sun"
+		Game.state.time = 380
+		Game.sync_npcs()
+		Game.change_map("homestead", 40, 19, "right", {"silent": true})
+		Game.enemies.clear()
+		await frames(10)
+		await shot("day1_00_gate")
+		Game.state.time = 430
+		Game.sync_npcs()
+		for at in [[48, 30], [26, 36], [80, 32]]:
+			Game.change_map("town", int(at[0]), int(at[1]), "down", {"silent": true})
+			Game.enemies.clear()
+			Townsfolk.refresh(Game.map)
+			await frames(10)
+			await shot("day1_%02d_town" % at[0])
+		get_tree().quit()
+		return
 	if only == "water":
 		main.ui.close_all()
 		Game.state.time = 600; Game.state.weather = "sun"

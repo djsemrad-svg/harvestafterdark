@@ -29,9 +29,12 @@ const HOMES := [
 const POSTS := [[3, 37, "left"], [3, 40, "left"], [4, 63, "left"], [55, 4, "up"], [58, 4, "up"],
 	[108, 37, "right"], [108, 40, "right"], [55, 64, "down"], [58, 64, "down"]]
 
+static var _spots := {}
+
 static func dress(m: GameMap) -> void:
 	if m.id != "town":
 		return
+	_npc_spots()
 	var r := RandomNumberGenerator.new()
 	r.seed = 0x7a11d5
 	_walls(m)
@@ -103,10 +106,10 @@ static func _yard(m: GameMap, st: Dictionary, r: RandomNumberGenerator) -> void:
 ## ---------------------------------------------------------------- the square
 static func _square(m: GameMap) -> void:
 	_prop(m, 64, 29, "fountain", 2, 2, true)
-	_prop(m, 43, 31, "statue", 3, 2, true)
+	_prop(m, 45, 33, "statue", 3, 2, true)
 	for b in [[62, 34], [67, 34]]:
 		_prop(m, b[0], b[1], "bench", 1, 1, true)
-	for f in [[61, 30], [67, 30], [43, 34], [51, 34]]:
+	for f in [[61, 30], [67, 30], [43, 34], [52, 35]]:
 		_prop(m, f[0], f[1], "flower_bed", 2, 1, true)
 	# the edge of the square, softened with planting
 	for x in range(42, 72, 5):
@@ -166,7 +169,7 @@ static func _free(m: GameMap, x: int, y: int, w: int, h: int, tidy: bool, on_pav
 			if not m.in_bounds(xx, yy) or xx < 2 or xx > m.w - 3 or yy < 2: return false
 			var t := str(m.tile_at(xx, yy))
 			if not (t == "grass" or (on_pave and t == "pave")): return false
-			if _structure_at(m, xx, yy) != null or _door_step(m, xx, yy): return false
+			if _structure_at(m, xx, yy) != null or _door_step(m, xx, yy) or _spots.has(Vector2i(xx, yy)): return false
 			for wp in m.warps:
 				if xx >= int(wp.x) and xx < int(wp.x) + int(wp.get("w", 1)) and yy >= int(wp.y) and yy < int(wp.y) + int(wp.get("h", 1)) + 2:
 					return false
@@ -197,6 +200,19 @@ static func _structure_at(m: GameMap, x: int, y: int):
 		if x >= int(st.x) - 1 and x < int(st.x) + int(st.w) + 1 and y >= int(st.y) and y < int(st.y) + int(st.h):
 			return st
 	return null
+
+## Where the neighbours stand during the day (their schedules, on the real grid): kept clear.
+static func _npc_spots() -> void:
+	_spots = {}
+	for id in Data.npcs:
+		var S: Dictionary = Data.npcs[id].get("schedules", {})
+		for k in S:
+			for e in S[k]:
+				if e.size() < 4 or str(e[1]) != "town": continue
+				var rt := MapScale.t("town", int(e[2]), int(e[3]))
+				for dy in range(-2, 3):
+					for dx in range(-2, 4):
+						_spots[rt + Vector2i(dx, dy)] = true
 
 ## The two tiles out from a door (and the tile either side) stay open.
 static func _door_step(m: GameMap, x: int, y: int) -> bool:

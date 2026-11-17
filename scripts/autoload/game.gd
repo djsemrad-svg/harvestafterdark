@@ -2542,6 +2542,8 @@ func check_achievements() -> void:
 # ================================================================ NPCs
 func npc_schedule(id: String) -> Array:
 	var S: Dictionary = Data.npcs[id].schedules
+	if S.has("day1") and int(state.get("day", 0)) == 1:
+		return S.day1
 	if S.has("tavern_open") and Restoration.done("tavern"):
 		return S.tavern_open
 	if S.has(weekday()):
@@ -2638,7 +2640,9 @@ func talk_to(id: String) -> void:
 		rel.met = true
 		rel.talked_day = state.day
 		rel.points = int(rel.points) + Balance.friendship.talk_points
-		ui.dialogue(id, d.dialogue.intro.duplicate(), func():
+		# Hal meets you at the farm gate on your first morning
+		var first: Array = d.dialogue.gate if d.dialogue.has("gate") and n.map == "homestead" else d.dialogue.intro
+		ui.dialogue(id, first.duplicate(), func():
 			if id == "ruth":
 				state.money = int(state.money) + 100
 				toast("+100 gold from Ruth", "", "gold")

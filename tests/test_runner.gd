@@ -1246,6 +1246,7 @@ func run_all() -> void:
 	run_packart()
 	run_townsfolk()
 	run_town_dress()
+	run_day_one()
 	run_wildlife()
 
 	# ---------- title screens render
@@ -3332,6 +3333,40 @@ func run_town_dress() -> void:
 	check("Town dress: armed guards stand at the roads into town", armed.size() >= 7 and have_art, "armed=%d" % armed.size())
 	var wart := ["tiles/water_rock_0.png", "tiles/water_lily_0.png", "tiles/water_lily_3.png", "tiles/water_log.png", "tiles/water_reeds.png"]
 	check("Water details: river rocks, lily pads, a sunken log and reeds have pictures", wart.all(func(p): return Art.override(p) != null), str(wart.filter(func(p): return Art.override(p) == null)))
+
+func run_day_one() -> void:
+	var G = Game
+	start("survivor", 3)
+	close_all()
+	# 6 am on the first morning: Hal waits at the farm gate, and the neighbours are already out in town
+	G.sync_npcs()
+	var hal: Dictionary = G.npcs.hal
+	var at_gate: bool = hal.map == "homestead" and int(hal.pos.x / 16) >= 40
+	G.state.time = 420
+	G.sync_npcs()
+	var outside := []
+	for id in G.npcs:
+		if G.npcs[id].map == "town": outside.append(id)
+	check("Day one: Hal meets you at the farm gate; by 7 am the neighbours are out and about in town", at_gate and outside.size() >= 5, "hal=%s town=%s" % [hal.map, outside])
+	# talk to Hal at the gate: his own hello, and you've met him
+	G.state.time = 370
+	G.sync_npcs()
+	G.change_map("homestead", 42, 19, "right", {"silent": true})
+	G.player.pos = G.npcs.hal.pos + Vector2(-14, 0)
+	G.player.dir = "right"
+	G.talk_to("hal")
+	var lines: Array = U.overlay.get("lines", [])
+	var said: String = " ".join(lines) if lines is Array else str(lines)
+	close_all()
+	G.state.time = 485
+	var open_now: bool = G.shop_hours_open("general") and G.shop_hours_open("forge")
+	check("Day one: Hal's hello at the gate; the store and forge open at 8", G.state.npcs.hal.met and (said.contains("homestead") or ov() == "") and open_now, "met=%s open=%s said=%s" % [G.state.npcs.hal.met, open_now, said.substr(0, 40)])
+	# the next day he keeps shop hours
+	G.state.day = 2
+	G.state.time = 600
+	G.sync_npcs()
+	check("Day one: from day two Hal is behind his counter by mid-morning", G.npcs.hal.map == "store", G.npcs.hal.map)
+	G.state.day = 1
 
 func run_wildlife() -> void:
 	var G = Game
