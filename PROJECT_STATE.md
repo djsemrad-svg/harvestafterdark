@@ -432,7 +432,8 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
-- Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`).
+- Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
+- Mouse pointers: done Nov 17. Modern User Interface pack (LimeZu, warm Style 1, in `<packs>/modernuserinterface-win/`): arrow, pointing hand over buttons and sliders, grabbing hand while dragging (`UI._setup_pointers`, scaled with the window).
 - Aurium ore, bar and rod: rainbow flattened them; offered to rebuild from the item pack ore and ingot first.
 - Animals: revisit later (Daniel).
 
@@ -524,5 +525,9 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
    - Corner sliding (agreed Nov 17, idea from Daniel's RPG Maker plugins): when the player clips the corner of a wall or object, nudge them sideways round it instead of stopping dead.
    - Re-planning paths (agreed Nov 17, same source): neighbours and townsfolk walking somewhere work out a new route when someone or something blocks the way. Pairs with "people block movement".
    - The plugins themselves (QMovement, QPathfind, QPlus, ColliderMap, CollisionMap) are for RPG Maker MV and can't run in Godot; not used.
+   - Modern User Interface pack (agreed Nov 17; pointers already done), in this order:
+     1. Conversation portraits from its Portrait Generator (hairstyles, skins, eyes, accessories), built to match each neighbour's and townsperson's look. About 1 hour.
+     2. Windows, buttons, bars, switches and sliders from the warm style, replacing the Kenney pieces through `UIKit.tsb`; check every menu in screenshots. About 1 to 1.5 hours.
+     3. Icon buttons in menus (close, settings, sort, arrows). About 30 minutes.
    - Dialogic (agreed Nov 17): add the Dialogic addon so Daniel can write and edit conversations in its visual editor. Start with new conversations (the antique shop keeper, new townsfolk); hook its timelines into friendship, gifts, quests and heart events. Move old dialogue over later only if wanted.
    - LimboAI (agreed Nov 17; Daniel confirms it supports Godot 4.7): behaviour trees and state machines with a visual editor and a live debugger. Each infected, raider or boss gets a small agent node that runs its tree while drawing stays as it is. Start with one group (raiders or bosses), then the infected, then neighbours' and guards' routines. Downloads: Daniel's uploads (limboai v1.8.1 GDExtension, Dialogic).

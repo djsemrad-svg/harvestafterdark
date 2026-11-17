@@ -853,6 +853,14 @@ func _draw_crosshair(ci: CanvasItem) -> void:
 	var m: Vector2 = ci.get_global_mouse_position().round()
 	var busy: bool = Game.player.get("reload") != null or float(Game.player.get("cd", 0.0)) > 0.0
 	var col := Color("#ff6a5a") if busy else Color("#f4f0e0")
+	var tex := Art.override("ui/crosshair.png")
+	if tex != null:
+		# the pack's corner brackets, with a dot in the middle
+		var tl: Vector2 = m - Vector2(floorf(tex.get_width() / 2.0), floorf((tex.get_height() - 2) / 2.0))
+		ci.draw_texture(tex, tl, col)
+		ci.draw_rect(Rect2(m - Vector2(1, 1), Vector2(3, 3)), Color(0.08, 0.06, 0.06, 0.85))
+		ci.draw_rect(Rect2(m, Vector2(1, 1)), col)
+		return
 	var dk := Color(0.08, 0.06, 0.06, 0.85)
 	var arms := [Rect2(m + Vector2(-6, 0), Vector2(4, 1)), Rect2(m + Vector2(3, 0), Vector2(4, 1)),
 		Rect2(m + Vector2(0, -6), Vector2(1, 4)), Rect2(m + Vector2(0, 3), Vector2(1, 4)), Rect2(m, Vector2(1, 1))]

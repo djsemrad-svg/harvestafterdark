@@ -2126,3 +2126,19 @@ rod = _ld("icons/fishing_rod_aurium.png")
 if rod is not None:
     save(rainbow(rod, lambda p, x, y: _hsv(p)[1] > 0.3 and _hsv(p)[2] > 0.25), "icons/fishing_rod_aurium.png"); n += 1
 print("aurium rainbow: %d pictures" % n)
+
+
+# ---------------------------------------------------------------- mouse pointers (Nov 17)
+# LimeZu Modern User Interface (warm style): arrow, pointing hand, grabbing hand, and the corner-bracket
+# crosshair for aiming.
+MUI = os.path.join(SRC, "modernuserinterface-win", "16x16", "Modern_UI_Style_1.png")
+if os.path.isfile(MUI):
+    mu = Image.open(MUI).convert("RGBA")
+    def mu_cell(x, y, w=16, h=16):
+        c = mu.crop((x, y, x + w, y + h))
+        return c.crop(c.getbbox())
+    save(mu_cell(160, 336), "ui/cursor_arrow.png")
+    save(mu_cell(176, 336), "ui/cursor_hand.png")
+    save(mu_cell(192, 336), "ui/cursor_grab.png")
+    save(mu_cell(160, 288, 32, 32), "ui/crosshair.png")
+    print("mouse pointers: 4")

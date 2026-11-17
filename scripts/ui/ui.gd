@@ -28,7 +28,39 @@ var banner_t := 0.0
 
 const TABS := {"inventory": "Inventory", "skills": "Skills", "map": "Map", "quests": "Journal", "social": "Social", "crafting": "Crafting", "collections": "Collections", "calendar": "Calendar", "settings": "Settings"}
 
+## Mouse pointers from the Modern UI pack (art/ui/cursor_*.png): an arrow, a pointing hand over anything
+## clickable, a grabbing hand while dragging. Scaled up with the window so they stay as chunky as the art.
+func _setup_pointers() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	_apply_pointers()
+	get_window().size_changed.connect(_apply_pointers)
+	get_tree().node_added.connect(_pointer_for)
+
+func _exit_tree() -> void:
+	# hand the system pointers back so nothing is left holding the textures at quit
+	if DisplayServer.get_name() != "headless":
+		for sh in [Input.CURSOR_ARROW, Input.CURSOR_POINTING_HAND, Input.CURSOR_DRAG, Input.CURSOR_CAN_DROP]:
+			Input.set_custom_mouse_cursor(null, sh)
+
+func _pointer_for(n: Node) -> void:
+	if n is BaseButton or n is Slider or n is OptionButton:
+		(n as Control).mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+func _apply_pointers() -> void:
+	var ws: Vector2 = Vector2(get_window().size)
+	var k: int = maxi(1, int(minf(ws.x / 480.0, ws.y / 270.0)))
+	for e in [["cursor_arrow", Input.CURSOR_ARROW, Vector2(0, 0)], ["cursor_hand", Input.CURSOR_POINTING_HAND, Vector2(2, 0)],
+			["cursor_grab", Input.CURSOR_DRAG, Vector2(5, 5)], ["cursor_grab", Input.CURSOR_CAN_DROP, Vector2(5, 5)]]:
+		var t: Texture2D = Art.override("ui/%s.png" % e[0])
+		if t == null: continue
+		var im: Image = t.get_image().duplicate()
+		if im.is_compressed(): im.decompress()
+		im.resize(im.get_width() * k, im.get_height() * k, Image.INTERPOLATE_NEAREST)
+		Input.set_custom_mouse_cursor(ImageTexture.create_from_image(im), e[1], (e[2] as Vector2) * k)
+
 func _ready() -> void:
+	_setup_pointers()
 	layer = 10
 	root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
