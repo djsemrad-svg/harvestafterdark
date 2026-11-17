@@ -213,6 +213,8 @@ func _draw() -> void:
 		if Townsfolk.map_id == m.id:
 			for f in Townsfolk.folk:
 				if Townsfolk.present(f): sorted.append([f.pos.y, 8, f])
+		for cr in Wildlife.critters:
+			if not Wildlife.is_airborne(cr): sorted.append([cr.pos.y, 9, cr])
 		for a in Game.state.get("animals", []):
 			var r = Game.animals_rt.get(int(a.uid))
 			if r != null and r.map == m.id:
@@ -248,6 +250,8 @@ func _draw() -> void:
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
 			6: _draw_player()
+			9:
+				_draw_critter(it[2], false)
 			8:
 				var f: Dictionary = it[2]
 				var fa := Townsfolk.anim(f, anim_t)
@@ -266,6 +270,8 @@ func _draw() -> void:
 					var mk := tl + Vector2(tex.get_width() / 2 - 2, -6 + bob)
 					draw_rect(Rect2(mk, Vector2(5, 5)), Color("#fff8e8"))
 					draw_rect(Rect2(mk + Vector2(1, 1), Vector2(3, 3)), Color("#7ab0e0") if Data.animals[a.type].product != "wool" else Color("#f0ece0"))
+	for cr in Wildlife.critters if Game.screen == "game" else []:
+		if Wildlife.is_airborne(cr): _draw_critter(cr, true)
 	for q in Game.particles if Game.screen == "game" else []:
 		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
 	if Game.screen == "game":
@@ -366,6 +372,26 @@ func _draw_crop(c: Dictionary, x: int, y: int) -> void:
 	if s != null and int(s.get("frost_until", -1)) >= int(Game.state.get("day", 0)):
 		draw_rect(Rect2(x * 16 + 1, y * 16 + 2, 14, 12), Color(0.95, 0.97, 1.0, 0.55))
 		draw_rect(Rect2(x * 16 + 1, y * 16 + 2, 14, 1), Color(1, 1, 1, 0.8))
+
+## A wildlife critter: on the ground among everything else, or up in the air with its shadow below.
+func _draw_critter(c: Dictionary, air: bool) -> void:
+	var alt: float = float(c.get("alt", 0.0)) if air else 0.0
+	if c.kind == "firefly":
+		var glow := 0.5 + 0.5 * sin(float(c.t) * 3.0 + float(c.home.x))
+		var p: Vector2 = (c.pos - Vector2(0, alt)).round()
+		draw_circle(p, 3.0, Color(1.0, 0.95, 0.4, 0.18 * glow))
+		draw_rect(Rect2(p, Vector2.ONE), Color(1.0, 1.0, 0.6, 0.5 + 0.5 * glow))
+		return
+	var tex := Wildlife.texture(c)
+	if tex == null: return
+	if alt > 2.0: _shadow(c.pos, 6)
+	elif c.kind != "butterfly": _shadow(c.pos, tex.get_width() * 0.7)
+	var w := float(tex.get_width()); var h := float(tex.get_height())
+	# rabbits, rats and squirrels are drawn facing right; pigeons and crows facing left; flyers either way
+	var flip: bool = (int(c.face) < 0) if c.kind in ["rabbit", "rat", "squirrel"] else (int(c.face) > 0 and c.kind in ["pigeon", "crow"] and c.state != "fly")
+	var tl: Vector2 = (c.pos - Vector2(w / 2, h + alt)).round()
+	var tint: Color = c.get("tint", Color.WHITE)
+	draw_texture_rect(tex, Rect2(tl + (Vector2(w, 0) if flip else Vector2.ZERO), Vector2(-w if flip else w, h)), false, tint)
 
 func _shadow(at: Vector2, w: float) -> void:
 	draw_rect(Rect2(round(at.x - w / 2), round(at.y - 1), w, 2), Color(0, 0, 0, 0.22))

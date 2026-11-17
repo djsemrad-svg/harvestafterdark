@@ -114,6 +114,7 @@ func step(dt: float) -> void:
 	if not mini:
 		Game.update_npcs(dt)
 		Townsfolk.update(dt)
+		Wildlife.update(dt)
 		Game.update_animals(dt)
 		inf.update(dt)
 	if Game.overlay_open():

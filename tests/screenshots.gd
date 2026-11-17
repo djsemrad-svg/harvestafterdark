@@ -48,6 +48,28 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "wildlife":
+		main.ui.close_all()
+		Game.state.time = 700; Game.state.weather = "sun"
+		Game.change_map("homestead", 30, 24, "down", {"silent": true})
+		Game.enemies.clear()
+		Wildlife.update(0.01)
+		var pp: Vector2 = Game.player.pos
+		Wildlife.critters = [
+			{"kind": "flyer", "pos": pp + Vector2(-60, -40), "vel": Vector2(70, 0), "alt": 50.0, "t": 0.0, "frame": 0, "state": "fly", "face": 1},
+			{"kind": "flyer", "pos": pp + Vector2(-90, -30), "vel": Vector2(70, 0), "alt": 56.0, "t": 0.07, "frame": 1, "state": "fly", "face": 1},
+			{"kind": "pigeon", "pos": pp + Vector2(60, 20), "t": 0.0, "frame": 0, "state": "idle", "face": -1, "vel": Vector2.ZERO},
+			{"kind": "crow", "pos": pp + Vector2(80, 30), "t": 0.0, "frame": 2, "state": "idle", "face": 1, "vel": Vector2.ZERO},
+			{"kind": "rabbit", "pos": pp + Vector2(-50, 40), "t": 0.0, "frame": 0, "state": "idle", "face": 1, "vel": Vector2.ZERO},
+			{"kind": "squirrel", "pos": pp + Vector2(30, 50), "tree": pp + Vector2(30, 50), "t": 0.0, "frame": 0, "state": "idle", "face": -1, "vel": Vector2.ZERO},
+			{"kind": "rat", "pos": pp + Vector2(-20, 60), "t": 0.0, "frame": 1, "state": "idle", "face": 1, "vel": Vector2.ZERO},
+			{"kind": "butterfly", "pos": pp + Vector2(40, -20), "home": pp + Vector2(40, -20), "alt": 10.0, "t": 0.0, "frame": 0, "state": "idle", "face": 1, "tint": Color("#f0d060")},
+			{"kind": "butterfly", "pos": pp + Vector2(-30, -10), "home": pp + Vector2(-30, -10), "alt": 12.0, "t": 0.1, "frame": 1, "state": "idle", "face": 1, "tint": Color("#a0c0f0")}]
+		main.set_process(false)
+		await frames(4)
+		await shot("95_wildlife")
+		get_tree().quit()
+		return
 	if only == "folk":
 		main.ui.close_all()
 		Game.state.time = 700

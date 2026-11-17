@@ -1245,6 +1245,7 @@ func run_all() -> void:
 	run_restoration()
 	run_packart()
 	run_townsfolk()
+	run_wildlife()
 
 	# ---------- title screens render
 	G.quit_to_title()
@@ -3284,3 +3285,34 @@ func run_townsfolk() -> void:
 	var night_out := Townsfolk.folk.filter(func(g): return Townsfolk.present(g))
 	check("Townsfolk: E talks to them; walkers wander; at night only the guards are out", talked and moved and not night_out.is_empty() and night_out.all(func(g): return g.role == "guard"), "talked=%s moved=%s night=%d" % [talked, moved, night_out.size()])
 	G.state.time = 720
+
+func run_wildlife() -> void:
+	var G = Game
+	if G.state.is_empty(): start("survivor", 1)
+	close_all()
+	G.state.time = 720; G.state.weather = "sun"
+	at("homestead", 30, 24, "down")
+	G.enemies.clear()
+	Wildlife.critters = []
+	for i in 400: Wildlife.update(0.1)
+	var kinds := {}
+	for c in Wildlife.critters: kinds[c.kind] = true
+	check("Wildlife: animals come and go around you outdoors by day", Wildlife.critters.size() > 0 and Wildlife.critters.size() <= Wildlife.CAP, str(kinds.keys()))
+	# a pigeon takes off when you walk up to it; a rabbit runs
+	var pp: Vector2 = G.player.pos
+	Wildlife.critters = [{"kind": "pigeon", "pos": pp + Vector2(20, 0), "t": 0.0, "frame": 0, "state": "idle", "face": 1, "vel": Vector2.ZERO},
+		{"kind": "rabbit", "pos": pp + Vector2(-20, 0), "t": 0.0, "frame": 0, "state": "idle", "face": 1, "vel": Vector2.ZERO}]
+	Wildlife.update(0.1)
+	var pigeon: Dictionary = Wildlife.critters[0]
+	var rabbit: Dictionary = Wildlife.critters[1]
+	for i in 5: Wildlife.update(0.1)
+	check("Wildlife: a pigeon flies off and a rabbit bolts when you come close", pigeon.state == "fly" and Wildlife.is_airborne(pigeon) and rabbit.state == "run" and rabbit.pos.x < pp.x - 20)
+	# none in the mine, fireflies only on summer nights
+	at("town", 26, 17, "down")
+	G.state.time = 1300
+	var night_kinds: Dictionary = Wildlife.table(G.map)
+	G.state.time = 720
+	G.change_map("mine", 0, 0, "down", {"silent": true, "floor": 1})
+	Wildlife.update(0.1)
+	check("Wildlife: none underground; at night only fireflies (summer) and rats", Wildlife.critters.is_empty() and not night_kinds.has("flyer") and not night_kinds.has("rabbit"), str(night_kinds))
+	at("homestead", 30, 24, "down")

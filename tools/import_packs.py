@@ -222,9 +222,32 @@ save(snow_laden(load(os.path.join(NAT, "Bleak-Yellow", "Bush_1_Bleak-Yellow.png"
 for rel in [r for r in written if (r.startswith("trees/") or r.startswith("objects/bush_") or r.startswith("objects/weeds_"))
             and ("spring" in r or "summer" in r)]:
     save(vivid(Image.open(os.path.join(OUT, rel)).convert("RGBA"), 1.25, 0.98), rel)
+# weeds and bushes from Pixel Crawler's vegetation: leafy clumps and ferns in season colours (the old ones were
+# grey-blue and read as dark marks on the richer grass)
+PCV = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Props", "Static", "Vegetation.png")
+if os.path.isfile(PCV):
+    veg = Image.open(PCV).convert("RGBA")
+    def vcell(x, y, w=16, h=16):
+        im = veg.crop((x, y, x + w, y + h))
+        return im.crop(im.getbbox())
+    for season, dy in [("spring", 144), ("summer", 192), ("autumn", 240)]:
+        for v, (x, yy) in enumerate([(96, 32), (112, 32), (64, 0), (64, 16)]):
+            im = vcell(x, dy + yy)
+            save(vivid(im, 1.0, 0.9) if season == "summer" else im, "objects/weeds_%s_%d.png" % (season, v))
+    for season, cols in [("spring", [0, 0, 0]), ("summer", [0, 0, 0]), ("autumn", [3, 2, 3])]:
+        for v, c in enumerate(cols):
+            im = vcell(c * 48, 0, 32, 32)
+            save(vivid(im, 1.0, 0.88) if season == "summer" else im, "objects/bush_%s_%d.png" % (season, v))
+    save(vcell(48, 0, 32, 32), "objects/bush_autumn_3.png")
 if os.path.isfile(SV):
-    save(svs.crop((33, 194, 47, 207)), "objects/bush_spring_3.png")    # pink
-    save(svs.crop((65, 194, 79, 207)), "objects/bush_summer_3.png")    # yellow
+    # one bush in four flowers: a Pixel Crawler bush dotted with Serene Village blossoms (pink in spring, yellow in summer)
+    for season, bit in [("spring", (281, 375, 6, 6)), ("summer", (37, 211, 6, 5))]:
+        b = Image.open(os.path.join(OUT, "objects", "bush_%s_0.png" % season)).convert("RGBA")
+        fl = svs.crop((bit[0], bit[1], bit[0] + bit[2], bit[1] + bit[3]))
+        for (fx, fy) in [(5, 4), (15, 2), (21, 9), (9, 12), (17, 16), (4, 15)]:
+            if fx + fl.width <= b.width and fy + fl.height <= b.height:
+                b.alpha_composite(fl, (fx, fy))
+        save(b, "objects/bush_%s_3.png" % season)
 # trees and pines from Pixel Crawler: full, leafy and seasonal (green, orange and gold, snowy)
 PCT = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Props", "Static", "Trees")
 if os.path.isdir(PCT):
@@ -1749,3 +1772,51 @@ if os.path.isdir(ITEMPACK):
         save(mute(im, 0.06), "icons/%s.png" % iid)
         n += 1
     print("item pack icons:", n)
+
+
+# ---------------------------------------------------------------- wildlife (art/critters/<kind>_<frame>.png)
+# Small animals that come and go in the background: a flying bird (seen from above), squirrel, rabbit, rat and
+# butterfly, drawn here, plus the Sunnyside World pigeon on the ground and a crow recoloured from it.
+CRIT = {
+    "flyer": [[".o.....o.", "obo...obo", ".obo.obo.", "..obbbo..", "...obo..."],
+              [".........", "...obo...", ".oobbboo.", "obbo.obbo", ".o.....o."]],
+    "squirrel": [["oo........", "odo.......", "odo...oo..", ".odooobbo.", "..obbbbbeo", "..obbbbbo.", "..oo..oo.."],
+                 ["oo........", "odo.......", ".odo..oo..", "..oooobbo.", "..obbbbbeo", ".obbbbbo..", ".oo....oo."]],
+    "rabbit": [[".......oo.", "......obo.", "......obo.", "..oooobbbo", ".owbbbbbeo", ".obbbbbbo.", "..oo..oo.."],
+               [".......oo.", "......obo.", "..oooobbo.", ".owbbbbbbo", ".obbbbbbeo", "oo.....oo.", ".........."]],
+    "rat": [[".......o..", ".....oobo.", "ttoobbbbeo", "..obbbbbo.", "...o..o..."],
+            [".......o..", ".....oobo.", ".ttobbbbeo", "..obbbbbo.", "..o....o.."]],
+    "butterfly": [["ww.ww", "wwoww", ".wow.", "..o.."], [".wow.", ".wow.", "..o..", "....."]],
+}
+CPAL = {"flyer": {"o": (34, 30, 34, 255), "b": (88, 76, 70, 255)},
+        "squirrel": {"o": (52, 30, 18, 255), "b": (160, 92, 46, 255), "d": (196, 126, 64, 255), "e": (20, 14, 10, 255)},
+        "rabbit": {"o": (52, 40, 30, 255), "b": (150, 122, 92, 255), "w": (240, 236, 228, 255), "e": (20, 14, 10, 255)},
+        "rat": {"o": (30, 26, 28, 255), "b": (96, 86, 84, 255), "t": (170, 128, 128, 255), "e": (10, 8, 8, 255)},
+        "butterfly": {"o": (40, 34, 34, 255), "w": (255, 255, 255, 255)}}
+for kind, frames in CRIT.items():
+    for i, rows in enumerate(frames):
+        save(pix_icon(rows, CPAL[kind]), "critters/%s_%d.png" % (kind, i))
+if os.path.isdir(SUNE):
+    strip = Image.open(os.path.join(SUNE, "Animals", "spr_deco_bird_01_strip4.png")).convert("RGBA")
+    for i in range(4):
+        fr = strip.crop((i * 16, 0, i * 16 + 16, 16))
+        fpx = fr.load()
+        for y in range(16):
+            for x in range(16):
+                q = fpx[x, y]
+                if q[3] and q[1] > q[0] + 15 and q[1] > q[2] + 5:       # drop the grassy shadow under it
+                    fpx[x, y] = (0, 0, 0, 0)
+        fr = fr.crop(fr.getbbox())
+        if "PI" in globals():
+            fr = PI.shrink(fr, 10, max(1, round(fr.height * 10 / fr.width)))
+        save(mute(fr, 0.1), "critters/pigeon_%d.png" % i)
+        crow = fr.copy()
+        cp = crow.load()
+        for y in range(crow.height):
+            for x in range(crow.width):
+                p = cp[x, y]
+                if p[3] and sum(p[:3]) > 200:      # body and beak to black
+                    k = (0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / 255
+                    cp[x, y] = (int(20 + 50 * k), int(20 + 50 * k), int(28 + 56 * k), p[3])
+        save(crow, "critters/crow_%d.png" % i)
+print("critters: done")

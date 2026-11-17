@@ -395,6 +395,12 @@ The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, wa
 
 `scripts/world/townsfolk.gd` (Townsfolk): background survivors so places feel lived in. Brightwater has 3 repairing barricades, sandbags or fences (swinging animation, a sweat bubble now and then), 2 guards on the roads by the district gates (they look around, and stay out all night), 2 pairs chatting with speech bubbles, and 3 who wander. The Residential and Riverlands camps have 3 and 2 people round the campfire. Each is a random generator person with a first name; press E for a line (`UI.say_as` shows their face and name). They aren't neighbours (no friendship, gifts or quests) and aren't saved: each map's people are made again from the world seed and the day (`PLACES`, `LINES`). Out from 6 am to 9 pm. Tests: `run_townsfolk`.
 
+### Wildlife (added Nov 17)
+
+`scripts/world/wildlife.gd` (Wildlife): small animals around you outdoors, just for life, never saved. Birds fly over (with a shadow below), pigeons and crows peck and fly off when you come within 44 px, squirrels dash round a tree and vanish, rabbits and rats bolt, butterflies flutter in spring and summer, fireflies glow on summer nights. Farm, town and other warm places get birds, pigeons, squirrels, rabbits and butterflies; districts and cold places get crows, rats and birds; nothing underground, fewer in rain. At most 7 at once (`CAP`). Pictures in `art/critters/` (drawn in the importer, pigeon and crow from the Sunnyside bird). Tests: `run_wildlife`.
+
+Weeds and bushes are now Pixel Crawler plants (leafy clumps and ferns, seasonal bushes); one bush in four is dotted with Serene Village blossoms in spring and summer.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.
@@ -424,6 +430,7 @@ The importer keeps 8 generator rows per part sheet (`GEN_ROWS`): still, idle, wa
 - `scripts/world/woodland.gd`: tree seeds and regrowth.
 - `scripts/world/deep_mine.gd`: the Foreman, cave pools and mining perks.
 - `scripts/world/townsfolk.gd`: background townsfolk.
+- `scripts/world/wildlife.gd`: ambient wildlife.
 - `scripts/world/restoration.gd`: rebuilding Brightwater (projects, tavern, museum).
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
