@@ -1130,7 +1130,8 @@ SUNE = os.path.join(SRC, "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_ASS
 MIS = os.path.join(SRC, "moderninteriors-win", "1_Interiors", "16x16", "Theme_Sorter_Singles")
 MI_THEME = {"kit": ("12_Kitchen_Singles", "Kitchen_Singles"), "gro": ("16_Grocery_Store_Singles", "Grocery_Store_Singles"),
             "hos": ("19_Hospital_SIngles", "Hospital_Singles"), "hal": ("11_Halloween_Singles", "Halloween_Singles"),
-            "bas": ("14_Basement_Singles", "Basement_Singles")}
+            "bas": ("14_Basement_Singles", "Basement_Singles"),
+            "clo": ("21_Clothing_Store_Singles", "Clothing_Store_Singles")}
 KIT = {
     # ores, stone and minerals
     "gold_ore": ("ore:gold", None), "silver_ore": ("ore:silver", None), "aurium_ore": ("ore:bluestone", None),
@@ -1215,6 +1216,22 @@ KIT = {
     # packaged food and junk
     "hardtack": ("ky:cookie_01a", ("ramp", "#5a4a30", "#f0e0b8")), "moldy_bread": ("food:pastry_bread", ("ramp", "#2a3a20", "#a8b880")),
     "rotten_food": ("food:fruit_apple", ("ramp", "#2a2010", "#8a7a40")), "wet_cardboard": ("mi:hos:53", ("ramp", "#2a2014", "#8a7050")),
+    # cloth, hides and straps (Modern Interiors clothing store: folded fabric, pelts, belts)
+    "cloth": ("mi:clo:157", None), "linen": ("mi:clo:158", None), "cotton_cloth": ("mi:clo:159", ("ramp", "#6a6a64", "#fbf8ee")),
+    "wool_cloth": ("mi:clo:157", ("ramp", "#4a2a20", "#d0907a")), "rag": ("mi:clo:159", ("ramp", "#3a3428", "#a89a7a")),
+    "leather": ("mi:clo:158", ("ramp", "#2a1408", "#a8683a")),
+    "deer_hide": ("mi:clo:343", None), "tanned_pelt": ("mi:clo:344", None), "boar_hide": ("mi:clo:345", None),
+    "rabbit_fur": ("mi:clo:346", None), "wool": ("mi:clo:346", ("ramp", "#8a8a84", "#fafaf4")),
+    "brute_hide": ("mi:clo:348", ("ramp", "#1e2a1e", "#7a8a6a")),
+    "leather_strap": ("mi:clo:50", ("ramp", "#3a1e0e", "#b07040")), "leather_grip": ("mi:clo:49", ("ramp", "#1e1008", "#6a4028")),
+    # kits in small chests, jars of powder, glass and stones
+    "blade_kit": ("prop:chest:1", None), "ranged_kit": ("prop:chest:2", None), "sewing_kit": ("prop:chest:3", None),
+    "gear_kit": ("prop:chest:4", None), "blunt_kit": ("prop:chest:5", ("hue", "#8a5a30")), "gun_kit": ("prop:chest:6", ("hue", "#5a6a3a")),
+    "shell_press": ("prop:chest:5", ("hue", "#5a5a64")),
+    "gunpowder": ("prop:jar:7", ("hue", "#3a3a3e")), "saltpeter": ("prop:jar:15", ("hue", "#e8e8e0")),
+    "glass_bottle": ("prop:jar:2", ("all", "#a8d8c8")), "glass": ("ky:stoneblock_01a", ("ramp", "#4a7a8a", "#e8faff")),
+    "magnesium": ("ky:ingot_01c", ("ramp", "#5a5a64", "#f4f4fa")), "whetstone": ("ky:stoneblock_01a", ("ramp", "#22283a", "#8a96b0")),
+    "bolt_schematic": ("ky:scroll_01c", ("ramp", "#0e2a5a", "#90c0f0")), "spitter_gland": ("mi:hal:209", ("ramp", "#2a3a08", "#d8f050")),
 }
 
 
@@ -1226,7 +1243,7 @@ def kit_src(spec):
         return load(os.path.join(FOOD, rest + ".png")), 0.0
     if kind == "prop":
         f, n = rest.split(":")
-        D2 = {"food": "4-FOOD", "jar": "5-BOTTLES CANS JARS KETTLES VASES", "misc": "6-MISCELLANEOUS"}
+        D2 = {"chest": "3-CHESTS and LOCKS", "food": "4-FOOD", "jar": "5-BOTTLES CANS JARS KETTLES VASES", "misc": "6-MISCELLANEOUS"}
         return load(os.path.join(PROPS, D2[f], n + ".png")), 0.22
     if kind == "mi":
         t, n = rest.split(":")
