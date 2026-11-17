@@ -1180,7 +1180,7 @@ KIT = {
     "apple_crumble": ("mi:gro:386", None), "pumpkin_pie": ("mi:gro:386", ("hue", "#e07a2a")), "berry_cobbler": ("mi:gro:386", ("hue", "#8a2a5a")),
     "tomato_soup": ("prop:jar:49", ("hue", "#d83a2a")), "beet_borscht": ("prop:jar:49", ("hue", "#a01a4a")),
     "onion_soup": ("prop:jar:49", ("hue", "#c08a3a")), "ashgrain_porridge": ("prop:jar:49", ("hue", "#d8c8a0")),
-    "fishermans_stew": ("prop:jar:48", ("hue", "#c8a060")), "ember_chili": ("mi:kit:385", None),
+    "fishermans_stew": ("prop:jar:48", ("hue", "#c8a060")), "crayfish_boil": ("prop:jar:48", ("hue", "#d8502a")), "ember_chili": ("mi:kit:385", None),
     "baked_potato": ("mi:kit:400", None), "breakfast_skillet": ("mi:kit:387", None), "skillet_hash": ("mi:kit:386", None),
     "morel_skillet": ("mi:kit:388", ("hue", "#8a5a3a")), "snowpea_stirfry": ("mi:kit:389", None), "stuffed_peppers": ("mi:kit:390", None),
     "fish_tacos": ("mi:kit:384", None), "survivor_plate": ("mi:kit:401", None), "deviled_eggs": ("food:eggs_softboiled", None),

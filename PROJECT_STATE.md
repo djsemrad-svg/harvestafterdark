@@ -339,7 +339,7 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 
 ### Kitbashed icons (added Nov 16)
 
-161 more item icons from pieces of the packs, recoloured (`KIT` in the importer, last section). About 235 icons are still code-drawn.
+162 more item icons from pieces of the packs, recoloured (`KIT` in the importer, last section). About 234 icons are still code-drawn.
 
 - Ores, coal, stone, clay, sulfur, salt: Sunnyside World ore nuggets, recoloured by brightness ramp. Minerals and geodes: Kyrise shards, gems, stone block and pearl. Wood types: Kyrise log.
 - Cooked dishes: Modern Interiors kitchen plates and grocery trays, the props pack's pots for soups, pies from one grocery pie in four colours.
