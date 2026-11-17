@@ -939,11 +939,14 @@ func joined_override(o: Dictionary, nb: int) -> Dictionary:
 	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
 		return {}
 	var dmg := damage_level(o) if d.get("barrier", false) else 0
-	var key := "%s|%d|%d" % [t, nb, dmg]
+	var jv: int = int(o.get("v", 0)) % 4
+	var key := "%s|%d|%d|%d" % [t, nb, dmg, jv]
 	if _ovjoin.has(key):
 		return _ovjoin[key]
 	var res := {}
-	var tex := override("objects/%s_c%d.png" % [t, nb])
+	# some walls come in patches: objects/<type>_c<mask>_<v>.png
+	var tex := override("objects/%s_c%d_%d.png" % [t, nb, jv])
+	if tex == null: tex = override("objects/%s_c%d.png" % [t, nb])
 	if tex != null:
 		if dmg > 0:
 			var im: Image = tex.get_image().duplicate()

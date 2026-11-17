@@ -255,7 +255,9 @@ func _draw() -> void:
 			8:
 				var f: Dictionary = it[2]
 				var fa := Townsfolk.anim(f, anim_t)
+				if f.has("gun") and f.dir == "up": _draw_folk_gun(f)       # held in front, so behind them from here
 				_draw_char(f.look, f.pos, f.dir, int(fa[1]), 1.0, str(fa[0]))
+				if f.has("gun") and f.dir != "up": _draw_folk_gun(f)
 				_draw_emote(f, 32)
 			7:
 				var a: Dictionary = it[2][0]
@@ -304,8 +306,19 @@ func _draw() -> void:
 				for tt in tiles:
 					draw_rect(Rect2(tt.x * 16 + 0.5, tt.y * 16 + 0.5, 15, 15), Color(1, 1, 1, 0.55), false, 1.0)
 
+## A guard's rifle, held across the body at the ready, muzzle up.
+func _draw_folk_gun(f: Dictionary) -> void:
+	var tex := Art.override("held/%s.png" % f.gun)
+	if tex == null: return
+	var flip: bool = f.dir == "left"
+	var hand: Vector2 = f.pos + {"down": Vector2(0, -10), "up": Vector2(1, -12), "left": Vector2(-3, -11), "right": Vector2(3, -11)}[f.dir]
+	var ang: float = {"down": -0.9, "up": -0.9, "left": 0.55, "right": -0.55}[f.dir]
+	draw_set_transform(hand.round(), ang, Vector2(-1, 1) if flip else Vector2.ONE)
+	draw_texture(tex, Vector2(-roundf(tex.get_width() / 2.0), -roundf(tex.get_height() / 2.0)))
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
 ## Fences placed by the map makers that join up like the ones you build.
-const JOINED_FIXTURES := ["rail_fence"]
+const JOINED_FIXTURES := ["rail_fence", "salvage_wall"]
 
 func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 	var nb := 0

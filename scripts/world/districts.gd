@@ -63,6 +63,17 @@ const PROPS := {
 	"shopping_cart": {"solid": true},
 	"motorcycle_wreck": {"solid": true},
 	"trash_bags": {"solid": false},
+	# Brightwater's yards and square (TownDress)
+	"mailbox": {"solid": true},
+	"flower_bed": {"solid": true},
+	"flower_patch": {"solid": false},
+	"hedge": {"solid": true},
+	"shrub": {"solid": true},
+	"topiary": {"solid": true},
+	"fountain": {"solid": true},
+	"statue": {"solid": true},
+	"garden_shed": {"solid": true},
+	"salvage_wall": {"solid": true},
 }
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
@@ -187,6 +198,14 @@ const LETTERS := {
 
 ## Outside looks for the buildings (merged into Data.buildings).
 const LOOKS := {
+	# Brightwater neighbours' homes (TownDress): lived in and kept up
+	"home_v3": {"roof": "#7a3a4a", "roof2": "#5e2c38", "wall": "#e0d0a8", "trim": "#7a5a3a", "windows": 2, "condition": 4},
+	"home_v5": {"roof": "#b83a2a", "roof2": "#8a2c20", "wall": "#e0d0a8", "trim": "#7a5a3a", "windows": 2, "condition": 4},
+	"home_m2": {"roof": "#5a5e6a", "roof2": "#464a54", "wall": "#e8e4ec", "trim": "#5a5a5a", "windows": 2, "condition": 4},
+	"home_m4": {"roof": "#5a5e6a", "roof2": "#464a54", "wall": "#e8e4ec", "trim": "#5a5a5a", "windows": 2, "condition": 4},
+	"home_s3": {"roof": "#5a5e6a", "roof2": "#464a54", "wall": "#e8e4ec", "trim": "#5a5a5a", "windows": 1, "condition": 4},
+	"home_s4": {"roof": "#5a5e6a", "roof2": "#464a54", "wall": "#e8e4ec", "trim": "#5a5a5a", "windows": 1, "condition": 4},
+	"home_b2": {"roof": "#5a5e6a", "roof2": "#464a54", "wall": "#e8e4ec", "trim": "#5a5a5a", "windows": 3, "condition": 4},
 	"d_house_blue": {"roof": "#4a5a7a", "roof2": "#3a4a62", "wall": "#b8b4a4", "trim": "#4a4a4a", "windows": 2, "condition": 1},
 	"d_house_yellow": {"roof": "#7a4a3a", "roof2": "#5e382c", "wall": "#d8c890", "trim": "#5a4636", "windows": 2, "condition": 2},
 	"d_house_green": {"roof": "#3f5a4a", "roof2": "#2f4638", "wall": "#a8b898", "trim": "#4a4a3a", "windows": 2, "condition": 1},

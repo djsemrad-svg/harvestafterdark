@@ -10,7 +10,7 @@ extends RefCounted
 
 const SCALED := {"town": 2, "residential": 2, "industrial": 2, "riverlands": 2, "halvorsen": 2, "dry_creek": 2}
 ## Bump when the layout of the scaled maps changes, so older saves rebuild their outdoor objects.
-const VERSION := 5      # 2: buildings line up on their real doors; 3: narrower roads, bigger wrecks; 4: new ranch and clubhouse; 5: paths keep their ends
+const VERSION := 7      # 7: Brightwater dressed (homes, yards, salvage wall); 2: buildings line up on their real doors; 3: narrower roads, bigger wrecks; 4: new ranch and clubhouse; 5: paths keep their ends; 6: small-town buildings
 
 ## Sprinkled again after scaling: [chance for each of the 4 tiles of a design tile].
 const NATURE := {"tree": 0.45, "pine": 0.45, "weeds": 0.8, "twig": 0.4, "rock": 0.4, "bush": 0.5, "stump": 0.3,
@@ -199,6 +199,7 @@ static func upscale(src: GameMap) -> GameMap:
 	for kk in src.soil:
 		var p := GameMap.unk(kk)
 		m.soil[GameMap.k(p.x * s, p.y * s)] = src.soil[kk]
+	TownDress.dress(m)
 	return m
 
 static func _put(m: GameMap, x: int, y: int, type: String, extra: Dictionary) -> void:

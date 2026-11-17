@@ -485,14 +485,14 @@ if os.path.isdir(ME):
     S = "ME_Singles_%s_16x16_%s.png"
     BUILDINGS = {
         "farmhouse": A % "Post_Apocalyptic_House_1", "greenhouse": S % ("Garden", "Large_Greenhouse_Example"),
-        "house_a": S % ("Camping", "Mobile_House_Big_5"), "house_b": S % ("Camping", "Mobile_House_Big_7"), "ruin": A % "Post_Apocalyptic_House_2",
+        "house_a": S % ("Villas", "Villa_1"), "house_b": S % ("Villas", "Villa_4"), "ruin": A % "Post_Apocalyptic_House_2",
         "d_house_blue": A % "Post_Apocalyptic_House_1", "d_house_red": A % "Post_Apocalyptic_House_1",
         "d_house_green": A % "Post_Apocalyptic_House_2", "d_house_yellow": A % "Post_Apocalyptic_House_2", "d_ruin": A % "Post_Apocalyptic_House_2",
-        "store": S % ("Shopping_Center_and_Markets", "Mall_1"), "tavern": A % "Victorian_House_5", "tavern_open": A % "Victorian_House_5",
-        "forge": "23_MIlitary_Base_16x16_Dormitory_1.png",
-        "ranch": A % "One_Story_House", "clinic": "22_Post_Office_16x16_Building_2.png", "workshop": S % ("Generic_Building", "Hardware_Store"),
-        "guild": "23_MIlitary_Base_16x16_Dormitory_2.png", "townhall": S % ("Generic_Building", "Condo_6"),
-        "archive": "23_MIlitary_Base_16x16_Dormitory_4.png", "archive_open": "23_MIlitary_Base_16x16_Dormitory_4.png",
+        "store": S % ("Shopping_Center_and_Markets", "Market_Medium_1"), "tavern": A % "Japanese_House", "tavern_open": A % "Japanese_House",
+        "forge": S % ("Generic_Building", "Condo_3_44"),
+        "ranch": A % "One_Story_House", "clinic": S % ("Shopping_Center_and_Markets", "Market_Small_8"), "workshop": S % ("Generic_Building", "Hardware_Store_Example"),
+        "guild": S % ("Police_Station", "Police_Station_Small_1"), "townhall": S % ("Villas", "Villa_2"),
+        "archive": S % ("Generic_Building", "Condo_3_45"), "archive_open": S % ("Generic_Building", "Condo_3_45"),
         "baitshack": S % ("Camping", "Mobile_House_Small_1"),
         "d_diner": S % ("Shopping_Center_and_Markets", "Market_Big_1"), "d_pawn": S % ("Shopping_Center_and_Markets", "Market_Small_1"),
         "d_guns": S % ("Shopping_Center_and_Markets", "Market_Small_5"), "d_pharmacy": S % ("Shopping_Center_and_Markets", "Market_Small_9"),
@@ -502,25 +502,57 @@ if os.path.isdir(ME):
         "d_burger": S % ("Shopping_Center_and_Markets", "Market_Big_2"), "d_pizza": S % ("Shopping_Center_and_Markets", "Market_Big_3"),
         "d_chicken": S % ("Shopping_Center_and_Markets", "Market_Medium_4"), "d_taco": S % ("Shopping_Center_and_Markets", "Market_Medium_5"),
         "d_hotdog": S % ("Shopping_Center_and_Markets", "Market_Small_3"), "d_hardware": S % ("Generic_Building", "Hardware_Store"),
-        "d_garage": "23_MIlitary_Base_16x16_Dormitory_3.png", "d_firehouse": S % ("Fire_Station", "Building"),
-        "d_warehouse": "23_MIlitary_Base_16x16_Hangar.png", "d_bar": "23_MIlitary_Base_16x16_Dormitory_4.png",
+        "d_garage": S % ("Shopping_Center_and_Markets", "Market_Medium_10"), "d_firehouse": S % ("Fire_Station", "Building"),
+        "d_warehouse": "23_MIlitary_Base_16x16_Hangar.png", "d_bar": S % ("Generic_Building", "Condo_3_45"),
         "d_scrap_office": S % ("City_Props", "Container_House_1"), "d_lumber_office": S % ("Camping", "Mobile_House_Medium_1"),
         "d_mill": "23_MIlitary_Base_16x16_Hangar.png", "d_farmhouse": A % "One_Story_House",
         "d_bait": S % ("Camping", "Mobile_House_Small_2"), "d_boathouse": S % ("Camping", "Mobile_House_Big_1"),
         "d_ranger": S % ("Camping", "Mobile_House_Big_5"), "d_cabin": S % ("Camping", "Mobile_House_Medium_5"),
         "d_lab": S % ("Hotel_and_Hospital", "Hospital_1"), "d_lab6": "23_MIlitary_Base_16x16_Bunker.png",
         "d_booth": S % ("Police_Station", "Parking_Booth_2"), "d_clubhouse": S % ("Camping", "Mobile_House_Big_3"),
+        # Brightwater's lived-in homes (not enterable, Nov 17)
+        "home_v3": S % ("Villas", "Villa_3"), "home_v5": S % ("Villas", "Villa_5"),
+        "home_m2": S % ("Camping", "Mobile_House_Medium_2"), "home_m4": S % ("Camping", "Mobile_House_Medium_4"),
+        "home_s3": S % ("Camping", "Mobile_House_Small_3"), "home_s4": S % ("Camping", "Mobile_House_Small_4"),
+        "home_b2": S % ("Camping", "Mobile_House_Big_2"),
     }
     # where each picture's door (or the foot of its steps) is, in pixels from the left; default the middle
-    DOOR = {"archive": 32, "archive_open": 32, "d_bar": 32, "forge": 32, "guild": 33, "baitshack": 40, "d_bait": 40,
+    # (Nov 17: town buildings swapped for small-town ones with a front door at ground level)
+    DOOR = {"archive": 40, "archive_open": 40, "d_bar": 40, "forge": 40, "guild": 56, "d_garage": 56, "baitshack": 40, "d_bait": 40,
             "d_boathouse": 40, "d_booth": 24, "d_cabin": 42, "d_clubhouse": 42, "ranch": 145, "d_farmhouse": 145, "d_firehouse": 46,
-            "d_guns": 24, "d_hotdog": 24, "d_pawn": 24, "d_pharmacy": 24, "d_hardware": 40, "workshop": 40,
+            "d_guns": 24, "d_hotdog": 24, "d_pawn": 24, "d_pharmacy": 24, "d_hardware": 40, "workshop": 32,
             "d_house_blue": 124, "d_house_red": 124, "farmhouse": 124, "d_house_green": 123, "d_house_yellow": 123, "d_ruin": 123, "ruin": 123,
-            "d_lab": 65, "d_lab6": 67, "d_lumber_office": 40, "d_mill": 77, "d_warehouse": 77, "d_ranger": 42, "house_a": 42, "house_b": 42,
-            "d_scrap_office": 35, "d_shed": 68, "store": 138, "tavern": 45, "tavern_open": 45, "townhall": 55}
+            "d_lab": 65, "d_lab6": 67, "d_lumber_office": 40, "d_mill": 77, "d_warehouse": 77, "d_ranger": 42, "house_a": 36, "house_b": 36,
+            "d_scrap_office": 35, "d_shed": 40, "store": 56, "tavern": 88, "tavern_open": 88, "townhall": 36,
+            "home_v3": 36, "home_v5": 36, "home_m2": 39, "home_m4": 39, "home_s3": 39, "home_s4": 39, "home_b2": 40, "clinic": 24}
     # pictures whose steps end above the picture's bottom edge: the ground line at the door, in pixels from the top.
     # Whatever is drawn below it (a porch) hangs in front and is solid.
     BASE = {}     # (Reyes Ranch and the Dry Creek clubhouse used porch pictures; both now have front doors)
+    def clinic_front(im):
+        """A small corner shop turned clinic: the STORE sign becomes a red cross, the awning red and white."""
+        im = im.copy()
+        px = im.load()
+        for y in range(70, 82):
+            for x in range(11, 37):
+                if px[x, y][3] and sum(px[x, y][:3]) > 300:
+                    px[x, y] = (232, 236, 240, 255)
+        for y in range(71, 81):
+            for x in range(12, 36):
+                if px[x, y][3] and sum(px[x, y][:3]) < 400:
+                    px[x, y] = (232, 236, 240, 255)
+        cx, cy = 23, 75
+        for d in range(-3, 4):
+            for t in (0, 1):
+                px[cx + t, cy + d] = (200, 48, 40, 255)
+                px[cx + d, cy + t] = (200, 48, 40, 255)
+        for y in range(60, 100):
+            for x in range(36, 80):
+                r, g, b, a = px[x, y]
+                if a and r > 200 and 110 < g < 190 and b < 90:        # orange stripes to red
+                    px[x, y] = (196, 52, 44, a)
+        return im
+
+    BUILD_FIX = {"clinic": clinic_front}
     meta = {}
     for kind, f in BUILDINGS.items():
         p = os.path.join(ME, f)
@@ -528,6 +560,8 @@ if os.path.isdir(ME):
             print("missing building art:", kind, f)
             continue
         im = load(p)
+        if kind in BUILD_FIX:
+            im = BUILD_FIX[kind](im)
         save(im, "buildings/%s.png" % kind)
         meta[kind] = {"w": im.width, "h": im.height, "door": DOOR.get(kind, im.width // 2)}
         # the soft shadow some pictures carry on their right isn't wall: the footprint stops at the solid part
@@ -1833,3 +1867,116 @@ if os.path.isdir(ITEMPACK):
             im = mute(Image.open(os.path.join(ITEMPACK, "item%d.png" % num)).convert("RGBA"), 0.06)
             save(im, "icons/%s.png" % tool if tier == 0 else "icons/%s_t%d.png" % (tool, tier))
     print("tool tiers: %d tools" % len(TOOL_TIERS))
+
+
+# ---------------------------------------------------------------- Brightwater dressing (Nov 17)
+# Yards, gardens, mailboxes and the square's fountain and statue, from Modern Exteriors; and the salvage wall
+# around town, kitbashed from corrugated sheet, planks and pallets.
+if os.path.isdir(MEROOT):
+    def _g(n): return me(n)
+    DRESS = {
+        "mailbox_0": _g("Brown_Little_Bird_House"), "mailbox_1": _g("Blue_Little_Bird_House"),
+        "mailbox_2": _g("Brown_Little_Bird_House"), "mailbox_3": _g("Blue_Little_Bird_House"),
+        "flower_bed_0": _g("Villa_Yard_Flowers_10"), "flower_bed_1": _g("Villa_Yard_Flowers_11"),
+        "flower_bed_2": _g("Villa_Yard_Flowers_12"), "flower_bed_3": _g("Villa_Yard_Flowers_13"),
+        "flower_patch_0": _g("Villa_Yard_Flowers_5"), "flower_patch_1": _g("Villa_Yard_Flowers_6"),
+        "flower_patch_2": _g("Villa_Yard_Flowers_8"), "flower_patch_3": _g("Villa_Yard_Flowers_7"),
+        "hedge_0": _g("Bush_14"), "hedge_1": _g("Bush_15"), "hedge_2": _g("Bush_14"), "hedge_3": _g("Bush_15"),
+        "shrub_0": _g("Bush_18"), "shrub_1": _g("Bush_20"), "shrub_2": _g("Bush_19"), "shrub_3": _g("Bush_21"),
+        "topiary_0": _g("Bush_6"), "topiary_1": _g("Bush_10"), "topiary_2": _g("Bush_7"), "topiary_3": _g("Bush_13"),
+        "fountain": _g("Fountain_1"), "statue": _g("Fountain_2_1"),
+        "garden_shed_0": _g("Brown_Wood_Storage"), "garden_shed_1": _g("Blue_Brown_Wood_Storage"),
+        "garden_shed_2": _g("White_Wood_Storage"), "garden_shed_3": _g("Red_White_Wood_Storage"),
+    }
+    for nm, im in DRESS.items():
+        save(im, "objects/%s.png" % nm)
+
+    # salvage wall: four patch kinds, so a run of wall is a patchwork of whatever people found
+    import random as _rnd
+
+    def _hx(h):
+        return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5)) + (255,)
+
+    def salvage_panel(kind, seed, w=16, h=24):
+        r = _rnd.Random(seed)
+        im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        px = im.load()
+        tops = [r.choice([2, 2, 3, 3, 4]) for _ in range(w)]
+        if kind == 2:                    # planks: each 4 wide, ragged tops
+            tops = []
+            for b in range(0, w, 4):
+                t = r.choice([2, 3, 4, 5])
+                tops += [t] * 4
+        pal = {0: ("#5a626c", "#7d8691", "#a3abb4"), 1: ("#6e3a24", "#985a3a", "#bf7d55"),
+               2: ("#5c4028", "#86603c", "#a8804f"), 3: ("#3e5e62", "#5f878c", "#86aeb2")}[kind]
+        dk, md, lt = (_hx(c) for c in pal)
+        for x in range(w):
+            for y in range(tops[x], h):
+                if kind == 2:
+                    c = md if (x % 4) in (1, 2) else (lt if x % 4 == 0 else dk)
+                else:
+                    c = (lt if x % 3 == 0 else (dk if x % 3 == 2 else md))      # corrugation ribs
+                px[x, y] = c
+        # rust runs and grime on metal; nails and a cross board on planks
+        if kind in (0, 1, 3):
+            rust = _hx("#8a4e2c")
+            for _ in range(3):
+                x0 = r.randrange(w); y0 = r.randrange(4, h - 6)
+                for y in range(y0, min(h - 1, y0 + r.randrange(3, 8))):
+                    if px[x0, y][3]: px[x0, y] = rust
+            # a bolted seam
+            sy = r.randrange(8, 14)
+            for x in range(w):
+                if px[x, sy][3]: px[x, sy] = dk
+            for x in range(1, w, 5):
+                if px[x, sy - 1][3]: px[x, sy - 1] = _hx("#c9ccd0")
+        else:
+            for x in range(1, w, 4):
+                for y in (6, h - 6):
+                    px[x, y] = _hx("#2b2622")
+            if r.random() < 0.6:                 # a cross brace
+                for i in range(w):
+                    y = 8 + (i * (h - 14)) // w
+                    for dy in (0, 1):
+                        if y + dy < h: px[i, y + dy] = lt if dy == 0 else dk
+        # outline the top edge and darken the foot
+        out = _hx("#2a2624")
+        for x in range(w):
+            t = tops[x]
+            px[x, t] = out
+        # a timber post at the joint, a little taller than the sheets
+        for y in range(0, h):
+            px[0, y] = out
+            px[1, y] = _hx("#7a5634") if y else out
+            px[2, y] = _hx("#4e3622") if y else out
+        for x in range(w):
+            for y in (h - 1, h - 2):
+                p = px[x, y]
+                if p[3]: px[x, y] = (p[0] * 6 // 10, p[1] * 6 // 10, p[2] * 6 // 10, 255)
+        return im
+
+    def salvage_down(seed):
+        """The wall running away from you: its top edge seen from above, posts every half tile."""
+        r = _rnd.Random(seed)
+        im = Image.new("RGBA", (6, 16), (0, 0, 0, 0))
+        px = im.load()
+        for y in range(16):
+            for x in range(6):
+                if x in (0, 5): c = _hx("#2a2624")
+                elif x == 1: c = _hx("#a3abb4")
+                else: c = _hx("#7d8691") if (y // 4 + seed) % 3 else _hx("#985a3a")
+                px[x, y] = c
+        for y in (3, 11):
+            for x in range(6):
+                px[x, y] = _hx("#5c4028") if x not in (0, 5) else _hx("#2a2624")
+        return im
+
+    for v in range(4):
+        kinds = [0, 2, 1, 3]
+        H = salvage_panel(kinds[v], 40 + v)
+        V = salvage_down(v)
+        for nb, im in joined(H, V).items():
+            save(im, "objects/salvage_wall_c%d_%d.png" % (nb, v))
+            if v == 0:
+                save(im, "objects/salvage_wall_c%d.png" % nb)
+    print("town dressing: %d props, salvage wall" % len(DRESS))

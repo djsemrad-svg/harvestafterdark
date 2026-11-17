@@ -48,6 +48,42 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "dress":
+		# up close: the square, a yard, a gate guard, the bridge
+		main.ui.close_all()
+		Game.state.time = 600; Game.state.weather = "sun"
+		var n := 0
+		for at in [[56, 33], [10, 37], [5, 38], [56, 7], [56, 61], [90, 37], [104, 39]]:
+			Game.change_map("town", int(at[0]), int(at[1]), "down", {"silent": true})
+			Game.enemies.clear()
+			Townsfolk.refresh(Game.map)
+			await frames(8)
+			await shot("dress_%02d" % n)
+			n += 1
+		get_tree().quit()
+		return
+	if only == "townmap":
+		# the whole town, stitched later from a grid of views (HUD hidden)
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		var mid := "town"
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--map="): mid = a.substr(6)
+		Game.change_map(mid, 10, 10, "down", {"silent": true})
+		var m: GameMap = Game.map
+		var gx := 0
+		for cx in range(240, m.w * 16 + 240, 480):
+			var gy := 0
+			for cy in range(135, m.h * 16 + 135, 270):
+				Game.player.pos = Vector2(cx, cy)
+				Game.enemies.clear()
+				await frames(6)
+				await shot("tm_%02d_%02d" % [gx, gy])
+				gy += 1
+			gx += 1
+		get_tree().quit()
+		return
 	if only == "wildlife":
 		main.ui.close_all()
 		Game.state.time = 700; Game.state.weather = "sun"

@@ -1245,6 +1245,7 @@ func run_all() -> void:
 	run_restoration()
 	run_packart()
 	run_townsfolk()
+	run_town_dress()
 	run_wildlife()
 
 	# ---------- title screens render
@@ -3285,6 +3286,50 @@ func run_townsfolk() -> void:
 	var night_out := Townsfolk.folk.filter(func(g): return Townsfolk.present(g))
 	check("Townsfolk: E talks to them; walkers wander; at night only the guards are out", talked and moved and not night_out.is_empty() and night_out.all(func(g): return g.role == "guard"), "talked=%s moved=%s night=%d" % [talked, moved, night_out.size()])
 	G.state.time = 720
+
+func run_town_dress() -> void:
+	var G = Game
+	if G.state.is_empty(): start("survivor", 1)
+	close_all()
+	var m: GameMap = G.maps.town
+	var homes: Array = m.structures.filter(func(st): return st.get("home", false))
+	var counts := {}
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		counts[o.type] = counts.get(o.type, 0) + 1
+	check("Town dress: Brightwater has neighbours' homes with mailboxes, a fountain, a statue and a salvage wall",
+		homes.size() >= 7 and counts.get("mailbox", 0) >= homes.size() - 1 and counts.get("fountain", 0) == 1 and counts.get("statue", 0) == 1 and counts.get("salvage_wall", 0) > 150,
+		"homes=%d mail=%d wall=%d fountain=%d statue=%d" % [homes.size(), counts.get("mailbox", 0), counts.get("salvage_wall", 0), counts.get("fountain", 0), counts.get("statue", 0)])
+	# nothing new blocks the way: from the west road you can still walk to every door and every road out
+	var start_t := Vector2i(3, 38)
+	var seen := {start_t: true}
+	var q: Array = [start_t]
+	while not q.is_empty():
+		var c: Vector2i = q.pop_front()
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if seen.has(n) or not m.in_bounds(n.x, n.y) or m.is_solid(n.x, n.y): continue
+			seen[n] = true
+			q.append(n)
+	var missed := []
+	for st in m.structures:
+		var dt := Vector2i(int(st.door_x), int(st.door_y) + 1)
+		if not seen.has(dt) and not seen.has(dt + Vector2i(1, 0)): missed.append(st.kind)
+	for wp in m.warps:
+		if wp.get("door", false): continue
+		var any := false
+		for yy in range(int(wp.y), int(wp.y) + int(wp.get("h", 1))):
+			for xx in range(int(wp.x), int(wp.x) + int(wp.get("w", 1))):
+				if seen.has(Vector2i(xx, yy)): any = true
+		if not any: missed.append(str(wp.to))
+	check("Town dress: every door and every road out of town can still be reached", missed.is_empty(), str(missed))
+	# an armed guard on each road in
+	G.state.time = 720
+	at("town", 26, 17, "down")
+	Townsfolk.refresh(G.map)
+	var armed := Townsfolk.folk.filter(func(f): return f.role == "guard" and f.has("gun"))
+	var have_art := armed.all(func(f): return Art.override("held/%s.png" % f.gun) != null)
+	check("Town dress: armed guards stand at the roads into town", armed.size() >= 7 and have_art, "armed=%d" % armed.size())
 
 func run_wildlife() -> void:
 	var G = Game

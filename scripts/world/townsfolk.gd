@@ -8,7 +8,7 @@ extends RefCounted
 ## Who lives where. "repair" stands at a barricade, sandbag or rubble pile; "guard" at a gate; "chat" in
 ## pairs; "walk" wanders. Camps gather around a campfire.
 const PLACES := {
-	"town": {"repair": 3, "guard": 2, "chat": 2, "walk": 3},
+	"town": {"repair": 3, "chat": 3, "walk": 4},      # plus an armed guard at every road in (TownDress.POSTS)
 	"residential": {"camp": 3},
 	"riverlands": {"camp": 2},
 }
@@ -60,6 +60,17 @@ static func refresh(m: GameMap) -> void:
 			"sandbags", "barricade", "rubble", "fence": anchors.repair.append(o)
 			"district_gate": anchors.guard.append(o)
 			"campfire_ring", "campfire": anchors.camp.append(o)
+	if m.id == "town":
+		# armed guards on every road into town, facing out
+		var guns := ["carbine", "bolt_action_rifle", "double_barrel_shotgun", "carbine"]
+		for p in TownDress.POSTS:
+			var spot := Vector2i(int(p[0]), int(p[1]))
+			if not _ok(m, spot.x, spot.y) or used.has(spot): continue
+			used[spot] = true
+			var g := _make(r, "guard", spot, str(p[2]))
+			g.post = str(p[2])
+			g.gun = guns[r.randi() % guns.size()]
+			folk.append(g)
 	for role in plan:
 		for i in int(plan[role]):
 			match role:
@@ -144,7 +155,13 @@ static func update(dt: float) -> void:
 				"chat", "camp":
 					Game.emote(f, EMOTES[(int(f.seed) + int(Game.state.time)) % EMOTES.size()], 1.6)
 				"guard":
-					f.dir = ["up", "left", "right", "up"][(int(f.seed) + int(Game.state.time / 10)) % 4]
+					if f.has("post"):
+						# mostly watching the road out, now and then a look along the wall
+						var side: Array = {"left": ["up", "down"], "right": ["up", "down"], "up": ["left", "right"], "down": ["left", "right"]}[f.post]
+						var k: int = (int(f.seed) + int(Game.state.time / 10)) % 5
+						f.dir = f.post if k < 3 else side[k - 3]
+					else:
+						f.dir = ["up", "left", "right", "up"][(int(f.seed) + int(Game.state.time / 10)) % 4]
 				"repair":
 					if (int(f.seed) + int(Game.state.time)) % 3 == 0: Game.emote(f, "sweat", 1.2)
 
