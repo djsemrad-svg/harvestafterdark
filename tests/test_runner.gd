@@ -3405,6 +3405,18 @@ func run_weather_fx() -> void:
 		var up_pose: Array = V._swing_pose(V.SWING_KEYS[d], 0.35)
 		var hit_pose: Array = V._swing_pose(V.SWING_KEYS[d], 0.6)
 		if (up_pose[0] as Vector2).y < (hit_pose[0] as Vector2).y or d == "up": ok_dirs.append(d)
+	var hold_gun := func(id: String) -> bool:
+		G.add_item(id, 1)
+		for i in G.state.inventory.size():
+			var st = G.state.inventory[i]
+			if st != null and st.id == id: G.state.selected = i
+		return V.crosshair_wanted()
+	at("town", 26, 17, "down")
+	close_all()
+	W.mouse_inside = true
+	var with_gun: bool = hold_gun.call("pistol_22")
+	var with_hoe: bool = hold_gun.call("hoe")
+	check("Aim: a crosshair shows while a gun is held, not with a tool", with_gun and not with_hoe, "gun=%s hoe=%s" % [with_gun, with_hoe])
 	check("Tools in hand: every direction has a wind-up and a strike", ok_dirs.size() == 4 and V.SWEEP_KEYS.size() == 4, str(ok_dirs))
 
 func run_wildlife() -> void:

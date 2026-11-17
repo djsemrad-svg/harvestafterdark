@@ -32,7 +32,7 @@ class Painter extends Node2D:
 		callback.call(self)
 
 func _ready() -> void:
-	font = ThemeDB.fallback_font
+	font = UIKit.ui_font()
 	cam = Camera2D.new()
 	cam.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
 	add_child(cam)
@@ -832,8 +832,40 @@ func _text(ci: CanvasItem, txt: String, pos: Vector2, c: Color, size := 8) -> vo
 	ci.draw_string_outline(font, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 2, Color(0, 0, 0, 0.85))
 	ci.draw_string(font, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, size, c)
 
+## A small crosshair at the mouse while a gun, bow, crossbow or thrown weapon is in hand (the system
+## pointer hides while it shows). Red while the weapon is reloading or between shots.
+var _cross_on := false
+func crosshair_wanted() -> bool:
+	if Game.screen != "game" or Game.map == null or Game.fishing != null or not world.mouse_inside:
+		return false
+	if Game.ui and Game.ui.overlay_open():
+		return false
+	var hs = Game.selected_stack()
+	return hs != null and Data.weapons.has(hs.id) and str(Data.weapons[hs.id].mode) in ["shoot", "throw", "boomerang", "consumable"]
+
+func _draw_crosshair(ci: CanvasItem) -> void:
+	var want := crosshair_wanted()
+	if want != _cross_on:
+		_cross_on = want
+		Input.mouse_mode = Input.MOUSE_MODE_HIDDEN if want else Input.MOUSE_MODE_VISIBLE
+	if not want:
+		return
+	var m: Vector2 = ci.get_global_mouse_position().round()
+	var busy: bool = Game.player.get("reload") != null or float(Game.player.get("cd", 0.0)) > 0.0
+	var col := Color("#ff6a5a") if busy else Color("#f4f0e0")
+	var dk := Color(0.08, 0.06, 0.06, 0.85)
+	var arms := [Rect2(m + Vector2(-6, 0), Vector2(4, 1)), Rect2(m + Vector2(3, 0), Vector2(4, 1)),
+		Rect2(m + Vector2(0, -6), Vector2(1, 4)), Rect2(m + Vector2(0, 3), Vector2(1, 4)), Rect2(m, Vector2(1, 1))]
+	for r in arms:
+		ci.draw_rect(r.grow(1), dk)       # a dark rim so it reads on pale ground too
+	for r in arms:
+		ci.draw_rect(r, col)
+
 func draw_overlay(ci: CanvasItem) -> void:
 	if Game.screen != "game" or Game.map == null:
+		if _cross_on:
+			_cross_on = false
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		return
 	var p: Dictionary = Game.player
 	for id in Game.npcs:
@@ -847,6 +879,7 @@ func draw_overlay(ci: CanvasItem) -> void:
 		_text(ci, fl.text, fl.pos - Vector2(6, 0), fl.color, 8)
 	if Game.charge != null:
 		_bar(ci, p.pos + Vector2(0, -42), float(world.charge_level() + (fmod(Game.charge.t, 0.45) / 0.45 if world.charge_level() < Game.tool_tier(Game.charge.tool) else 0.0)) / max(1, Game.tool_tier(Game.charge.tool)), world.charge_level() >= Game.tool_tier(Game.charge.tool))
+	_draw_crosshair(ci)
 	var f = Game.fishing
 	if f == null:
 		return

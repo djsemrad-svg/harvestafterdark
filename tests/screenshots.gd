@@ -48,6 +48,21 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "crosshair":
+		main.ui.close_all()
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 40, 44, "down", {"silent": true})
+		Game.enemies.clear()
+		Game.add_item("pistol_22", 1)
+		for i in Game.state.inventory.size():
+			var st = Game.state.inventory[i]
+			if st != null and st.id == "pistol_22": Game.state.selected = i
+		get_viewport().warp_mouse(Vector2(320, 110))
+		main.world.mouse_inside = true
+		await frames(10)
+		await shot("crosshair")
+		get_tree().quit()
+		return
 	if only == "swing":
 		# the swing frozen at points along the way, for each tool and direction (cropped and stitched later)
 		main.ui.close_all()

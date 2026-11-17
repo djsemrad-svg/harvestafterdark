@@ -47,9 +47,26 @@ static func sb(bg: Color, border: Color, bw := 2, radius := 3, shadow := OUTLINE
 	s.anti_aliasing = false
 	return s
 
+static var _ui_font: Font = null
+## The game's text font: art/fonts/ui.ttf (Tiny5, a free pixel font) drawn crisp at whole-pixel sizes, or
+## Godot's built-in font if it's missing. Sizes under 16 draw at the font's own 8 px size; 16+ at twice that.
+static func ui_font() -> Font:
+	if _ui_font != null: return _ui_font
+	_ui_font = ThemeDB.fallback_font
+	if ResourceLoader.exists("res://art/fonts/ui.ttf"):
+		var f = load("res://art/fonts/ui.ttf")
+		if f is FontFile:
+			f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+			f.hinting = TextServer.HINTING_NONE
+			f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+			f.fixed_size = 8
+			f.fixed_size_scale_mode = TextServer.FIXED_SIZE_SCALE_INTEGER_ONLY
+			_ui_font = f
+	return _ui_font
+
 static func make_theme(large_text: bool, high_contrast: bool) -> Theme:
 	var t := Theme.new()
-	t.default_font = ThemeDB.fallback_font
+	t.default_font = ui_font()
 	t.default_font_size = 9 if large_text else 7
 	var parch := Color.WHITE if high_contrast else PARCH
 	var ink := Color.BLACK if high_contrast else INK
