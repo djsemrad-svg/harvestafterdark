@@ -505,3 +505,10 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 6. Done: rebuilding Brightwater (Nov 15).
 7. Ideas agreed as worth doing next: survivors who move into town (rescued in the districts or found by ham radio), a guided first week for new players, and a difficulty pass after playtesting.
 8. Later phases: factions, hostile settlements.
+9. Daniel's list (Nov 17, not started yet):
+   - Livelier interiors: shop rooms get clutter, stock on shelves and background shoppers browsing (reuse Townsfolk inside shop maps); homes and the tavern get small details.
+   - People block movement: neighbours, townsfolk and guards are solid. If one stands in your way for about 1.5 s of pushing into them, they step aside or let you pass, unless an event marks them as blocking on purpose (`blocking: true`).
+   - Mine progression less like Stardew: every floor has a way down from the start (stairs, sometimes guarded or hidden behind rubble), so you choose to fight or sneak past. Optional: some floors lock the stairs until the floor's infected are cleared.
+   - Mine loot: small loot boxes scattered on floors (gold, healing, common parts, food, common gems; 1-5% for something rarer); a big chest every 10 floors (more gold, rare and epic weapons and gear, rare parts and dishes, 10% legendary); a legendary chest on the last floor (1 legendary weapon, 1 legendary armour piece, a lot of gold). The mine is 20 floors now, so the last floor is 20 until more are added.
+   - Mine elevator on floor 1 and every 10th floor (10, 20, and later 30, 40...): visiting a floor unlocks it; the elevator rides between unlocked floors with a rumble sound and a shaking screen.
+   - Artifacts: already in the game. The Community Archive (a Restoration project) takes minerals, gems and artifacts with rewards at 5, 10, 20 and 30 donations. Could add: Ruth or the Archive buys extra relics for gold, and a "pre-Fall relics" collection with its own rewards.
