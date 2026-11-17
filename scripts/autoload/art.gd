@@ -966,11 +966,9 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var d: Dictionary = Data.obj_defs.get(t, {})
 	if d.get("barrier", false) and (o.get("broken", false) or o.get("open", false)):
 		return {}
-	if t == "rock" and o.get("palette", "field") != "field":
-		return {}
 	var v: int = int(o.get("v", 0)) % 4
 	var searched: bool = (d.get("container", false) or t in ["supply_crate", "car_wreck"]) and DistrictArt.searched(o)
-	var key := "%s|%s|%d|%s|%d|%d" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1))]
+	var key := "%s|%s|%d|%s|%d|%d|%s|%s" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1)), o.get("ore", ""), o.get("palette", "")]
 	if _ovobj.has(key):
 		return _ovobj[key]
 	var names: Array = []
@@ -981,7 +979,12 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 		"pine":
 			var pn: String = ["pine", "pine2", "pine", "pine3"][v]
 			names = ["trees/%s_%s.png" % [pn, season], "trees/pine_%s.png" % season, "trees/pine.png"]
-		"rock": names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
+		"rock":
+			var pal_name: String = str(o.get("palette", "field"))
+			if pal_name != "field": names = ["objects/rock_%s_%d.png" % [pal_name, v % 2]]
+			else: names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
+		"ore_rock": names = ["objects/ore_rock_%s.png" % str(o.get("ore", "")), "objects/ore_rock.png"]
+		"geode_rock": names = ["objects/geode_rock.png"]
 		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
 	var tex: Texture2D = null
 	if searched:

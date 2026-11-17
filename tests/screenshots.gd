@@ -48,6 +48,16 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "mine":
+		main.ui.close_all()
+		for fl in [2, 7]:
+			Game.change_map("mine", 0, 0, "down", {"silent": true, "floor": fl})
+			Game.enemies.clear()
+			Game.player.iframes = 999.0
+			await frames(40)
+			await shot("91_mine_%d" % fl)
+		get_tree().quit()
+		return
 	if only == "animals":
 		main.ui.close_all()
 		var hm2: GameMap = Game.maps.homestead

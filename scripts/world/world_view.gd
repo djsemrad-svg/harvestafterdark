@@ -163,6 +163,9 @@ func _draw() -> void:
 			draw_texture(Art.get_tile(t, season, v, (wf + v) % 4 if t == "water" else 0), pos)
 			if t == "road" or t == "dirt" or t == "sand":
 				_ground_edges(m, t, x, y, pos, season)
+			elif (t == "mwall" or t == "mwall2") and m.in_bounds(x, y + 1) and m.tile_at(x, y + 1).begins_with("mfloor"):
+				var face: Texture2D = Art.override("tiles/%s_face_%d.png" % [t, v % 2])
+				if face != null: draw_texture(face, pos)      # the rock face above a floor
 			if t == "water":
 				var above := m.tile_at(x, y - 1)
 				if above != "water" and above != "bridge":

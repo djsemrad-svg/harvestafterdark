@@ -367,6 +367,14 @@ Daniel asked for more colour and life, balanced against the run-down look.
 
 Daniel wants to revisit these later. `art/animals/<type>_<0|1>.png` are strips of walk frames; `art/animals/index.json` gives frame size, frame count, which row faces side / down / up and which way the side view faces (`Art.get_animal`). Cows and chickens from Farm RPG (cows have front and back views), pigs, sheep and ducks from Sunnyside World, quail from the Sunnyside bird, goats are the Farm RPG bull shrunk and recoloured (weakest). Animals walk with 4 frames. Rabbits, the guard dog and the barn cat are still code-drawn. `tests/screenshots.gd --only=animals` shows them on the farm.
 
+### The mine (added Nov 16)
+
+- Walls: Pixel Crawler rock, brown in the upper mine (`mwall`), grey further down (`mwall2`). A wall with floor below it shows a cobbled rock face (`tiles/<wall>_face_<v>.png`, drawn in `WorldView`).
+- Floors: the lumpy dirt, darker brown or grey (`mfloor`, `mfloor2`).
+- Rocks: Sunnyside World mine rocks. Plain ones per palette (`objects/rock_<upper|lower>_<v>.png`), one per ore or gem with only its flecks recoloured (`objects/ore_rock_<id>.png`), and a geode rock with purple glints.
+- `tests/screenshots.gd --only=mine` shows floors 2 and 7.
+- Two tests depend on random rolls and fail now and then (a Precinct 9 locker roll, a fish-size record). Both passed 6 of 6 when repeated.
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

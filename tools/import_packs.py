@@ -1553,3 +1553,65 @@ if os.path.isdir(FRPG) and os.path.isdir(SUNE):
     os.makedirs(os.path.join(OUT, "animals"), exist_ok=True)
     json.dump(AN, open(os.path.join(OUT, "animals", "index.json"), "w"), indent=1)
     print("animals:", len(AN))
+
+
+# ---------------------------------------------------------------- the mine: cave walls, floors and rocks
+# Walls: Pixel Crawler's rock (brown in the upper mine, grey further down): a rough rock top, and a cobbled
+# rock face where a wall has floor below it (tiles/<wall>_face_<v>.png). Floors: the lumpy dirt, darker.
+# Rocks: Sunnyside World's small mine rocks: plain ones per palette, and one per ore or gem with its
+# flecks or crystals recoloured (objects/ore_rock_<id>.png).
+PCW = os.path.join(SRC, "Pixel_Crawler_-_Free_Pack_Exterior_0.1", "Pixel Crawler - Free Pack", "Environment", "Tilesets", "Wall_Tiles.png")
+SUNTS = os.path.join(SRC, "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_ASSET_PACK_V2.1", "Sunnyside_World_Assets", "Tileset", "spr_tileset_sunnysideworld_16px.png")
+if os.path.isfile(PCW) and os.path.isfile(SUNTS) and os.path.isfile(PCF):
+    pcw = Image.open(PCW).convert("RGBA")
+    cell = lambda x, y: pcw.crop((x, y, x + 16, y + 16))
+    for wall, x0, tint_to in [("mwall", 16, "#6a4c34"), ("mwall2", 112, None)]:
+        for v, (dx, dy) in enumerate([(16, 16), (32, 16), (16, 32), (32, 32)]):
+            t = cell(x0 + dx, dy)
+            save(tone(t, tint_to) if tint_to else t, "tiles/%s_%d.png" % (wall, v))
+        for v, dx in enumerate([16, 32]):
+            t = cell(x0 + dx, 96)
+            save(tone(t, "#4e3624") if tint_to else t, "tiles/%s_face_%d.png" % (wall, v))
+    for fl, col in [("mfloor", "#4c3a2a"), ("mfloor2", "#3c3c44")]:
+        for v, (x, y) in enumerate([(176, 160), (192, 160), (208, 176), (192, 176)]):
+            save(tone(pcf.crop((x, y, x + 16, y + 16)), col), "tiles/%s_%d.png" % (fl, v))
+    sts = Image.open(SUNTS).convert("RGBA")
+    def sun_rock(row):
+        im = sts.crop((848, 336 + row * 32, 880, 368 + row * 32))
+        return im.crop(im.getbbox())
+    plain, silver, coal, blue, gold = sun_rock(4), sun_rock(0), sun_rock(1), sun_rock(2), sun_rock(3)
+    save(mute(plain, 0.1), "objects/rock_lower_0.png")
+    save(mute(tone(plain, "#7a6a5a"), 0.1), "objects/rock_upper_0.png")
+    save(mute(shade(plain, 0.9), 0.1), "objects/rock_lower_1.png")
+    save(mute(shade(tone(plain, "#7a6a5a"), 0.9), 0.1), "objects/rock_upper_1.png")
+    def flecks(im, want, pick=None):
+        """Recolour only the flecks or crystals: the pixels that differ from the plain rock."""
+        out = im.copy()
+        pp, op = plain.load(), out.load()
+        sel = [(x, y) for y in range(out.height) for x in range(out.width)
+               if op[x, y][3] and (x >= plain.width or y >= plain.height or sum(abs(op[x, y][i] - pp[x, y][i]) for i in range(3)) > 60)]
+        if not sel:
+            return out
+        lum = lambda p: 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]
+        avg = sum(lum(op[x, y]) for x, y in sel) / len(sel)
+        w = hexrgb(want)
+        for x, y in sel:
+            k = lum(op[x, y]) / max(avg, 1)
+            op[x, y] = tuple(min(255, int(c * k)) for c in w) + (op[x, y][3],)
+        return out
+    bright = None
+    ORE = {"coal": (coal, None), "silver_ore": (silver, None), "gold_ore": (gold, None), "aurium_ore": (blue, None),
+           "copper_ore": (gold, "#d8743a"), "iron_ore": (gold, "#c8907a"), "tin_ore": (silver, "#d8dcd8"),
+           "zinc_ore": (silver, "#a8c4d0"), "lead_ore": (silver, "#7a8090"), "saltpeter": (silver, "#f4f0e8"),
+           "quartz": (blue, "#e8f0f4"), "amethyst": (blue, "#a070e0"), "topaz": (blue, "#f0c040"), "emerald": (blue, "#40d080"),
+           "ruby": (blue, "#e04050"), "sapphire": (blue, "#4070f0"), "diamond": (blue, "#f4fbff"), "jade": (blue, "#60c090"),
+           "garnet": (blue, "#a02838"), "opal": (blue, "#f0c8e8"), "ember_opal": (blue, "#f0703a"), "glimmerite": (blue, "#c0f0f0")}
+    for oid, (base, col) in ORE.items():
+        save(mute(flecks(base, col, bright) if col else base, 0.08), "objects/ore_rock_%s.png" % oid)
+    save(mute(flecks(plain.copy(), "#c8b8a0", lambda p: False), 0.1), "objects/geode_rock.png")
+    g = Image.open(os.path.join(OUT, "objects", "geode_rock.png")).convert("RGBA")
+    for x, y in [(5, 6), (8, 5), (10, 7)]:          # a few purple crystal glints
+        if x < g.width and y < g.height and g.getpixel((x, y))[3]:
+            g.putpixel((x, y), (154, 106, 208, 255))
+    save(g, "objects/geode_rock.png")
+    print("mine: walls, floors, %d rocks" % (len(ORE) + 5))
