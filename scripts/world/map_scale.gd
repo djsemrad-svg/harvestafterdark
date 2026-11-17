@@ -92,6 +92,18 @@ static func upscale(src: GameMap) -> GameMap:
 					var rx: int = (x * s + (0 if d.x < 0 else s - 1)) if d.x != 0 else x * s + i
 					var ry: int = (y * s + (0 if d.y < 0 else s - 1)) if d.y != 0 else y * s + i
 					m.set_tile(rx, ry, nt)
+	# the trimmed edges leave a one-tile tooth at the inner corner of each crossing: take it off
+	for y in range(1, m.h - 1):
+		for x in range(1, m.w - 1):
+			var t := m.tile_at(x, y)
+			if t != "road" and t != "dirt": continue
+			for c in [[0, -1, -1, 0], [0, -1, 1, 0], [0, 1, -1, 0], [0, 1, 1, 0]]:
+				var a := m.tile_at(x + c[0], y + c[1]); var b := m.tile_at(x + c[2], y + c[3])
+				if a == t or b == t or a != b: continue
+				if m.tile_at(x + c[2], y + c[1]) == t: continue        # the diagonal between them must be ground too
+				if m.tile_at(x - c[2], y + c[1]) == t and m.tile_at(x + c[2], y - c[1]) == t:
+					m.set_tile(x, y, a)
+					break
 	# buildings double and rebuild their own door warps
 	var door_tiles := {}
 	for st in src.structures:

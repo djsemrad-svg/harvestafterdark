@@ -61,6 +61,13 @@ func _ready() -> void:
 				Game.change_map(spot[0], MapScale.t(spot[0], spot[1], spot[2]).x if spot[0] != "homestead" else spot[1], MapScale.t(spot[0], spot[1], spot[2]).y if spot[0] != "homestead" else spot[2], "down", {"silent": true})
 				Game.state.time = 720
 				Game.enemies.clear()
+				if spot[0] == "homestead":
+					var pp: Vector2 = Game.player.pos
+					for yy in range(-5, -2):
+						for xx in range(-4, 4):
+							var kx := int(pp.x / 16) + xx; var ky := int(pp.y / 16) + yy
+							Game.map.objects.erase(GameMap.k(kx, ky))
+							Game.map.soil[GameMap.k(kx, ky)] = {"w": 1 if xx >= 0 else 0, "crop": null}
 				await frames(30)
 				await shot("sc_%s_%s%s" % [sd[1], spot[0], tag])
 		# a car wreck next to the player, for size

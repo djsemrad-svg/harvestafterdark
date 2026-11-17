@@ -161,7 +161,7 @@ func _draw() -> void:
 			if t == "grass" and Art.hash2(x, y, 11) < 0.14: v += 4   # wildflowers or mushrooms
 			var pos := Vector2(x * 16, y * 16)
 			draw_texture(Art.get_tile(t, season, v, (wf + v) % 4 if t == "water" else 0), pos)
-			if t == "road" or t == "dirt":
+			if t == "road" or t == "dirt" or t == "sand":
 				_ground_edges(m, t, x, y, pos, season)
 			if t == "water":
 				var above := m.tile_at(x, y - 1)
@@ -788,7 +788,7 @@ func _ground_edges(m: GameMap, t: String, x: int, y: int, pos: Vector2, season: 
 		var tex: Texture2D = null
 		if t == "road" and nt in ["pave", "grass", "sand"]:
 			tex = Art.override("tiles/road_edge_%s.png" % sd[0])
-		elif t == "dirt" and nt == "grass":
+		elif (t == "dirt" or t == "sand") and nt == "grass":
 			tex = Art.override("tiles/dirt_edge_%s_%s.png" % [season, sd[0]])
 		if tex != null:
 			draw_texture(tex, pos)

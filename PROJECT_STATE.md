@@ -360,6 +360,7 @@ Daniel asked for more colour and life, balanced against the run-down look.
 - Roads: Modern Exteriors cracked asphalt with a concrete curb where they meet pavement or grass. Dirt: Pixel Crawler dirt, toned down, with a ragged grass lip where it meets grass (`_ground_edges`, `tiles/road_edge_<side>`, `tiles/dirt_edge_<season>_<side>`).
 - Narrower roads on the scaled maps: wide runs lose their outer tile row on each side (a 6-tile road is now 4, a 4-tile dirt track 2). `MapScale.VERSION` 3.
 - Car and bus wrecks are Modern Exteriors vehicles at people scale, faded, rusted and some burned. Cars take 4x2 tiles, buses 7x3 (nudged away from buildings, or kept small if there's no room).
+- Tilled soil: a Sunnyside World mound on dark dirt (`tiles/soil_dry.png`, `tiles/soil_wet.png`, used by `Art.get_soil`). Sand is paler and gets the grass lip too. The one-tile tooth at road crossings is removed after trimming.
 - `tests/screenshots.gd --only=scenes` takes daytime views of the farm, town, Residential and Riverlands plus a wreck next to the player, for colour checks.
 
 ### Packs looked at and not used (Nov 16)

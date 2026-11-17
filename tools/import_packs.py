@@ -1482,4 +1482,14 @@ if os.path.isfile(CITY) and os.path.isfile(PCF):
             fr.putpixel((x, depth[x]), (40, 30, 20, 110))      # a soft shadow under the grass lip
         for side in "nsew":
             save(rot(fr, side), "tiles/dirt_edge_%s_%s.png" % (season, side))
+    # tilled soil: a mound (Sunnyside World's shape) on dark dirt; watered is darker
+    SOIL = os.path.join(SUNE, "Crops", "soil_00.png")
+    for name, base, mound, bx in [("dry", "#5e4128", "#8a6040", 176), ("wet", "#3c2a1a", "#5a3e28", 192)]:
+        t = tone(pcf.crop((bx, 160, bx + 16, 176)), base)
+        t.alpha_composite(tone(Image.open(SOIL).convert("RGBA"), mound), (0, 2))
+        save(t, "tiles/soil_%s.png" % name)
+    # sand: the Terrains sheet's is orange; a paler, duller sand reads better next to the grass
+    for f in sorted(os.listdir(os.path.join(OUT, "tiles"))):
+        if f.startswith("sand") and f.endswith(".png"):
+            save(tone(Image.open(os.path.join(OUT, "tiles", f)).convert("RGBA"), "#c4ae84"), "tiles/" + f)
     print("roads and dirt: 4 + 4 tiles, edges")

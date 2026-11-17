@@ -450,6 +450,14 @@ func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 
 func get_soil(wet: bool, season: String) -> ImageTexture:
 	return cached("soil|%s|%s" % [wet, season], func():
+		var ov: Texture2D = override("tiles/soil_%s.png" % ("wet" if wet else "dry"))
+		if ov != null:
+			var oi: Image = ov.get_image().duplicate()
+			if oi.is_compressed(): oi.decompress()
+			oi.convert(Image.FORMAT_RGBA8)
+			if season == "winter":
+				oi.set_pixel(3, 3, Color("#e6edf3")); oi.set_pixel(12, 9, Color("#e6edf3"))
+			return oi
 		var x := img(16, 16)
 		var b: Array = ["#4a3220", "#3a2616", "#5a3e28"] if wet else ["#6e4c2e", "#5a3e24", "#82603e"]
 		R(x, 0, 0, 16, 16, b[0])
