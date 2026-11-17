@@ -1820,3 +1820,16 @@ if os.path.isdir(SUNE):
                     cp[x, y] = (int(20 + 50 * k), int(20 + 50 * k), int(28 + 56 * k), p[3])
         save(crow, "critters/crow_%d.png" % i)
 print("critters: done")
+
+
+# tools from the item pack: one picture per upgrade tier (Basic, Copper, Iron, Silver, Gold, Aurium)
+# icons/<tool>.png is Basic, icons/<tool>_t<tier>.png the upgrades. The watering can keeps its Modern Exteriors
+# picture with the tier tint.
+TOOL_TIERS = {"pickaxe": [28, 23, 22, 24, 25, 26], "axe": [47, 42, 41, 43, 44, 45], "shovel": [76, 78, 77, 79, 80, 81],
+              "hoe": [99, 95, 94, 96, 97, 98], "scythe": [106, 107, 111, 108, 109, 110]}
+if os.path.isdir(ITEMPACK):
+    for tool, nums in TOOL_TIERS.items():
+        for tier, num in enumerate(nums):
+            im = mute(Image.open(os.path.join(ITEMPACK, "item%d.png" % num)).convert("RGBA"), 0.06)
+            save(im, "icons/%s.png" % tool if tier == 0 else "icons/%s_t%d.png" % (tool, tier))
+    print("tool tiers: %d tools" % len(TOOL_TIERS))

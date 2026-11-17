@@ -1632,6 +1632,11 @@ func get_icon(id: String, tier: int = 0) -> ImageTexture:
 func icon_image(id: String, tier: int) -> Image:
 	var x := img(16, 16)
 	var it: Dictionary = Data.items.get(id, {})
+	if tier > 0 and has_override("icons/%s_t%d.png" % [id, tier]):
+		var ti: Image = override("icons/%s_t%d.png" % [id, tier]).get_image().duplicate()
+		if ti.is_compressed(): ti.decompress()
+		ti.convert(Image.FORMAT_RGBA8)
+		return ti
 	if has_override("icons/%s.png" % id) and (tier == 0 or Data.tool_defs.has(id)):
 		var oi: Image = override("icons/%s.png" % id).get_image().duplicate()
 		if oi.is_compressed(): oi.decompress()
