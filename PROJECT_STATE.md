@@ -328,6 +328,15 @@ From Full_pack (modern guns, 34 colour versions of the same set) and The Ultimat
 - `tests/screenshots.gd --only=objects` lays out a showroom of the objects and fence rings.
 - Still code-drawn: turrets and traps, most crafting machines, sprinklers and other farm equipment, paths and floors, gates, mine rocks and ladders, a few district props (display cases, museum desk, ledger, lookouts).
 
+### Gear icons (added Nov 16)
+
+91 of the 93 missing gear icons (Grinning Saint and Viking Horns are still code-drawn).
+
+- Hats and helmets: the front-facing still of a Modern Interiors / Exteriors 32x32 character generator accessory (`HATS` in the importer), recoloured where needed (bike helmet = worker helmet in blue, traffic cone = party hat in orange). Firefighter's helmet comes from the firefighter outfit.
+- Tops and trousers: drawn by `tools/gear_icons.py` from a few shapes (tee, long sleeves, hoodie, jacket, vest, plate carrier, coat, suit; trousers, shorts, kilt) with colours and details per item (`TOPS`, `BOTTOMS`). The generator's own outfits were too squat to read as clothing at icon size.
+- Shoes: the props pack's four, recoloured per item.
+- Also: shovel, Grave Digger, garden rake and watering can from Modern Exteriors garden tools; axe, pickaxe and hoe from the sword pack. Upgraded tools tint the icon's metal to their tier colour (`Art.icon_image`).
+
 ### Packs looked at and not used (Nov 16)
 
 - Mystic Woods (free): mostly placeholders for the paid version, plus chibi characters.

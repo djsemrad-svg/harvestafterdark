@@ -1048,3 +1048,68 @@ if os.path.isfile(PLACE) and "PI" in globals():
         icon(src, iid)
         n += 1
     print("placeable icons:", n)
+
+
+# ---------------------------------------------------------------- gear: hats from the character generator, clothes drawn, shoes from the props pack
+GEN32 = os.path.join(SRC, "moderninteriors-win", "2_Characters", "Character_Generator")
+ADD32 = os.path.join(SRC, "modernexteriors-win", "Modern_Exteriors_32x32", "Character_Generator_Addons_32x32")
+if os.path.isdir(GEN32) and "PI" in globals():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import gear_icons as GI
+
+    def gen_front(rel, top_rows=None):
+        """The facing-front still frame of a 32x32 generator layer, trimmed (top_rows: keep only the top part)."""
+        hits = sorted(_glob.glob(os.path.join(GEN32, "Accessories", "32x32", rel))) or sorted(_glob.glob(os.path.join(ADD32, "**", rel), recursive=True))
+        im = Image.open(hits[0]).convert("RGBA").crop((96, 0, 128, 64))
+        if top_rows:
+            im = im.crop((0, 0, 32, top_rows))
+        return im.crop(im.getbbox())
+
+    def fit16(im):
+        if im.width > 16 or im.height > 16:
+            k = min(16 / im.width, 16 / im.height)
+            im = PI.shrink(im, max(1, round(im.width * k)), max(1, round(im.height * k)), cover=0.3, reoutline=False)
+        return im
+
+    tint_all = lambda im, col: hue_set(im, col, lambda p: sum(p[:3]) > 110)
+    HATS = {
+        "baseball_cap": ("Accessory_04_Snapback_32x32_01.png", None), "beanie": ("Accessory_11_Beanie_32x32_01.png", None),
+        "bandana_mask": ("Accessory_07_Bataclava_32x32_03.png", "#a83a2a"), "bike_helmet": ("Accessory_20_Worker_Helmet_32x32.png", "#3a8ad8"),
+        "vented_bike_helmet": ("Accessory_20_Worker_Helmet_32x32.png", "#3ac8b8"), "gas_mask": ("Accessory_07_Bataclava_32x32_03.png", None),
+        "filtered_gas_mask": ("Accessory_07_Bataclava_32x32_03.png", "#5a6a4a"), "hard_hat": ("Accessory_20_Worker_Helmet_32x32.png", None),
+        "padded_hard_hat": ("Accessory_20_Worker_Helmet_32x32.png", "#e8782a"), "football_helmet": ("Accessory_27_Soldier_Helmet_32x32.png", "#8a2a2a"),
+        "motorcycle_helmet": ("Accessory_07_Bataclava_32x32_01.png", None), "tinted_motorcycle_helmet": ("Accessory_07_Bataclava_32x32_02.png", None),
+        "riot_helmet": ("Accessory_27_Soldier_Helmet_32x32.png", "#2a3040"), "reinforced_riot_helmet": ("Accessory_27_Soldier_Helmet_32x32.png", "#1a1e28"),
+        "military_helmet": ("Accessory_27_Soldier_Helmet_32x32.png", None), "scouts_boonie_hat": ("Accessory_22_Scout_Snapback_32x32.png", None),
+        "night_owl_helmet": ("Accessory_27_Soldier_Helmet_32x32.png", "#2a3428"), "the_lighthouse": ("Accessory_20_Worker_Helmet_32x32.png", "#b8903a"),
+        "cowboy_hat": ("Accessory_08_Detective_Hat_32x32_01.png", None), "traffic_cone": ("Accessory_19_Party_Cone_32x32_01.png", "#e8782a"),
+        "tinfoil_hat": ("Accessory_19_Party_Cone_32x32_01.png", "#c8ccd4"), "chefs_hat": ("Accessory_18_Chef_32x32_01.png", None),
+    }
+    n = 0
+    for iid, (f, tint) in HATS.items():
+        im = gen_front(f, 40)
+        if tint:
+            im = tint_all(im, tint)
+        icon(fit16(im), iid)
+        n += 1
+    fh = gen_front("Outfit_Firefighter_32x32.png", 40)
+    icon(fit16(fh), "firefighters_helmet")
+    for iid in GI.TOPS:
+        save(GI.make_top(iid), "icons/%s.png" % iid)
+    for iid in GI.BOTTOMS:
+        save(GI.make_bottom(iid), "icons/%s.png" % iid)
+    n += 1 + len(GI.TOPS) + len(GI.BOTTOMS)
+    # shoes and boots: the props pack's four, recoloured
+    if os.path.isdir(PROPS):
+        SHOES = {"flip_flops": (4, "#3aa8c8"), "slippers": (4, "#8a6a9a"), "sneakers": (4, None), "running_shoes": (4, "#3a8ad8"),
+                 "rain_boots": (1, "#e8c83a"), "cowboy_boots": (2, "#8a5a30"), "felt_soled_sneakers": (4, "#6a5a4a"),
+                 "cushioned_running_shoes": (4, "#3ac888"), "ghost_steps": (3, "#3a3a44"), "marathon_racers": (4, "#d84a3a"),
+                 "stompers": (3, "#2a2420"), "starting_gun": (4, "#e8b83a"), "firewalkers": (3, "#241c1c"), "bunny_slippers": (4, "#f0d8e0"),
+                 "clown_shoes": (4, "#d83a3a"), "dress_shoes": (4, "#1e1e22"), "light_up_sneakers": (4, "#e870c8"), "gold_sneakers": (4, "#e8c040")}
+        for iid, (num, tint) in SHOES.items():
+            im = prop("misc", num)
+            if tint:
+                im = hue_set(im, tint, lambda p: sum(p[:3]) > 110 and (max(p[:3]) - min(p[:3])) > 12)
+            icon(mute(im, 0.22), iid)
+            n += 1
+    print("gear icons:", n)
