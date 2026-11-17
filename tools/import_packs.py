@@ -352,8 +352,9 @@ print(len(written), "files written to", OUT)
 
 
 # ---------------------------------------------------------------- people (Modern Interiors character generator)
-# Each part sheet keeps only its first 3 rows (still frames, idle, walk), 16x32 frames, 24 per row:
-# right 0-5, up 6-11, left 12-17, down 18-23. index.json lists each part with its main colour so the game
+# Each part sheet keeps the generator rows the game animates, 16x32 frames, in this order: 0 still frames,
+# 1 idle (breathing), 2 walk, 3 hit (swing), 4 punch, 5 stab, 6 hurt, 7 pick up (GEN_ROWS). Most rows have 6
+# frames per direction: right 0-5, up 6-11, left 12-17, down 18-23 (hurt 3 per direction, pick up 12). index.json lists each part with its main colour so the game
 # can match a look ("dark skin, grey curly hair, blue jacket") to the nearest parts.
 import json
 from collections import Counter
@@ -365,6 +366,12 @@ if os.path.isdir(CG):
         if not c:
             c = Counter(p[:3] for p in fr.getdata() if p[3] > 0)
         return "#%02x%02x%02x" % c.most_common(1)[0][0] if c else "#000000"
+    GEN_ROWS = [0, 1, 2, 13, 14, 15, 19, 9]
+    def gen_rows(im):
+        out = Image.new("RGBA", (896, 32 * len(GEN_ROWS)), (0, 0, 0, 0))
+        for i, r in enumerate(GEN_ROWS):
+            out.alpha_composite(im.crop((0, r * 32, 896, r * 32 + 32)), (0, i * 32))
+        return out
     index = {}
     for part, folder, prefix in [("body", "Bodies", "Body_"), ("eyes", "Eyes", "Eyes_"), ("outfit", "Outfits", "Outfit_"),
                                  ("hair", "Hairstyles", "Hairstyle_"), ("acc", "Accessories", "Accessory_")]:
@@ -373,7 +380,7 @@ if os.path.isdir(CG):
         for f in sorted(os.listdir(d)):
             if not f.endswith(".png"):
                 continue
-            im = Image.open(os.path.join(d, f)).convert("RGBA").crop((0, 0, 896, 96))
+            im = gen_rows(Image.open(os.path.join(d, f)).convert("RGBA"))
             key = f[len(prefix):-4]
             save(im, "characters/mi/%s/%s.png" % (part, key))
             index[part][key] = main_colour(im)
@@ -388,7 +395,7 @@ if os.path.isdir(CG):
         for part, m in ADDONS.items():
             for key, fname in m.items():
                 f = os.path.join(AD, fname + ("" if fname.endswith(("_1", "_2", "_3")) else "_16x16") + ".png")
-                im = Image.open(f).convert("RGBA").crop((0, 0, 896, 96))
+                im = gen_rows(Image.open(f).convert("RGBA"))
                 save(im, "characters/mi/%s/%s.png" % (part, key))
                 index[part][key] = main_colour(im)
     p = os.path.join(OUT, "characters", "mi", "index.json")

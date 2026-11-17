@@ -2610,9 +2610,11 @@ func update_npcs(dt: float) -> void:
 				n.pos += d.normalized() * sp
 				n.dir = ("left" if d.x < 0 else "right") if abs(d.x) > abs(d.y) else ("up" if d.y < 0 else "down")
 			n.walk_t += dt
-			n.frame = int(n.walk_t / 0.16) % 4
+			n.frame = int(n.walk_t / 0.11) % 6
+			n.moving = true
 		else:
 			n.frame = 0
+			n.moving = false
 
 func hearts(id: String) -> int:
 	return min(Balance.friendship.max_hearts, int(state.npcs[id].points) / Balance.friendship.points_per_heart)
@@ -3260,6 +3262,7 @@ func reload_checkpoint() -> bool:
 func damage_player(amt: float, src = null, cause := "infected") -> void:
 	state.health = max(0.0, state.health - amt)
 	player.iframes = Balance.player.iframes_sec
+	player.hurt_t = 0.0      # plays the hurt animation
 	if src != null:
 		player.kb = (player.pos - src).normalized() * 160.0
 	floaters.append({"text": "-%d" % int(amt), "pos": player.pos + Vector2(0, -26), "t": 0.9, "color": Color("#ff6060")})

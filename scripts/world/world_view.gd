@@ -236,7 +236,11 @@ func _draw() -> void:
 				var drop: int = int(bst.get("art_drop", 0)) if bst.has("art_x") and Art.building_override(bst) != null else 0
 				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height() + drop))
 			3:
-				_draw_char(Data.npcs[it[2].id].look, it[2].pos, it[2].dir, it[2].frame, 1.0)
+				var nn: Dictionary = it[2]
+				if nn.get("moving", false):
+					_draw_char(Data.npcs[nn.id].look, nn.pos, nn.dir, int(nn.frame), 1.0, "walk6")
+				else:   # standing: breathing idle, each neighbour a little out of step with the others
+					_draw_char(Data.npcs[nn.id].look, nn.pos, nn.dir, int(anim_t / 0.18 + float(hash(nn.id) % 6)), 1.0, "idle")
 				_draw_emote(it[2], 32)
 			4: _draw_enemy(it[2])
 			5: _draw_drop(it[2])
@@ -359,9 +363,9 @@ func _shadow(at: Vector2, w: float) -> void:
 	draw_rect(Rect2(round(at.x - w / 2), round(at.y - 1), w, 2), Color(0, 0, 0, 0.22))
 	draw_rect(Rect2(round(at.x - w / 2 + 1), round(at.y - 2), w - 2, 4), Color(0, 0, 0, 0.12))
 
-func _draw_char(look: Dictionary, pos: Vector2, dir: String, frame: int, alpha: float) -> void:
+func _draw_char(look: Dictionary, pos: Vector2, dir: String, frame: int, alpha: float, anim := "walk") -> void:
 	_shadow(pos, 10)
-	var ct: Texture2D = Art.get_char(look, dir, frame)
+	var ct: Texture2D = Art.get_char(look, dir, frame, anim)
 	draw_texture(ct, (pos - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), Color(1, 1, 1, alpha))
 
 var _lying_looks := {}
@@ -529,17 +533,38 @@ func _draw_drop(d: Dictionary) -> void:
 	draw_rect(Rect2(round(d.pos.x - 4), round(d.pos.y), 8, 2), Color(0, 0, 0, 0.2))
 	draw_texture_rect(Art.get_icon(d.id), Rect2(round(d.pos.x - 5), round(d.pos.y - 11 - bob), 10, 10), false)
 
+## Which generator animation the player shows now, and its frame.
+func player_anim(p: Dictionary) -> Array:
+	if p.get("hurt_t", 9.0) < 0.36:
+		return ["hurt", int(p.hurt_t / 0.12)]
+	if p.swing != null:
+		var sw: Dictionary = p.swing
+		var pr: float = clampf(sw.t / maxf(sw.dur, 0.01), 0.0, 0.999)
+		var kind := "hit"
+		if sw.get("shove", false): kind = "punch"
+		elif sw.has("weapon") and Data.weapons.has(sw.weapon):
+			var wt: String = str(Data.weapons[sw.weapon].get("type", ""))
+			if wt in ["Blade", "Polearm"]: kind = "stab"
+			elif wt == "Fist": kind = "punch"
+		return [kind, int(pr * 6)]
+	if p.get("pick_t", 9.0) < 0.6:
+		return ["pickup", int(p.pick_t / 0.05)]
+	if p.get("moving", false):
+		return ["walk6", int(p.frame)]
+	return ["idle", int(anim_t / 0.16)]
+
 func _draw_player() -> void:
 	var p: Dictionary = Game.player
-	var blink: bool = p.iframes > 0 and int(anim_t / 0.08) % 2 == 0
+	var blink: bool = p.iframes > 0 and p.get("hurt_t", 9.0) >= 0.36 and int(anim_t / 0.08) % 2 == 0
+	var pa := player_anim(p)
 	if p.get("crouching", false):
 		_shadow(p.pos, 10)
-		var ct: Texture2D = Art.get_char(Game.state.character.look, p.dir, p.frame)
+		var ct: Texture2D = Art.get_char(Game.state.character.look, p.dir, int(pa[1]), str(pa[0]))
 		draw_set_transform(p.pos.round(), 0, Vector2(1, 0.8))
 		draw_texture(ct, Vector2(-ct.get_width() / 2, -ct.get_height() + 1), Color(1, 1, 1, 0.35 if blink else 1.0))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	else:
-		_draw_char(Game.state.character.look, p.pos, p.dir, p.frame, 0.35 if blink else 1.0)
+		_draw_char(Game.state.character.look, p.pos, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
 	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0:
 		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
 	# a held gun, bow or chainsaw points where you aim

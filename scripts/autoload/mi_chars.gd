@@ -12,6 +12,9 @@ extends RefCounted
 const DIR := "res://art/characters/mi/"
 const DIRS := {"right": 0, "up": 1, "left": 2, "down": 3}
 const STEP := [0, 1, 3, 4]       # 4 of the 6 walk frames: stand, step, stand, other step
+## Animations kept by the importer: [row in the part sheet, frames per direction]. "walk" (the default)
+## maps a 0-3 frame counter onto 4 of the 6 walk frames; the others take the frame number as it is.
+const ANIMS := {"idle": [1, 6], "walk6": [2, 6], "hit": [3, 6], "punch": [4, 6], "stab": [5, 6], "hurt": [6, 3], "pickup": [7, 12]}
 const OUTLINE := [Color8(70, 70, 94), Color8(58, 58, 80)]
 
 ## Older look words, matched to generator part numbers.
@@ -165,12 +168,17 @@ static func complete(look: Dictionary) -> void:
 			look[k] = best
 
 ## One 16x32 frame, or null when the parts aren't installed.
-static func compose(look: Dictionary, dir: String, frame: int) -> Image:
+static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -> Image:
 	if not available():
 		return null
 	var p := parts(look)
 	var col: int = int(DIRS.get(dir, 3)) * 6 + STEP[frame % 4]
-	var rect := Rect2i(col * 16, 64, 16, 32)
+	var row := 2
+	if ANIMS.has(anim):
+		var a: Array = ANIMS[anim]
+		row = int(a[0])
+		col = int(DIRS.get(dir, 3)) * int(a[1]) + posmod(frame, int(a[1]))
+	var rect := Rect2i(col * 16, row * 32, 16, 32)
 	var out := Image.create(16, 32, false, Image.FORMAT_RGBA8)
 	var infected: bool = look.get("infected", false)
 	var skin := Color(str(look.get("skin", "#e8b48f")))
@@ -179,6 +187,7 @@ static func compose(look: Dictionary, dir: String, frame: int) -> Image:
 		if str(layer[1]) == "": continue
 		var sh := sheet(layer[0], layer[1])
 		if sh == null: continue
+		if rect.end.y > sh.get_height(): rect = Rect2i(int(DIRS.get(dir, 3)) * 6 * 16, 64, 16, 32)   # older sheet: walk only
 		var fr := sh.get_region(rect)
 		if layer[0] == "body":
 			fr = _skin(fr, skin, Color(str(index().body.get(p.body, "#ffcbb0"))))

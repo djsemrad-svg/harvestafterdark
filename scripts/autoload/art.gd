@@ -1352,12 +1352,12 @@ func look_key(l: Dictionary) -> String:
 		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)
 
-func char_image(look: Dictionary, dir: String, frame: int) -> Image:
+func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Image:
 	var ovr := char_override(look, dir, frame)
 	if ovr != null:
 		return ovr
 	# people from the Modern Interiors generator when its parts are installed
-	var im: Image = MiChars.compose(look, dir, frame)
+	var im: Image = MiChars.compose(look, dir, frame, anim)
 	if im != null:
 		pass
 	elif dir == "right":
@@ -1376,8 +1376,8 @@ func char_image(look: Dictionary, dir: String, frame: int) -> Image:
 		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
 	return im
 
-func get_char(look: Dictionary, dir: String, frame: int) -> ImageTexture:
-	return cached("ch|%s|%s|%d" % [look_key(look), dir, frame], func(): return shade_pass(char_image(look, dir, frame), 0.7) if detail else char_image(look, dir, frame))
+func get_char(look: Dictionary, dir: String, frame: int, anim := "walk") -> ImageTexture:
+	return cached("ch|%s|%s|%d|%s" % [look_key(look), dir, frame, anim], func(): return shade_pass(char_image(look, dir, frame, anim), 0.7) if detail else char_image(look, dir, frame, anim))
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
 func get_portrait(look: Dictionary) -> ImageTexture:

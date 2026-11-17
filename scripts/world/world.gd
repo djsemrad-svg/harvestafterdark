@@ -445,6 +445,7 @@ func harvest_at(t: Vector2i) -> bool:
 	if s == null or not crop_ready(s.get("crop")):
 		return false
 	var cr: Dictionary = Data.crops[s.crop.id]
+	Game.player.pick_t = 0.0
 	var ql := FarmCare.roll_quality(Game.rng, Game.skill_level("farming"), FarmCare.fert_level(s))
 	var extra := {"q": ql} if ql > 0 else {}
 	var n := 1
@@ -610,6 +611,8 @@ func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 func update_player(dt: float) -> void:
 	var p: Dictionary = Game.player
 	p.iframes = max(0.0, p.iframes - dt)
+	p.hurt_t = float(p.get("hurt_t", 9.0)) + dt
+	p.pick_t = float(p.get("pick_t", 9.0)) + dt
 	if p.kb != Vector2.ZERO:
 		move_entity(p, p.kb * dt, 5, 6)
 		p.kb *= 0.85
@@ -673,7 +676,7 @@ func update_player(dt: float) -> void:
 		if dir.x != 0: p.dir = "left" if dir.x < 0 else "right"
 		elif dir.y != 0: p.dir = "up" if dir.y < 0 else "down"
 		p.walk_t += dt
-		p.frame = int(p.walk_t / 0.14) % 4
+		p.frame = int(p.walk_t / 0.1) % 6
 		p.moving = true
 	else:
 		p.frame = 0
@@ -1837,6 +1840,7 @@ func interact_object(o: Dictionary) -> void:
 				return
 			Game.map.remove_obj(int(o.x), int(o.y))
 			Game.add_item(o.item, 1)
+			Game.player.pick_t = 0.0      # plays the pick-up animation
 			Game.add_xp("foraging", 4)
 			Sfx.play("pickup")
 		"ladder_up":
