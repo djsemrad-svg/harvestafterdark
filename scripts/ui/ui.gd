@@ -1386,7 +1386,7 @@ func save_look() -> void:
 	toast("Looking good.")
 
 # ---------------------------------------------------------------- crate and chests
-func _grid(list: Array, cols: int, on_click: Callable, lock_fn = null) -> GridContainer:
+func _grid(list: Array, cols: int, on_click: Callable, lock_fn = null, drag := false) -> GridContainer:
 	var g := GridContainer.new()
 	g.columns = cols
 	for i in list.size():
@@ -1394,8 +1394,97 @@ func _grid(list: Array, cols: int, on_click: Callable, lock_fn = null) -> GridCo
 		var idx: int = i
 		var locked: bool = s != null and lock_fn != null and lock_fn.call(s.id)
 		var tier := Game.tool_tier(Data.items[s.id].tool) if (s != null and Data.items[s.id].has("tool")) else 0
-		g.add_child(K.slot(s, (func(btn): on_click.call(idx, btn)) if s != null and not locked else null, tier, false, locked, 20))
+		var sl := K.slot(s, (func(btn): on_click.call(idx, btn)) if s != null and not locked else null, tier, false, locked, 20)
+		if drag:
+			_dnd(sl, list, idx)
+		g.add_child(sl)
 	return g
+
+# ---------------------------------------------------------------- drag and drop, discarding
+## Lets a slot be dragged onto another slot (pack, toolbar or a chest). Dropping on an empty slot moves
+## the stack, on the same item tops that stack up, on anything else swaps the two.
+func _dnd(sl: Control, list: Array, i: int) -> void:
+	sl.set_drag_forwarding(
+		func(_at): return _drag_start(sl, list, i),
+		func(_at, d): return d is Dictionary and d.has("dnd_list") and not (is_same(d.dnd_list, list) and int(d.i) == i),
+		func(_at, d): drop_stack(d.dnd_list, int(d.i), list, i))
+
+func _drag_start(sl: Control, list: Array, i: int):
+	var s = list[i]
+	if s == null:
+		return null
+	var tier := Game.tool_tier(Data.items[s.id].tool) if Data.items[s.id].has("tool") else 0
+	var pv := Control.new()
+	var ic := K.icon(Art.get_icon(s.id, tier), 16)
+	ic.position = Vector2(-8, -8)
+	ic.modulate = Color(1, 1, 1, 0.85)
+	pv.add_child(ic)
+	sl.set_drag_preview(pv)
+	Sfx.play("menu")
+	return {"dnd_list": list, "i": i}
+
+## Moves the stack at from[fi] onto to[ti]: fills an empty slot, tops up the same item, or swaps.
+func drop_stack(from: Array, fi: int, to: Array, ti: int) -> void:
+	var s = from[fi]
+	if s == null or (is_same(from, to) and fi == ti):
+		return
+	var t = to[ti]
+	var key := Game.stack_key(Game.stack_extras(s))
+	if t != null and t.id == s.id and key != "#single" and Game.stack_key(Game.stack_extras(t)) == key and int(t.qty) < int(Data.items[s.id].stack):
+		var a: int = min(int(Data.items[s.id].stack) - int(t.qty), int(s.qty))
+		t.qty = int(t.qty) + a
+		s.qty = int(s.qty) - a
+		if int(s.qty) <= 0:
+			from[fi] = null
+	else:
+		to[ti] = s
+		from[fi] = t
+	var inv: Array = Game.state.inventory
+	if is_same(to, inv) and not is_same(from, inv):
+		Game.mark_discovered(s.id)
+	if is_same(to, inv):
+		overlay.erase("pick")
+		overlay.sel = ti
+	Sfx.play("pickup")
+	render_overlay()
+
+## The bin beside "Sort pack": drop a stack here to throw it away (after an "Are you sure?").
+func _trash_slot() -> Control:
+	var b := K.icon_button("trash", func():
+		var i: int = overlay.get("pick", overlay.get("sel", -1))
+		if i >= 0 and i < Game.state.inventory.size() and Game.state.inventory[i] != null:
+			_ask_discard(i, int(Game.state.inventory[i].qty))
+		else:
+			toast("Drag an item onto the bin to throw it away.", "", "warn"), "Throw away: drag an item here") if K.modern() else K.button("Bin", func(): toast("Drag an item onto the bin to throw it away.", "", "warn"), "small")
+	b.set_drag_forwarding(Callable(),
+		func(_at, d): return d is Dictionary and d.has("dnd_list") and is_same(d.dnd_list, Game.state.inventory),
+		func(_at, d): _ask_discard(int(d.i), int(Game.state.inventory[int(d.i)].qty) if Game.state.inventory[int(d.i)] != null else 0))
+	return b
+
+## "Are you sure?" before throwing items away. Protected items (quest items, starter tools) can't be.
+func _ask_discard(i: int, n: int) -> void:
+	var s = Game.state.inventory[i] if i >= 0 and i < Game.state.inventory.size() else null
+	if s == null or n <= 0:
+		return
+	var nm: String = Data.items[s.id].name
+	if Game.item_flags(s.id).protected:
+		toast("You can't throw away the %s." % nm, s.id, "warn")
+		return
+	var saved := overlay.duplicate()
+	var id: String = s.id
+	var what := ("1 " + nm) if n == 1 else ("all %d %s" % [n, nm])
+	confirm("Throw away %s? This can't be undone." % what,
+		func():
+			var cur = Game.state.inventory[i]
+			if cur != null and cur.id == id:
+				Game.remove_from_slot(i, min(n, int(cur.qty)))
+				toast("Threw away %s." % ("1 " + nm if n == 1 else "%d %s" % [n, nm]), id)
+			overlay = saved
+			overlay.erase("pick")
+			render_overlay(),
+		func():
+			overlay = saved
+			render_overlay())
 
 func _ov_ship() -> Control:
 	var st: Dictionary = Game.state
@@ -1468,15 +1557,15 @@ func _ov_chest() -> Control:
 	while o.items.size() < size: o.items.append(null)
 	var pw := _window(overlay.title, 420)
 	var v: VBoxContainer = pw[1]
-	v.add_child(K.label("Click a stack to move it between your pack and the %s." % ("fridge" if o.type == "fridge" else "chest"), 7, K.INK_SOFT))
+	v.add_child(K.label("Click a stack to move it between your pack and the %s, or drag it to a slot." % ("fridge" if o.type == "fridge" else "chest"), 7, K.INK_SOFT))
 	var h := K.hbox(10)
 	var a := K.vbox()
 	a.add_child(K.label("Your pack", 8, K.WOOD_DARK))
-	a.add_child(_grid(Game.state.inventory, 8, func(i, _b): _move_stack(Game.state.inventory, o.items, i, false)))
+	a.add_child(_grid(Game.state.inventory, 8, func(i, _b): _move_stack(Game.state.inventory, o.items, i, false), null, true))
 	h.add_child(a)
 	var b := K.vbox()
 	b.add_child(K.label(overlay.title, 8, K.WOOD_DARK))
-	b.add_child(_grid(o.items, 6, func(i, _b): _move_stack(o.items, Game.state.inventory, i, true)))
+	b.add_child(_grid(o.items, 6, func(i, _b): _move_stack(o.items, Game.state.inventory, i, true), null, true))
 	h.add_child(b)
 	v.add_child(h)
 	v.add_child(_close_btn("Done"))
@@ -1876,6 +1965,7 @@ func _tab_inventory() -> Control:
 		var idx: int = i
 		var tier := Game.tool_tier(Data.items[s.id].tool) if (s != null and Data.items[s.id].has("tool")) else 0
 		var sl := K.slot(s, func(_b): _inv_click(idx), tier, overlay.get("pick", -1) == i or overlay.get("sel", -1) == i, false, 20)
+		_dnd(sl, st.inventory, idx)
 		if i < Balance.inventory.toolbar_size:
 			sl.self_modulate = Color(1.05, 1.0, 0.85)
 		g.add_child(sl)
@@ -1885,6 +1975,7 @@ func _tab_inventory() -> Control:
 		Game.sort_inventory()
 		overlay.erase("sel"); overlay.erase("pick")
 		render_overlay(), "small"), "sort"))
+	row.add_child(_trash_slot())
 	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
 	left.add_child(row)
 	var eq := K.row_box()
@@ -1925,7 +2016,7 @@ func _tab_inventory() -> Control:
 	if sel == null and eq_slot != "":
 		dv.add_child(K.label("Nothing worn on your %s. Click clothing or armour in your pack, then Wear." % Arsenal.SLOT_NAMES[eq_slot].to_lower(), 6, K.INK_SOFT, true))
 	elif sel == null:
-		dv.add_child(K.label("Click an item to see details. Click two slots in a row to move or swap them. The top row is your toolbar.", 6, K.INK_SOFT, true))
+		dv.add_child(K.label("Click an item to see details. Drag an item to another slot to move it, or onto the bin to throw it away (clicking two slots in a row works too). The top row is your toolbar.", 6, K.INK_SOFT, true))
 	else:
 		var it: Dictionary = Data.items[sel.id]
 		var fl := Game.item_flags(sel.id)
@@ -1989,13 +2080,7 @@ func _tab_inventory() -> Control:
 				overlay.erase("pick")
 				render_overlay(), "small"))
 		if not fl.protected:
-			br.add_child(K.button("Discard 1", func():
-				var s2 = Game.state.inventory[sidx]
-				if s2 != null and not Game.item_flags(s2.id).protected:
-					toast("Discarded 1 %s." % Data.items[s2.id].name)
-					Game.remove_from_slot(sidx, 1)
-				overlay.erase("pick")
-				render_overlay(), "danger"))
+			br.add_child(K.button("Discard 1", func(): _ask_discard(sidx, 1), "danger"))
 		dv.add_child(br)
 	det.add_child(dv)
 	h.add_child(det)

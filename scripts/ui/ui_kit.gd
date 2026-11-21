@@ -405,10 +405,15 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 			b.add_child(q)
 		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d gold each)" % it.price) + ("  [BROKEN]" if Game.is_broken(stack) else "") + "\n" + it.desc
 	if on_click != null:
+		# Right-click acts on press; left-click on release over the slot, so a press can still start a drag.
 		b.gui_input.connect(func(ev):
-			if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):
+			if not (ev is InputEventMouseButton):
+				return
+			var right: bool = ev.button_index == MOUSE_BUTTON_RIGHT and ev.pressed
+			var left: bool = ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed and Rect2(Vector2.ZERO, b.size).has_point(ev.position)
+			if right or left:
 				Sfx.play("menu")
-				on_click.call(1 if ev.button_index == MOUSE_BUTTON_LEFT else 2)
+				on_click.call(1 if left else 2)
 				b.accept_event())
 	return b
 

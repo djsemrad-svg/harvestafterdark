@@ -48,6 +48,43 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "dnd":
+		# a real mouse drag from one pack slot to another, with a shot mid-drag
+		main.ui.close_all()
+		var inv: Array = Game.state.inventory
+		inv[12] = {"id": "potato", "qty": 6}
+		inv[20] = null
+		main.ui.open("journal", {"tab": "inventory"})
+		await frames(4)
+		var grid: GridContainer = null
+		var stack := [main.ui]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			if n is GridContainer and n.columns == 12: grid = n
+			stack.append_array(n.get_children())
+		var a: Control = grid.get_child(12)
+		var b: Control = grid.get_child(20)
+		var p0: Vector2 = a.get_global_rect().get_center()
+		var p1: Vector2 = b.get_global_rect().get_center()
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true; ev.position = p0; ev.global_position = p0
+		get_viewport().push_input(ev, true)
+		for k in 12:
+			var mv := InputEventMouseMotion.new()
+			var q: Vector2 = p0.lerp(p1, (k + 1) / 12.0)
+			mv.position = q; mv.global_position = q; mv.button_mask = MOUSE_BUTTON_MASK_LEFT
+			mv.relative = (p1 - p0) / 12.0
+			get_viewport().push_input(mv, true)
+			await frames(1)
+		await shot("dnd_mid")
+		var up := InputEventMouseButton.new()
+		up.button_index = MOUSE_BUTTON_LEFT; up.pressed = false; up.position = p1; up.global_position = p1
+		get_viewport().push_input(up, true)
+		await frames(4)
+		await shot("dnd_after")
+		print("DND RESULT slot12=", inv[12], " slot20=", inv[20])
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

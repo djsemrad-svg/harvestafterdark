@@ -1248,6 +1248,7 @@ func run_all() -> void:
 	run_town_dress()
 	run_day_one()
 	run_weather_fx()
+	run_inventory_dnd()
 	run_wildlife()
 
 	# ---------- title screens render
@@ -3449,3 +3450,37 @@ func run_wildlife() -> void:
 	Wildlife.update(0.1)
 	check("Wildlife: none underground; at night only fireflies (summer) and rats", Wildlife.critters.is_empty() and not night_kinds.has("flyer") and not night_kinds.has("rabbit"), str(night_kinds))
 	at("homestead", 30, 24, "down")
+
+func run_inventory_dnd() -> void:
+	var G = Game
+	if G.state.is_empty(): start("survivor", 1)
+	close_all()
+	var inv: Array = G.state.inventory
+	for i in range(12, inv.size()): inv[i] = null
+	inv[12] = {"id": "potato", "qty": 10}
+	inv[13] = {"id": "potato", "qty": 5}
+	inv[14] = {"id": "wood", "qty": 7}
+	U.open("journal", {"tab": "inventory"})
+	U.drop_stack(inv, 13, inv, 12)       # same item: tops up the stack
+	var merged: bool = inv[12] != null and inv[12].id == "potato" and int(inv[12].qty) == 15 and inv[13] == null
+	U.drop_stack(inv, 14, inv, 12)       # different item: swap
+	var swapped: bool = inv[12].id == "wood" and inv[14].id == "potato"
+	U.drop_stack(inv, 12, inv, 20)       # empty slot: move
+	var moved: bool = inv[12] == null and inv[20].id == "wood"
+	check("Inventory drag and drop: tops up a stack, swaps different items, moves to an empty slot", merged and swapped and moved, "%s %s %s" % [merged, swapped, moved])
+	var chest := [null, {"id": "ruby", "qty": 1}, null]
+	U.drop_stack(chest, 1, inv, 21)
+	U.drop_stack(inv, 20, chest, 0)
+	check("Drag and drop between a chest and the pack (both ways)", inv[21] != null and inv[21].id == "ruby" and chest[0] != null and chest[0].id == "wood" and chest[1] == null and G.state.collections.found.has("ruby"))
+	U.open("journal", {"tab": "inventory"})
+	U._ask_discard(14, int(inv[14].qty))
+	var asked: bool = ov() == "confirm"
+	U._confirm(false)
+	var kept: bool = inv[14] != null and ov() == "journal"
+	U._ask_discard(14, int(inv[14].qty))
+	U._confirm(true)
+	check("Throwing an item away asks \"Are you sure?\" first; No keeps it, Yes removes it", asked and kept and inv[14] == null and ov() == "journal", "%s %s" % [asked, kept])
+	var hoe := idx("hoe")
+	U._ask_discard(hoe, 1)
+	check("Starting tools can't be thrown away", ov() == "journal" and inv[hoe] != null)
+	close_all()
