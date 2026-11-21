@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 285 / 285 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 294 / 294 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -459,6 +459,40 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 - Known random test: "Residential District: infected roam the streets by day, none waiting at the gate" fails now and
   then (an infected wanders near the gate); passed 4 of 4 reruns.
 
+### Art packs, weapons sandbox, gun balance and worn gear (Nov 21, roadmap items 6-11)
+- Selected Assets v5 (item 6): inventory icons, stations, defenses, joining pieces, town props (museum display cases
+  that fill as you donate, desk, ledger, police tape, stolen-goods pile) and mine details (lanterns, timber supports,
+  seeps, floor decals, broken ore carts; `MapBuilder._mine_details`, drawn from `GameMap.decor`).
+- Fish (item 7): every fish uses the redrawn side-view icons from Coastal Fishing v5. 10 freshwater fish added to the
+  rivers, ponds and lake (`Data.fish`, pack prices): Bluegill, Pumpkinseed, Mosquitofish, Golden Tench (rare, rainy
+  summer evenings), Fathead Minnow, River Redhorse, Freshwater Drum, Grass Pickerel, Longnose Sucker, Stonecat Madtom.
+  The sea fish and beach finds wait for the Coastal Region.
+- Weapons v14 (item 8): icons and held pictures for all 131 weapons (`art/icons/`, `art/held/`). Claude's touch-ups in
+  `tools/weapon_touchups.py`: curved blades on the 4 scythes, hooks and claws on both crowbars, the 4 lighter bows in
+  the darker bow wood, slingshots as Y forks. Handguns and SMGs are shrunk at import so they sit in one hand. Melee
+  swings and thrusts now draw the held picture (`Art.held_axis` finds the grip and the angle to the tip); the scythe
+  family and the sickle sweep (`WorldView.SWEEPERS`). Screenshot modes `swing` (set `SWING_WEAPONS=1` for weapons)
+  and `aim`.
+- Hidden weapons sandbox (item 9): Ctrl + Shift + W on the title screen (`scripts/world/sandbox.gd`). A fenced arena
+  with all 131 weapons in four big chests; nothing is saved (`Game.write_save` does nothing), the clock is stopped,
+  the infected chase and bite but do no damage (`Combat.player_hurt`, `Game.damage_player`), no crawler grabs, ammo
+  never runs out (`Game.count_item` and `remove_item` for ammo), nothing wears down. K or the pause menu opens the
+  spawn menu: 1, 3, 5 or 10 of any infected, raider or boss, Clear all, Leave Sandbox (back to the title). Damage
+  numbers over enemies were already there. Screenshot mode `sandbox`.
+- Gun balance (item 10): `Balance.gun_tuning` replaces Damage and Attacks/s for 17 guns (old and new numbers in
+  `design/gun_balance_nov21.csv`; the item sheet is unchanged, so copy them over if wanted). Machine guns are now
+  automatic. Sustained DPS with reloads by rarity is now about 45 / 54 / 69 / 100 for guns, against 71 for legendary
+  melee (was 72 / 94 / 110 / 130). Ammo loot (5 to 15 a find, more at police, military and gun stores), the Combat
+  Guild's prices and the Ammo Bench recipes were checked and left as they are.
+- Worn gear (item 11): Wearables Final overlays in `art/characters/mi/wear/<gear id>.png` and the pack's 16x16 icons.
+  `Game.sync_worn_look` (run by `gear_changed`) puts what you wear in the look's `wear`; `MiChars.compose` draws
+  outfit, legs, feet, chest, hair, hat, in every animation. Hair poking out above a hat is hidden
+  (`MiChars._under_hat`); masks leave hair alone; accessories hide under a hat except beards and glasses. Fixes at
+  import: the Bandana Mask covers the lower face, the Briar King's shell is dark metal (it read as bare skin), the
+  three heavy chest pieces have shoulders one pixel wider each side. The outfit stays under gear (open pieces would
+  show skin). Screenshot mode `wear` saves every pose for 8 outfits.
+- Known random tests: Precinct 9 locker, fish journal size, barn cat mice, Residential gate, street props count.
+
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
 - Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
@@ -573,7 +607,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      - A town surviving together: make it obvious at first glance (lookout towers manned, work crews reinforcing walls, a supply and ration depot with a queue, communal gardens, watch fires, warning and rationing notices, guards on patrol, a militia drill yard). About 2 to 3 hours.
      - Refugee camp in town: tents and tarps, an animated bonfire, tired and dirty-looking refugees (worn, faded clothes, grime), peace officers keeping order, plus story, quests and conflicts between townsfolk and refugees. About 4 to 6 hours.
      - Vehicle wrecks: replace the one holed black sedan with a mix of Modern Exteriors cars, pickups and vans, weathered rather than shot through; remove them if that doesn't look better. About 1 hour.
-     - Worn gear shows on the character: hats, chest, legs and feet pieces drawn on the player and in the inventory preview. Bug report: a hat found in play didn't show. About 2 to 3 hours.
+     - Worn gear shows on the character (DONE Nov 21, see above): hats, chest, legs and feet pieces drawn on the player and in the inventory preview. Bug report: a hat found in play didn't show. About 2 to 3 hours.
        - Art: Daniel's Wearables Final Art Pass (100 items: HEAD, CHST, LEGS, FEET 001-025, copied to `<packs>/Wearables_Final/`; supersedes the earlier headgear pack in `<packs>/Headgear_v2/`). Overlay sheets match `mi/acc` exactly (896x256, 16x32 cells, rows idle to pickup, right/up/left/down); native 16x16 inventory icons, also used for drops. Checked Nov 17 on in-game characters: style matches LimeZu well.
        - Layer order: outfit, then legs, feet, chest, hair, head. When chest and legs are both worn, skip the base outfit so long coats or skirts don't show at the edges; with only one worn, keep the outfit for the uncovered half.
        - Fixes: hide hair under and above a worn hat so big styles (buns, pigtails) don't poke out; the Bandana Mask (HEAD-003) now sits on the lower face but is faint, so strengthen it; a light style touch-up pass where needed. Heavy armour stays inside the 16x32 body shape. Plus about 1 to 1.5 hours.
@@ -586,22 +620,22 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      - Feel and art gaps: night lighting (lamps, windows and fires that glow), small effects (dust, sparks, splashes, muzzle flash, hit flash), dedicated zombie art (needs a pack), a map with markers, settings (key rebinding, controller, volume). About 6 to 9 hours in total.
    - Dialogic (agreed Nov 17): add the Dialogic addon so Daniel can write and edit conversations in its visual editor. Start with new conversations (the antique shop keeper, new townsfolk); hook its timelines into friendship, gifts, quests and heart events. Move old dialogue over later only if wanted.
    - LimboAI (agreed Nov 17; Daniel confirms it supports Godot 4.7): behaviour trees and state machines with a visual editor and a live debugger. Each infected, raider or boss gets a small agent node that runs its tree while drawing stays as it is. Start with one group (raiders or bosses), then the infected, then neighbours' and guards' routines. Downloads: Daniel's uploads (limboai v1.8.1 GDExtension, Dialogic).
-   - Weapons art v14 (agreed Nov 17): Daniel's Weapons Hybrid Art v14, copied to `<packs>/Weapons_v14/` (`weapon_manifest.json` maps ids GUN/MEL/PRJ-### to names). Per weapon: a 16x16 icon (the game's current icons with small touch-ups, plus 11 new) and a 24x16 held picture pointing right, no hands. Reviewed v4 (overlays on the head, not used), v8, v11, v12, v13 and v14; v14 is the best and is the final set.
+   - Weapons art v14 (DONE Nov 21, see above; agreed Nov 17): Daniel's Weapons Hybrid Art v14, copied to `<packs>/Weapons_v14/` (`weapon_manifest.json` maps ids GUN/MEL/PRJ-### to names). Per weapon: a 16x16 icon (the game's current icons with small touch-ups, plus 11 new) and a 24x16 held picture pointing right, no hands. Reviewed v4 (overlays on the head, not used), v8, v11, v12, v13 and v14; v14 is the best and is the final set.
      1. Claude's touch-ups first (about 15 to 20 minutes): curved blades on the 4 scythes (Scythe, Balanced Scythe, Gleaner, Last Harvest), hooks on both crowbars, recolour Hunting Bow, Recurve Bow, Laminated Recurve Bow and Ash Hunting Bow to match the other bows, and make the slingshots read less like pistols.
      2. Import: icons to `art/icons/`, held pictures to `art/held/` for all 131 (today only guns, bows and crossbows have held pictures, at most 22 wide). Melee and thrown weapons then show their held picture during the swing instead of the turned icon; line up the grip with the hand. About 1 to 1.5 hours with tests and screenshots.
-   - Hidden weapons sandbox (agreed Nov 17): a secret way in (for example a key combo on the title screen) to a fenced test arena kept apart from real saves (nothing saves). A rack or chest with all 131 weapons, unlimited ammo, no wear; a spawn menu for every infected type with a count and "clear all"; enemies chase and attack but do no damage; optional damage numbers over enemies. Tests check that leaving the sandbox brings the real game back unchanged. About 1.5 to 2.5 hours (plus about 30 minutes for damage numbers). Best done together with the weapons art so all 131 can be checked in action.
-   - Selected Assets v5 (agreed Nov 18): Daniel's final curated art pack, copied to `<packs>/Selected_Assets_v5/`. Reviewed v2 (everything in one, mostly duplicates), v3, v4 and v5; v5 is final. About 2.5 hours.
+   - Hidden weapons sandbox (DONE Nov 21, see above; agreed Nov 17): a secret way in (for example a key combo on the title screen) to a fenced test arena kept apart from real saves (nothing saves). A rack or chest with all 131 weapons, unlimited ammo, no wear; a spawn menu for every infected type with a count and "clear all"; enemies chase and attack but do no damage; optional damage numbers over enemies. Tests check that leaving the sandbox brings the real game back unchanged. About 1.5 to 2.5 hours (plus about 30 minutes for damage numbers). Best done together with the weapons art so all 131 can be checked in action.
+   - Selected Assets v5 (DONE Nov 21, see above; agreed Nov 18): Daniel's final curated art pack, copied to `<packs>/Selected_Assets_v5/`. Reviewed v2 (everything in one, mostly duplicates), v3, v4 and v5; v5 is final. About 2.5 hours.
      1. Inventory icons (165, `Inventory_Overrides/`): 105 for items drawn in code today (tool upgrades, crafting machines, turrets, walls, traps, farm buildings, animals, artifacts), plus touch-ups of 60 (ores, bars, gems), distinct sapling icons and rainbow Aurium ore and bar (settles the waiting Aurium item).
      2. Crafting machines (16) and turrets plus arc pylon (6): 32x32 canvas, 17 px painted, bottom anchored on the object's tile. Keep the game's trellis and raised bed (left out of the pack on purpose). Don't use the pack's electric_fence world picture; the game already joins electric fences.
      3. Wood Gate, Metal Gate and Reinforced Wall joining pieces: `Godot_Ready/art/objects/<id>_c<mask>.png`, already in the game's mask order (W1 E2 N4 S8). Closed gates only; the game keeps drawing open gates itself. Check in game that a gate stands out from the fence next to it.
      4. Watchtower and Wind Turbine (64x80): give them a bigger footprint so nothing is placed under them.
      5. Mine details (17: rails, lanterns, supports, ore cart, fungi, pools) for the mine depth bands, and town props (10: museum display cases and desk, ledger, police tape, stolen-goods pile).
-   - Coastal Fishing v5 (agreed Nov 18): copied to `<packs>/Coastal_Fishing_v5/`, `metadata/` has proposed ids, rarity, prices and uses.
+   - Coastal Fishing v5 (agreed Nov 18; parts 1 and 2 DONE Nov 21, part 3 waits for the Coastal Region): copied to `<packs>/Coastal_Fishing_v5/`, `metadata/` has proposed ids, rarity, prices and uses.
      1. Redrawn icons for the game's 41 existing fish (`combined_fish/icons_16/`): proper side-view fish, much better than today's tinted blobs. About 15 minutes; can go in any time.
      2. 10 new freshwater fish (bluegill, pumpkinseed, fathead minnow, freshwater drum, golden tench, grass pickerel, longnose sucker, river redhorse, stonecat madtom, mosquitofish) can live in the existing rivers, ponds and lake. About 30 minutes.
      3. Coastal Region (new area): the journal map already shows it locked "beyond the Riverlands" but there is no map. Build a beach with docks and sea fishing spots for the 18 sea catches, 18 beach finds that wash up daily (shells, sea glass, driftwood, junk; rare ones fit the antique shop), all items added with journal entries and shop prices, and a way to unlock it. About 5 to 7 hours. Expanded Nov 20 (see "Ocean" below); total about 11 to 14 hours.
    - Daniel's list, Nov 20 (all agreed, not started):
-     - Gun balance: today guns outclass melee (sustained DPS with reloads, average by rarity: melee 25 / 34 / 39 / 59, guns 55 / 70 / 77 / 98; one Normal gun does 231). Target: a legendary melee weapon beats normal and rare guns, is about even with epic guns and below legendary guns; tame the outliers. Ammo scarce in the first weeks but never so rare that guns get ignored; easy once the player crafts ammo at the Ammo Bench. Check loot and shop ammo rates. About 1.5 to 2 hours.
+     - Gun balance (DONE Nov 21, see above): before, guns outclassed melee (sustained DPS with reloads, average by rarity: melee 25 / 34 / 39 / 59, guns 55 / 70 / 77 / 98; one Normal gun does 231). Target: a legendary melee weapon beats normal and rare guns, is about even with epic guns and below legendary guns; tame the outliers. Ammo scarce in the first weeks but never so rare that guns get ignored; easy once the player crafts ammo at the Ammo Bench. Check loot and shop ammo rates. About 1.5 to 2 hours.
      - Storage (DONE Nov 21 as the Wooden Crate, 12 slots): Storage Chest (24), Large Chest (48), Lockbox (24, raider-proof), fridge, weapon rack and armor stand already exist. Add a cheap early Supply Crate (12 slots). About 20 minutes.
      - Smaller starting inventory (DONE Nov 21; the first tier uses 20 fiber instead of cloth so it's reachable in week one): start at 12 slots (both modes). Hal sells 5 pack upgrades for gold plus cloth, leather, thread and rope: 12 to 18, 24, 30, 36, 48. Found bags (Satchel, Hiking Pack, Military Rucksack) each skip one tier for free; the store backpack service is replaced. Old saves keep their current size. About 1 hour.
      - Armour: the heavy chest pieces (Juggernaut Riot Suit, The Briar King, Quarantine) get bulkier equipped looks (shoulder plates, padding, wider outline, still inside the 16x32 body). About 1 hour. Then screenshot every pose (walk, combat, pick up) with hat and chest combinations. About 30 minutes. Both go with "Worn gear shows on the character".
