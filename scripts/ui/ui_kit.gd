@@ -24,6 +24,24 @@ static var textured := false
 static func ui_tex(name: String) -> Texture2D:
 	return Art.override("ui/%s.png" % name)
 
+## Frame widths (pixels) of the Modern User Interface pieces cut by tools/mui_ui.py. When that art is
+## installed these win over the width a caller passes, since every piece has its own border.
+## Values are [left, top, right, bottom] or one number for all four sides.
+const FRAMES := {
+	"window": 8, "panel_plain": 6, "panel": 6, "hud_panel": 6, "portrait": 6, "panel_danger": 6,
+	"tooltip": 3, "row": 4, "slot": 4, "slot_hover": 4, "slot_selected": 4,
+	"button": [4, 4, 4, 5], "button_hover": [4, 4, 4, 5], "button_pressed": [4, 5, 4, 4], "button_disabled": [4, 4, 4, 5],
+	"button_green": [4, 4, 4, 5], "button_green_hover": [4, 4, 4, 5], "button_red": [4, 4, 4, 5], "button_red_hover": [4, 4, 4, 5],
+	"badge": 4, "badge_bad": 4, "badge_good": 4, "bar_track": [4, 3, 4, 4], "slider_track": [5, 4, 5, 4],
+}
+static var _modern = null
+
+## True when the Modern User Interface pieces are installed (art/ui/window.png).
+static func modern() -> bool:
+	if _modern == null:
+		_modern = ui_tex("window") != null
+	return _modern
+
 ## A nine-slice style from an interface picture: m = the frame's width in pixels.
 static func tsb(name: String, m: int, pad := -1) -> StyleBoxTexture:
 	var t := ui_tex(name)
@@ -31,7 +49,14 @@ static func tsb(name: String, m: int, pad := -1) -> StyleBoxTexture:
 		return null
 	var s := StyleBoxTexture.new()
 	s.texture = t
-	s.set_texture_margin_all(m)
+	if modern() and FRAMES.has(name):
+		var f = FRAMES[name]
+		var e: Array = f if f is Array else [f, f, f, f]
+		s.texture_margin_left = e[0]; s.texture_margin_top = e[1]
+		s.texture_margin_right = e[2]; s.texture_margin_bottom = e[3]
+		m = maxi(m, int(e.max()) - 1)
+	else:
+		s.set_texture_margin_all(m)
 	s.set_content_margin_all(m if pad < 0 else pad)
 	return s
 
@@ -107,6 +132,36 @@ static func make_theme(large_text: bool, high_contrast: bool) -> Theme:
 			b.content_margin_left = 7; b.content_margin_right = 7
 			t.set_stylebox(st[0], "Button", b)
 		t.set_stylebox("panel", "TooltipPanel", tsb("tooltip", 4, 4))
+		if modern():
+			# Modern UI buttons are light cards: dark lettering reads better than outlined white.
+			t.set_color("font_color", "Button", INK)
+			t.set_color("font_hover_color", "Button", WOOD_DARK)
+			t.set_color("font_pressed_color", "Button", INK_SOFT)
+			t.set_color("font_disabled_color", "Button", Color("#6a6a6a"))
+			t.set_constant("outline_size", "Button", 0)
+			var on := ui_tex("switch_on")
+			if on != null:
+				for k in ["checked", "checked_disabled"]:
+					t.set_icon(k, "CheckBox", on)
+				for k in ["unchecked", "unchecked_disabled"]:
+					t.set_icon(k, "CheckBox", ui_tex("switch_off"))
+				t.set_constant("h_separation", "CheckBox", 4)
+			if ui_tex("slider_track") != null:
+				var tr := tsb("slider_track", 4, 0)
+				tr.content_margin_top = 3; tr.content_margin_bottom = 3
+				t.set_stylebox("slider", "HSlider", tr)
+				var fill := tsb("slider_track", 4, 0)
+				fill.modulate_color = Color(1.25, 1.1, 0.8)
+				fill.content_margin_top = 3; fill.content_margin_bottom = 3
+				t.set_stylebox("grabber_area", "HSlider", fill)
+				t.set_stylebox("grabber_area_highlight", "HSlider", fill)
+				t.set_icon("grabber", "HSlider", ui_tex("slider_knob"))
+				t.set_icon("grabber_highlight", "HSlider", ui_tex("slider_knob"))
+			t.set_stylebox("scroll", "VScrollBar", sb(Color("#a88c70"), Color("#3a3a50"), 1, 2, Color(0, 0, 0, 0), 0, 0))
+			t.set_stylebox("grabber", "VScrollBar", sb(Color("#d89a4e"), Color("#3a3a50"), 1, 2, Color(0, 0, 0, 0), 0, 0))
+			t.set_stylebox("grabber_highlight", "VScrollBar", sb(Color("#f0b860"), Color("#3a3a50"), 1, 2, Color(0, 0, 0, 0), 0, 0))
+			t.set_stylebox("normal", "LineEdit", tsb("slot", 4, 3))
+			t.set_stylebox("focus", "LineEdit", tsb("slot_selected", 4, 3))
 	t.set_constant("separation", "VBoxContainer", 3)
 	t.set_constant("separation", "HBoxContainer", 4)
 	t.set_constant("h_separation", "GridContainer", 2)
@@ -133,6 +188,8 @@ class WornPanel extends PanelContainer:
 static func panel(min_w := 0.0, min_h := 0.0) -> WornPanel:
 	var p := WornPanel.new()
 	p.custom_minimum_size = Vector2(min_w, min_h)
+	if textured and modern():
+		p.add_theme_stylebox_override("panel", tsb("window", 8, 9))
 	return p
 
 static func label(text: String, size := 0, color = null, wrap := false) -> Label:
@@ -176,6 +233,12 @@ static func button(text: String, cb: Callable, kind := "", min_w := 0.0) -> Butt
 			if kind == "big": ts.content_margin_top = 4; ts.content_margin_bottom = 4
 			b.add_theme_stylebox_override(st[0], ts)
 		if kind == "big": b.add_theme_font_size_override("font_size", 9)
+		if modern():
+			b.add_theme_color_override("font_color", Color("#fff6e4"))
+			b.add_theme_color_override("font_hover_color", Color.WHITE)
+			b.add_theme_color_override("font_pressed_color", Color("#fff6e4"))
+			b.add_theme_constant_override("outline_size", 2)
+			b.add_theme_color_override("font_outline_color", Color(0.15, 0.1, 0.12, 0.85))
 	elif kind == "big":
 		var s := sb(Color("#5e9a44"), Color("#2c5a1c"), 1, 2, OUTLINE, 1, 4)
 		s.content_margin_left = 10; s.content_margin_right = 10
@@ -336,17 +399,28 @@ class HudBar extends Control:
 		text = k.capitalize()
 		tooltip_text = text
 		frac = clampf(f, 0.0, 1.0)
-		custom_minimum_size = Vector2(15 + w, 12)
+		custom_minimum_size = Vector2(15 + w, 13 if UIKit.modern() else 12)
 		mouse_filter = Control.MOUSE_FILTER_PASS
 	func _draw() -> void:
+		var h := size.y
 		var ic := UIKit.ui_tex("icon_" + kind)
 		if ic != null:
-			draw_texture(ic, Vector2(0, roundf((12 - ic.get_height()) / 2.0)))
+			draw_texture(ic, Vector2(0, roundf((h - ic.get_height()) / 2.0)))
 		var tw := size.x - 15
 		var tr := UIKit.tsb("bar_track", 4, 0)
+		var fill := UIKit.ui_tex("bar_" + kind)
+		if UIKit.modern():
+			# Modern UI: dark track with an orange rim; the glossy fill sits in the dark part (3 px in, rows 2-7).
+			draw_style_box(tr, Rect2(15, 0, tw, 13))
+			var mw := roundf((tw - 6) * frac)
+			if fill != null and mw > 0:
+				var fs := StyleBoxTexture.new()
+				fs.texture = fill
+				fs.texture_margin_left = 2; fs.texture_margin_right = 2
+				draw_style_box(fs, Rect2(18, 2, maxf(mw, 4), 6))
+			return
 		tr.texture_margin_top = 4; tr.texture_margin_bottom = 4; tr.texture_margin_left = 3; tr.texture_margin_right = 3
 		draw_style_box(tr, Rect2(15, 0, tw, 12))
-		var fill := UIKit.ui_tex("bar_" + kind)
 		var fw := roundf((tw - 4) * frac)
 		if fill != null and fw > 0:
 			draw_texture_rect(fill, Rect2(17, 4, fw, 4), false)

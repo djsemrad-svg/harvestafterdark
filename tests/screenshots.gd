@@ -387,7 +387,7 @@ func _ready() -> void:
 		Game.paused = false
 		Game.enemies.clear()
 		Game.add_item("potato", 3, {"silent": true}); Game.add_item("ruby", 1, {"silent": true})
-		for t in ["map", "social", "collections", "calendar", "quests"]:
+		for t in ["map", "social", "collections", "calendar", "quests", "inventory", "skills", "crafting", "settings"]:
 			main.ui.open("journal", {"tab": t}); await frames(4); await shot("76_tab_" + t)
 			main.ui.close_all()
 		main.ui.open("death", {"checkpoint": "Monday, Spring 1"}); await frames(4); await shot("77_death")

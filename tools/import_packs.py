@@ -2142,3 +2142,10 @@ if os.path.isfile(MUI):
     save(mu_cell(192, 336), "ui/cursor_grab.png")
     save(mu_cell(160, 288, 32, 32), "ui/crosshair.png")
     print("mouse pointers: 4")
+
+
+# ---------------------------------------------------------------- Modern UI windows and controls (Nov 21)
+# Windows, panels, buttons, slots, bars, switches and the slider from LimeZu's Modern User Interface
+# (warm Style 1). Replaces the Kenney and PostApocalypse interface pieces cut above.
+import runpy
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mui_ui.py"), init_globals={"SRC": SRC, "OUT": OUT})
