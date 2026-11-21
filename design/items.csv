@@ -650,6 +650,7 @@ Battery Bank,battery_bank,Defense,New,Craft,Electronics Bench,Car Battery x4 + C
 Wind Turbine,wind_turbine,Defense,New,Craft,Electronics Bench,Steel Bar x6 + Gear Assembly x2 + Copper Wire x10,"Silent power day and night; more in storms"
 Power Cable,power_cable,Defense,New,Craft,Workbench,Copper Wire x2 + Rubber,Connects power sources to defenses and lights
 Storage Chest,chest,Placeable,Existing,Craft,Workbench,Wood x30,24 storage slots
+Wooden Crate,wood_crate,Placeable,New,Craft,By hand,Wood x15,12 storage slots; a cheap early box
 Torch Post,torch_post,Placeable,Existing,Craft,Workbench,Wood x3 + Coal,"Light; draws zombies at night"
 Stone Path,stone_path,Placeable,Existing,Craft,Workbench,Stone,'+10% move speed on paths
 Coop Kit,coop_kit,Placeable,Existing,Craft,Workbench,Wood x100 + Stone x50 + Hay x10,Builds a Coop for 8 birds

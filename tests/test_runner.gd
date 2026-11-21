@@ -9,6 +9,7 @@ var main: Node
 var W   # world
 var U   # ui
 var results := []
+var START_SLOTS := 0
 const DT := 1.0 / 64.0   # exact in binary, so clock maths stays exact
 
 const LOOK := {"skin": "#a26a45", "hair": "#b5442f", "hair_style": "Ponytail", "eyes": "#3a8f5a", "face": "Freckles", "shirt_style": "Hoodie", "shirt": "#6b4fa0", "pants": "#2f5a3a", "acc": "Cap", "acc_color": "#d9a43a"}
@@ -21,6 +22,9 @@ func _ready() -> void:
 		for f in DirAccess.get_files_at(d):
 			DirAccess.remove_absolute(d + f)
 	Balance.raids.grace_days = 99999   # raids are switched on only in the raid tests
+	START_SLOTS = Balance.inventory.survivor_slots
+	Balance.inventory.survivor_slots = 36   # most tests need room to carry things; the pack test checks the real start
+	Balance.inventory.adventure_slots = 36
 	main = preload("res://scripts/main.gd").new()
 	add_child(main)
 	await get_tree().process_frame
@@ -475,12 +479,25 @@ func run_all() -> void:
 
 	G.state.time = 600; G.sync_npcs()
 	G.state.money = 5000
+	var saved_inv: Array = G.state.inventory.duplicate(true)
+	G.state.inv_size = 12; G.state.inventory = []; G.state.inventory.resize(12)
 	var n0: int = G.state.inv_size
 	var bp: Dictionary = {}
 	for x in G.shop_stock("general"):
-		if x.get("service", "") == "backpack": bp = x
+		if x.get("service", "") == "pack_upgrade": bp = x
+	var no_mats: String = G.shop_buy("general", bp, 1)
+	G.add_item("fiber", 20, {"silent": true})
 	err = G.shop_buy("general", bp, 1)
-	check("General store: backpack upgrade adds 12 slots", err == "" and G.state.inv_size == n0 + 12 and G.state.inventory.size() == n0 + 12, "%d > %d %s" % [n0, G.state.inv_size, err])
+	var bp2: Dictionary = {}
+	for x in G.shop_stock("general"):
+		if x.get("service", "") == "pack_upgrade": bp2 = x
+	check("New games start with a 12-slot pack; Hal's first pack upgrade needs fiber and makes it 18", START_SLOTS == 12 and  no_mats != "" and err == "" and G.state.inv_size == 18 and G.state.inventory.size() == 18 and G.count_item("fiber") == 0 and bp2.get("name", "").contains("24"), "%d > %d %s / %s" % [n0, G.state.inv_size, err, no_mats])
+	G.add_item("satchel", 1, {"silent": true})
+	G.use_pack_upgrade("satchel")
+	var bag_ok: bool = G.state.inv_size == 24 and G.state.inventory.size() == 24
+	G.state.inv_size = 40   # an older save between tiers carries on from the next tier up
+	check("A found bag skips one pack tier for free; older pack sizes continue from the next tier", bag_ok and int(G.next_pack_tier().size) == 48, "%s %s" % [bag_ok, G.next_pack_tier()])
+	G.state.inv_size = saved_inv.size(); G.state.inventory = saved_inv
 
 	G.state.money = 10000
 	G.add_item("wood", 200, {"silent": true}); G.add_item("stone", 100, {"silent": true})
@@ -1611,9 +1628,11 @@ func run_items() -> void:
 	check("Food buffs: Camp Coffee speeds you up for a while, then wears off", sp1 > sp0 and is_equal_approx(sp2, sp0), "%.2f %.2f %.2f" % [sp0, sp1, sp2])
 
 	var inv0: int = G.inv().size()
+	var size0: int = int(G.state.inv_size)
+	var want: int = int(G.next_pack_tier().get("size", size0))
 	G.add_item("satchel", 1, {"silent": true})
 	G.use_pack_upgrade("satchel")
-	check("Upgrades: a Satchel adds 6 pack slots", G.inv().size() == inv0 + 6)
+	check("Upgrades: a Satchel makes the pack one tier bigger", int(G.state.inv_size) == want and G.inv().size() == inv0 + want - size0, "%d -> %d (want %d)" % [inv0, G.inv().size(), want])
 
 	# crab pot
 	var ptile := Vector2i(-1, -1)

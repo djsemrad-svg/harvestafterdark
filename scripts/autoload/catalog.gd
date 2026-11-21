@@ -302,6 +302,7 @@ static func _item(d, e: Dictionary) -> void:
 		var m = RegEx.create_from_string("\\+(\\d+) inventory slots").search(e.use)
 		if m != null:
 			it.pack_slots = int(m.get_string(1))
+			it.desc = "Stitch it onto your pack to make it one size bigger, for free (the same as one of Hal's pack upgrades)."
 		else:
 			it.todo = "Its bonus isn't in the game yet."
 	# placeables
@@ -384,8 +385,8 @@ static func _placeable(d, e: Dictionary, it: Dictionary) -> void:
 		"Placeable":
 			od.shape = "box"
 			od.indoor = true
-			if id in ["large_chest", "lockbox", "weapon_rack", "armor_stand"]:
-				od.storage = {"large_chest": 48, "lockbox": 24, "weapon_rack": 6, "armor_stand": 4}[id]; od.shape = "chest"
+			if id in ["large_chest", "lockbox", "weapon_rack", "armor_stand", "wood_crate"]:
+				od.storage = {"large_chest": 48, "lockbox": 24, "weapon_rack": 6, "armor_stand": 4, "wood_crate": 12}[id]; od.shape = "chest"
 			elif id in ["brick_path", "gravel_path", "wood_floor"]:
 				od.solid = false; od.floor = true; od.shape = "path"; od.path = true
 			elif id in ["lamp_post", "string_lights"]:

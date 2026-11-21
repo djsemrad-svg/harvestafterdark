@@ -1553,7 +1553,8 @@ func _ship_add(i: int, btn: int) -> void:
 func _ov_chest() -> Control:
 	var o: Dictionary = overlay.obj
 	if not (o.get("items") is Array): o.items = []
-	var size: int = Balance.inventory.fridge_slots if o.type == "fridge" else Balance.inventory.chest_slots
+	var def: Dictionary = Data.obj_defs.get(o.type, {})
+	var size: int = int(def.storage) if typeof(def.get("storage")) == TYPE_INT else (Balance.inventory.fridge_slots if o.type == "fridge" else Balance.inventory.chest_slots)
 	while o.items.size() < size: o.items.append(null)
 	var pw := _window(overlay.title, 420)
 	var v: VBoxContainer = pw[1]
@@ -1606,7 +1607,10 @@ func _shop_box(shop_id: String) -> Control:
 		var row := K.row_box()
 		var rh := K.hbox(3)
 		var owned: bool = e.get("service", "") == "backpack" and st.flags.get("backpack", false)
-		if e.has("id"): rh.add_child(K.icon(Art.get_icon(e.id), 14))
+		if e.get("service", "") == "pack_upgrade":
+			rh.add_child(K.icon(Art.get_icon("hiking_pack"), 14))
+		if e.get("service", "") == "pack_upgrade": pass
+		elif e.has("id"): rh.add_child(K.icon(Art.get_icon(e.id), 14))
 		elif e.get("service", "") == "animal": rh.add_child(K.icon(Art.get_animal(e.animal, 0, "down", 0, true), 14))
 		elif e.get("service", "") == "coop": rh.add_child(K.icon(Art.get_icon("coop_kit"), 14))
 		else: rh.add_child(K.label("★", 10, K.GOLD))
@@ -1976,7 +1980,8 @@ func _tab_inventory() -> Control:
 		overlay.erase("sel"); overlay.erase("pick")
 		render_overlay(), "small"), "sort"))
 	row.add_child(_trash_slot())
-	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
+	var nt := Game.next_pack_tier()
+	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if nt.is_empty() else " · Hal can enlarge it to %d" % int(nt.size)], 6, K.INK_SOFT))
 	left.add_child(row)
 	var eq := K.row_box()
 	var eh := K.hbox(6)

@@ -2174,18 +2174,30 @@ func buff_text(stat: String, v: float, minutes: int) -> String:
 ## Bags from the item sheet add pack slots for good (one of each kind).
 func use_pack_upgrade(id: String) -> bool:
 	var it: Dictionary = Data.items[id]
-	var key := "pack_" + id
-	if state.flags.get(key, false):
-		toast("You already use a %s." % it.name, id, "warn")
+	var tier := next_pack_tier()
+	if tier.is_empty():
+		toast("Your pack is already as big as it gets.", id, "warn")
 		return false
 	if not remove_item(id, 1): return false
-	state.flags[key] = true
-	var add: int = int(it.pack_slots)
-	state.inv_size = int(state.inv_size) + add
-	for i in add: inv().append(null)
-	toast("You strap on the %s: +%d pack slots." % [it.name, add], id, "gold")
+	grow_pack(int(tier.size))
+	toast("You stitch the %s onto your pack: it now holds %d." % [it.name, int(tier.size)], id, "gold")
 	Sfx.play("levelup")
 	return true
+
+## The next of Hal's pack upgrades above your current pack size, or {} at the largest.
+## Works for any size (older saves keep theirs and simply continue from the next tier up).
+func next_pack_tier() -> Dictionary:
+	for t in Balance.inventory.pack_tiers:
+		if int(t.size) > int(state.inv_size):
+			return t
+	return {}
+
+## Makes the pack hold `size` slots (never shrinks it).
+func grow_pack(size: int) -> void:
+	var add: int = maxi(0, size - int(state.inv_size))
+	state.inv_size = int(state.inv_size) + add
+	for i in add:
+		inv().append(null)
 
 ## Upgrading a tool yourself at an Anvil: bars only, done on the spot.
 func anvil_upgrade(tool: String) -> String:
@@ -2879,6 +2891,14 @@ func shop_stock(shop_id: String) -> Array:
 			e.price = stage.price
 			e.mats = stage.mats
 			e.desc = stage.desc + " Needs " + ", ".join(stage.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
+		if e.get("service", "") == "pack_upgrade":
+			var tier := next_pack_tier()
+			if tier.is_empty():
+				continue
+			e.name = "Pack upgrade: %d slots" % int(tier.size)
+			e.price = tier.price
+			e.mats = tier.mats
+			e.desc = "Hal stitches more pockets onto your pack (now %d slots). Needs %s." % [int(state.inv_size), ", ".join(tier.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name]))]
 		if e.get("service", "") == "coop" and (has_building("coop") or count_item("coop_kit") > 0):
 			continue
 		if e.get("service", "") == "greenhouse" and (state.flags.get("greenhouse", false) or state.flags.get("greenhouse_pending", false)):
@@ -2937,6 +2957,21 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 	if int(state.money) < cost:
 		Sfx.play("error")
 		return "Not enough gold."
+	if e.get("service", "") == "pack_upgrade":
+		var tier := next_pack_tier()
+		if tier.is_empty():
+			return "Your pack can't get any bigger."
+		for m in tier.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Hal needs %d %s (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in tier.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		grow_pack(int(tier.size))
+		toast("Hal stitches on more pockets: your pack now holds %d." % int(tier.size), "", "gold")
+		Sfx.play("coin")
+		return ""
 	if e.get("service", "") == "house_repair":
 		var stage := next_house_repair()
 		if stage.is_empty():

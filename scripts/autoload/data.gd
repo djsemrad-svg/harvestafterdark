@@ -1002,7 +1002,7 @@ func _init() -> void:
 		{"id": "fence", "price": 12}, {"id": "torch_post", "price": 40},
 		{"id": "t_shirt", "price": 80}, {"id": "hoodie", "price": 140}, {"id": "jeans", "price": 200}, {"id": "sneakers", "price": 90},
 		{"id": "rain_boots", "price": 100}, {"id": "work_boots", "price": 180}, {"id": "beanie", "price": 70}, {"id": "baseball_cap", "price": 70},
-		{"service": "backpack", "name": "Large Backpack", "desc": "+12 inventory slots.", "price": 1500},
+		{"service": "pack_upgrade", "name": "Pack upgrade", "desc": "", "price": 0},
 		{"service": "house_repair", "name": "Farmhouse repairs", "desc": "", "price": 0}])
 	shops.general.stock = st
 	Arsenal.register(self)

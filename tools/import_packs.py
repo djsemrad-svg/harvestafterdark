@@ -2149,3 +2149,15 @@ if os.path.isfile(MUI):
 # (warm Style 1). Replaces the Kenney and PostApocalypse interface pieces cut above.
 import runpy
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mui_ui.py"), init_globals={"SRC": SRC, "OUT": OUT})
+
+# Wooden Crate (Nov 21): the cheap 12-slot storage box uses the pier crate, shrunk to one tile.
+_cr = os.path.join(OUT, "objects", "crate.png")
+if os.path.isfile(_cr):
+    _c = Image.open(_cr).convert("RGBA")
+    _c = _c.crop(_c.getbbox())
+    if _c.width > 16:
+        _c = _c.resize((16, max(1, round(_c.height * 16 / _c.width))), Image.NEAREST)
+    save(_c, "objects/wood_crate.png")
+    _i = Image.new("RGBA", (16, 16))
+    _i.alpha_composite(_c.crop((0, 0, 16, min(16, _c.height))), (0, 16 - min(16, _c.height)))
+    save(_i, "icons/wood_crate.png")

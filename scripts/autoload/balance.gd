@@ -31,10 +31,19 @@ var player := {
 }
 
 var inventory := {
-	"survivor_slots": 24,   # Survivor Mode: limited carrying capacity
-	"adventure_slots": 36,
-	"backpack_bonus": 12,   # one upgrade sold at the general store
+	"survivor_slots": 12,   # every new game starts with a small pack (both modes)
+	"adventure_slots": 12,
+	"backpack_bonus": 12,   # old "Large Backpack" service; kept for saves that bought it
 	"max_slots": 48,
+	# Hal's pack upgrades: each tier is the pack size it brings you to, with gold and materials.
+	# A bag found while scavenging (Satchel, Hiking Pack, Military Rucksack) skips one tier for free.
+	"pack_tiers": [
+		{"size": 18, "price": 500, "mats": [["fiber", 20]]},   # fiber comes from scything weeds, so this is reachable in week one
+		{"size": 24, "price": 1500, "mats": [["cloth", 10], ["thread", 5]]},
+		{"size": 30, "price": 3000, "mats": [["leather", 5], ["thread", 10]]},
+		{"size": 36, "price": 6000, "mats": [["leather", 10], ["rope", 5]]},
+		{"size": 48, "price": 12000, "mats": [["leather", 15], ["rope", 10]]},
+	],
 	"toolbar_size": 12,
 	"chest_slots": 24,
 	"fridge_slots": 24,

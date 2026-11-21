@@ -197,7 +197,9 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	elif it.has("place"): place_at(t, s.id)
 	elif it.has("pack_slots"):
 		var pid: String = s.id
-		Game.ui.confirm("Use the %s? It adds %d pack slots for good." % [it.name, int(it.pack_slots)], func(): Game.use_pack_upgrade(pid))
+		var nt := Game.next_pack_tier()
+		if nt.is_empty(): Game.toast("Your pack is already as big as it gets.", pid, "warn")
+		else: Game.ui.confirm("Stitch the %s onto your pack? It will hold %d instead of %d." % [it.name, int(nt.size), int(Game.state.inv_size)], func(): Game.use_pack_upgrade(pid))
 	elif it.has("gadget"):
 		use_gadget(s.id, t)
 	elif it.has("edible"):

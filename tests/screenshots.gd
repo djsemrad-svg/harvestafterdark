@@ -48,6 +48,30 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "pack":
+		main.ui.close_all()
+		Game.state.time = 600
+		Game.sync_npcs()
+		main.ui.open("shop", {"shop": "general"})
+		await frames(4)
+		var stack := [main.ui]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			if n is ScrollContainer: n.scroll_vertical = 100000
+			stack.append_array(n.get_children())
+		await frames(2)
+		await shot("pack_shop")
+		main.ui.close_all()
+		main.ui.open("journal", {"tab": "inventory"})
+		await frames(4)
+		await shot("pack_inventory")
+		main.ui.close_all()
+		Game.add_item("wood_crate", 1, {"silent": true})
+		main.ui.open("craft", {"station": "hand"})
+		await frames(4)
+		await shot("pack_craft")
+		get_tree().quit()
+		return
 	if only == "dnd":
 		# a real mouse drag from one pack slot to another, with a shot mid-drag
 		main.ui.close_all()
