@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 294 / 294 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 295 / 295 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -491,6 +491,15 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   import: the Bandana Mask covers the lower face, the Briar King's shell is dark metal (it read as bare skin), the
   three heavy chest pieces have shoulders one pixel wider each side. The outfit stays under gear (open pieces would
   show skin). Screenshot mode `wear` saves every pose for 8 outfits.
+- Unusual Stones (item 12, `scripts/world/stones.gd`): the six geodes became one stone in four tiers (Unusual, Rare,
+  Epic, Legendary Unusual Stone; prices 30 / 80 / 200 / 600). Drop share about 70 / 22 / 7 / 1 percent, shifted toward
+  better tiers in deeper mine bands (`Stones.roll_tier`); chance of a rare find inside 5 / 15 / 30 / 50 percent; duds
+  (stone or clay) 15 / 8 / 3 / 0 percent. The old geode tables are now pools by source (`Data.stone_pools`, split into
+  common and rare by price): mine, deep (plus crystal finds, gold bars), frost, ember, fossil (riverlands, farm, ridge)
+  and district (fossils and relics). `Game.add_item` notes where each stone was picked up (`state.stone_src`) and
+  cracking draws from that. Sources: speckled mine rocks, boulders, dig spots, Shambler and Lurcher drops (Brutes drop
+  Rare), the Foreman's strongbox (2 Rare, 1 Epic), and scavenging (home, pawn, construction, military, wilderness,
+  scrapyard). Old saves convert through `Catalog.RENAMES`. The six geode rows were removed from `design/items.csv`.
 - Known random tests: Precinct 9 locker, fish journal size, barn cat mice, Residential gate, street props count.
 
 ### Pending (Nov 17)
@@ -531,6 +540,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 - `scripts/world/townsfolk.gd`: background townsfolk.
 - `scripts/world/wildlife.gd`: ambient wildlife.
 - `scripts/world/restoration.gd`: rebuilding Brightwater (projects, tavern, museum).
+- `scripts/world/sandbox.gd`: the hidden weapons sandbox. `scripts/world/stones.gd`: Unusual Stones.
 - `scripts/world/farm_care.gd`: crop quality, sprays, scarecrows, trellis, raised bed, cold frame.
 - `scripts/world/districts.gd`: the three districts (maps, rooms, containers, infected, unlocks); `scripts/autoload/district_art.gd` draws their props.
 - `scripts/autoload/arsenal.gd`: weapons, gear, ammo, materials and loot tables. `gear_db.gd` is generated from `design/`.
@@ -638,7 +648,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      - Gun balance (DONE Nov 21, see above): before, guns outclassed melee (sustained DPS with reloads, average by rarity: melee 25 / 34 / 39 / 59, guns 55 / 70 / 77 / 98; one Normal gun does 231). Target: a legendary melee weapon beats normal and rare guns, is about even with epic guns and below legendary guns; tame the outliers. Ammo scarce in the first weeks but never so rare that guns get ignored; easy once the player crafts ammo at the Ammo Bench. Check loot and shop ammo rates. About 1.5 to 2 hours.
      - Storage (DONE Nov 21 as the Wooden Crate, 12 slots): Storage Chest (24), Large Chest (48), Lockbox (24, raider-proof), fridge, weapon rack and armor stand already exist. Add a cheap early Supply Crate (12 slots). About 20 minutes.
      - Smaller starting inventory (DONE Nov 21; the first tier uses 20 fiber instead of cloth so it's reachable in week one): start at 12 slots (both modes). Hal sells 5 pack upgrades for gold plus cloth, leather, thread and rope: 12 to 18, 24, 30, 36, 48. Found bags (Satchel, Hiking Pack, Military Rucksack) each skip one tier for free; the store backpack service is replaced. Old saves keep their current size. About 1 hour.
-     - Armour: the heavy chest pieces (Juggernaut Riot Suit, The Briar King, Quarantine) get bulkier equipped looks (shoulder plates, padding, wider outline, still inside the 16x32 body). About 1 hour. Then screenshot every pose (walk, combat, pick up) with hat and chest combinations. About 30 minutes. Both go with "Worn gear shows on the character".
+     - Armour (DONE Nov 21 with worn gear, see above): the heavy chest pieces (Juggernaut Riot Suit, The Briar King, Quarantine) get bulkier equipped looks (shoulder plates, padding, wider outline, still inside the 16x32 body). About 1 hour. Then screenshot every pose (walk, combat, pick up) with hat and chest combinations. About 30 minutes. Both go with "Worn gear shows on the character".
      - Picture map: replace the boxes in the Map tab with a map drawn from the real game maps shrunk down (roads, buildings, water, trees) in a parchment frame, a "you are here" marker, pins for shops and quests, locked areas darkened. Replaces "a map with markers" in Claude's recommendations. About 2 to 3 hours.
      - Farmhouse inside: fix the floating sink with a proper kitchen counter run (counter, sink, stove). Add 3 interior upgrades from Hal using Modern Interiors furniture: 1 cleaned-up cabin, 2 real kitchen and bedroom, 3 an extra room and a cellar for storage. About 2.5 to 3.5 hours.
      - Festivals: the 8 calendar dates exist but nothing happens. First a festival-day framework (square set up, every neighbour and townsperson there to talk to, a visiting merchant with festival-only rare items, a challenge with a prize; 3 to 4 hours), then each festival (1.5 to 3 hours each, about 16 to 22 hours for all 8, done in groups):
@@ -654,7 +664,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      - Repairs for farm structures: fences and walls already take raid damage and are fixed with E plus materials; turrets, generators and machines never get damaged. New: each night raid, every turret, barrier and powered machine has a 12% chance to be damaged; under 50% health it stops working (sparks or smoke show it) until repaired. Repair by holding a new crafted Toolbox and spending Repair Parts (scrap, nails, wire), amount based on damage. About 1.5 to 2 hours.
      - First-week check: the Crafting tab already has by-hand recipes (Workbench from 20 wood and 10 stone, fences, campfire, chest). Add a scripted test that plays a new player's first week and checks they can afford a Workbench, some fences and a weapon before the first raid; adjust costs and drops from the result. About 1 to 1.5 hours.
      - More gems, relics and artifacts (11 gems, 12 minerals and 25 artifacts today): about 10 new gems, relics grown to the 75 to 100 planned for the antique shop, small-chance drops from chests, Unusual Stones, enemy kills, tilling, digging and breaking rocks. About 3 to 4 hours, done with the antique shop.
-     - Unusual Stones (replace geodes; Daniel's name and tier idea, Nov 20): the 6 geode kinds become one item in 4 tiers like weapons and armour: Unusual Stone (Normal), Rare Unusual Stone, Epic Unusual Stone, Legendary Unusual Stone. Lower tiers are the most common (drop share about 70 / 22 / 7 / 1 %); the chance of something rare or high level inside rises by tier (about 5 / 15 / 30 / 50 %). Contents: gems, raw ore, the odd metal bar, relics and artifacts, and plain stone, clay or dirt as the dud. Where a stone was found shapes its contents (mine leans ore and gems, districts lean relics, deep floors more Glimmerite) so the old Frost, Ember and Fossil flavour isn't lost. Ines still cracks them at the forge, the Builder's Hammer still works. Also drop in district "dungeon" spots. Old saves: Stone Geode becomes Normal, Deep and Fossil become Rare, Frost, Ember and Crystal become Epic; update the "Cracking Stones" quest, loot tables, the Foreman's strongbox and boulder drops. About 1 to 1.5 hours.
+     - Unusual Stones (DONE Nov 21, see above; Daniel's name and tier idea, Nov 20): the 6 geode kinds become one item in 4 tiers like weapons and armour: Unusual Stone (Normal), Rare Unusual Stone, Epic Unusual Stone, Legendary Unusual Stone. Lower tiers are the most common (drop share about 70 / 22 / 7 / 1 %); the chance of something rare or high level inside rises by tier (about 5 / 15 / 30 / 50 %). Contents: gems, raw ore, the odd metal bar, relics and artifacts, and plain stone, clay or dirt as the dud. Where a stone was found shapes its contents (mine leans ore and gems, districts lean relics, deep floors more Glimmerite) so the old Frost, Ember and Fossil flavour isn't lost. Ines still cracks them at the forge, the Builder's Hammer still works. Also drop in district "dungeon" spots. Old saves: Stone Geode becomes Normal, Deep and Fossil become Rare, Frost, Ember and Crystal become Epic; update the "Cracking Stones" quest, loot tables, the Foreman's strongbox and boulder drops. About 1 to 1.5 hours.
      - Ocean (adds to the Coastal Region above):
        1. Enemies: Drowned (sunken, barnacled infected crawling out of the surf) and Wreckers (raiders who sailed in, harpoons and flare guns). About 2 to 3 hours.
        2. Wren's shack moves to the docks. A fish checklist there: a reward for every 5 new fish and a bigger reward for each finished set (ocean, river, pond and lake). About 1.5 hours.
