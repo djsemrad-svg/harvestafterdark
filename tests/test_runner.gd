@@ -1333,6 +1333,25 @@ func run_arsenal() -> void:
 		var used := im.get_used_rect()
 		if used.size.x * used.size.y < 12: bad.append(id)
 	check("Arsenal: every weapon, gear, ammo and material item has an icon (%d items)" % ids.size(), bad.is_empty() and Data.weapons.size() >= 130 and Data.gear.size() >= 100, str(bad.slice(0, 8)))
+	# worn gear shows on the character
+	if G.state.is_empty(): start("adventure", 2)
+	var look0: Dictionary = G.state.character.look.duplicate(true)
+	var plain: Image = MiChars.compose(look0, "down", 0)
+	for sl in Arsenal.SLOTS:
+		if G.state.equip.get(sl) != null: G.unequip(sl)
+	G.state.inventory[11] = {"id": "riot_helmet", "qty": 1}
+	G.equip_from(11)
+	G.state.inventory[11] = {"id": "juggernaut_riot_suit", "qty": 1}
+	G.equip_from(11)
+	var worn_look: Dictionary = G.state.character.look.get("wear", {})
+	var dressed: Image = MiChars.compose(G.state.character.look, "down", 0)
+	var tex_differs: bool = Art.get_char(G.state.character.look, "down", 0) != Art.get_char(look0, "down", 0)
+	G.unequip("head")
+	var hat_off: bool = not G.state.character.look.get("wear", {}).has("head")
+	G.unequip("chest")
+	check("Worn gear shows on the character (hat and chest drawn over the outfit; taking them off removes them)",
+		worn_look.get("head", "") == "riot_helmet" and worn_look.get("chest", "") == "juggernaut_riot_suit" and dressed.get_data() != plain.get_data() and tex_differs and hat_off and not G.state.character.look.has("wear"),
+		str(worn_look))
 	# gun balance: sustained damage per second with reloads
 	var dps := func(w: Dictionary) -> float:
 		var per: float = float(w.damage) * float(w.projectiles)

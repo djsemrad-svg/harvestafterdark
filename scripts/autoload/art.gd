@@ -1387,6 +1387,7 @@ func look_key(l: Dictionary) -> String:
 		parts.append(str(l.get(k, "")))
 	parts.append("1" if l.get("infected", false) else "0")
 	parts.append(str(l.get("sprite", "")))
+	if l.has("wear"): parts.append("wear=" + str(l.wear))
 	for k in ["body", "extra", "scale", "lying", "raider", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc", "mi_hair_style", "mi_outfit_style", "mi_outfit_color", "mi_acc_style", "mi_acc_color"]:
 		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)

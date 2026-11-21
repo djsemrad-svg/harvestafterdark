@@ -2269,3 +2269,80 @@ if os.path.isdir(WV):
         save(held, "held/%s.png" % wid)
         n += 1
     print("weapons v14:", n)
+
+# ---------------------------------------------------------------- Wearables Final (Daniel's pack, Nov 21)
+# Worn gear drawn on the character: a full generator overlay sheet (896x256, like mi/acc) per hat, chest,
+# legs and feet piece, saved as art/characters/mi/wear/<gear id>.png, plus the native 16x16 icons.
+# Claude's fixes: the Bandana Mask covers the whole lower face (it was a faint line at the mouth), and the
+# three heavy chest pieces get shoulder pads one pixel wider each side, still inside the 16x32 cell.
+WF = os.path.join(SRC, "Wearables_Final")
+if os.path.isdir(WF):
+    import re
+    gear = open(os.path.join(os.path.dirname(OUT), "scripts", "autoload", "gear_db.gd")).read()
+    code_to_id = {c: i for i, c in re.findall(r'"id": "([a-z0-9_]+)", "code": "([A-Z]+-\d+)"', gear)}
+    body = Image.open(os.path.join(OUT, "characters", "mi", "body", "02.png")).convert("RGBA")
+    BODY_OUTLINE = {(0x3A, 0x3A, 0x50), (0x46, 0x46, 0x5E)}
+    HEAVY = {"CHST-018", "CHST-019", "CHST-020"}
+
+    def cells(sheet):
+        for cy in range(0, sheet.height, 32):
+            for cx in range(0, sheet.width, 16):
+                yield cx, cy
+
+    def bandana(sheet):
+        px = sheet.load(); bp = body.load()
+        for cx, cy in cells(sheet):
+            box = sheet.crop((cx, cy, cx + 16, cy + 32)).getbbox()
+            if box is None: continue
+            top = cy + box[1]          # the mask's top row is the mouth; the chin line is the row under it
+            for y in (top - 1, top):
+                for x in range(cx, cx + 16):
+                    b = bp[x, y]
+                    if b[3] and b[:3] not in BODY_OUTLINE and px[x, y][3] == 0:
+                        px[x, y] = (0xB6, 0x54, 0x5D, 255)
+            xs = [x for x in range(cx, cx + 16) if px[x, top][3]]
+            if len(xs) > 4:
+                for x in range(xs[0], xs[-1] + 1):
+                    if px[x, top + 1][3] == 0 and bp[x, top + 1][3]: px[x, top + 1] = (0x74, 0x3C, 0x50, 255)
+        return sheet
+
+    def shoulders(sheet):
+        px = sheet.load()
+        for cx, cy in cells(sheet):
+            box = sheet.crop((cx, cy, cx + 16, cy + 32)).getbbox()
+            if box is None: continue
+            cols = [px[x, y][:3] for y in range(cy + box[1], cy + box[3]) for x in range(cx, cx + 16) if px[x, y][3]]
+            dark = min(cols, key=lambda c: sum(c))
+            for y in range(cy + box[1], cy + box[1] + 3):
+                xs = [x for x in range(cx, cx + 16) if px[x, y][3]]
+                if len(xs) < 3: continue
+                row = [px[x, y][:3] for x in xs if px[x, y][:3] != dark]
+                mid = max(set(row), key=row.count) if row else dark
+                for edge, out in ((xs[0], xs[0] - 1), (xs[-1], xs[-1] + 1)):
+                    if cx <= out < cx + 16:
+                        px[out, y] = dark + (255,)
+                        px[edge, y] = mid + (255,)
+        return sheet
+
+    n = 0
+    for slot in ["Head", "Chest", "Legs", "Feet"]:
+        sd = os.path.join(WF, slot, "existing_mi_16x32", "full_generator_sheets")
+        for fn in sorted(os.listdir(sd)):
+            code = fn[:-4]
+            gid = code_to_id.get(code)
+            if gid is None: continue
+            sh = Image.open(os.path.join(sd, fn)).convert("RGBA")
+            if code == "HEAD-003": sh = bandana(sh)
+            if code == "CHST-019":
+                # The Briar King's shell was a pinkish brown that read as bare skin: make it dark rusted metal
+                RE = {(0xAA, 0x79, 0x69): (0x6A, 0x55, 0x4E), (0xCB, 0xA4, 0x8B): (0x93, 0x80, 0x74)}
+                px = sh.load()
+                for y in range(sh.height):
+                    for x in range(sh.width):
+                        c = px[x, y]
+                        if c[3] and c[:3] in RE: px[x, y] = RE[c[:3]] + (c[3],)
+            if code in HEAVY: sh = shoulders(sh)
+            save(sh, "characters/mi/wear/%s.png" % gid)
+            save(Image.open(os.path.join(WF, slot, "inventory_16", fn)).convert("RGBA"), "icons/%s.png" % gid)
+            n += 1
+    print("wearables:", n)

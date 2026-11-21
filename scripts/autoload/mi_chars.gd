@@ -183,7 +183,20 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 	var infected: bool = look.get("infected", false)
 	var skin := Color(str(look.get("skin", "#e8b48f")))
 	var eye_glow: Color = Color(str(look.get("eyes", "#d8e070"))) if infected else Color(0, 0, 0, 0)
-	for layer in [["body", p.body], ["eyes", p.eyes], ["outfit", p.outfit], ["hair", p.hair], ["acc", p.acc]]:
+	# worn gear (look.wear: slot -> gear id) goes over the outfit: legs, feet, chest, then hair, then the hat.
+	# The outfit stays underneath: some pieces (The Briar King, vests) are open and would show bare skin.
+	var wear: Dictionary = look.get("wear", {})
+	var hat: Image = null
+	if str(wear.get("head", "")) != "":
+		var hs := sheet("wear", str(wear.head))
+		if hs != null and rect.end.y <= hs.get_height(): hat = hs.get_region(rect)
+	var layers := [["body", p.body], ["eyes", p.eyes], ["outfit", p.outfit]]
+	for slot in ["legs", "feet", "chest"]:
+		if str(wear.get(slot, "")) != "": layers.append(["wear", str(wear[slot])])
+	layers.append(["hair", p.hair])
+	if hat == null or "Beard" in str(p.acc) or "Glasses" in str(p.acc):
+		layers.append(["acc", p.acc])
+	for layer in layers:
 		if str(layer[1]) == "": continue
 		var sh := sheet(layer[0], layer[1])
 		if sh == null: continue
@@ -195,7 +208,33 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 			fr = _tint(fr, eye_glow)
 		elif infected:
 			fr = _dead(fr)
+		if layer[0] == "hair" and hat != null:
+			fr = _under_hat(fr, hat)
 		out.blend_rect(fr, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
+	if hat != null:
+		out.blend_rect(_dead(hat) if infected else hat, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
+	return out
+
+## Hair under a hat: nothing pokes out above the top of the hat (buns, spikes, high pigtails); hair at the
+## sides below that stays. Face masks (a bandana, a gas mask) start low on the face and leave the hair alone.
+static func _under_hat(hair: Image, hat: Image) -> Image:
+	var hu := hat.get_used_rect()
+	var hr := hair.get_used_rect()
+	if hu.size.x == 0 or hr.size.x == 0 or hu.position.y > hr.position.y + 4:
+		return hair
+	var brim := hu.position.y + 1
+	var tops := {}
+	for x in 16:
+		for y in range(hu.position.y, hu.end.y):
+			if hat.get_pixel(x, y).a > 0.5:
+				tops[x] = y
+				break
+	var out := hair.duplicate()
+	for x in 16:
+		for y in range(hr.position.y, hr.end.y):
+			if out.get_pixel(x, y).a == 0.0: continue
+			var cut: bool = (y < int(tops[x])) if tops.has(x) else (y < brim)
+			if cut: out.set_pixel(x, y, Color(0, 0, 0, 0))
 	return out
 
 static func _is_outline(c: Color) -> bool:

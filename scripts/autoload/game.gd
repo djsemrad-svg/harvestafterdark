@@ -357,6 +357,19 @@ func is_broken(s) -> bool:
 
 func gear_changed() -> void:
 	_gear_cache = null
+	sync_worn_look()
+
+## What you wear shows on your character: the look's "wear" lists the gear id in each slot (broken gear too).
+func sync_worn_look() -> void:
+	if state.is_empty() or not state.has("character"):
+		return
+	var w := {}
+	for slot in Arsenal.SLOTS:
+		var s = state.equip.get(slot)
+		if s != null and Data.gear.has(s.id) and Art.has_override("characters/mi/wear/%s.png" % s.id):
+			w[slot] = s.id
+	if w.is_empty(): state.character.look.erase("wear")
+	else: state.character.look.wear = w
 
 ## Totals from everything you are wearing. Broken gear gives nothing except its pockets.
 func gear_total() -> Dictionary:

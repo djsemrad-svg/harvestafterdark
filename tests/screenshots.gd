@@ -150,6 +150,44 @@ func _ready() -> void:
 		Game.quit_to_title()
 		get_tree().quit()
 		return
+	if only == "wear":
+		# worn gear on the character in every pose: one row per outfit, 4 directions x (walk, idle, hit, stab, pickup)
+		var outfits := [{}, {"head": "baseball_cap", "chest": "denim_jacket", "legs": "jeans", "feet": "sneakers"},
+			{"head": "riot_helmet", "chest": "juggernaut_riot_suit", "legs": "military_leg_guards", "feet": "combat_boots"},
+			{"head": "grinning_saint", "chest": "the_briar_king", "legs": "kneecapper_guards", "feet": "stompers"},
+			{"head": "gas_mask", "chest": "quarantine", "legs": "cargo_pants", "feet": "rain_boots"},
+			{"head": "bandana_mask", "chest": "leather_jacket"}, {"head": "cowboy_hat", "chest": "hawaiian_shirt", "legs": "kilt", "feet": "flip_flops"},
+			{"head": "the_lighthouse", "chest": "firefighter_coat", "legs": "snow_pants", "feet": "snow_boots"}]
+		var poses := [["walk", 0], ["walk", 1], ["idle", 0], ["hit", 2], ["stab", 3], ["pickup", 5]]
+		var sheet := Image.create(16 * 4 * poses.size() + 4 * poses.size(), 34 * outfits.size(), false, Image.FORMAT_RGBA8)
+		sheet.fill(Color("#7aa060"))
+		for r in outfits.size():
+			var look: Dictionary = Data.default_look.duplicate(true)
+			look.mi_hair = "13_04"
+			if not (outfits[r] as Dictionary).is_empty(): look.wear = outfits[r]
+			var x := 0
+			for ps in poses:
+				for d in ["down", "right", "up", "left"]:
+					var im: Image = MiChars.compose(look, d, int(ps[1]), str(ps[0]))
+					sheet.blend_rect(im, Rect2i(0, 0, 16, 32), Vector2i(x, r * 34 + 1))
+					x += 16
+				x += 4
+		sheet.resize(sheet.get_width() * 4, sheet.get_height() * 4, Image.INTERPOLATE_NEAREST)
+		sheet.save_png(out + "wear_poses.png")
+		# and in the game, on the player
+		Game.state.equip.head = {"id": "riot_helmet", "qty": 1}
+		Game.state.equip.chest = {"id": "juggernaut_riot_suit", "qty": 1}
+		Game.gear_changed()
+		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		main.ui.close_all()
+		await frames(6)
+		await shot("wear_ingame")
+		main.ui.open("journal", {"tab": "inventory"})
+		await frames(4)
+		await shot("wear_inventory")
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()
