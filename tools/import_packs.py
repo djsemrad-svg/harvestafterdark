@@ -2197,3 +2197,18 @@ if os.path.isdir(SA):
             save(Image.open(os.path.join(MD, fn)).convert("RGBA"), "mine/" + fn); n += 1
     save(Image.open(os.path.join(MD, "broken_ore_cart.png")).convert("RGBA"), "objects/mine_cart.png"); n += 1
     print("selected assets v5: %d pictures" % n)
+
+# ---------------------------------------------------------------- Coastal Fishing v5 (Daniel's pack, Nov 21)
+# Redrawn side-view icons for every fish already in the game, plus the 10 new freshwater fish. The sea fish
+# and beach finds wait for the Coastal Region.
+CF = os.path.join(SRC, "Coastal_Fishing_v5")
+if os.path.isdir(CF):
+    FRESH = ["bluegill", "pumpkinseed", "mosquitofish", "golden_tench", "fathead_minnow", "river_redhorse",
+             "freshwater_drum", "grass_pickerel", "longnose_sucker", "stonecat_madtom"]
+    new = set(f[:-4] for f in os.listdir(os.path.join(CF, "new_fish", "icons_16")))
+    n = 0
+    for fn in sorted(os.listdir(os.path.join(CF, "combined_fish", "icons_16"))):
+        fid = fn[:-4]
+        if fid not in new or fid in FRESH:
+            save(Image.open(os.path.join(CF, "combined_fish", "icons_16", fn)).convert("RGBA"), "icons/" + fn); n += 1
+    print("coastal fishing: %d fish icons" % n)

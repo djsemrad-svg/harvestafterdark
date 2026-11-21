@@ -140,6 +140,17 @@ var fish := {
 	"bramble_bass": {"name": "Bramble Bass", "locs": ["lake", "pond"], "seasons": ["summer", "autumn"], "time": [720, 1320], "weather": "any", "w": 12, "diff": 50, "sell": 95, "color": "#5a8a3a", "move": "smooth"},
 	"pale_sturgeon": {"name": "Pale Sturgeon", "locs": ["lake"], "seasons": ["summer", "winter"], "time": [360, 1140], "weather": "any", "w": 4, "diff": 78, "sell": 260, "color": "#a8a8b0", "move": "sinker"},
 	"ridge_lurker": {"name": "The Ridge Lurker", "locs": ["lake"], "seasons": ["winter"], "time": [1200, 1560], "weather": "any", "w": 1, "diff": 95, "sell": 1200, "color": "#2a3a5a", "move": "dart", "legend": true},
+	# Daniel's Coastal Fishing pack, freshwater species (Nov 21)
+	"bluegill": {"name": "Bluegill", "locs": ["pond", "lake"], "seasons": ["spring", "summer", "autumn"], "time": [360, 1200], "weather": "any", "w": 28, "diff": 18, "sell": 42, "color": "#5a7aa8", "move": "smooth"},
+	"pumpkinseed": {"name": "Pumpkinseed", "locs": ["pond"], "seasons": ["summer", "autumn"], "time": [480, 1140], "weather": "any", "w": 14, "diff": 40, "sell": 75, "color": "#e09a3a", "move": "smooth"},
+	"mosquitofish": {"name": "Mosquitofish", "locs": ["pond"], "seasons": ["spring", "summer"], "time": [360, 1320], "weather": "any", "w": 30, "diff": 10, "sell": 18, "color": "#9aa08a", "move": "dart"},
+	"golden_tench": {"name": "Golden Tench", "locs": ["pond"], "seasons": ["summer"], "time": [1080, 1500], "weather": "rain", "w": 5, "diff": 66, "sell": 205, "color": "#c8a83a", "move": "sinker"},
+	"fathead_minnow": {"name": "Fathead Minnow", "locs": ["pond", "river"], "seasons": ["spring", "summer", "autumn", "winter"], "time": [360, 1560], "weather": "any", "w": 30, "diff": 10, "sell": 25, "color": "#8a8a70", "move": "dart"},
+	"river_redhorse": {"name": "River Redhorse", "locs": ["river"], "seasons": ["spring", "summer"], "time": [360, 1140], "weather": "any", "w": 14, "diff": 42, "sell": 95, "color": "#b86a4a", "move": "smooth"},
+	"freshwater_drum": {"name": "Freshwater Drum", "locs": ["river", "lake"], "seasons": ["summer", "autumn"], "time": [600, 1440], "weather": "any", "w": 22, "diff": 28, "sell": 68, "color": "#a8a898", "move": "sinker"},
+	"grass_pickerel": {"name": "Grass Pickerel", "locs": ["river", "pond"], "seasons": ["spring", "autumn"], "time": [360, 1080], "weather": "any", "w": 12, "diff": 48, "sell": 105, "color": "#6a8a3a", "move": "dart"},
+	"longnose_sucker": {"name": "Longnose Sucker", "locs": ["river"], "seasons": ["spring", "winter"], "time": [360, 1560], "weather": "any", "w": 24, "diff": 22, "sell": 52, "color": "#7a6a5a", "move": "sinker"},
+	"stonecat_madtom": {"name": "Stonecat Madtom", "locs": ["river"], "seasons": ["summer", "autumn"], "time": [1140, 1560], "weather": "any", "w": 12, "diff": 45, "sell": 83, "color": "#8a7a50", "move": "sinker"},
 }
 
 var metals := {

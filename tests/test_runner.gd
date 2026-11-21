@@ -720,6 +720,10 @@ func run_all() -> void:
 	for i in 200: pond[W.pick_fish("pond")] = true
 	for i in 200: lake[W.pick_fish("lake")] = true
 	check("Fishing: species depend on location, season and time", pond.has("pond_sunfish") and not pond.has("lake_perch") and lake.has("lake_perch") and not lake.has("ghost_pike"), str(pond.keys()) + " | " + str(lake.keys()))
+	var fresh := ["bluegill", "pumpkinseed", "mosquitofish", "golden_tench", "fathead_minnow", "river_redhorse", "freshwater_drum", "grass_pickerel", "longnose_sucker", "stonecat_madtom"]
+	var fresh_ok := fresh.all(func(f): return Data.fish.has(f) and Data.items.has(f) and Art.has_override("icons/%s.png" % f))
+	var drawn := Data.fish.keys().filter(func(f): return not Art.has_override("icons/%s.png" % f))
+	check("Fishing: the 10 freshwater fish are catchable and every fish has a drawn picture", fresh_ok and drawn.is_empty() and pond.has("bluegill"), "missing pictures=%s" % str(drawn))
 
 	# ---------- end of day
 	start("survivor", 2)
@@ -1239,10 +1243,11 @@ func run_all() -> void:
 	at("homestead", 20, 20, "down")
 	G.state.time = 1300
 	var raiders := 0
+	var warned2 := false
 	for i in 21:
 		tick(1000)
 		raiders = max(raiders, G.enemies.filter(func(x): return x.get("raider", false)).size())
-	var warned2: bool = G.state.raid.get("warned", false)
+		if G.state.has("raid") and G.state.raid is Dictionary: warned2 = warned2 or G.state.raid.get("warned", false)
 	check("Night raids: a warning at dusk, then infected arrive at 10 pm if you're home", warned2 and raiders == 3, "raiders=%d" % raiders)
 	Balance.raids.grace_days = 99999
 
