@@ -1314,6 +1314,7 @@ func run_all() -> void:
 	run_first_week()
 	run_repairs()
 	run_modern_farm()
+	run_shop_rooms()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3844,3 +3845,32 @@ func run_modern_farm() -> void:
 		and Art.has_override("animals/cow_baby_0.png") and Art.has_override("animals/barn_cat_1.png")
 	check("Modern Farm art: all crops have growth pictures, fruit trees grow from young to fruiting, young animals have their own pictures",
 		ok, "missing=%s tree=%s young_tree=%s calf=%s cow=%s" % [missing.slice(0, 5), r[0].get_size(), r2[0].get_size(), calf.get_size() if calf else null, cow.get_size() if cow else null])
+
+func run_shop_rooms() -> void:
+	var G = Game
+	start("adventure", 2)
+	# every shop is furnished, the row in front of its counter is clear, and shoppers stay on the shop floor
+	var bad := []
+	var counts := {}
+	for id in ["store", "ranch", "forge", "clinic", "workshop", "guild"]:
+		var m: GameMap = G.maps[id]
+		var furn := 0
+		for kk in m.objects:
+			var o: Dictionary = m.objects[kk]
+			if o.type == "counter":
+				var fx := int(o.x); var fy := int(o.y) + 1
+				if m.is_solid(fx, fy): bad.append("%s front %d,%d" % [id, fx, fy])
+			elif Data.obj_defs.get(o.type, {}).get("fixture", false) or o.type in ["shelf", "barrel", "crate"]:
+				furn += 1
+		counts[id] = furn
+		if furn < 5: bad.append("%s bare" % id)
+		Townsfolk.map_id = ""
+		Townsfolk.refresh(m)
+		var shoppers := 0
+		for f in Townsfolk.folk:
+			if f.role == "browse":
+				shoppers += 1
+				if int(f.pos.y / 16) < Townsfolk.SHOP_FLOOR_Y: bad.append("%s shopper at the counter" % id)
+		if shoppers == 0: bad.append("%s empty" % id)
+	Townsfolk.refresh(null)
+	check("Shops: furnished for what they are, nothing in front of a counter, and shoppers browsing the floor", bad.is_empty(), "bad=%s furniture=%s" % [bad, counts])

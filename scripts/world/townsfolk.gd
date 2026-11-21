@@ -11,7 +11,10 @@ const PLACES := {
 	"town": {"repair": 3, "chat": 3, "walk": 4},      # plus an armed guard at every road in (TownDress.POSTS)
 	"residential": {"camp": 3},
 	"riverlands": {"camp": 2},
+	# shoppers and patients: they browse the shop floor, away from the counter
+	"store": {"browse": 2}, "ranch": {"browse": 1}, "forge": {"browse": 1}, "clinic": {"browse": 2}, "workshop": {"browse": 1}, "guild": {"browse": 2},
 }
+const SHOP_FLOOR_Y := 6      # shoppers stay at or below this row, so the counter and the tiles in front of it stay clear
 const DAY := [360, 1260]      # 6 am to 9 pm; guards stay on all night
 
 const NAMES := ["Abe", "Bea", "Cal", "Dot", "Eli", "Fay", "Gus", "Hana", "Ivo", "Jun", "Kit", "Lou", "Mae", "Ned", "Ola", "Pia",
@@ -23,6 +26,8 @@ const LINES := {
 		"Keep your eyes on the treeline after dark.", "You heading out there? Come back before the lights go off."],
 	"chat": ["We were just saying the tomatoes came in early this year.", "Did you hear the radio last night? Static, mostly. Then a voice.",
 		"Ruth says the tavern might open again. Can you imagine?", "Don't mind us. Just catching up."],
+	"browse": ["Just looking. Well, looking and counting what I can afford.", "They had flour last week. I live in hope.",
+		"Don't mind me, I'm waiting my turn.", "Good to have somewhere warm to stand for a minute."],
 	"walk": ["Busy day. Busy every day, now.", "Morning. Or afternoon? I've stopped keeping track.",
 		"Mind the road, the carts don't stop for anybody.", "Nice to see a new face that isn't chewing on anything."],
 	"camp": ["Sit a minute if you like. The fire's warm.", "We'll move on when the roads clear. If they clear.",
@@ -30,7 +35,7 @@ const LINES := {
 }
 const EMOTES := ["dots", "music", "question", "heart", "dots", "sweat"]
 const SKIN := ["#f2c9a6", "#e8b48f", "#d39a72", "#b57a52", "#8d5a3a", "#6a4028"]
-const WALKABLE := ["grass", "road", "pave", "dirt", "sand", "bridge"]
+const WALKABLE := ["grass", "road", "pave", "dirt", "sand", "bridge", "floor"]
 
 static var folk: Array = []
 static var map_id := ""
@@ -89,6 +94,16 @@ static func refresh(m: GameMap) -> void:
 					var b := _make(r, "chat", spot + Vector2i(2, 0), "left")
 					a.mate = folk.size() + 1; b.mate = folk.size()
 					folk.append(a); folk.append(b)
+				"browse":
+					var spot := Vector2i(-1, -1)
+					for tries in 60:
+						var c := Vector2i(r.randi_range(1, m.w - 2), r.randi_range(SHOP_FLOOR_Y, m.h - 3))
+						if _ok(m, c.x, c.y) and not used.has(c) and absi(c.x - m.w / 2) > 0:
+							spot = c
+							break
+					if spot.x < 0: continue
+					used[spot] = true
+					folk.append(_make(r, "browse", spot, "up"))
 				"walk":
 					var spot := _random_spot(m, r, used, ["pave", "road"])
 					if spot.x < 0: continue
@@ -147,7 +162,7 @@ static func update(dt: float) -> void:
 	refresh(m)
 	for f in folk:
 		f.t = float(f.t) - dt
-		if f.role == "walk":
+		if f.role == "walk" or f.role == "browse":
 			_walk(m, f, dt)
 		elif float(f.t) <= 0:
 			f.t = 3.0 + float(f.seed % 5)
@@ -172,8 +187,9 @@ static func _walk(m: GameMap, f: Dictionary, dt: float) -> void:
 		# pick somewhere nearby that can be walked to in a straight line
 		for tries in 20:
 			var reach := 120.0 if tries < 10 else 60.0
+			if f.role == "browse": reach = 40.0
 			var g: Vector2 = f.home + Vector2(randf_range(-reach, reach), randf_range(-reach * 0.75, reach * 0.75))
-			var ok := true
+			var ok: bool = not (f.role == "browse" and int(g.y / 16) < SHOP_FLOOR_Y)
 			for s in 12:
 				var q: Vector2 = f.pos.lerp(g, (s + 1) / 12.0)
 				if not _ok(m, int(q.x / 16), int(q.y / 16)): ok = false; break

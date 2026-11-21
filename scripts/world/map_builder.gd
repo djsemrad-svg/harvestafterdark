@@ -184,26 +184,34 @@ static func cellar() -> GameMap:
 	m.lights = [{"x": 6, "y": 4, "r": 70}]
 	return m
 
+## Furniture as [x, y, type, extra]: extra may give "w" (tiles wide) for pieces wider than a tile.
+static func _furnish(m: GameMap, list: Array) -> void:
+	for f in list:
+		m.add_obj(int(f[0]), int(f[1]), str(f[2]), f[3] if f.size() > 3 else {})
+
+## Shops: the keeper stands behind the counter (row 3), and the row in front of the counter and the
+## walk from the door stay clear.
 static func store() -> GameMap:
 	var m := _interior("store")
+	m.layout = "store_v2"
 	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 12, "ty": 17, "dir": "down", "door": true})
-	for i in range(2, 9):
+	for i in range(3, 9):
 		m.add_obj(i, 4, "counter", {"shop": "general"})
-	for sx in [1, 2, 9, 10]:
-		m.add_obj(sx, 2, "shelf")
-	m.add_obj(1, 6, "shelf"); m.add_obj(10, 6, "shelf")
-	m.add_obj(1, 8, "barrel"); m.add_obj(10, 8, "crate")
+	_furnish(m, [[1, 2, "stocked_shelf", {"w": 2}], [7, 2, "stocked_shelf", {"w": 2}], [10, 2, "drink_fridge"], [3, 2, "checkout", {"w": 3}],
+		[1, 6, "stocked_shelf", {"w": 2}], [9, 6, "stocked_shelf", {"w": 2}], [1, 8, "produce_crate", {"w": 2}], [9, 8, "produce_crate", {"w": 2}],
+		[4, 8, "basket_stack"]])
 	m.add_obj(4, 1, "window"); m.add_obj(7, 1, "window")
 	m.lights = [{"x": 6, "y": 5, "r": 90}]
 	return m
 
 static func ranch() -> GameMap:
 	var m := _interior("ranch")
+	m.layout = "ranch_v2"
 	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "town", "tx": 37, "ty": 9, "dir": "down", "door": true})
 	for i in range(3, 10):
 		m.add_obj(i, 4, "counter", {"shop": "ranch"})
-	m.add_obj(1, 2, "hay_bale"); m.add_obj(2, 2, "hay_bale"); m.add_obj(10, 2, "nest_box"); m.add_obj(9, 2, "nest_box")
-	m.add_obj(1, 7, "water_trough"); m.add_obj(10, 7, "hay_bale"); m.add_obj(10, 8, "barrel")
+	_furnish(m, [[1, 2, "hay_pile"], [2, 2, "hay_bale"], [9, 2, "egg_crate"], [10, 2, "milk_cans"], [4, 2, "feed_sacks", {"w": 2}],
+		[1, 6, "water_trough"], [1, 7, "hay_bale"], [1, 8, "hay_pile"], [9, 7, "feed_sacks", {"w": 2}], [10, 8, "milk_cans"], [9, 8, "nest_box"]])
 	m.add_obj(4, 1, "window"); m.add_obj(7, 1, "window")
 	m.lights = [{"x": 6, "y": 5, "r": 90}]
 	return m
@@ -226,15 +234,22 @@ static func coop(b: Dictionary) -> GameMap:
 ## Grid letters: W wall, . floor, C shop counter, P greenhouse plot, and furniture:
 ## B bed, S shelf, T table, h chair, X crate, O barrel, L lamp, w window, R rug, D target dummy.
 const ROOMS := {
-	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "floor": "floor", "grid": [
-		"WWWWWWWWWWWWWW", "WSSwSSWWwSSSSW", "W............W", "WB.B.....CCCCW", "W.........L..W",
-		"WB.B.........W", "W............W", "WS..RRRR..T.hW", "W...RRRR.....W", "W....O...X...W", "WWWWWW..WWWWWW"]},
-	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "floor": "floor", "grid": [
-		"WWWWWWWWWWWWWW", "WSSwSSSSwSSXXW", "W............W", "WTT..CCCCC..OW", "W............W",
-		"WXX.......L..W", "W.....TT.....W", "WOO.........XW", "W..........XXW", "WX.........OOW", "WWWWWW..WWWWWW"]},
-	"guild": {"exit": ["town", 12, 29], "shop": "guild", "floor": "floor", "grid": [
-		"WWWWWWWWWWWWWW", "WSSwSSWWSSwSSW", "W............W", "W...CCCCCC...W", "W.L..........W",
-		"WD..........DW", "W....RRRR....W", "WD...RRRR...DW", "W............W", "WXXTh......OOW", "WWWWWW..WWWWWW"]},
+	"clinic": {"exit": ["town", 8, 8], "shop": "clinic", "floor": "floor", "layout": "clinic_v2", "grid": [
+		"WWWWWWWWWWWWWW", "WWWwWWWWWwWWWW", "W............W", "W............W", "W........CCCCW",
+		"W............W", "W............W", "W............W", "W............W", "W............W", "WWWWWW..WWWWWW"],
+		"props": [[1, 3, "clinic_bed", {"w": 2}], [1, 6, "clinic_bed", {"w": 2}], [3, 3, "med_cart"], [3, 6, "drawers"], [5, 2, "doctor_desk", {"w": 2}],
+			[9, 2, "med_cabinet", {"w": 2}], [12, 2, "drawers"], [9, 8, "wait_chair"], [10, 8, "wait_chair"], [11, 8, "wait_chair"],
+			[12, 8, "clinic_plant"], [1, 9, "clinic_plant"], [12, 6, "clinic_plant"]]},
+	"workshop": {"exit": ["town", 48, 15], "shop": "workshop", "floor": "floor", "layout": "workshop_v2", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSSSwSSXXW", "W............W", "W............W", "W....CCCCC...W",
+		"W............W", "W............W", "W............W", "W............W", "W............W", "WWWWWW..WWWWWW"],
+		"props": [[1, 3, "board_stack"], [2, 3, "log_stack"], [10, 3, "diy_table", {"w": 3}], [1, 8, "work_table", {"w": 4}],
+			[12, 8, "barrel"], [12, 7, "crate"], [11, 8, "crate"]]},
+	"guild": {"exit": ["town", 12, 29], "shop": "guild", "floor": "floor", "layout": "guild_v2", "grid": [
+		"WWWWWWWWWWWWWW", "WSSwSSWWSSwSSW", "W............W", "W...CCCCCC...W", "W............W",
+		"W............W", "W....RRRR....W", "W....RRRR....W", "W............W", "W............W", "WWWWWW..WWWWWW"],
+		"props": [[11, 2, "range_target"], [12, 2, "range_target"], [11, 4, "range_bench", {"w": 2}], [1, 4, "punching_bag"], [2, 4, "punching_bag"],
+			[1, 8, "dumbbell_rack", {"w": 3}], [10, 8, "weight_bench"], [12, 8, "barrel"], [12, 9, "crate"]]},
 	"greenhouse": {"exit": ["homestead", 0, 0], "shop": "", "floor": "dirt", "grid": [
 		"WWWWWWWWWWWWWW", "WwwwwwwwwwwwwW", "W.PPPPP.PPPPPW", "W............W", "W............W",
 		"W.PPPPP.PPPPPW", "W............W", "WO..........XW", "W............W", "WWWWWW...WWWWW", "WWWWWW...WWWWW"]},
@@ -266,6 +281,8 @@ static func room(id: String, exit_override := []) -> GameMap:
 				m.soil[GameMap.k(x, y)] = {"w": 0, "crop": null, "fixed": true}
 			if ch == "." and y == rows.size() - 1:
 				m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": ex[0], "tx": ex[1], "ty": ex[2], "dir": "down", "door": true})
+	_furnish(m, R.get("props", []))
+	m.layout = str(R.get("layout", ""))
 	if id == "greenhouse":
 		m.farmable = true
 	m.lights = [{"x": 7, "y": 5, "r": 110}]
@@ -279,6 +296,8 @@ static func forge() -> GameMap:
 	m.add_obj(9, 2, "furnace"); m.add_obj(2, 6, "anvil")
 	m.add_obj(1, 2, "shelf"); m.add_obj(2, 2, "shelf")
 	m.add_obj(10, 7, "barrel"); m.add_obj(1, 8, "crate"); m.add_obj(10, 8, "crate")
+	m.add_obj(10, 6, "log_stack"); m.add_obj(1, 6, "board_stack")
+	m.layout = "forge_v2"
 	m.add_obj(5, 1, "window")
 	return m
 

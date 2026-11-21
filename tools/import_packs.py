@@ -2378,3 +2378,8 @@ if os.path.isdir(os.path.join(SRC, "moderninteriors-win")):
 if os.path.isdir(os.path.join(SRC, "Modern_Farm")):
     runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "modern_farm.py"),
                    init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute, "snow_laden": snow_laden, "hexrgb": hexrgb, "hue_set": hue_set})
+
+# ---------------------------------------------------------------- shop furniture (Nov 21)
+# Clinic, store, guild, workshop, ranch and forge furniture. See tools/shop_furniture.py.
+if os.path.isdir(os.path.join(SRC, "moderninteriors-win")):
+    runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shop_furniture.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})

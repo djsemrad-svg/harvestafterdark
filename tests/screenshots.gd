@@ -834,6 +834,17 @@ func _ready() -> void:
 			await shot("41_farm_" + ("detail" if pass_on else "before"))
 		get_tree().quit()
 		return
+	if only == "shops":
+		main.ui.close_all()
+		Game.state.time = 720
+		for rid in ["store", "ranch", "forge", "clinic", "workshop", "guild"]:
+			Game.change_map(rid, 6, 8, "up", {"silent": true})
+			Game.sync_npcs()
+			Game.enemies.clear()
+			await frames(10)
+			await shot("51_shop_" + rid)
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:
