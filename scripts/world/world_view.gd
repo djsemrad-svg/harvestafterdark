@@ -41,7 +41,7 @@ func _ready() -> void:
 	add_child(darkness)
 	lights_root = Node2D.new()
 	add_child(lights_root)
-	for i in 40:
+	for i in 64:
 		var l := PointLight2D.new()
 		l.texture = Art.light_texture
 		l.visible = false
@@ -618,10 +618,11 @@ func _draw_enemy(en: Dictionary) -> void:
 			l2.lying = true
 			_lying_looks[key] = l2
 		look = _lying_looks[key]
-	var alpha := 0.5 if en.flash > 0 else 1.0
+	var alpha := 1.0
 	if d.get("ai", "") == "stalker" and en.state in ["wander", "asleep"] and en.pos.distance_to(Game.player.pos) > 40.0:
 		alpha = 0.22
 	var mod := Color(1, 1, 1, alpha)
+	if en.flash > 0: mod = Color(2.6, 2.6, 2.6, alpha) if Game.settings.get("effects", true) else Color(1, 1, 1, 0.5)      # hit flash
 	if en.get("turned", 0.0) > 0: mod = Color(0.6, 1.2, 0.6, alpha)
 	elif en.has("fx") and en.fx.has("burn") and int(anim_t * 8) % 2 == 0: mod = Color(1.3, 0.9, 0.6, alpha)
 	elif en.has("fx") and en.fx.has("corrode"): mod = Color(0.85, 1.15, 0.6, alpha)
@@ -800,7 +801,7 @@ func _draw_player() -> void:
 	else:
 		_draw_tool_swing(p, true)
 		_draw_char(Game.state.character.look, p.pos, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
-	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0:
+	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0 and Game.settings.get("effects", true):
 		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
 	# a held gun, bow or chainsaw points where you aim
 	var hs = Game.selected_stack()
@@ -820,7 +821,13 @@ func _draw_player() -> void:
 			draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		if p.get("flash", 0.0) > 0:
-			draw_circle(hand + dv * 9.0, 2.5, Color(1, 0.9, 0.5, 0.9))
+			# muzzle flash: a hot core and a short star of fire along the barrel
+			var mz: Vector2 = hand + dv * 10.0
+			var side := Vector2(-dv.y, dv.x)
+			draw_circle(mz, 3.5, Color(1, 0.75, 0.3, 0.55))
+			draw_line(mz - dv * 1.0, mz + dv * 7.0, Color(1, 0.85, 0.4, 0.9), 2.0)
+			draw_line(mz - side * 4.0, mz + side * 4.0, Color(1, 0.8, 0.35, 0.7), 1.0)
+			draw_circle(mz, 2.0, Color(1, 1, 0.85, 1))
 	if p.get("reload") != null:
 		var r: Dictionary = p.reload
 		var bw := 14.0
@@ -1005,7 +1012,7 @@ func update_lighting(m: GameMap) -> void:
 					r = 0
 				if r > 0:
 					var oy := -12 if o.type == "lamp_post" else (-4 if o.type == "lamp" else 4)
-					srcs.append([Vector2(x * 16 + 8, y * 16 + oy), r, true])
+					srcs.append([Vector2(x * 16 + 8, y * 16 + oy), r, true, od.get("shape", "") == "fire" or o.type in ["campfire", "campfire_ring", "hearth", "watch_fire", "furnace", "brick_furnace"]])
 		for st in m.structures:
 			var B: Dictionary = Data.buildings[st.kind]
 			if B.has("special") or B.get("boarded", false) or (Art.building_condition(st) < 3 and st.kind != "farmhouse"):
@@ -1019,6 +1026,10 @@ func update_lighting(m: GameMap) -> void:
 			if (hs != null and hs.id == "flashlight") or Game.gear_total().fx.get("light", false):
 				pr = int(pr * 2.2) if not m.mine else 160
 			srcs.append([Game.player.pos + Vector2(0, -16), pr, false])
+			if Game.player.get("flash", 0.0) > 0:
+				srcs.push_front([Game.player.pos + Vector2(0, -12), 70, true])
+		var mid: Vector2 = c + vs / 2.0
+		srcs.sort_custom(func(a1, b1): return a1[0].distance_squared_to(mid) < b1[0].distance_squared_to(mid))
 		for s in srcs:
 			if used >= light_pool.size():
 				break
@@ -1026,7 +1037,8 @@ func update_lighting(m: GameMap) -> void:
 			used += 1
 			l.visible = true
 			l.position = s[0]
-			var flick := 1.0 + sin(anim_t * 8.0 + s[0].x) * 0.03 if s[2] else 1.0
+			var fire: bool = s.size() > 3 and s[3]
+			var flick := (1.0 + sin(anim_t * 8.0 + s[0].x) * 0.03 if not fire else 1.0 + sin(anim_t * 13.0 + s[0].x) * 0.07 + sin(anim_t * 31.0 + s[0].y) * 0.04) if s[2] else 1.0
 			l.texture_scale = s[1] * 2.0 / 128.0 * flick
 			l.color = Color(1.0, 0.78, 0.5) if s[2] else Color(0.85, 0.85, 0.95)
 			l.energy = (0.3 + a * 0.75) * (0.8 if s[1] >= 100 else 1.0) if s[2] else 0.55 + a * 1.1

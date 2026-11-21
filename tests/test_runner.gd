@@ -1319,6 +1319,7 @@ func run_all() -> void:
 	run_town_life()
 	run_festivals()
 	run_picture_map()
+	run_keys_and_fx()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3900,6 +3901,8 @@ func run_walkability() -> void:
 	var y0: float = G.player.pos.y
 	for i in 30: W.move_entity(G.player, Vector2(0, -1), 5, 6)
 	var stopped: bool = G.player.pos.y > hal.pos.y + 5 and G.player.pos.y < y0
+	for i in 80: W.move_entity(G.player, Vector2(0, -1), 5, 6)
+	stopped = stopped and G.player.pos.y < hal.pos.y      # ...then squeezes past after a second of pushing
 	hal.map = keep_hal[0]; hal.pos = keep_hal[1]; hal.path = keep_hal[2]
 	# 3. corner sliding: walking up into the corner of a crate slips past it
 	at("homestead", 30, 30, "up")
@@ -4057,3 +4060,42 @@ func run_picture_map() -> void:
 	U.close_all()
 	check("Picture map: regions drawn from the real maps on parchment, closed ones shaded, pins for you and the shops",
 		img.get_width() == 9 * 26 and road and shaded and you and pins >= 6, "road=%s shaded=%s you=%s pins=%d" % [road, shaded, you, pins])
+
+func run_keys_and_fx() -> void:
+	var G = Game
+	start("adventure", 2)
+	var keep: Dictionary = G.settings.get("keys", {}).duplicate()
+	var ev := func(code: int) -> InputEventKey:
+		var k := InputEventKey.new()
+		k.physical_keycode = code
+		k.keycode = code
+		k.pressed = true
+		return k
+	Keys.bind("use", KEY_G)
+	var g_use: bool = Keys.action_of(ev.call(KEY_G)) == "use" and Keys.action_of(ev.call(KEY_SPACE)) == ""
+	Keys.bind("interact", KEY_G)        # taking a key from another action gives that one its default back
+	var swapped: bool = Keys.action_of(ev.call(KEY_G)) == "interact" and Keys.code("use") == KEY_SPACE
+	var enter: bool = Keys.action_of(ev.call(KEY_ENTER)) == "interact"
+	var jb := InputEventJoypadButton.new()
+	jb.button_index = JOY_BUTTON_A
+	jb.pressed = true
+	var pad: bool = Keys.action_of(jb) == "interact"
+	Keys.reset()
+	var back: bool = Keys.code("interact") == KEY_E
+	G.settings.keys = keep
+	# walking on dirt kicks up dust (with small effects on)
+	at("homestead", 30, 30, "down")
+	var hm: GameMap = G.maps.homestead
+	var pt: Vector2i = W.player_tile()
+	for yy in range(pt.y - 1, pt.y + 6):
+		for xx in range(pt.x - 2, pt.x + 3):
+			clear_tile(hm, xx, yy)
+			hm.set_tile(xx, yy, "dirt")
+	G.particles.clear()
+	G.settings.effects = true
+	W.test_input = Vector2(0, 1)
+	for i in 30: W.update_player(1.0 / 30.0)
+	W.test_input = Vector2.ZERO
+	var dusty: bool = G.particles.size() > 0
+	check("Settings: keys can be rebound (a taken key moves over), Enter always interacts, a controller's A interacts, and walking on dirt kicks up dust",
+		g_use and swapped and enter and pad and back and dusty, "g_use=%s swapped=%s enter=%s pad=%s back=%s dusty=%s" % [g_use, swapped, enter, pad, back, dusty])

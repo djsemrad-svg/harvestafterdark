@@ -30,39 +30,42 @@ func on_map_changed() -> void:
 func handle_event(e: InputEvent) -> void:
 	if not (Game.screen == "game") or Game.overlay_open() or Game.paused:
 		return
-	if e is InputEventKey and e.pressed and not e.echo:
-		var k: int = e.keycode
-		match k:
-			KEY_ESCAPE, KEY_P: Game.ui.open_pause(); return
-			KEY_TAB, KEY_I: Game.ui.open("journal", {"tab": "inventory"}); return
-			KEY_M: Game.ui.open("journal", {"tab": "map"}); return
-			KEY_J: Game.ui.open("journal", {"tab": "quests"}); return
-			KEY_C: Game.ui.open("journal", {"tab": "crafting"}); return
-			KEY_Q: Game.state.selected = (int(Game.state.selected) + 1) % Balance.inventory.toolbar_size; return
-			KEY_F:
+	if (e is InputEventKey and e.pressed and not e.echo) or (e is InputEventJoypadButton and e.pressed):
+		match Keys.action_of(e):      # rebindable keys and controller buttons (Keys)
+			"pause": Game.ui.open_pause(); return
+			"journal": Game.ui.open("journal", {"tab": "inventory"}); return
+			"map": Game.ui.open("journal", {"tab": "map"}); return
+			"tasks": Game.ui.open("journal", {"tab": "quests"}); return
+			"crafting": Game.ui.open("journal", {"tab": "crafting"}); return
+			"next_slot": Game.state.selected = (int(Game.state.selected) + 1) % Balance.inventory.toolbar_size; return
+			"prev_slot": Game.state.selected = (int(Game.state.selected) - 1 + Balance.inventory.toolbar_size) % Balance.inventory.toolbar_size; return
+			"eat":
 				var s = Game.selected_stack()
 				if s != null and Data.items[s.id].has("edible") and can_act(): Game.eat_item(s.id)
 				return
-			KEY_E, KEY_ENTER, KEY_KP_ENTER: interact(false); return
-			KEY_R:
+			"interact": interact(false); return
+			"reload":
 				var rs = Game.selected_stack()
 				if rs != null and Data.weapons.has(rs.id) and not cb.start_reload(rs) and cb.uses_mag(Data.weapons[rs.id]):
 					if Game.mag_of(rs) < float(Data.weapons[rs.id].mag): Game.toast("No ammo for that.", "", "warn")
 				return
-			KEY_V: cb.shove(); return
-			KEY_K:
-				if Game.sandbox_on(): Game.ui.open("sandbox")
-				return
-			KEY_SHIFT:
-				# double-tap Shift to dash (with the right shoes)
+			"shove": cb.shove(); return
+			"sprint":
+				# double-tap sprint to dash (with the right shoes)
 				var now := Time.get_ticks_msec() / 1000.0
 				if now - _last_shift < 0.3: dash()
 				_last_shift = now
-			KEY_SPACE: held_use = true; use_pressed(false); return
+			"use": held_use = true; use_pressed(false); return
+		if not e is InputEventKey:
+			return
+		var k: int = e.keycode
+		if k == KEY_K:
+			if Game.sandbox_on(): Game.ui.open("sandbox")
+			return
 		var idx := TOOLBAR_KEYS.find(k)
 		if idx >= 0 and Game.charge == null and (Game.fishing == null or Game.fishing.phase == "result"):
 			Game.state.selected = idx
-	elif e is InputEventKey and not e.pressed and e.keycode == KEY_SPACE:
+	elif (e is InputEventKey and not e.pressed and Keys.action_of(e) == "use") or (e is InputEventJoypadButton and not e.pressed and e.button_index == JOY_BUTTON_X):
 		held_use = false
 		use_released()
 	elif e is InputEventMouseButton:
@@ -356,6 +359,7 @@ func hit_object(o: Dictionary, tool: String, power: int, tier: int) -> void:
 	Sfx.play("chop" if tool == "axe" else "pick")
 	var woody: bool = o.type in ["tree", "pine", "stump", "big_stump"]
 	burst(Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 8), Color("#8a6040" if woody else "#8a8a90"), 3)
+	if not woody and fx_on(): sparks(Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 6), 4)
 	if o.hp <= 0:
 		break_object(o)
 
@@ -572,6 +576,24 @@ func burst(at: Vector2, c: Color, n: int) -> void:
 	for i in n:
 		Game.particles.append({"pos": at, "vel": Vector2(rng.randf_range(-45, 45), rng.randf_range(-72, 18)), "t": 0.4 + rng.randf() * 0.3, "color": c, "g": 200.0})
 
+## Small effects can be turned off in Settings.
+func fx_on() -> bool:
+	return Game.settings.get("effects", true)
+
+## Metal on stone: quick bright sparks that fall and fade.
+func sparks(at: Vector2, n: int) -> void:
+	var rng: RandomNumberGenerator = Game.rng
+	for i in n:
+		Game.particles.append({"pos": at, "vel": Vector2(rng.randf_range(-60, 60), rng.randf_range(-80, -20)), "t": 0.18 + rng.randf() * 0.12,
+			"color": Color("#ffe080") if i % 2 else Color("#ff9a30"), "g": 260.0})
+
+## A puff of dust at your feet on dirt, roads and sand.
+func dust(at: Vector2) -> void:
+	var rng: RandomNumberGenerator = Game.rng
+	for i in 2:
+		Game.particles.append({"pos": at + Vector2(rng.randf_range(-3, 3), rng.randf_range(-1, 1)), "vel": Vector2(rng.randf_range(-6, 6), rng.randf_range(-10, -4)),
+			"t": 0.35, "color": Color(0.78, 0.7, 0.56, 0.45), "g": 0.0})
+
 func splash(t: Vector2i) -> void:
 	var rng: RandomNumberGenerator = Game.rng
 	for i in 5:
@@ -617,14 +639,23 @@ func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 	var me := e == Game.player
 	var wall_x := false
 	var wall_y := false
+	# people are solid, but after about a second of pushing into someone they let you squeeze past
+	var polite: bool = me and float(e.get("push_t", 0.0)) < 1.0
+	var pushed := false
 	if delta.x != 0:
 		wall_x = box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h)
-		if not wall_x and not (me and person_blocked(e.pos, e.pos + Vector2(delta.x, 0))):
+		var px: bool = me and person_blocked(e.pos, e.pos + Vector2(delta.x, 0))
+		pushed = pushed or px
+		if not wall_x and not (px and polite):
 			e.pos.x += delta.x
 	if delta.y != 0:
 		wall_y = box_blocked(m, e.pos + Vector2(0, delta.y), hw, h)
-		if not wall_y and not (me and person_blocked(e.pos, e.pos + Vector2(0, delta.y))):
+		var py: bool = me and person_blocked(e.pos, e.pos + Vector2(0, delta.y))
+		pushed = pushed or py
+		if not wall_y and not (py and polite):
 			e.pos.y += delta.y
+	if me:
+		e.push_t = float(e.get("push_t", 0.0)) + 1.0 / 60.0 if pushed else 0.0
 	# corner sliding: walking straight into the edge of a wall or post slips round it (not round people)
 	if me and delta.x != 0 and delta.y == 0 and wall_x:
 		_slide(m, e, Vector2(delta.x, 0), Vector2(0, 1), hw, h)
@@ -675,16 +706,13 @@ func update_player(dt: float) -> void:
 			p.swing = null
 		return
 	var dir := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): dir.x -= 1
-	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): dir.x += 1
-	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP): dir.y -= 1
-	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): dir.y += 1
+	dir = Keys.move_dir()
 	dir += test_input
 	dir = dir.clamp(Vector2(-1, -1), Vector2(1, 1))
 	# sprint (Shift), crouch (Ctrl), grabbed by a Crawler, dash
 	var gfx: Dictionary = Game.gear_total().fx
-	var sprint_key: bool = Input.is_physical_key_pressed(KEY_SHIFT) or test_sprint
-	var crouch_key: bool = Input.is_physical_key_pressed(KEY_CTRL) or test_crouch
+	var sprint_key: bool = Keys.held("sprint") or test_sprint
+	var crouch_key: bool = Keys.held("crouch") or test_crouch
 	p.crouching = crouch_key and not sprint_key
 	var broken: bool = Game.conditions().has("fracture") and Game.buff("painkillers") <= 0
 	p.sprinting = sprint_key and dir != Vector2.ZERO and Game.state.energy > 0 and float(p.get("grab", 0.0)) <= 0 and not broken
@@ -721,6 +749,11 @@ func update_player(dt: float) -> void:
 		if p.crouching:
 			sp *= Balance.movement.crouch_mult
 		move_entity(p, dir.normalized() * sp * dt, 5, 6)
+		p.dust_t = float(p.get("dust_t", 0.0)) - dt
+		if p.dust_t <= 0 and fx_on() and Game.map.outdoor:
+			p.dust_t = 0.28
+			var ft := str(Game.map.tile_at(int(p.pos.x) / 16, int(p.pos.y - 2) / 16))
+			if ft.begins_with("dirt") or ft.begins_with("road") or ft.begins_with("sand"): dust(p.pos)
 		if dir.x != 0: p.dir = "left" if dir.x < 0 else "right"
 		elif dir.y != 0: p.dir = "up" if dir.y < 0 else "down"
 		p.walk_t += dt
@@ -1659,6 +1692,7 @@ func update_fishing(dt: float) -> void:
 					Game.fishing = null
 					return
 				Sfx.play("splash")
+				if fx_on(): splash(tl)
 				f.phase = "wait"
 				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0) * (0.6 if f.get("premium", false) else 1.0) * (0.75 if has_tackle("spinner") else 1.0) * (0.7 if has_tackle("glow_lure") and (Game.map.mine or int(Game.state.time) >= 1140) else 1.0)
 		"wait":
@@ -1749,7 +1783,7 @@ func update_minigame(dt: float) -> void:
 			delta -= 0.08
 		f.target = clamp(f.pos + delta, 0.03, 0.97)
 	f.pos += (f.target - f.pos) * min(1.0, dt * (1.4 + d * 4 * (1.7 if f.move == "dart" else 1.0)))
-	var holding: bool = held_use or Input.is_physical_key_pressed(KEY_SPACE) or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var holding: bool = held_use or Keys.held("use") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	f.bar_v = clamp(f.bar_v + (F.bar_lift if holding else -F.bar_gravity) * dt, -F.bar_max_speed, F.bar_max_speed)
 	f.bar += f.bar_v * dt
 	if f.bar < 0:

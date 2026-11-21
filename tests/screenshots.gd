@@ -898,6 +898,19 @@ func _ready() -> void:
 		main.ui.open("journal", {"tab": "map"}); await frames(6); await shot("54_map_tab")
 		get_tree().quit()
 		return
+	if only == "settings":
+		Game.change_map("town", 60, 40, "down", {"silent": true})
+		main.ui.open("journal", {"tab": "settings"}); await frames(6); await shot("55_settings")
+		Keys.waiting = "use"; main.ui.refresh_settings(); await frames(4)
+		var stack: Array = [main.ui]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			stack.append_array(n.get_children())
+			if n is ScrollContainer: n.scroll_vertical = 520
+		await frames(4); await shot("55_settings_wait")
+		Keys.waiting = ""
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:

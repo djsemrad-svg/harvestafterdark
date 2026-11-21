@@ -2665,13 +2665,21 @@ func _settings_box(in_game: bool) -> Control:
 					build_hud()
 					render_overlay())
 		v.add_child(cb)
+	var fxc := CheckBox.new()
+	fxc.text = "Small effects (dust, sparks, splashes, hit flashes)"
+	fxc.button_pressed = s.get("effects", true)
+	fxc.focus_mode = Control.FOCUS_NONE
+	fxc.toggled.connect(func(on):
+		Game.settings.effects = on
+		Game.save_settings())
+	v.add_child(fxc)
 	var fs := CheckBox.new()
 	fs.text = "Fullscreen"
 	fs.focus_mode = Control.FOCUS_NONE
 	fs.button_pressed = DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 	fs.toggled.connect(func(on): DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if on else DisplayServer.WINDOW_MODE_WINDOWED))
 	v.add_child(fs)
-	v.add_child(_controls_box())
+	v.add_child(_keys_box())
 	if in_game:
 		var st: Dictionary = Game.state
 		var c: Dictionary = Balance.modes[st.mode]
@@ -2690,13 +2698,63 @@ func _settings_box(in_game: bool) -> Control:
 		v.add_child(row)
 	return v
 
+## Settings: every rebindable key with a button to change it (Keys), and the controller layout.
+func _keys_box() -> Control:
+	var v := K.vbox(2)
+	v.add_child(K.label("Keys (click one, then press the new key; Esc cancels)", 8, K.WOOD_DARK))
+	var g := GridContainer.new()
+	g.columns = 4
+	for a in Keys.ACTIONS:
+		var act: String = a[0]
+		var l := K.label(a[1], 6, K.WOOD_DARK)
+		l.custom_minimum_size.x = 96
+		g.add_child(l)
+		var b := K.button("Press a key..." if Keys.waiting == act else Keys.label(act), func():
+			Keys.waiting = act
+			refresh_settings())
+		b.custom_minimum_size.x = 58
+		g.add_child(b)
+	v.add_child(g)
+	var row := K.hbox()
+	row.add_child(K.button("Reset keys", func():
+		Keys.reset()
+		refresh_settings()))
+	v.add_child(row)
+	v.add_child(K.label("Arrow keys always move and Enter always interacts. Mouse: left click uses, right click interacts, the wheel changes slot.", 6, K.INK_SOFT, true))
+	v.add_child(K.label("Controller", 8, K.WOOD_DARK))
+	v.add_child(K.label("Left stick or d-pad: move. A: interact. X: use (hold to charge). Y: eat. B: shove (and closes menus). LB / RB: toolbar slot. Right trigger: sprint. Left trigger: crouch. Start: pause. Back: journal. Menus still need the mouse.", 6, null, true))
+	return v
+
+## Redraw whichever screen is showing the settings (after a key change).
+func refresh_settings() -> void:
+	var keep := _scroll_of(root)
+	if Game.screen == "game":
+		render_overlay()
+	else:
+		render_title()
+	var sc := _scroll_node(root)
+	if sc != null and keep > 0:
+		sc.set_deferred("scroll_vertical", keep)
+
+func _scroll_node(n: Node) -> ScrollContainer:
+	if n is ScrollContainer and n.is_visible_in_tree(): return n
+	for c in n.get_children():
+		var r := _scroll_node(c)
+		if r != null: return r
+	return null
+
+func _scroll_of(n: Node) -> int:
+	var sc := _scroll_node(n)
+	return sc.scroll_vertical if sc != null else 0
+
 func _controls_box() -> Control:
 	var g := GridContainer.new()
 	g.columns = 2
-	for pair in [["Move", "WASD / Arrow keys"], ["Use tool or item", "Space / Left click (hold to charge or cast)"], ["Interact, talk, harvest", "E / Enter / Right click"],
-		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  Q"], ["Eat selected item", "F"],
-		["Aim a gun, bow or throw", "Point with the mouse and click (Space fires where you face)"], ["Sprint / Crouch", "Hold Shift / hold Ctrl"],
-		["Shove (stomp if they're down)", "V"], ["Reload", "R"], ["Journal / Map / Tasks / Crafting", "Tab or I / M / J / C"], ["Pause", "Esc or P"]]:
+	var kl := func(a): return Keys.label(a)
+	for pair in [["Move", "%s%s%s%s / Arrow keys" % [kl.call("up"), kl.call("left"), kl.call("down"), kl.call("right")]], ["Use tool or item", "%s / Left click (hold to charge or cast)" % kl.call("use")], ["Interact, talk, harvest", "%s / Enter / Right click" % kl.call("interact")],
+		["Toolbar slot", "1-9, 0, -, =  ·  mouse wheel  ·  %s" % kl.call("next_slot")], ["Eat selected item", kl.call("eat")],
+		["Aim a gun, bow or throw", "Point with the mouse and click (%s fires where you face)" % kl.call("use")], ["Sprint / Crouch", "Hold %s / hold %s" % [kl.call("sprint"), kl.call("crouch")]],
+		["Shove (stomp if they're down)", kl.call("shove")], ["Reload", kl.call("reload")], ["Journal / Map / Tasks / Crafting", "%s or I / %s / %s / %s" % [kl.call("journal"), kl.call("map"), kl.call("tasks"), kl.call("crafting")]], ["Pause", "%s or P" % kl.call("pause")]]:
 		g.add_child(K.label(pair[0], 6, K.WOOD_DARK))
 		g.add_child(K.label(pair[1], 6))
 	return g
