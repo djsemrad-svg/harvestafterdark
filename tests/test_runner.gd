@@ -1312,6 +1312,7 @@ func run_all() -> void:
 	run_sandbox()
 	run_farmhouse()
 	run_first_week()
+	run_repairs()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3780,3 +3781,45 @@ func run_first_week() -> void:
 	var weapon: bool = G.state.inventory.any(func(st): return st != null and Data.weapons.has(st.id))
 	check("First week: by the first raid night a new player can build a Workbench, 12+ fences, and still has a weapon",
 		wood >= 20 and stone >= 10 and fences >= 12 and weapon, "fences=%d; %s" % [fences, " | ".join(log)])
+
+## Raids damage turrets, machines and barriers; past half they stop working until fixed with a Toolbox.
+func run_repairs() -> void:
+	var G = Game
+	start("adventure", 2)
+	at("homestead", 30, 30, "up")
+	var h: GameMap = G.maps.homestead
+	for x in range(28, 34):
+		for y in range(26, 31): clear_tile(h, x, y)
+	var gen: Dictionary = h.add_obj(30, 27, "solar_panel")
+	var sentry: Dictionary = h.add_obj(31, 27, "sentry_turret")
+	G.state.weather = "sun"
+	G.compute_power(h)
+	var powered_before: bool = sentry.get("powered", false)
+	sentry.wear = 80
+	G.compute_power(h)
+	var off: bool = not sentry.get("powered", false) and Repairs.broken(sentry)
+	gen.wear = 90
+	sentry.wear = 0
+	G.compute_power(h)
+	var src_off: bool = not sentry.get("powered", false)
+	gen.wear = 0
+	# about 12% of pieces get hit in a raid
+	var tm := GameMap.new("t", 40, 40, "grass")
+	for i in 400: tm.add_obj(i % 40, i / 40, "nail_turret")
+	var trng := RandomNumberGenerator.new(); trng.seed = 11
+	var line := Repairs.after_raid(tm, trng)
+	var hit := tm.objects.values().filter(func(o): return int(o.get("wear", 0)) > 0).size()
+	# fixing with a Toolbox in front of it
+	sentry.wear = 60
+	G.add_item("toolbox", 1, {"silent": true})
+	select("toolbox")
+	var no_parts_wear: int = 60
+	W.use_gadget("toolbox", Vector2i(31, 27))
+	no_parts_wear = int(sentry.wear)
+	G.add_item("scrap", 10, {"silent": true}); G.add_item("nails", 10, {"silent": true}); G.add_item("copper_wire", 5, {"silent": true})
+	W.use_gadget("toolbox", Vector2i(31, 27))
+	G.compute_power(h)
+	var fixed: bool = int(sentry.get("wear", 0)) == 0 and sentry.get("powered", false) and G.count_item("scrap") == 4 and G.count_item("nails") == 1 and G.count_item("copper_wire") == 2
+	check("Repairs: raids hit about 12% of turrets and machines; past half they stop (no power, no shots) until fixed with a Toolbox and parts",
+		powered_before and off and src_off and hit > 25 and hit < 75 and line != "" and no_parts_wear == 60 and fixed,
+		"before=%s off=%s src_off=%s hit=%d/400 fixed=%s" % [powered_before, off, src_off, hit, fixed])

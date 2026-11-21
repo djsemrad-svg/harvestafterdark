@@ -39,6 +39,7 @@ Milk Pail,milk_pail,Tool,New,Craft,Workbench,Copper Bar x2 + Wood x3,Milks Cows 
 Builder's Hammer,builders_hammer,Tool,New,Craft,Workbench,Wood x10 + Iron Bar,"Places, rotates, repairs, and picks up structures and defenses; cracks geodes"
 Lockpick Set,lockpick_set,Tool,New,Craft,Workbench,Scrap x3 + Spring,Quietly opens locked doors and containers
 Gold Pan,gold_pan,Tool,New,Craft,Workbench,Copper Bar x3,"Pan in rivers for ore, Quartz, and gems"
+Toolbox,toolbox,Tool,New,Craft,Workbench,Iron Bar x2 + Wood x5 + Scrap x5,Repairs damaged turrets and machines with Scrap; Nails and Copper Wire
 Metal Detector,metal_detector,Tool,New,Craft,Electronics Bench,Copper Wire x5 + Circuit Board x2 + Car Battery,"Beeps near buried artifacts, coins, and ore"
 Flashlight,flashlight,Tool,New,Find,"Police cars, homes, hardware stores",,"Portable light; drains batteries"
 Binoculars,binoculars,Tool,New,Find,"Ranger stations, hunting lodges",,Scout zombies and points of interest from far away

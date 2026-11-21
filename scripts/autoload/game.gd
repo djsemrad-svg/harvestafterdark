@@ -1787,10 +1787,10 @@ func compute_power(m: GameMap) -> void:
 		if o.type == "part": continue
 		var d := obj_def(o)
 		if d.has("power_source"):
-			sources.append({"o": o, "left": source_supply(o)})
+			sources.append({"o": o, "left": 0.0 if Repairs.broken(o) else source_supply(o)})
 		elif d.has("power"):
 			o.powered = false
-			users.append(o)
+			if not Repairs.broken(o): users.append(o)
 	var R: float = Balance.power.radius_tiles
 	for u in users:
 		var need: float = obj_def(u).power
@@ -1936,7 +1936,8 @@ func resolve_raid(m: GameMap) -> Array:
 	var left: int = int(r.size) - int(r.killed)
 	state.raid = {}
 	if left <= 0:
-		return ["You fought off last night's raid. The homestead is quiet again."]
+		var k0 := Repairs.after_raid(m, rng)
+		return ["You fought off last night's raid. The homestead is quiet again."] + ([k0] if k0 != "" else [])
 	var lines := []
 	start_generators(m)
 	compute_power(m)
@@ -1948,7 +1949,9 @@ func resolve_raid(m: GameMap) -> Array:
 		var d := obj_def(o)
 		if not d.get("turret", false): continue
 		var cap: int = d.night_kills
-		if d.has("ammo"):
+		if Repairs.broken(o):
+			cap = 0
+		elif d.has("ammo"):
 			cap = min(cap, int(o.get("ammo_n", 0)) / int(d.ammo_per_kill))
 		elif not o.get("powered", false):
 			cap = 0
@@ -2016,6 +2019,7 @@ func resolve_raid(m: GameMap) -> Array:
 		for i in min(crops.size(), left * R.trample_per_raider):
 			m.soil[crops[i]].crop = null
 			trampled += 1
+	var knocked := Repairs.after_raid(m, rng)
 	var head := "Infected came out of the trees last night (%d of them)." % int(r.size)
 	var parts := []
 	if int(r.killed) > 0: parts.append("you put down %d yourself" % int(r.killed))
@@ -2033,6 +2037,7 @@ func resolve_raid(m: GameMap) -> Array:
 		lines.append("They clawed at your door until dawn, then drifted back into the trees.")
 	elif damaged > 0 or broke > 0:
 		lines.append("Your defenses held. Repair damaged sections by pressing E on them.")
+	if knocked != "": lines.append(knocked)
 	var xp: int = (turret_kills + wire_kills) * R.xp_per_turret_kill
 	if xp > 0:
 		add_xp("survival", xp)

@@ -521,6 +521,18 @@ func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 		var by = int(o.y) * 16 + sp.oy - 14 + bob
 		draw_rect(Rect2(bx - 1, by - 1, 14, 14), Color(0.97, 0.9, 0.72, 0.9))
 		draw_texture_rect(Art.get_icon(o.job.out), Rect2(bx, by, 12, 12), false)
+	if int(o.get("wear", 0)) > 0 and Repairs.broken(o):
+		# out of action after a raid: grey smoke drifting up and the odd spark (Repairs)
+		var top := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + sp.oy + 2)
+		for i in 3:
+			var ph := fmod(anim_t * 0.6 + i / 3.0, 1.0)
+			var pp := top + Vector2(sin(anim_t * 1.7 + i * 2.1) * 2.0 + (i - 1) * 2, -ph * 12.0)
+			var r := 1.5 + ph * 2.5
+			draw_circle(pp, r, Color(0.45, 0.45, 0.45, 0.55 * (1.0 - ph)))
+		if fmod(anim_t * 1.3 + int(o.x) * 0.37, 1.0) < 0.12:
+			var spk := top + Vector2(Art.hash2(int(anim_t * 8), int(o.x), 3) * 10 - 5, 4 + Art.hash2(int(o.y), int(anim_t * 8), 5) * 6)
+			draw_rect(Rect2(spk.round(), Vector2(1, 1)), Color("#ffe27a"))
+			draw_rect(Rect2(spk.round() + Vector2(1, -1), Vector2(1, 1)), Color("#ffb040"))
 	if o.get("flash", 0.0) > 0:
 		var mz := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 2) + Vector2.from_angle(o.get("aim", 0.0)) * 8
 		draw_rect(Rect2(mz.round() - Vector2(1, 1), Vector2(3, 3)), Color("#fff0a0"))

@@ -846,6 +846,10 @@ func use_gadget(id: String, t: Vector2i) -> void:
 			Sfx.play("pickup")
 		return
 	match id:
+		"toolbox":
+			var tobj = m.get_obj(t.x, t.y)
+			if tobj != null and tobj.type == "part": tobj = m.get_obj(GameMap.unk(tobj.of).x, GameMap.unk(tobj.of).y)
+			Repairs.use_toolbox(tobj)
 		"builders_hammer":
 			var o = m.get_obj(t.x, t.y)
 			if o != null and Data.obj_defs.get(o.type, {}).get("barrier", false) and Game.barrier_damaged(o):
@@ -1280,7 +1284,7 @@ func update_defenses(dt: float) -> void:
 		o.flash = max(0.0, float(o.get("flash", 0.0)) - dt)
 		if o.cd > 0: continue
 		var has_ammo: bool = int(o.get("ammo_n", 0)) > 0 if d.has("ammo") else o.get("powered", false)
-		if not has_ammo: continue
+		if not has_ammo or Repairs.broken(o): continue
 		var muzzle := Vector2(int(o.x) * 16 + 8, int(o.y) * 16 + 2)
 		var best = null
 		var bd: float = d.range * 16.0
@@ -1531,6 +1535,9 @@ func interact_barrier(o: Dictionary) -> void:
 
 func interact_turret(o: Dictionary) -> void:
 	var d: Dictionary = Data.obj_defs[o.type]
+	if Repairs.broken(o):
+		Game.ui.say("", "%s: smoking and out of action since the raid. Fix it with a Toolbox: %s." % [d.name, ", ".join(Repairs.cost(o).map(func(p): return "%d %s" % [p[1], Data.items[p[0]].name]))])
+		return
 	if not d.has("ammo"):
 		Game.ui.say("", "%s: %s Range %d tiles." % [d.name, "powered and watching the treeline." if o.get("powered", false) else "no power. Put a generator or solar panel within %d tiles." % Balance.power.radius_tiles, int(d.range)])
 		return

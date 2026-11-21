@@ -320,7 +320,7 @@ static func _item(d, e: Dictionary) -> void:
 	if e.cat == "Tool" and not existing:
 		it.gadget = e.id
 		if e.id.begins_with("fishing_rod_"): it.rod = e.id
-		if not e.id in ["flashlight", "builders_hammer", "gold_pan", "seed_spreader", "lockpick_set"] and not e.id.begins_with("fishing_rod_"):
+		if not e.id in ["flashlight", "builders_hammer", "gold_pan", "seed_spreader", "lockpick_set", "toolbox"] and not e.id.begins_with("fishing_rod_"):
 			it.todo = TODO.barn if e.id in ["shears", "milk_pail"] else "What it does isn't in the game yet."
 
 	# notes for things that need systems the game doesn't have yet

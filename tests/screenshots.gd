@@ -225,6 +225,21 @@ func _ready() -> void:
 		await shot("guide_day2")
 		get_tree().quit()
 		return
+	if only == "repairs":
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720
+		var h: GameMap = Game.maps.homestead
+		for x in range(28, 35):
+			for y in range(25, 31): h.remove_obj(x, y)
+		h.add_obj(29, 27, "sentry_turret", {"wear": 80})
+		h.add_obj(31, 27, "generator", {"wear": 70})
+		h.add_obj(33, 27, "nail_turret")
+		Game.change_map("homestead", 31, 29, "up", {"silent": true})
+		await frames(20)
+		await shot("repairs")
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()
