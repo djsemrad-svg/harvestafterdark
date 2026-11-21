@@ -173,6 +173,23 @@ if os.path.isfile(SHEET):
     put(cut(308, 417, 23, 12), "switch_off.png")
     put(cut(277, 466, 22, 11), "slider_track.png")
     put(cut(273, 498, 13, 12), "slider_knob.png")
+
+    # Icon buttons (orange set, boxed) and bare glyphs recoloured dark for use beside button text.
+    ICONS = {"lock": (544, 16), "gear": (624, 16), "home": (640, 16), "list": (656, 16), "trash": (672, 16),
+             "check": (544, 32), "close": (560, 32), "plus": (576, 32), "minus": (592, 32),
+             "arrow_right": (608, 32), "arrow_left": (624, 32), "arrow_down": (640, 32), "arrow_up": (656, 32),
+             "sort": (672, 32), "right": (608, 48), "left": (624, 48), "down": (640, 48), "up": (656, 48),
+             "filter": (672, 48), "help": (560, 64), "trophy": (576, 64), "info": (592, 64), "pause": (608, 64),
+             "sound": (640, 64), "mute": (656, 64), "sliders": (672, 64), "edit": (608, 80), "cart": (624, 80)}
+    for nm, (x, y) in ICONS.items():
+        box = cut(x, y, 16, 16)
+        put(box, "ib_%s.png" % nm)
+        glyph = cut(x, y + 80, 16, 16)
+        bb = glyph.getbbox()
+        if bb:
+            g = glyph.crop(bb)
+            dark = recolour(g, {(i, j) for j in range(g.height) for i in range(g.width)}, "#5a3418")
+            put(dark, "glyph_%s.png" % nm)
     print("modern ui: %d pieces" % count)
 else:
     print("modern ui: pack not found")

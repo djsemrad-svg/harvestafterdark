@@ -153,7 +153,7 @@ func _title_main() -> void:
 	var row2 := K.hbox(4)
 	row2.alignment = BoxContainer.ALIGNMENT_CENTER
 	row2.add_child(K.button("Restore Backup", func(): _go("import")))
-	row2.add_child(K.button("Settings", func(): _go("settings")))
+	row2.add_child(K.with_glyph(K.button("Settings", func(): _go("settings")), "gear"))
 	row2.add_child(K.button("How to Play", func(): _go("help")))
 	row2.add_child(K.button("Quit", func(): get_tree().quit()))
 	v.add_child(row2)
@@ -169,7 +169,7 @@ func _title_simple(title: String, body: Control) -> void:
 	var v := K.vbox()
 	v.add_child(K.title(title))
 	v.add_child(K.scroll(body, 190))
-	v.add_child(K.button("Back", func(): _go("main")))
+	v.add_child(K.with_glyph(K.button("Back", func(): _go("main")), "arrow_left"))
 	p.add_child(v)
 	_center(p, screen_root)
 
@@ -196,7 +196,7 @@ func _title_mode() -> void:
 		row.add_child(card)
 	v.add_child(row)
 	v.add_child(K.label("Both modes share the same world, story, people and progression. Each mode has its own save slots.", 7, K.INK_SOFT, true))
-	v.add_child(K.button("Back", func(): _go("main")))
+	v.add_child(K.with_glyph(K.button("Back", func(): _go("main")), "arrow_left"))
 	p.add_child(v)
 	_center(p, screen_root)
 
@@ -241,7 +241,7 @@ func _title_slots() -> void:
 	v.add_child(K.scroll(list, 170))
 	if flow.has("err"):
 		v.add_child(K.label(flow.err, 7, K.DANGER, true))
-	v.add_child(K.button("Back", func(): _go("mode" if is_new else "main")))
+	v.add_child(K.with_glyph(K.button("Back", func(): _go("mode" if is_new else "main")), "arrow_left"))
 	p.add_child(v)
 	_center(p, screen_root)
 
@@ -284,7 +284,7 @@ func _title_create() -> void:
 	v.add_child(K.title("Create your survivor"))
 	v.add_child(_creator(flow.look, true))
 	var row := K.hbox()
-	row.add_child(K.button("Back", func(): _go("slot")))
+	row.add_child(K.with_glyph(K.button("Back", func(): _go("slot")), "arrow_left"))
 	row.add_child(K.button("Next", func():
 		if str(flow.name).strip_edges() == "":
 			flow.err = "Please enter a name."
@@ -398,7 +398,7 @@ func _title_property() -> void:
 	v.add_child(ideas)
 	v.add_child(K.label("Mode: %s · Slot %d" % [Balance.modes[flow.mode].label, flow.slot], 7, K.INK_SOFT))
 	var row := K.hbox()
-	row.add_child(K.button("Back", func(): _go("create")))
+	row.add_child(K.with_glyph(K.button("Back", func(): _go("create")), "arrow_left"))
 	row.add_child(K.button("Begin", func():
 		var pn: String = str(flow.get("prop", "")).strip_edges()
 		if pn == "":
@@ -444,7 +444,7 @@ func _title_import() -> void:
 	row2.add_child(K.button("Open backups folder", func():
 		DirAccess.make_dir_recursive_absolute(Game.BACKUP_DIR)
 		OS.shell_open(ProjectSettings.globalize_path(Game.BACKUP_DIR))))
-	row2.add_child(K.button("Back", func(): _go("main")))
+	row2.add_child(K.with_glyph(K.button("Back", func(): _go("main")), "arrow_left"))
 	v.add_child(row2)
 	p.add_child(v)
 	_center(p, screen_root)
@@ -520,8 +520,8 @@ func build_hud() -> void:
 	br.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	br.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	br.position = Vector2(-4, -4)
-	br.add_child(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"))
-	br.add_child(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"))
+	br.add_child(K.with_glyph(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"), "list"))
+	br.add_child(K.with_glyph(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"), "pause"))
 	hud.add_child(br)
 	# boss health (top centre, only while a boss is on the map)
 	boss_box = K.vbox(0)
@@ -985,8 +985,8 @@ func _ov_pause() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(K.label("The clock is stopped.", 7, K.INK_SOFT))
 	v.add_child(K.button("Resume", close, "big"))
-	v.add_child(K.button("Journal", func(): Game.paused = false; open("journal", {"tab": "inventory"})))
-	v.add_child(K.button("Settings", func(): Game.paused = false; open("journal", {"tab": "settings"})))
+	v.add_child(K.with_glyph(K.button("Journal", func(): Game.paused = false; open("journal", {"tab": "inventory"})), "list"))
+	v.add_child(K.with_glyph(K.button("Settings", func(): Game.paused = false; open("journal", {"tab": "settings"})), "gear"))
 	v.add_child(K.button("Controls", func(): Game.paused = false; open("help")))
 	v.add_child(K.button("Quit to Title", _quit_confirm, "danger"))
 	return pw[0]
@@ -1881,10 +1881,10 @@ func _tab_inventory() -> Control:
 		g.add_child(sl)
 	left.add_child(g)
 	var row := K.hbox()
-	row.add_child(K.button("Sort pack", func():
+	row.add_child(K.with_glyph(K.button("Sort pack", func():
 		Game.sort_inventory()
 		overlay.erase("sel"); overlay.erase("pick")
-		render_overlay(), "small"))
+		render_overlay(), "small"), "sort"))
 	row.add_child(K.label("%d / %d slots used%s" % [st.inventory.filter(func(x): return x != null).size(), st.inventory.size(), "" if st.flags.get("backpack", false) else " · A larger backpack is sold at Brennan's General"], 6, K.INK_SOFT))
 	left.add_child(row)
 	var eq := K.row_box()

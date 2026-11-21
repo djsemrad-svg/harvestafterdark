@@ -220,7 +220,36 @@ static func title(text: String, size := 12) -> Label:
 	var l := label(text, size, WOOD_DARK)
 	return l
 
+## Single-symbol buttons that become Modern UI icon buttons when that art is installed.
+const GLYPH_BUTTONS := {"✕": ["close", "Close"], "◀": ["left", "Previous"], "▶": ["right", "Next"]}
+
+## A square icon button from the Modern UI pack (art/ui/ib_<name>.png); brighter on hover, dimmer when pressed.
+static func icon_button(name: String, cb: Callable, tip := "") -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.icon = ui_tex("ib_" + name)
+	b.tooltip_text = tip
+	b.custom_minimum_size = Vector2(16, 16)
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.add_theme_color_override("icon_hover_color", Color(1.18, 1.14, 1.08))
+	b.add_theme_color_override("icon_pressed_color", Color(0.85, 0.82, 0.8))
+	b.add_theme_color_override("icon_disabled_color", Color(0.6, 0.6, 0.6, 0.7))
+	b.pressed.connect(func():
+		Sfx.play("menu")
+		cb.call())
+	return b
+
+## Puts a small dark symbol (art/ui/glyph_<name>.png) in front of a text button's label.
+static func with_glyph(b: Button, name: String) -> Button:
+	if textured and modern() and ui_tex("glyph_" + name) != null:
+		b.icon = ui_tex("glyph_" + name)
+		b.add_theme_constant_override("h_separation", 3)
+	return b
+
 static func button(text: String, cb: Callable, kind := "", min_w := 0.0) -> Button:
+	if textured and modern() and GLYPH_BUTTONS.has(text) and ui_tex("ib_" + GLYPH_BUTTONS[text][0]) != null:
+		return icon_button(GLYPH_BUTTONS[text][0], cb, GLYPH_BUTTONS[text][1])
 	var b := Button.new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
