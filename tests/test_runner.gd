@@ -1316,6 +1316,7 @@ func run_all() -> void:
 	run_modern_farm()
 	run_shop_rooms()
 	run_walkability()
+	run_town_life()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3933,3 +3934,37 @@ func run_walkability() -> void:
 	var arrived: bool = n.path == null or n.path.is_empty()
 	check("Town walkability: paved walks from every door, people block the player, corners slide, neighbours re-plan round new obstacles",
 		no_walk.is_empty() and stopped and slid and replanned, "no_walk=%s stopped=%s slid=%s replanned=%s arrived=%s" % [no_walk, stopped, slid, replanned, arrived])
+
+func run_town_life() -> void:
+	# Brightwater looks like a town surviving together: watch fires and notices at the gates, a ration depot
+	# with a queue, communal gardens being tended, a militia drill yard, armed patrols, and weathered wrecks
+	var G = Game
+	start("adventure", 2)
+	G.state.time = 840
+	at("town", 20, 20)
+	var m: GameMap = G.maps.town
+	var n := {}
+	var notices := 0
+	for kk in m.objects:
+		var o: Dictionary = m.objects[kk]
+		n[o.type] = int(n.get(o.type, 0)) + 1
+		if o.type == "notice_board" and str(o.get("text", "")) != "": notices += 1
+	Townsfolk.map_id = ""
+	Townsfolk.refresh(m)
+	var roles := {}
+	for f in Townsfolk.folk: roles[f.role] = int(roles.get(f.role, 0)) + 1
+	var p0 := Vector2.ZERO
+	var walker = null
+	Townsfolk.update(0.01)          # (the map you're on decides who is out)
+	for f in Townsfolk.folk:
+		if f.role == "patrol": walker = f; p0 = f.pos; break
+	var far := 0.0
+	for i in 120:
+		Townsfolk.update(0.1)
+		if walker != null: far = maxf(far, walker.pos.distance_to(p0))
+	var patrols: bool = far > 60.0
+	var ok: bool = int(n.get("watch_fire", 0)) >= 3 and notices >= 3 and int(n.get("ration_stall", 0)) == 1 and int(n.get("garden_bed", 0)) >= 4 \
+		and int(n.get("range_target", 0)) >= 2 and int(n.get("van_wreck", 0)) >= 1 and int(roles.get("queue", 0)) >= 3 and int(roles.get("tend", 0)) >= 2 \
+		and int(roles.get("drill", 0)) >= 2 and int(roles.get("instructor", 0)) == 1 and patrols
+	check("Town life: watch fires, notices, a ration depot with a queue, gardens being tended, a drill yard and armed patrols",
+		ok, "map=" + G.map.id + " objects=%s notices=%d roles=%s patrols=%s" % [{"watch_fire": n.get("watch_fire"), "ration_stall": n.get("ration_stall"), "garden_bed": n.get("garden_bed"), "range_target": n.get("range_target"), "van_wreck": n.get("van_wreck")}, notices, roles, patrols])

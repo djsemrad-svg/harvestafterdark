@@ -2383,3 +2383,39 @@ if os.path.isdir(os.path.join(SRC, "Modern_Farm")):
 # Clinic, store, guild, workshop, ranch and forge furniture. See tools/shop_furniture.py.
 if os.path.isdir(os.path.join(SRC, "moderninteriors-win")):
     runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shop_furniture.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})
+
+# ---------------------------------------------------------------- weathered vehicles (Nov 21)
+# Daniel: a mix of cars, campers and an ambulance, weathered rather than shot through. Faded paint, road dust
+# on the lower body, a little rust, dim glass. Replaces the sooty car wrecks; vans are new (van_wreck).
+if os.path.isfile(VEH + "Car_Right_1.png"):
+    import colorsys, random
+
+    def weathered(im, seed, fade=0.45, dust=0.5, rust=0.025):
+        r = random.Random(seed)
+        out = im.copy()
+        px = out.load()
+        b = out.getbbox()
+        for y in range(out.height):
+            low = max(0.0, (y - b[1]) / max(1, b[3] - b[1]) - 0.45) / 0.55     # 0 at the middle, 1 at the bottom
+            for x in range(out.width):
+                R, G, B, A = px[x, y]
+                if not A:
+                    continue
+                h, s_, v = colorsys.rgb_to_hsv(R / 255, G / 255, B / 255)
+                if B > R + 20 and v > 0.6 and s_ < 0.45:                       # glass: dimmer, a little dusty
+                    R, G, B = int(R * 0.72 + 18), int(G * 0.72 + 16), int(B * 0.68 + 12)
+                else:
+                    s_ *= 1.0 - fade
+                    v *= 0.88
+                    R, G, B = [int(c * 255) for c in colorsys.hsv_to_rgb(h, s_, v)]
+                    if r.random() < rust * (0.5 + low):
+                        R, G, B = int(R * 0.6 + 50), int(G * 0.45 + 22), int(B * 0.3 + 8)
+                k = dust * low * (0.7 + 0.3 * r.random())                          # road dust, heavier near the ground
+                R, G, B = int(R + (150 - R) * k), int(G + (128 - G) * k), int(B + (98 - B) * k)
+                px[x, y] = (R, G, B, A)
+        return out
+    for v, (n, sd) in enumerate([("Car_Right_2", 3), ("Car_Left_12", 5), ("Car_Right_16", 7), ("Car_Left_22", 9)]):
+        save(weathered(veh(n), sd), "objects/car_wreck_%d.png" % v)
+    for v, (n, sd) in enumerate([("Camper_Right_1", 21), ("Camper_Left_1", 23), ("Ambulance_Left_1", 25), ("Camper_Right_4", 27)]):
+        save(weathered(veh(n), sd, fade=0.35), "objects/van_wreck_%d.png" % v)
+    print("weathered vehicles: 8")

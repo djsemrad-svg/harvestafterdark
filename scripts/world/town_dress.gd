@@ -47,6 +47,7 @@ static func dress(m: GameMap) -> void:
 	for st in homes:
 		_yard(m, st, r)
 	_square(m)
+	_survival(m)
 	_gardens(m, r)
 	_sprinkle(m, r)
 
@@ -124,11 +125,92 @@ static func _square(m: GameMap) -> void:
 		_prop(m, dx - 2, dy + 1, "topiary")
 		_prop(m, dx + 3, dy + 1, "topiary")
 
-## A few planted plots in the bigger gaps.
+## ---------------------------------------------------------------- a town surviving together
+## Watch fires and notices at the gates, a ration depot on the square (Townsfolk queue at it), communal
+## garden beds (Townsfolk tend them) and a militia drill yard with targets (Townsfolk drill there).
+const GATE_FIRES := [[6, 34], [52, 6], [105, 34], [61, 62], [6, 60]]
+const NOTICES := [
+	[7, 43, "CURFEW AT DUSK. Lights out by ten. Report any bite to the clinic: no shame, no exceptions."],
+	[61, 7, "RATIONS at the depot on the square. One share per family. Bring your ledger card."],
+	[104, 43, "WALL CREWS wanted every morning. Nails, boards and strong backs: ask at the Combat Guild."],
+	[44, 48, "RATION DAYS: Monday and Thursday. Extra for anyone who brings in food for the depot."],
+]
+
+static func _survival(m: GameMap) -> void:
+	for f in GATE_FIRES:
+		_prop_near(m, int(f[0]), int(f[1]), "watch_fire", 1, 1, true)
+	for n in NOTICES:
+		var at := _prop_near(m, int(n[0]), int(n[1]), "notice_board", 1, 1, true)
+		if at.x >= 0: m.get_obj(at.x, at.y).text = str(n[2])
+	# the ration depot, on the square south-west of the crossroads
+	var st := _prop_near(m, 44, 43, "ration_stall", 4, 1, true, 3)
+	if st.x >= 0:
+		_prop_near(m, st.x - 3, st.y, "supply_stack", 2, 1, true, 1)
+		_prop_near(m, st.x - 3, st.y + 2, "feed_sacks", 2, 1, true, 1)
+	# an old camper pushed off the road and left to weather
+	for c in [[64, 8], [96, 44], [14, 8], [40, 50]]:
+		if _prop_near(m, int(c[0]), int(c[1]), "van_wreck", 5, 1, false, 4).x >= 0: break
+	# the drill yard: two targets on the open block nearest the Combat Guild
+	var near := Vector2i(m.w / 2, m.h / 2)
+	for st2 in m.structures:
+		if str(st2.get("kind", "")) == "guild": near = Vector2i(int(st2.door_x), int(st2.door_y))
+	var best := Vector2i(-1, -1)
+	for yy in range(4, m.h - 10, 2):
+		for xx in range(4, m.w - 12, 2):
+			if best.x >= 0 and Vector2i(xx, yy).distance_to(near) >= best.distance_to(near): continue
+			if _block_free(m, xx, yy, 9, 6): best = Vector2i(xx, yy)
+	if best.x >= 0:
+		var x0 := best.x + 1; var y0 := best.y
+		_prop(m, x0 + 1, y0, "range_target", 1, 1, true)
+		_prop(m, x0 + 5, y0, "range_target", 1, 1, true)
+		if _prop(m, x0 + 7, y0 + 4, "sign", 1, 1, true):
+			m.get_obj(x0 + 7, y0 + 4).text = "MILITIA DRILL. Volunteers every afternoon. Cole provides the rifles; you provide the nerve."
+		for yy in range(best.y, best.y + 6):          # keep the yard open: nothing else is planted here
+			for xx in range(best.x, best.x + 9): _spots[Vector2i(xx, yy)] = true
+
+static func _block_free(m: GameMap, x: int, y: int, w: int, h: int) -> bool:
+	for yy in range(y, y + h):
+		for xx in range(x, x + w):
+			if not _free(m, xx, yy, 1, 1, false): return false
+	return true
+
+## The top-left of a w x h block of open ground (grass or paving, nothing on it) near cx, cy, or (-1, -1).
+static func _find_block(m: GameMap, cx: int, cy: int, w: int, h: int, radius: int) -> Vector2i:
+	for rr in radius + 1:
+		for dy in range(-rr, rr + 1):
+			for dx in range(-rr, rr + 1):
+				if maxi(absi(dx), absi(dy)) != rr: continue
+				var ok := true
+				for yy in range(cy + dy, cy + dy + h):
+					for xx in range(cx + dx, cx + dx + w):
+						if not _free(m, xx, yy, 1, 1, false, true):
+							ok = false
+							break
+					if not ok: break
+				if ok: return Vector2i(cx + dx, cy + dy)
+	return Vector2i(-1, -1)
+
+## Like _prop, searching outwards up to "radius" tiles. Returns where it went, or (-1, -1).
+static func _prop_near(m: GameMap, x: int, y: int, type: String, w := 1, h := 1, on_pave := false, radius := 3) -> Vector2i:
+	for rr in radius + 1:
+		for dy in range(-rr, rr + 1):
+			for dx in range(-rr, rr + 1):
+				if maxi(absi(dx), absi(dy)) != rr: continue
+				if _prop(m, x + dx, y + dy, type, w, h, on_pave):
+					return Vector2i(x + dx, y + dy)
+	return Vector2i(-1, -1)
+
+## A few planted plots in the bigger gaps: communal vegetable beds and some flowers.
 static func _gardens(m: GameMap, r: RandomNumberGenerator) -> void:
+	var i := 0
 	for g in [[29, 47], [29, 51], [3, 48], [3, 52], [15, 22], [15, 26], [44, 21], [48, 21], [72, 47], [96, 33]]:
-		_prop(m, g[0], g[1], "flower_patch", 2)
-		if r.randf() < 0.5: _prop(m, g[0] + 2, g[1], "shrub", 2)
+		if i % 2 == 0:
+			_prop(m, g[0], g[1], "garden_bed", 2)
+			_prop(m, g[0] + 3, g[1], "garden_bed", 2)
+		else:
+			_prop(m, g[0], g[1], "flower_patch", 2)
+			if r.randf() < 0.5: _prop(m, g[0] + 2, g[1], "shrub", 2)
+		i += 1
 
 ## Shrubs, topiaries and flowers scattered over open grass (never on paths, never by doors).
 static func _sprinkle(m: GameMap, r: RandomNumberGenerator) -> void:

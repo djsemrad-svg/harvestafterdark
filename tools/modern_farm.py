@@ -339,10 +339,12 @@ if os.path.isdir(ANIM):
 
 # ---------------------------------------------------------------- farm props
 n_props = 0
+def prop(name):
+    im = rgba(os.path.join(PROPS, name + "_16x16.png"))
+    return im.crop(im.getbbox())
+
+
 if os.path.isdir(PROPS):
-    def prop(name):
-        im = rgba(os.path.join(PROPS, name + "_16x16.png"))
-        return im.crop(im.getbbox())
     sc = mute(prop("Scarecrow"), 0.1)
     save(sc, "objects/scarecrow.png")
     save(hue_set(sc, "#8a9098", lambda p: (max(p[:3]) - min(p[:3])) > 20 and sum(p[:3]) > 120), "objects/tin_scarecrow.png")
@@ -351,5 +353,25 @@ if os.path.isdir(PROPS):
     save(mute(prop("Hay_Manger_Small_Full_1"), 0.1), "objects/hay_hopper.png")
     save(mute(prop("Sprinkler"), 0.1), "objects/pressure_sprinkler.png")
     n_props = 6
+
+# ---------------------------------------------------------------- town: ration stall and communal garden beds
+if os.path.isdir(PROPS) and os.path.isdir(CROPS):
+    save(mute(prop("Market_Stand_Yellow_Example"), 0.12), "objects/ration_stall.png")
+    save(mute(prop("Box_Load"), 0.1), "objects/supply_stack.png")
+    for v, crops in enumerate([("Cabbage", "Cabbage", "Cabbage"), ("Tomato", "Tomato", "Tomato"), ("Corn", "Corn", "Corn"), ("Carrot", "Onion", "Carrot")]):
+        bed = Image.new("RGBA", (32, 40), (0, 0, 0, 0))
+        px = bed.load()
+        for y in range(28, 40):                       # a plank frame filled with dark soil, seen from above
+            for x in range(32):
+                edge = x < 2 or x > 29 or y < 30 or y > 37
+                px[x, y] = (120, 84, 50, 255) if edge else ((66, 46, 34, 255) if (x + y) % 3 else (58, 40, 30, 255))
+                if y in (28, 39) or x in (0, 31): px[x, y] = (54, 36, 26, 255)
+        for i, c in enumerate(crops):
+            ripe = TEMPLATE[c][0]
+            im = crop_img("Crop_%s_%s" % (c, ripe))
+            im = im.crop(im.getbbox())
+            bed.alpha_composite(im, (2 + i * 10 + (10 - im.width) // 2, 36 - im.height))
+        save(mute(bed, 0.1), "objects/garden_bed_%d.png" % v)
+    n_props += 6
 
 print("modern farm: %d crops, %d icons, %d fruit trees, %d animal strips, %d props" % (n_crops, n_icons, n_trees, n_anim, n_props))

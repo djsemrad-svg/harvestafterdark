@@ -845,6 +845,21 @@ func _ready() -> void:
 			await shot("51_shop_" + rid)
 		get_tree().quit()
 		return
+	if only == "survival":
+		main.ui.close_all()
+		Game.state.time = 840; Game.state.weather = "sun"
+		Game.change_map("town", 40, 40, "down", {"silent": true})
+		var seen := {}
+		for kk in Game.map.objects:
+			var o: Dictionary = Game.map.objects[kk]
+			if o.type in ["ration_stall", "range_target", "garden_bed", "watch_fire", "car_wreck"] and not seen.has(o.type):
+				seen[o.type] = true
+				Game.player.pos = Vector2(int(o.x) * 16 + 40, int(o.y) * 16 + 40)
+				main.world.view.snap_camera()
+				await frames(30)
+				await shot("52_" + str(o.type))
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:
