@@ -2372,3 +2372,9 @@ if os.path.isfile(os.path.join(OUT, "icons", "fossil_nodule.png")):
 # Kitchen counter run, sink halves, stove, beds, wardrobe, hearth and more for MapBuilder.house.
 if os.path.isdir(os.path.join(SRC, "moderninteriors-win")):
     runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "house_furniture.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- Modern Farm (LimeZu, Nov 21)
+# Crops, crop icons and seed bags, fruit trees, farm animals and farm props. See tools/modern_farm.py.
+if os.path.isdir(os.path.join(SRC, "Modern_Farm")):
+    runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "modern_farm.py"),
+                   init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute, "snow_laden": snow_laden, "hexrgb": hexrgb, "hue_set": hue_set})

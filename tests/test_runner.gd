@@ -1313,6 +1313,7 @@ func run_all() -> void:
 	run_farmhouse()
 	run_first_week()
 	run_repairs()
+	run_modern_farm()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3823,3 +3824,23 @@ func run_repairs() -> void:
 	check("Repairs: raids hit about 12% of turrets and machines; past half they stop (no power, no shots) until fixed with a Toolbox and parts",
 		powered_before and off and src_off and hit > 25 and hit < 75 and line != "" and no_parts_wear == 60 and fixed,
 		"before=%s off=%s src_off=%s hit=%d/400 fixed=%s" % [powered_before, off, src_off, hit, fixed])
+
+func run_modern_farm() -> void:
+	# every crop has 5 growth pictures; fruit trees and young animals use the Modern Farm pictures
+	var missing := []
+	for c in Data.crops:
+		for st in 5:
+			if not Art.has_override("crops/%s_%d.png" % [c, st]): missing.append("%s_%d" % [c, st])
+	var young := Art.get_crop("wheat", 0)
+	var t := {"type": "fruit_tree", "fruit": "plum", "age": 99, "fruit_n": 2, "x": 0, "y": 0}
+	var r: Array = Art._draw_obj(t, "summer", 0, 0)
+	var t2 := {"type": "fruit_tree", "fruit": "plum", "age": 0, "x": 0, "y": 0}
+	var r2: Array = Art._draw_obj(t2, "summer", 0, 0)
+	var calf := Art.get_animal("cow", 0, "down", 0, false)
+	var cow := Art.get_animal("cow", 0, "down", 0, true)
+	var lamb := Art.get_animal("sheep", 1, "left", 2, false)
+	var ok: bool = missing.is_empty() and young.tex != null and r[0].get_width() == 32 and r[0].get_height() == 48 and r[2] == -32 \
+		and r2[0].get_height() == 32 and calf != null and cow != null and lamb != null and calf.get_height() < cow.get_height() \
+		and Art.has_override("animals/cow_baby_0.png") and Art.has_override("animals/barn_cat_1.png")
+	check("Modern Farm art: all crops have growth pictures, fruit trees grow from young to fruiting, young animals have their own pictures",
+		ok, "missing=%s tree=%s young_tree=%s calf=%s cow=%s" % [missing.slice(0, 5), r[0].get_size(), r2[0].get_size(), calf.get_size() if calf else null, cow.get_size() if cow else null])

@@ -1119,6 +1119,13 @@ func _draw_generic(o: Dictionary, dd: Dictionary, season: String, frame: int) ->
 	if o.type == "fruit_tree":
 		var age := int(o.get("age", 0))
 		var grown: bool = age >= Balance.trees.grow_days
+		# Modern Farm pictures: a young tree, then the grown tree with 0 to 3 rounds of fruit
+		var pic := override("objects/fruit_tree_%s_%s_%s.png" % [o.get("fruit", "apple"), str(clampi(int(o.get("fruit_n", 0)), 0, 3)) if grown else "young", season])
+		if pic != null:
+			var pim: Image = pic.get_image()
+			if pim.is_compressed(): pim.decompress()
+			pim.convert(Image.FORMAT_RGBA8)
+			return [pim, (16 - pim.get_width()) / 2, 16 - pim.get_height()]
 		if not grown:
 			var x0 := img(16, 16)
 			var hgt: int = 6 + int(age / 4)
@@ -2148,6 +2155,11 @@ func _animal_meta(nm: String) -> Dictionary:
 func get_animal(type: String, color_i: int, dir: String, frame: int, adult: bool) -> ImageTexture:
 	var nm := "%s_%d" % [type, color_i % 2]
 	if not has_override("animals/%s.png" % nm): nm = "%s_0" % type
+	# young animals have their own pictures in the Modern Farm pack
+	var baby := "%s_baby_%d" % [type, color_i % 2]
+	if not adult and has_override("animals/%s.png" % baby) and not _animal_meta(baby).is_empty():
+		nm = baby
+		adult = true
 	var meta := _animal_meta(nm)
 	if not meta.is_empty() and has_override("animals/%s.png" % nm):
 		# a strip of walk frames: rows for side / down / up

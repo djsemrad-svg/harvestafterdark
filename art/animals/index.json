@@ -2,25 +2,29 @@
  "chicken_0": {
   "fw": 16,
   "fh": 16,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "chicken_1": {
   "fw": 16,
   "fh": 16,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "cow_0": {
-  "fw": 32,
-  "fh": 32,
-  "n": 4,
+  "fw": 48,
+  "fh": 48,
+  "n": 6,
   "rows": {
    "side": 0,
    "down": 1,
@@ -29,9 +33,9 @@
   "face": "left"
  },
  "cow_1": {
-  "fw": 32,
-  "fh": 32,
-  "n": 4,
+  "fw": 48,
+  "fh": 48,
+  "n": 6,
   "rows": {
    "side": 0,
    "down": 1,
@@ -40,9 +44,9 @@
   "face": "left"
  },
  "goat_0": {
-  "fw": 24,
-  "fh": 24,
-  "n": 4,
+  "fw": 32,
+  "fh": 48,
+  "n": 6,
   "rows": {
    "side": 0,
    "down": 1,
@@ -51,9 +55,9 @@
   "face": "left"
  },
  "goat_1": {
-  "fw": 24,
-  "fh": 24,
-  "n": 4,
+  "fw": 32,
+  "fh": 48,
+  "n": 6,
   "rows": {
    "side": 0,
    "down": 1,
@@ -64,54 +68,66 @@
  "pig_0": {
   "fw": 32,
   "fh": 32,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "pig_1": {
   "fw": 32,
   "fh": 32,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "sheep_0": {
   "fw": 32,
   "fh": 32,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "sheep_1": {
   "fw": 32,
   "fh": 32,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "duck_0": {
-  "fw": 16,
-  "fh": 16,
-  "n": 4,
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "duck_1": {
-  "fw": 16,
-  "fh": 16,
-  "n": 4,
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
@@ -130,6 +146,226 @@
   "n": 4,
   "rows": {
    "side": 0
+  },
+  "face": "left"
+ },
+ "chicken_baby_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "chicken_baby_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "rabbit_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "rabbit_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "rabbit_baby_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "rabbit_baby_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "duck_baby_0": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "duck_baby_1": {
+  "fw": 16,
+  "fh": 16,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "cow_baby_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "cow_baby_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "goat_baby_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "goat_baby_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "sheep_baby_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "sheep_baby_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "pig_baby_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "pig_baby_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "guard_dog_0": {
+  "fw": 48,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "guard_dog_1": {
+  "fw": 48,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "barn_cat_0": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
+  },
+  "face": "left"
+ },
+ "barn_cat_1": {
+  "fw": 32,
+  "fh": 32,
+  "n": 6,
+  "rows": {
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  }

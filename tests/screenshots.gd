@@ -447,12 +447,22 @@ func _ready() -> void:
 				hm2.soil.erase(GameMap.k(xx, yy))
 		Game.build_building("coop", Rect2i(6, 11, 6, 4))
 		Game.build_building("barn", Rect2i(20, 10, 8, 5))
-		var kinds := ["chicken", "chicken", "duck", "quail", "cow", "cow", "goat", "goat", "sheep", "sheep", "pig", "pig"]
+		var kinds := ["chicken", "chicken", "duck", "quail", "rabbit", "rabbit", "cow", "cow", "goat", "goat", "sheep", "sheep", "pig", "pig", "chicken", "cow", "sheep", "pig"]
 		for i in kinds.size():
 			Game.adopt_animal(kinds[i], "A%d" % i)
 		for a in Game.state.animals:
-			a.born = -10
-			a.color = Game.state.animals.find(a) % 2
+			var ai: int = Game.state.animals.find(a)
+			a.born = -10 if ai < 14 else int(Game.state.get("day", 1))
+			a.color = ai % 2
+		var fi := 0
+		for fr in ["apple", "peach", "pear", "cherry", "plum", "walnut"]:
+			hm2.add_obj(8 + fi * 3, 26, "fruit_tree", {"fruit": fr, "age": 40, "fruit_n": fi % 4})
+			fi += 1
+		hm2.add_obj(28, 26, "fruit_tree", {"fruit": "apple", "age": 2})
+		hm2.add_obj(26, 20, "scarecrow")
+		hm2.add_obj(28, 20, "water_trough")
+		hm2.add_obj(29, 20, "feed_trough")
+		hm2.add_obj(30, 20, "pressure_sprinkler")
 		Game.get_building_rec("coop").door_open = true
 		Game.get_building_rec("barn").door_open = true
 		Game.state.time = 700; Game.state.weather = "sun"
