@@ -209,7 +209,7 @@ func use_selected(level := 0, from_mouse := false) -> void:
 		var id: String = s.id
 		Game.ui.confirm(it.get("use_word", "Drink" if it.get("drink", false) else "Eat") + " " + it.name + "?", func(): Game.eat_item(id))
 	elif it.cat == "geode":
-		Game.toast("Ines at Varga Forge can crack geodes open.", s.id)
+		Game.toast("Ines at Varga Forge can crack Unusual Stones open, or use a Builder's Hammer.", s.id)
 
 func use_tool(tool: String, level: int, t: Vector2i) -> void:
 	var busy = Game.tool_busy(tool)
@@ -390,7 +390,8 @@ func break_object(o: Dictionary) -> void:
 		if not gem and rng.randf() < 0.5:
 			spawn_drop("stone", 1, c)
 	if o.type == "geode_rock":
-		spawn_drop(o.get("geode", "geode"), 2 if DeepMine.has_perk("geologist") and rng.randf() < 0.3 else 1, c)
+		var n := 2 if DeepMine.has_perk("geologist") and rng.randf() < 0.3 else 1
+		for i in n: spawn_drop(Stones.roll_tier(rng, Stones.depth_of(m)), 1, c)
 	if o.type == "rock" and m.mine:
 		if rng.randf() < 0.008:
 			var keys := Data.artifacts.keys()
@@ -399,6 +400,8 @@ func break_object(o: Dictionary) -> void:
 			spawn_drop("coal", 1, c)
 	if def.get("dig", false):
 		var roll: String = MapBuilder.weighted(rng, [{"id": "clay", "w": 30}, {"id": "artifact", "w": 22}, {"id": "geode", "w": 10}, {"id": "stone", "w": 18}, {"id": "scrap", "w": 20}]).id
+		if roll == "geode":
+			roll = Stones.roll_tier(rng)
 		if roll == "artifact":
 			var keys := Data.artifacts.keys()
 			roll = keys[rng.randi() % keys.size()]
@@ -853,7 +856,7 @@ func use_gadget(id: String, t: Vector2i) -> void:
 					var res: Dictionary = Game.crack_geode(g, true)
 					if res.has("id"): Game.toast("Cracked the %s: %d %s!" % [Data.items[g].name, int(res.qty), Data.items[res.id].name], res.id, "gold")
 					return
-			Game.toast("Point it at a damaged barrier to repair it, or carry a geode to crack.", id)
+			Game.toast("Point it at a damaged barrier to repair it, or carry an Unusual Stone to crack.", id)
 		"gold_pan":
 			if m.tile_at(t.x, t.y) != "water" or m.fish_zone != "river":
 				Game.toast("Pan in a river.", id, "warn")

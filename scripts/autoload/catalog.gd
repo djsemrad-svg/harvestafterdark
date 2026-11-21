@@ -19,7 +19,10 @@ const CATS := {"Tool": "gadget", "Crafting Station": "station", "Farm Equipment"
 ## Old ids (from the weapon sheet work) -> the item sheet's ids. Saves are converted on load.
 const RENAMES := {"ammo_22": "ammo_22lr", "ammo_45": "ammo_45acp", "ammo_50": "ammo_50bmg", "arrows": "arrow", "harpoons": "harpoon_spear",
 	"flares": "flare", "shells_incendiary": "incendiary_shell", "nail_strips": "nail_rounds", "kit_blade": "blade_kit", "kit_blunt": "blunt_kit",
-	"kit_ranged": "ranged_kit", "kit_gun": "gun_kit", "kit_gear": "gear_kit", "weapon_bench": "armory_bench"}
+	"kit_ranged": "ranged_kit", "kit_gun": "gun_kit", "kit_gear": "gear_kit", "weapon_bench": "armory_bench",
+	# geodes became Unusual Stones (Nov 21, see Stones.OLD)
+	"geode": "unusual_stone", "deep_geode": "rare_unusual_stone", "fossil_nodule": "rare_unusual_stone",
+	"frost_geode": "epic_unusual_stone", "ember_geode": "epic_unusual_stone", "crystal_geode": "epic_unusual_stone"}
 
 ## Machine stations: how long a job takes (minutes) and what to tell the player.
 const MACHINE_INFO := {
@@ -540,10 +543,13 @@ static func _geodes(d) -> void:
 		for extra in [["mica", 6], ["pyrite", 6], ["jasper", 5], ["garnet", 3]] if t == "geode" else [["malachite", 6], ["glimmerite", 2], ["diamond", 1]]:
 			if d.items.has(extra[0]) and not d.geode_tables[t].any(func(x): return x.id == extra[0]):
 				d.geode_tables[t].append({"id": extra[0], "w": extra[1], "q": [1, 1]})
-	# where the new geodes come from in the mine
-	if d.mine_bands.size() >= 4:
-		d.mine_bands[2].geode = "frost_geode"
-		d.mine_bands[3].geode = "ember_geode"
+	# the old geode tables become the Unusual Stone pools, by where a stone was found
+	Stones.register(d)
+	# stones also turn up when scavenging the districts
+	for tag in ["home", "pawn", "construction", "military", "wilderness", "scrapyard"]:
+		if not d.loot_items.has(tag): d.loot_items[tag] = []
+		d.loot_items[tag].append(["unusual_stone", 1, 1, 0.6])
+		if tag in ["pawn", "military"]: d.loot_items[tag].append(["rare_unusual_stone", 1, 1, 0.15])
 
 static func _shops(d) -> void:
 	var gen: Array = d.shops.general.stock

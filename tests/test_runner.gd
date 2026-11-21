@@ -370,7 +370,7 @@ func run_all() -> void:
 	check("Journal: all nine tabs render with content", bad_tabs.is_empty() and U.TABS.size() == 9, str(U.TABS.keys()) + (" BAD:" + str(bad_tabs) if not bad_tabs.is_empty() else ""))
 
 	var bad_ov := []
-	G.add_item("geode", 1, {"silent": true})
+	G.add_item("unusual_stone", 1, {"silent": true})
 	for spec in [["intro", {}], ["pause", {}], ["help", {}], ["message", {"title": "T", "text": "x"}], ["notices", {}], ["lift", {}], ["appearance", {}], ["ship", {}], ["shop", {"shop": "general"}], ["forge", {"tab": "geodes"}], ["forge", {"tab": "refine"}], ["forge", {"tab": "upgrade"}], ["forge", {"tab": "shop"}], ["craft", {"station": "stove"}], ["death", {"checkpoint": "Spring 2"}], ["collapse", {"cause": "starvation", "lost": 10}], ["report", {"report": {"reason": "passout", "lost": 100, "sales": [{"id": "radish", "name": "Radish", "qty": 2, "price": 35, "total": 70}], "total": 70, "lines": ["The crops grew."], "saved": true}}], ["choice", {"title": "T", "text": "x", "choices": [{"label": "A", "fn": func(): pass}]}]]:
 		U.open(spec[0], spec[1])
 		if count_nodes(U.overlay_root) < 6: bad_ov.append(spec[0])
@@ -610,12 +610,35 @@ func run_all() -> void:
 	start("adventure", 2)
 	while G.weekday() == "Sat": sleep()
 	G.state.time = 600; G.sync_npcs()
-	G.add_item("geode", 3, {"silent": true}); G.state.money = 1000
+	G.add_item("unusual_stone", 3, {"silent": true}); G.state.money = 1000
 	var finds := []
-	for i in 3: finds.append(G.forge_open_geode("geode").get("id", "?"))
-	var ids: Array = Data.geode_tables.geode.map(func(x): return x.id)
+	for i in 3: finds.append(G.forge_open_geode("unusual_stone").get("id", "?"))
+	var ids: Array = ["stone", "clay"]
+	for src in Data.stone_pools:
+		for half in ["common", "rare"]:
+			ids.append_array(Data.stone_pools[src][half].map(func(x): return x.id))
 	var qg: Dictionary = G.quest_def("q_geode")
-	check("Forge: cracks geodes for a fee (weighted loot table)", finds.all(func(x): return ids.has(x)) and G.state.money == 1000 - 3 * Balance.services.geode_fee + int(qg.reward.money) and G.count_item("geode") == 0 and G.state.quests.done.has("q_geode"), "%s money=%d" % [finds, G.state.money])
+	check("Forge: cracks Unusual Stones for a fee", finds.all(func(x): return ids.has(x)) and G.state.money == 1000 - 3 * Balance.services.geode_fee + int(qg.reward.money) and G.count_item("unusual_stone") == 0 and G.state.quests.done.has("q_geode"), "%s money=%d" % [finds, G.state.money])
+	# Unusual Stones: four tiers, lower ones commoner, rarer finds in higher tiers, contents by where it was found
+	var trng := RandomNumberGenerator.new(); trng.seed = 7
+	var tiers := {}
+	for i in 4000:
+		var t: String = Stones.roll_tier(trng)
+		tiers[t] = int(tiers.get(t, 0)) + 1
+	var order_ok: bool = int(tiers.get("unusual_stone", 0)) > int(tiers.get("rare_unusual_stone", 0)) and int(tiers.get("rare_unusual_stone", 0)) > int(tiers.get("epic_unusual_stone", 0)) and int(tiers.get("epic_unusual_stone", 0)) > int(tiers.get("legendary_unusual_stone", 0)) and int(tiers.get("legendary_unusual_stone", 0)) > 0
+	var rare_rate := []
+	for tid in Stones.TIERS:
+		var n := 0
+		for i in 2000:
+			if Stones.crack(tid, trng).rare: n += 1
+		rare_rate.append(n / 2000.0)
+	G.state.stone_src = {"rare_unusual_stone": {"district": 1}}
+	var from_district: Dictionary = Stones.crack("rare_unusual_stone", trng)
+	var relic_ids: Array = Data.stone_pools.district.common.map(func(x): return x.id) + Data.stone_pools.district.rare.map(func(x): return x.id) + ["stone", "clay"]
+	var old_save_ok: bool = Catalog.RENAMES.get("frost_geode", "") == "epic_unusual_stone" and Catalog.RENAMES.get("geode", "") == "unusual_stone" and not Data.items.has("geode")
+	check("Unusual Stones: lower tiers drop most, rarer finds rise by tier (about 5/15/30/50%), districts give relics, old geodes convert",
+		order_ok and rare_rate[0] < rare_rate[1] and rare_rate[1] < rare_rate[2] and rare_rate[2] < rare_rate[3] and absf(rare_rate[3] - 0.5) < 0.06 and relic_ids.has(from_district.id) and old_save_ok,
+		"tiers=%s rare=%s district=%s" % [str(tiers), str(rare_rate), from_district.id])
 
 	G.add_item("copper_ore", 25, {"silent": true}); G.add_item("coal", 5, {"silent": true})
 	var ore0: int = G.count_item("copper_ore")

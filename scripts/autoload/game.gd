@@ -236,6 +236,8 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 		return qty
 	if id == "conspiracy_note" and not opts.has("list") and state.has("stats"):
 		state.stats.notes = int(state.stats.get("notes", 0)) + qty
+	if Stones.is_stone(id) and not opts.get("no_src", false):
+		Stones.note(id, qty)
 	var mx: int = Data.items[id].stack
 	var list: Array = opts.get("list", inv())
 	var extra: Dictionary = opts.get("extra", {})
@@ -3253,18 +3255,18 @@ func forge_open_geode(geode_id: String, free := false) -> Dictionary:
 		return {"error": "You have no %s." % Data.items[geode_id].name}
 	if int(state.money) < fee:
 		return {"error": "Not enough gold for the fee."}
-	var pick := MapBuilder.weighted(rng, Data.geode_tables[geode_id])
-	var qty := rng.randi_range(pick.q[0], pick.q[1])
+	var pick := Stones.crack(geode_id, rng)
+	var qty: int = pick.qty
 	remove_item(geode_id, 1)
 	if not can_fit(pick.id, qty):
-		add_item(geode_id, 1, {"silent": true})
+		add_item(geode_id, 1, {"silent": true, "no_src": true})
 		return {"error": "Make some room in your pack first."}
 	state.money = int(state.money) - fee
 	add_item(pick.id, qty, {"silent": true})
 	state.forge.geodes_opened = int(state.forge.geodes_opened) + 1
 	quest_event("geode", {"n": 1})
 	Sfx.play("break")
-	return {"id": pick.id, "qty": qty}
+	return {"id": pick.id, "qty": qty, "rare": pick.rare}
 
 func forge_refine(bar: String, qty: int) -> String:
 	var r: Dictionary = Data.refining[bar]

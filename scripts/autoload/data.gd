@@ -14,7 +14,7 @@ var categories := {
 	"bar": {"label": "Metal Bar", "color": "#d0d0d8"},
 	"mineral": {"label": "Mineral", "color": "#b0b8c8", "collection": "minerals", "donatable": true},
 	"gem": {"label": "Gemstone", "color": "#c890e0", "collection": "minerals", "donatable": true},
-	"geode": {"label": "Geode", "color": "#a09080"},
+	"geode": {"label": "Unusual Stone", "color": "#a09080"},
 	"artifact": {"label": "Artifact", "color": "#d8b080", "collection": "artifacts", "donatable": true},
 	"food": {"label": "Provisions", "color": "#e8a060"},
 	"cooked": {"label": "Cooked Dish", "color": "#f0c070"},
@@ -167,6 +167,9 @@ var refining := {
 	"gold_bar": {"ore": "gold_ore", "ore_qty": 5, "coal": 1},
 	"aurium_bar": {"ore": "aurium_ore", "ore_qty": 5, "coal": 2},
 }
+## The old geode tables: since Nov 21 they feed the Unusual Stone pools (Stones.register), "geode" for stones found
+## in the upper mine and "deep_geode" for the lower tunnels. After loading, this lists the four stone tiers.
+var stone_pools := {}
 var geode_tables := {
 	"geode": [
 		{"id": "stone", "w": 18, "q": [2, 6]}, {"id": "clay", "w": 10, "q": [1, 3]}, {"id": "coal", "w": 12, "q": [1, 3]},
@@ -310,7 +313,7 @@ var obj_defs := {
 	"stump": {"solid": true, "hp": 4, "tool": "axe", "min_tier": 0, "drops": [["wood", 2, 3]], "xp": ["foraging", 4]},
 	"big_stump": {"solid": true, "hp": 10, "tool": "axe", "min_tier": 1, "drops": [["wood", 10, 14]], "xp": ["foraging", 20], "hint": "This stump is too large. An upgraded axe could split it."},
 	"rock": {"solid": true, "hp": 2, "tool": "pickaxe", "min_tier": 0, "drops": [["stone", 1, 2]], "xp": ["mining", 3]},
-	"boulder": {"solid": true, "hp": 10, "tool": "pickaxe", "min_tier": 1, "drops": [["stone", 10, 14], ["geode", 0, 1]], "xp": ["mining", 20], "hint": "Too hard for a basic pickaxe. Ines could upgrade it with copper."},
+	"boulder": {"solid": true, "hp": 10, "tool": "pickaxe", "min_tier": 1, "drops": [["stone", 10, 14], ["unusual_stone", 0, 1]], "xp": ["mining", 20], "hint": "Too hard for a basic pickaxe. Ines could upgrade it with copper."},
 	"ore_rock": {"solid": true, "hp": 4, "tool": "pickaxe", "min_tier": 0, "drops": [], "xp": ["mining", 6]},
 	"geode_rock": {"solid": true, "hp": 4, "tool": "pickaxe", "min_tier": 0, "drops": [], "xp": ["mining", 6]},
 	"weeds": {"solid": false, "hp": 1, "tool": "any", "drops": [["fiber", 0, 1]], "xp": ["foraging", 1]},
@@ -477,7 +480,7 @@ var npcs := {
 			"Sat": [[360, ""], [540, "mountain", 24, 10, "up"], [900, "town", 31, 22, "down"], [1200, ""]],
 		},
 		"dialogue": {
-			"intro": ["Varga Forge. Bring me geodes and I'll crack them. Bring me ore and coal and I'll refine it. Bring me bars and money and I'll make your tools worth carrying.", "Open eight to four. Closed Saturdays. I spend those in the mine."],
+			"intro": ["Varga Forge. Bring me Unusual Stones and I'll crack them. Bring me ore and coal and I'll refine it. Bring me bars and money and I'll make your tools worth carrying.", "Open eight to four. Closed Saturdays. I spend those in the mine."],
 			"generic": ["Copper first. Then iron. Then we talk about the good stuff.", "The old mine goes deeper than the town maps show. I've heard machines down there.", "A sharp tool is a safe tool. A dull one makes you swing twice.", "Geodes are little gifts from the earth. Mostly gifts of rock, but still.", "If you go deep, mind the dark corners. They don't make noise until they're close."],
 			"spring": ["Spring thaw opens up the lower tunnels. Water everywhere."],
 			"summer": ["Forge plus summer heat. Bring water if you visit in the afternoon."],
@@ -664,7 +667,7 @@ var quests := [
 	{"id": "q_ship", "title": "Open for Trade", "giver": "hal", "type": "ship", "count": 3, "desc": "Place at least 3 items in the trade crate beside your house before you go to sleep.", "reward": {"money": 120}},
 	{"id": "q_fish", "title": "Something in the Water", "giver": "wren", "type": "catch", "count": 1, "requires_flag": "got_rod", "desc": "Catch a fish anywhere. Try the pond on your homestead or the river in town.", "reward": {"items": [["water_bottle", 3], ["bread_loaf", 2]]}},
 	{"id": "q_mine", "title": "Into the Dark", "giver": "ines", "type": "mine_floor", "count": 3, "desc": "Reach floor 3 of the old mine, north of town past the ridge path.", "reward": {"items": [["copper_ore", 10], ["coal", 3]]}},
-	{"id": "q_geode", "title": "Cracking Stones", "giver": "ines", "type": "geode", "count": 1, "desc": "Find a geode in the mine and have Ines open it at the forge.", "reward": {"money": 100}},
+	{"id": "q_geode", "title": "Cracking Stones", "giver": "ines", "type": "geode", "count": 1, "desc": "Find an Unusual Stone in the mine and have Ines crack it at the forge.", "reward": {"money": 100}},
 	{"id": "q_maple", "title": "Maple Street Sweep", "giver": "cole", "type": "kill", "count": 15, "requires_met": "cole", "desc": "Cole keeps the Maple Street barricade west of the Combat Guild locked. Put down 15 infected anywhere and he'll open it to the Residential District.", "reward": {"money": 300, "unlock": "residential"}},
 	{"id": "q_upgrade", "title": "Sharper Tools", "giver": "ines", "type": "upgrade", "count": 1, "requires": "q_mine", "desc": "Refine copper bars and have Ines upgrade any tool.", "reward": {"money": 250}},
 ]
@@ -745,18 +748,18 @@ var enemies := {
 	"shambler": {"name": "Shambler", "hp": 45, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 88.0, "damage": 15, "xp": 6, "ai": "walker",
 		"look": {"sprite": "shambler", "skin": "#8fa58a", "hair": "#3a3a30", "hair_style": "Short", "eyes": "#d8e070", "face": "Plain", "shirt_style": "T-Shirt", "shirt": "#6a6a7a", "pants": "#4a4a40", "acc": "None", "acc_color": "#000000", "infected": true},
 		"looks": {"skin": ["#8fa58a", "#9aa880", "#7f9a7a", "#a0a890"], "shirt": ["#b05a2a", "#6a4a8a", "#3a6a8a", "#8a3a3a", "#5a7a4a", "#c8b070", "#4a4a5a"], "pants": ["#3a4a6a", "#4a4a40", "#5a4a3a", "#2a3a5a"], "bodies": [0, 1, 2, 3, 4, 5, 6]},
-		"drops": [["cloth", 0.45], ["scrap", 0.45], ["geode", 0.06]]},
+		"drops": [["cloth", 0.45], ["scrap", 0.45], ["unusual_stone", 0.06]]},
 	"lurcher": {"name": "Lurcher", "hp": 70, "wander_speed": 18.0, "chase_speed": 40.0, "sight": 104.0, "damage": 20, "xp": 10, "ai": "walker",
 		"look": {"sprite": "lurcher", "skin": "#9aa080", "hair": "#5a4a3a", "hair_style": "Long", "eyes": "#f0c060", "face": "Plain", "shirt_style": "Jacket", "shirt": "#5a4a5a", "pants": "#3a3a44", "acc": "None", "acc_color": "#000000", "infected": true},
 		"looks": {"skin": ["#9aa080", "#8a9470", "#a4a888"], "shirt": ["#5a4a5a", "#4a3a2a", "#3a4a3a", "#6a2a2a"], "pants": ["#3a3a44", "#2a2a30", "#4a3a2a"], "bodies": [3, 4, 6]},
-		"drops": [["cloth", 0.5], ["scrap", 0.6], ["deep_geode", 0.06]]},
+		"drops": [["cloth", 0.5], ["scrap", 0.6], ["unusual_stone", 0.06]]},
 	"runner": {"name": "Runner", "hp": 35, "wander_speed": 22.0, "chase_speed": 70.0, "sight": 124.0, "damage": 12, "xp": 10, "ai": "runner", "telegraph": 0.38,
 		"looks": {"skin": ["#b8c0a0", "#c0c8b0", "#a8b898"], "shirt": ["#d8d0c0", "#3a8ac8", "#c83a3a", "#e8c040", "#3aa870"], "pants": ["#2a2a30", "#5a5a68", "#c8c0b0"], "bodies": [1, 4, 5], "scale": 0.92},
 		"drops": [["cloth", 0.4], ["water_bottle", 0.08]]},
 	"brute": {"name": "Brute", "hp": 260, "wander_speed": 10.0, "chase_speed": 25.0, "sight": 92.0, "damage": 35, "xp": 32, "ai": "brute", "armor": 0.25,
 		"knock_immune": true, "telegraph": 0.95, "no_stealth_kill": true,
 		"looks": {"skin": ["#7a8a5a", "#6a7a4a", "#8a8a60"], "shirt": ["#4a3a2a", "#5a5a5a", "#3a2a2a", "#2a3a4a"], "pants": ["#2a2a30", "#3a3020"], "bodies": [3, 6, 0], "scale": 1.3},
-		"drops": [["scrap", 0.9], ["iron_ore", 0.3], ["deep_geode", 0.12]]},
+		"drops": [["scrap", 0.9], ["iron_ore", 0.3], ["rare_unusual_stone", 0.12]]},
 	"spitter": {"name": "Spitter", "hp": 55, "wander_speed": 14.0, "chase_speed": 30.0, "sight": 150.0, "damage": 10, "xp": 14, "ai": "spitter",
 		"spit": {"dmg": 12, "cd": 2.6, "range": 96.0, "speed": 130.0, "n": 1}, "immune": ["corrode"],
 		"looks": {"skin": ["#b8c850", "#a8c040", "#c0c860"], "shirt": ["#6a7a6a", "#7a7a7a", "#5a6a5a"], "pants": ["#3a3a30", "#4a4a40"], "bodies": [2, 5, 6], "extra": "drool"},
@@ -904,8 +907,6 @@ func _init() -> void:
 	def_item("emerald", {"name": "Emerald", "cat": "gem", "price": 250, "desc": "A deep green gemstone.", "icon": {"s": "gem", "c": "#40d080", "c2": "#1a8040"}})
 	def_item("ruby", {"name": "Ruby", "cat": "gem", "price": 250, "desc": "A blood-red gemstone.", "icon": {"s": "gem", "c": "#e8405a", "c2": "#901a2a"}})
 	def_item("glimmerite", {"name": "Glimmerite", "cat": "gem", "price": 400, "desc": "A rare stone that holds a faint inner light. Nobody knows quite what it is.", "icon": {"s": "gem", "c": "#9af0ff", "c2": "#4a90c0"}})
-	def_item("geode", {"name": "Stone Geode", "cat": "geode", "price": 30, "desc": "Something rattles inside. Ines at the forge can crack it open.", "icon": {"s": "geode", "c": "#a09080"}})
-	def_item("deep_geode", {"name": "Deep Geode", "cat": "geode", "price": 60, "desc": "A dense geode from the lower tunnels. Better odds of rare finds.", "icon": {"s": "geode", "c": "#7a6aa0"}})
 	for a in artifacts:
 		def_item(a, {"name": artifacts[a].name, "cat": "artifact", "price": artifacts[a].price, "desc": artifacts[a].desc, "icon": {"s": "fossil" if a == "fern_fossil" else "artifact_" + a}})
 

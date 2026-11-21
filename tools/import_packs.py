@@ -2346,3 +2346,24 @@ if os.path.isdir(WF):
             save(Image.open(os.path.join(WF, slot, "inventory_16", fn)).convert("RGBA"), "icons/%s.png" % gid)
             n += 1
     print("wearables:", n)
+
+# ---------------------------------------------------------------- Unusual Stones (Nov 21)
+# The four stone tiers reuse the old geode pictures: plain (fossil nodule), rare (frost, blue), epic (crystal,
+# purple) and legendary (the plain stone in gold).
+if os.path.isfile(os.path.join(OUT, "icons", "fossil_nodule.png")):
+    def _gold(im):
+        im = im.convert("RGBA").copy(); px = im.load()
+        for y in range(im.height):
+            for x in range(im.width):
+                r, g, b, a = px[x, y]
+                if a == 0: continue
+                l = (r * 0.3 + g * 0.59 + b * 0.11) / 255.0
+                if l < 0.2: continue          # keep the dark outline and crack
+                px[x, y] = (min(255, int(90 + 190 * l)), min(255, int(60 + 150 * l)), int(20 + 60 * l), a)
+        return im
+    base = Image.open(os.path.join(OUT, "icons", "fossil_nodule.png")).convert("RGBA")
+    for name, src in [("unusual_stone", "fossil_nodule"), ("rare_unusual_stone", "frost_geode"), ("epic_unusual_stone", "crystal_geode")]:
+        p = os.path.join(OUT, "icons", src + ".png")
+        save(Image.open(p).convert("RGBA") if os.path.isfile(p) else base, "icons/%s.png" % name)
+    save(_gold(base), "icons/legendary_unusual_stone.png")
+    print("unusual stones: 4 icons")

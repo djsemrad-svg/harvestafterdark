@@ -494,12 +494,6 @@ Limestone,limestone,Mineral,New,Mine,"Quarry, mines",,Cement
 Obsidian,obsidian,Mineral,New,Mine,"Ember Geodes, volcanic vents",,"Sharp arrowheads; trade"
 Amber,amber,Mineral,New,Mine,"Fossil Nodules, riverbanks",,"Collection; may hold an ancient insect"
 Petrified Wood,petrified_wood,Mineral,New,Mine,"Fossil Nodules, dig spots",,"Collection; trade"
-Stone Geode,geode,Geode,Existing,Mine,"Mines, any level",Crack with Builder's Hammer or at the Workbench,Crack open for common minerals and gems
-Deep Geode,deep_geode,Geode,Existing,Mine,Mine levels 60+,Crack with Builder's Hammer or at the Workbench,Crack open for rare minerals and Glimmerite
-Frost Geode,frost_geode,Geode,New,Mine,"Icy mine levels; Winter dig spots",Crack with Builder's Hammer or at the Workbench,"Crack open for Jade, Sapphire, and cold minerals"
-Ember Geode,ember_geode,Geode,New,Mine,"Volcanic vents; deep mines",Crack with Builder's Hammer or at the Workbench,Crack open for Ember Opal and Obsidian
-Crystal Geode,crystal_geode,Geode,New,Mine,Crystal caverns,Crack with Builder's Hammer or at the Workbench,"Crack open for Opal, Fluorite, and Quartz"
-Fossil Nodule,fossil_nodule,Geode,New,Mine,"Riverbanks, quarries, dig spots",Crack with Builder's Hammer or at the Workbench,"Crack open for fossils, Amber, and Petrified Wood"
 Cracked Phone,old_phone,Artifact,Existing,Find,"Dig spots, zombies",,Lore: last messages
 Rusted Key,rusted_key,Artifact,Existing,Find,"Dig spots, fishing",,Opens a locked shed somewhere in town
 Faded Postcard,faded_postcard,Artifact,Existing,Find,"Homes, dig spots",,"Lore; collection"

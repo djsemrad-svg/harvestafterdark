@@ -14,7 +14,7 @@ const FOREMAN := {"name": "The Foreman", "boss": true, "hp": 1200, "wander_speed
 	"looks": {"skin": ["#7a8a6a"], "shirt": ["#e88a20"], "pants": ["#3a4a6a"], "hair": ["#2a2420"], "hair_style": ["Buzz"], "shirt_style": ["Vest"],
 		"bodies": [6], "scale": 1.6, "extra": "worker"},
 	"drops": [["coal", 1.0]]}
-const STRONGBOX := [["copper_bar", 8], ["iron_bar", 4], ["geode", 3], ["pipe_charge", 3], ["coal", 10]]
+const STRONGBOX := [["copper_bar", 8], ["iron_bar", 4], ["rare_unusual_stone", 2], ["epic_unusual_stone", 1], ["pipe_charge", 3], ["coal", 10]]
 
 const PERKS := {
 	5: [{"id": "prospector", "name": "Prospector", "desc": "Ore rocks have a 25% chance to drop 1 more ore."},

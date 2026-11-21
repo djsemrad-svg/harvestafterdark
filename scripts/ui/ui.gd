@@ -1200,7 +1200,7 @@ func _ov_notices() -> Control:
 	var up := upcoming(3)
 	pins.append("Coming up: " + ("; ".join(up.map(func(e): return "%s (%s)" % [e.label, e.when])) if not up.is_empty() else "nothing scheduled") + ".")
 	pins.append("From Ruth: \"Infected have been spotted on the ridge after dark. Stay in town at night, or carry something to defend yourself.\"")
-	pins.append("From Ines: \"Bring geodes and ore to the forge. Five ore and one coal makes a bar.\"")
+	pins.append("From Ines: \"Bring Unusual Stones and ore to the forge. Five ore and one coal makes a bar.\"")
 	var rdone := Restoration.PROJECTS.filter(func(p): return Restoration.done(p.id)).size()
 	pins.append("Rebuilding Brightwater: %d of %d projects finished. Ruth's ledger is right next to this board." % [rdone, Restoration.PROJECTS.size()])
 	for t in pins:
@@ -1745,7 +1745,7 @@ func _ov_forge() -> Control:
 	var v: VBoxContainer = pw[1]
 	v.add_child(_shop_head("ines", "Varga Forge", "Ines Varga · Blacksmith"))
 	var tabs := K.hbox(2)
-	for t in [["geodes", "Crack Geodes"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["repair", "Repair"], ["shop", "Buy & Sell"]]:
+	for t in [["geodes", "Crack Stones"], ["refine", "Refine Ore"], ["upgrade", "Upgrade Tools"], ["repair", "Repair"], ["shop", "Buy & Sell"]]:
 		var tid: String = t[0]
 		var b := K.button(t[1], func():
 			overlay.tab = tid
@@ -1758,7 +1758,7 @@ func _ov_forge() -> Control:
 	var body := K.vbox(2)
 	match tab:
 		"geodes":
-			body.add_child(K.label("Fee: %d gold per geode. Each geode type has its own pool of possible finds." % Balance.services.geode_fee, 7, K.INK_SOFT))
+			body.add_child(K.label("Fee: %d gold per stone. Rarer stones hold rarer things, and where you found a stone shapes what's inside." % Balance.services.geode_fee, 7, K.INK_SOFT))
 			var any := false
 			for g in Data.geode_tables:
 				if Game.count_item(g) <= 0: continue
@@ -1781,7 +1781,7 @@ func _ov_forge() -> Control:
 				rh.add_child(b)
 				row.add_child(rh)
 				body.add_child(row)
-			if not any: body.add_child(K.label("You have no geodes. Look for speckled rocks in the mine.", 7))
+			if not any: body.add_child(K.label("You have no Unusual Stones. Look for speckled rocks in the mine.", 7))
 			if overlay.has("result"):
 				var r: Dictionary = overlay.result
 				var rb := K.row_box(Color("#fff4c8"))
@@ -2625,7 +2625,7 @@ func _help_box() -> Control:
 	for t in ["The daily loop: wake at 6:00 am, work your land, visit Brightwater, explore the mine, and get to bed before 2:00 am. Sleeping in your bed is how the game saves.",
 		"Farming: clear weeds with the scythe, rocks with the pickaxe and branches with the axe. Till soil with the hoe, plant, and water every day (rain does it for you). Crops die when their season ends.",
 		"Selling: drop goods in the trade crate beside your house to sell them overnight, or sell directly at shops during opening hours.",
-		"The forge: the mine has stone, copper, iron, gems and geodes. Ines cracks geodes, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and gold.",
+		"The forge: the mine has stone, copper, iron, gems and Unusual Stones. Ines cracks the stones, refines 5 ore and 1 coal into a bar, and upgrades tools with bars and gold.",
 		"Fishing: talk to Wren at the river to get a rod. Hold to cast, press when the \"!\" appears, then hold Space to keep the fish inside the green bar.",
 		"The infected: they wind up before they lunge (watch for the red \"!\"). Hit them to knock them back. In Survivor Mode a bite reloads your last sleep, unless your gear stops it (see Bite resist).",
 		"Weapons and gear wear out. Repair them at Varga Forge or Mercer Workshop: the closer something is to breaking, the more it costs. In Survivor Mode a broken item is gone for good.",
