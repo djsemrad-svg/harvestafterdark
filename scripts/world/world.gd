@@ -117,6 +117,7 @@ func step(dt: float) -> void:
 	if not mini:
 		Game.update_npcs(dt)
 		Townsfolk.update(dt)
+		Festivals.update(dt)
 		Wildlife.update(dt)
 		Game.update_animals(dt)
 		inf.update(dt)
@@ -1887,7 +1888,15 @@ func interact_object(o: Dictionary) -> void:
 			else:
 				Game.ui.say("", Game.shop_closed_text(o.shop) if Game.shop_owner_present(o.shop) else "Nobody is behind the counter. " + Game.shop_closed_text(o.shop))
 		"notice_board":
-			Game.ui.open("notices")
+			if str(o.get("text", "")) != "": Game.ui.say("", o.text)      # a posted notice (town dressing)
+			else: Game.ui.open("notices")
+		"race_pot":
+			Festivals.use_pot(o)
+		"fest_table":
+			if o.get("lantern_dock", false): Festivals.use_dock()
+			else: Game.ui.say("", "A festival table, sticky with cider.")
+		"fest_sign":
+			Game.ui.say("", str(o.get("text", "")))
 		"town_ledger":
 			Game.ui.open("restoration")
 		"museum_desk":

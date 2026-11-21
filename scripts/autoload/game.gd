@@ -839,6 +839,7 @@ func build_persistent_maps() -> void:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
 		if m.layout != "": state.maps_dyn[id].layout = m.layout
 	sync_gates()
+	Festivals.setup(maps)
 	# older saves: clear anything sitting where a newer building now stands
 	for id in ["homestead", "town"] + Districts.DISTRICTS.keys():
 		var mm: GameMap = maps[id]
@@ -2626,6 +2627,9 @@ func npc_schedule(id: String) -> Array:
 	return S.default
 
 func npc_entry_now(id: String) -> Array:
+	var fe := Festivals.npc_entry(id)      # on a festival day everyone is at the square (real tiles already)
+	if not fe.is_empty():
+		return fe
 	var sch := npc_schedule(id)
 	var e: Array = sch[0]
 	for s in sch:
@@ -3725,13 +3729,15 @@ func end_day(reason: String) -> void:
 	state.shipping = []
 	# 7. daily activities
 	spawn_daily_content(false)
+	Festivals.setup(maps)
 	# 8. relationships and events
 	if shipped:
 		quest_event("ship", {"n": shipped})
 	check_quest_unlocks()
 	for f in Data.festivals:
 		if f.season == new_season and f.day == day_of_season():
-			rep.lines.append("Today on the calendar: %s." % f.name)
+			var fd: Dictionary = Festivals.FEST.get(f.name, Festivals.PLAIN)
+			rep.lines.append("Today: the %s, on the town square from %s to %s." % [f.name, fmt_time(int(fd.open)), fmt_time(int(fd.close))])
 	for n in Data.npcs:
 		var b: Dictionary = Data.npcs[n].birthday
 		if b.season == new_season and b.day == day_of_season():

@@ -906,6 +906,7 @@ func draw_overlay(ci: CanvasItem) -> void:
 	for en in Game.enemies:
 		if en.state == "telegraph":
 			_text(ci, "!", en.pos + Vector2(-1, -35), Color("#ff4040"), 10)
+	if Game.map.id == "town": Festivals.draw(ci)
 	for fl in Game.floaters:
 		_text(ci, fl.text, fl.pos - Vector2(6, 0), fl.color, 8)
 	if Game.charge != null:

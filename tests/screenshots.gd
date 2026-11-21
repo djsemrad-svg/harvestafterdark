@@ -860,6 +860,36 @@ func _ready() -> void:
 				await shot("52_" + str(o.type))
 		get_tree().quit()
 		return
+	if only == "festival":
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.weather = "sun"
+		Game.state.day = 10; Game.state.time = 660
+		Festivals.setup(Game.maps)
+		Game.sync_npcs()
+		var c: Vector2i = Festivals.center
+		Game.change_map("town", c.x, c.y + 4, "up", {"silent": true})
+		Game.sync_npcs()
+		await frames(40)
+		await shot("53_seed_fair")
+		Game.state.day = 24; Game.state.time = 1250
+		Festivals.setup(Game.maps)
+		Townsfolk.map_id = ""
+		Game.sync_npcs()
+		c = Festivals.center
+		Game.change_map("town", c.x, c.y + 4, "up", {"silent": true})
+		Game.sync_npcs()
+		await frames(30)
+		await shot("53_lantern_square")
+		var bank := Festivals._bank(Game.map, c.x)
+		Game.player.pos = Vector2(bank.x * 16 + 8, bank.y * 16 - 40)
+		main.world.view.snap_camera()
+		for i in 600:
+			Festivals.update(1.0 / 30.0)
+		await frames(10)
+		await shot("53_lanterns")
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:

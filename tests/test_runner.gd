@@ -1317,6 +1317,7 @@ func run_all() -> void:
 	run_shop_rooms()
 	run_walkability()
 	run_town_life()
+	run_festivals()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3968,3 +3969,59 @@ func run_town_life() -> void:
 		and int(roles.get("drill", 0)) >= 2 and int(roles.get("instructor", 0)) == 1 and patrols
 	check("Town life: watch fires, notices, a ration depot with a queue, gardens being tended, a drill yard and armed patrols",
 		ok, "map=" + G.map.id + " objects=%s notices=%d roles=%s patrols=%s" % [{"watch_fire": n.get("watch_fire"), "ration_stall": n.get("ration_stall"), "garden_bed": n.get("garden_bed"), "range_target": n.get("range_target"), "van_wreck": n.get("van_wreck")}, notices, roles, patrols])
+
+func run_festivals() -> void:
+	var G = Game
+	start("adventure", 2)
+	# Seed and Sprout Fair (spring 10)
+	G.state.day = 10; G.state.time = 660
+	Festivals.setup(G.maps)
+	G.sync_npcs()
+	at("town", 20, 20)
+	var t: GameMap = G.maps.town
+	var pots := []
+	var stall := false
+	for kk in t.objects:
+		var o: Dictionary = t.objects[kk]
+		if o.type == "race_pot": pots.append(o)
+		if o.get("merchant", false): stall = true
+	var at_square := 0
+	for id in G.npcs:
+		if G.npcs[id].map == "town" and Festivals.spots.has(id): at_square += 1
+	Townsfolk.map_id = ""
+	Townsfolk.refresh(t)
+	var merchant := false
+	var crowd := 0
+	for f in Townsfolk.folk:
+		if f.role == "merchant": merchant = true
+		if f.role == "crowd": crowd += 1
+	var stock: int = Data.shops.festival.stock.size() if Data.shops.has("festival") else 0
+	# the planting race: fill all 12 pots quickly for first prize
+	var gold0 := int(G.state.money)
+	for o in pots: Festivals.use_pot(o)
+	var won: bool = int(G.state.money) > gold0 and G.state.flags.get("fest_won_%d_seed_fair" % G.year(), false)
+	var gold1 := int(G.state.money)
+	for o in pots: Festivals.use_pot(o)
+	var once: bool = int(G.state.money) == gold1
+	# Lantern Creek Gathering (spring 24, after dark)
+	G.state.day = 24; G.state.time = 1250
+	Festivals.setup(G.maps)
+	var pots_gone := true
+	for kk in t.objects:
+		if t.objects[kk].type == "race_pot": pots_gone = false
+	var dock := false
+	for kk in t.objects:
+		if t.objects[kk].get("lantern_dock", false): dock = true
+	G.add_item("wish_lantern", 2)
+	var pts0 := int(G.state.npcs.ruth.points)
+	Festivals.use_dock()
+	var lantern: bool = G.count_item("wish_lantern") == 1 and Festivals.lanterns.size() == 1 and int(G.state.npcs.ruth.points) > pts0
+	# an ordinary day: everything is cleared away
+	G.state.day = 25; G.state.time = 660
+	Festivals.setup(G.maps)
+	var cleared := true
+	for kk in t.objects:
+		if t.objects[kk].get("fest", false): cleared = false
+	check("Festivals: the square is set up, neighbours and a crowd come, a merchant sells rare things, the planting race pays once, wish lanterns go up, and it's all cleared next day",
+		pots.size() == 12 and stall and at_square >= 4 and merchant and crowd >= 6 and stock >= 5 and won and once and pots_gone and dock and lantern and cleared,
+		"pots=%d stall=%s square=%d merchant=%s crowd=%d stock=%d won=%s once=%s dock=%s lantern=%s cleared=%s" % [pots.size(), stall, at_square, merchant, crowd, stock, won, once, dock, lantern, cleared])

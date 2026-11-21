@@ -1078,6 +1078,7 @@ func _init() -> void:
 	Woodland.register(self)
 	DeepMine.register(self)
 	Restoration.register(self)
+	Festivals.register(self)
 
 
 func item(id: String) -> Dictionary:

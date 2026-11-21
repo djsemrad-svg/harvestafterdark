@@ -2419,3 +2419,6 @@ if os.path.isfile(VEH + "Car_Right_1.png"):
     for v, (n, sd) in enumerate([("Camper_Right_1", 21), ("Camper_Left_1", 23), ("Ambulance_Left_1", 25), ("Camper_Right_4", 27)]):
         save(weathered(veh(n), sd, fade=0.35), "objects/van_wreck_%d.png" % v)
     print("weathered vehicles: 8")
+
+# ---------------------------------------------------------------- festival set dressing (Nov 21)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "festival_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})

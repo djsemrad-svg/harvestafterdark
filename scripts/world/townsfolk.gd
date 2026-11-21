@@ -38,6 +38,8 @@ const LINES := {
 		"Cole says we'll be ready by winter. Cole says a lot of things.", "Sorry, can't talk, he's watching."],
 	"instructor": ["Elbows in! You're holding a rifle, not a baby.", "Again. And this time, hit the target.",
 		"Every one of them stands a night on the wall by summer.", "Want to join? Afternoons, here. Bring boots."],
+	"crowd": ["Best day of the season, this. Don't let anyone tell you otherwise.", "Have you tried the stew? Ruth's outdone herself.",
+		"Feels almost like before, doesn't it? Almost.", "My kids have been counting down to this for a week."],
 	"browse": ["Just looking. Well, looking and counting what I can afford.", "They had flour last week. I live in hope.",
 		"Don't mind me, I'm waiting my turn.", "Good to have somewhere warm to stand for a minute."],
 	"walk": ["Busy day. Busy every day, now.", "Morning. Or afternoon? I've stopped keeping track.",
@@ -64,7 +66,11 @@ static func refresh(m: GameMap) -> void:
 	map_id = m.id
 	_day = int(Game.state.day)
 	folk = []
-	var plan: Dictionary = PLACES.get(m.id, {})
+	var plan: Dictionary = PLACES.get(m.id, {}).duplicate()
+	var fest := Festivals.today()
+	if m.id == "town" and not fest.is_empty():
+		plan["crowd"] = 10
+		plan["merchant"] = 1
 	if plan.is_empty():
 		return
 	var r := RandomNumberGenerator.new()
@@ -150,6 +156,23 @@ static func refresh(m: GameMap) -> void:
 						folk.append(d)
 					var ins := Vector2i(tx - 1, ty + 5)
 					if not m.is_solid(ins.x, ins.y): folk.append(_make(r, "instructor", ins, "right"))
+				"crowd":
+					# festival-goers round the fountain (Festivals.center), out for the festival's hours
+					var spot := _free_near(m, Festivals.center.x + r.randi_range(-8, 8), Festivals.center.y + r.randi_range(-4, 6), r, used, ["pave", "grass"])
+					if spot.x < 0: continue
+					var cf := _make(r, "crowd", spot, ["up", "left", "right", "down"][r.randi() % 4])
+					cf.hours = [int(fest.open), int(fest.close)]
+					folk.append(cf)
+				"merchant":
+					for kk in m.objects:
+						var so: Dictionary = m.objects[kk]
+						if so.get("merchant", false):
+							var mc := _make(r, "merchant", Vector2i(int(so.x) + 1, int(so.y) - 1), "down")
+							mc.name = str(fest.keeper).capitalize()
+							mc.hours = [int(fest.open), int(fest.close)]
+							if Data.shops.has("festival"): Data.shops.festival.look = mc.look
+							folk.append(mc)
+							break
 				"browse":
 					var spot := Vector2i(-1, -1)
 					for tries in 60:
@@ -211,6 +234,7 @@ static func _random_spot(m: GameMap, r: RandomNumberGenerator, used: Dictionary,
 ## Is this person out right now?
 static func present(f: Dictionary) -> bool:
 	var tm := int(Game.state.time)
+	if f.has("hours"): return tm >= int(f.hours[0]) and tm < int(f.hours[1])
 	return f.role == "guard" or (tm >= DAY[0] and tm < DAY[1])
 
 static func update(dt: float) -> void:
@@ -225,7 +249,7 @@ static func update(dt: float) -> void:
 		elif float(f.t) <= 0:
 			f.t = 3.0 + float(f.seed % 5)
 			match f.role:
-				"chat", "camp":
+				"chat", "camp", "crowd":
 					Game.emote(f, EMOTES[(int(f.seed) + int(Game.state.time)) % EMOTES.size()], 1.6)
 				"guard":
 					if f.has("post"):
@@ -304,6 +328,9 @@ static func in_front(pos: Vector2, dirv: Vector2i) -> Variant:
 	return null
 
 static func talk(f: Dictionary) -> void:
+	if f.role == "merchant" and Data.shops.has("festival"):
+		Game.ui.open("shop", {"shop": "festival"})
+		return
 	var lines: Array = LINES.get(f.role, LINES.walk)
 	f.dir = {"up": "down", "down": "up", "left": "right", "right": "left"}[Game.player.dir]
 	f.t = 4.0

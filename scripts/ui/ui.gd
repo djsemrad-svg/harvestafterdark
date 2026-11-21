@@ -1734,11 +1734,11 @@ func _shop_box(shop_id: String) -> Control:
 	h.add_child(sell)
 	return h
 
-func _shop_head(owner: String, title: String, sub: String) -> HBoxContainer:
+func _shop_head(owner: Variant, title: String, sub: String) -> HBoxContainer:
 	var h := K.hbox(6)
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel", K.tsb("portrait", 5, 2) if K.textured else K.sb(Color("#8fbf70"), K.WOOD_DARK, 2, 2, K.OUTLINE, 1, 1))
-	var pi := K.icon(Art.get_portrait(Data.npcs[owner].look), 24 if MiChars.pg_available() else 26)
+	var pi := K.icon(Art.get_portrait(owner if owner is Dictionary else Data.npcs[owner].look), 24 if MiChars.pg_available() else 26)
 	pi.custom_minimum_size = Vector2(28, 25)
 	frame.add_child(pi)
 	h.add_child(frame)
@@ -1756,7 +1756,10 @@ func _ov_shop() -> Control:
 	var sh: Dictionary = Data.shops[overlay.shop]
 	var pw := _window("", 410)
 	var v: VBoxContainer = pw[1]
-	v.add_child(_shop_head(sh.owner, sh.name, "%s · Open %s to %s · Closed %s" % [Data.npcs[sh.owner].name, Game.fmt_time(sh.open), Game.fmt_time(sh.close), ", ".join(sh.closed_days)]))
+	if sh.has("keeper"):        # a visiting merchant (festivals): their own face and name, open today only
+		v.add_child(_shop_head(sh.look if not sh.look.is_empty() else Data.npcs[sh.owner].look, sh.name, "%s · Here today until %s" % [sh.keeper, Game.fmt_time(sh.close)]))
+	else:
+		v.add_child(_shop_head(sh.owner, sh.name, "%s · Open %s to %s · Closed %s" % [Data.npcs[sh.owner].name, Game.fmt_time(sh.open), Game.fmt_time(sh.close), ", ".join(sh.closed_days)]))
 	v.add_child(_shop_box(overlay.shop))
 	if overlay.get("err", "") != "": v.add_child(K.label(overlay.err, 7, K.DANGER))
 	v.add_child(_close_btn("Leave"))
