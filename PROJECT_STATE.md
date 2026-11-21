@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 295 / 295 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 304 / 304 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -502,12 +502,48 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   scrapyard). Old saves convert through `Catalog.RENAMES`. The six geode rows were removed from `design/items.csv`.
 - Known random tests: Precinct 9 locker, fish journal size, barn cat mice, Residential gate, street props count.
 
+### Spring Year 1 and Modern Farm (Nov 21, roadmap items 13-18)
+- Farmhouse (item 13): `MapBuilder.house(level)` draws the inside at four levels (`HOUSE_SIZE`, `HOUSE_DOOR`):
+  0 the run-down start, 1 cleaned up, 2 bigger with a kitchen and bedroom nook, 3 a spare room and a cellar
+  (`MapBuilder.cellar`, two large chests). The bed stays top left so you wake at (2, 4). Hal sells the upgrades at
+  the general store (`Balance.services.house_upgrades`: 3000 gold + 80 wood + 10 cloth; 10000 + hardwood, glass, iron;
+  25000 + hardwood, brick, iron); the work is done overnight (`Game.rebuild_house`). `Game._fit_house` moves placed
+  things to the nearest free spot and carries stored items into matching built-ins. Furniture from Modern Interiors
+  in `tools/house_furniture.py`. Screenshot mode `house`.
+- Guided first week (item 14, `scripts/world/first_week.gd`): days 1 to 7 each show a short goal list under the
+  clock (meet people, plant, water, gather wood and stone, build fences, get a weapon, forage, harvest, ship, the
+  mine), a reward paid once each day the goals are done, and a tip. A test bot plays four days and has enough wood,
+  stone, fences and a weapon, so no costs changed. Screenshot mode `guide`.
+- Raid damage and repairs (item 15, `scripts/world/repairs.gd`): raids wear down turrets and powered machines
+  (about 12% are hit). Past half wear they stop (no power, no shots) and smoke until fixed with the new Toolbox
+  (crafted at the Workbench) and scrap, nails and copper wire per 25 wear. Screenshot mode `repairs`.
+- Modern Farm pack (item 16, `tools/modern_farm.py`): all 46 crops use LimeZu growth stages (16 their own, the rest
+  recoloured from the closest pack crop, leafy greens tinted); pack crop icons and seed bags (bags for other crops
+  recoloured). Fruit trees: a young tree, then a grown tree with 0 to 3 rounds of fruit, spring blossom, autumn
+  leaves, winter snow (`objects/fruit_tree_<fruit>_<young|0-3>_<season>.png`, picked in `Art._draw_generic`). Animals:
+  4-direction walk strips for chickens, rabbits, ducks, cows, goats, sheep, pigs, the guard dog and barn cat, and
+  their young (`animals/<type>_baby_<n>.png`, used by `Art.get_animal`); quail stays a recolour. Props: scarecrow,
+  tin scarecrow, troughs, hay hopper, pressure sprinkler. Not done: the coop, henhouse and barn pictures (they need
+  new building footprints and an old-save fix-up) and the tool animations (item 32).
+- Shop interiors (item 17, `tools/shop_furniture.py`, `MapBuilder.store/ranch/forge`, `ROOMS`): stocked shelves,
+  drinks fridge and checkout; hay, feed sacks, eggs and milk cans; hospital beds, medical cart, doctor's desk,
+  cabinets and waiting chairs; work tables and lumber; punching bags, weights, a shooting range. Nothing stands in
+  front of a counter; Jo now stands behind hers. Townsfolk browse each shop by day (`Townsfolk` role "browse",
+  kept below `SHOP_FLOOR_Y`). Rooms have layout ids, so old saves get the new rooms. Screenshot mode `shops`.
+  Homes inside town still aren't enterable, so they have no interiors yet.
+- Town walkability (item 18): `TownDress._walks` lays a two-tile paved walk from every door to the nearest road or
+  square before the yards; fewer shrubs and none hugging buildings; town layout `town_v2` so old saves get it.
+  Neighbours and townsfolk are solid to the player (`World.person_blocked`; moving away is always allowed).
+  Walking straight into the edge of a wall or post slides round it (`World._slide`, up to 7 px). Neighbours re-plan
+  when something is built on their path and wait about a second for the player before walking round
+  (`MapBuilder.find_path` takes tiles to avoid). Standing neighbours don't step aside yet.
+
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
 - Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
 - Mouse pointers: done Nov 17. Modern User Interface pack (LimeZu, warm Style 1, in `<packs>/modernuserinterface-win/`): arrow, pointing hand over buttons and sliders, grabbing hand while dragging (`UI._setup_pointers`, scaled with the window).
 - Aurium ore, bar and rod: rainbow flattened them; offered to rebuild from the item pack ore and ingot first.
-- Animals: revisit later (Daniel); planned with the Modern Farm pack.
+- Animals: done Nov 21 with the Modern Farm pack.
 
 ### Packs looked at and not used (Nov 16)
 
@@ -581,8 +617,8 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
 7. Ideas agreed as worth doing next: survivors who move into town (rescued in the districts or found by ham radio), a guided first week for new players, and a difficulty pass after playtesting.
 8. Later phases: factions, hostile settlements.
 9. Daniel's list (Nov 17, not started yet):
-   - Livelier interiors: shop rooms get clutter, stock on shelves and background shoppers browsing (reuse Townsfolk inside shop maps); homes and the tavern get small details.
-   - People block movement: neighbours, townsfolk and guards are solid. If one stands in your way for about 1.5 s of pushing into them, they step aside or let you pass, unless an event marks them as blocking on purpose (`blocking: true`).
+   - DONE Nov 21 (item 17, shops only). Livelier interiors: shop rooms get clutter, stock on shelves and background shoppers browsing (reuse Townsfolk inside shop maps); homes and the tavern get small details.
+   - DONE Nov 21 (item 18, without stepping aside). People block movement: neighbours, townsfolk and guards are solid. If one stands in your way for about 1.5 s of pushing into them, they step aside or let you pass, unless an event marks them as blocking on purpose (`blocking: true`).
    - Mine progression less like Stardew: every floor has a way down from the start (stairs, sometimes guarded or hidden behind rubble), so you choose to fight or sneak past. Optional: some floors lock the stairs until the floor's infected are cleared.
    - Mine loot: small loot boxes scattered on floors (gold, healing, common parts, food, common gems; 1-5% for something rarer); a big chest every 10 floors (more gold, rare and epic weapons and gear, rare parts and dishes, 10% legendary); a legendary chest on the last floor (1 legendary weapon, 1 legendary armour piece, a lot of gold). The mine is 20 floors now, so the last floor is 20 until more are added.
    - Mine elevator on floor 1 and every 10th floor (10, 20, and later 30, 40...): visiting a floor unlocks it; the elevator rides between unlocked floors with a rumble sound and a shaking screen.
@@ -595,14 +631,14 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
    - Aim marker (agreed Nov 17): guns aim at the mouse pointer (or the way you face) but there's no crosshair. Add a small crosshair while a ranged weapon is held.
    - Mine depth bands (agreed Nov 17; build floors 21-100 first, together with the stairs, loot boxes and elevator): 1-20 run-down mine, 20-40 ancient cave, 40-60 green living cave, 60-80 crumbling dungeon, 80-100 pristine dungeon; tougher and different-looking infected per band, better ores, gems, forage and drops the deeper you go. Art: Pixel Crawler rock, Farm Game Dungeon Cellar (dungeon floors and walls), Sunnyside forest tiles, recolours.
    - Less-modern retheme (on hold Nov 17: Daniel will plan it separately): older guns only (bolt action, revolver, trench shotgun, lever action), keep bows and crossbows, add magic staffs (fire, lightning, ice, earth; Kyrise has staff icons), broken-down carts instead of car wrecks. Big job: weapon sheet, ammo, turrets, raiders, loot tags and the very modern districts, people and buildings all tie into it.
-   - Corner sliding (agreed Nov 17, idea from Daniel's RPG Maker plugins): when the player clips the corner of a wall or object, nudge them sideways round it instead of stopping dead.
-   - Re-planning paths (agreed Nov 17, same source): neighbours and townsfolk walking somewhere work out a new route when someone or something blocks the way. Pairs with "people block movement".
+   - Corner sliding (DONE Nov 21, item 18; agreed Nov 17, idea from Daniel's RPG Maker plugins): when the player clips the corner of a wall or object, nudge them sideways round it instead of stopping dead.
+   - Re-planning paths (DONE Nov 21, item 18; agreed Nov 17, same source): neighbours and townsfolk walking somewhere work out a new route when someone or something blocks the way. Pairs with "people block movement".
    - The plugins themselves (QMovement, QPathfind, QPlus, ColliderMap, CollisionMap) are for RPG Maker MV and can't run in Godot; not used.
    - Modern User Interface pack (agreed Nov 17): DONE Nov 21 (pointers, windows and controls, icon buttons, portraits; see above). Original plan:
      1. Conversation portraits from its Portrait Generator (hairstyles, skins, eyes, accessories), built to match each neighbour's and townsperson's look. About 1 hour.
      2. Windows, buttons, bars, switches and sliders from the warm style, replacing the Kenney pieces through `UIKit.tsb`; check every menu in screenshots. About 1 to 1.5 hours.
      3. Icon buttons in menus (close, settings, sort, arrows). About 30 minutes.
-   - Modern Farm pack (LimeZu, uploaded Nov 17; unzipped 16x16 parts in `<packs>/Modern_Farm/`). Same artist as Modern Interiors/Exteriors, so it fits better than the Sunnyside and Farm RPG art it would replace. Plan:
+   - Modern Farm pack (DONE Nov 21 except buildings and tool animations, see above; LimeZu, uploaded Nov 17; unzipped 16x16 parts in `<packs>/Modern_Farm/`). Same artist as Modern Interiors/Exteriors, so it fits better than the Sunnyside and Farm RPG art it would replace. Plan:
      1. Crops: 15 game crops have the pack's own growth stages (cabbage, carrot, cauliflower, coffee_bean, corn, cotton, onion, hot_pepper, pumpkin, radish, tomato, frost_turnip, melon from watermelon, wheat, zucchini), strawbloom from strawberry. The other 30 (potato, beet, garlic, kale, lettuce, eggplant, cucumber, bell_pepper, sunflower and the invented ones) are recoloured from the closest pack shape, as was done with Sunnyside, so all crops match. The pack has 4 stages plus "fruitless" (after a regrow harvest) and "rotten" (use for crops killed by pests or frost); the game uses 5, so stage 3 becomes the grown plant without produce.
      2. Item icons and seed bags: the pack's crop icons and seed bags for those crops, tinted for the rest.
      3. Fruit trees: apple and peach direct; pear, cherry and plum recoloured from apple; walnut from a fruitless tree. Small, unripe, ripe and fruitless stages.
@@ -612,8 +648,8 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      Decisions (Nov 17): use the pack's coop, henhouse and barn pictures and resize those buildings (one-time fix for placed buildings in old saves); dull the pack slightly like the others; recolour the closest pack art for crops, fruit trees and quail without their own.
      Gaps and risks: no pack art for 30 crops, pear, cherry, plum, walnut or quail (recolours instead). Coop, henhouse and small barn pictures are a different shape from the game's coop (6x4), barn (8x5) and hutch (4x3) footprints, so either keep the current buildings or change the footprints, and older saves with placed buildings need a fix-up. The pack is brighter and cleaner than the world, so apply the usual slight desaturation. Banana, lemon, orange, grapes, pineapple and prickly pear have art but aren't in the game (could be new crops later). Estimate: crops, icons and fruit trees about 1.5 hours; animals about 1 hour; props about 45 minutes.
    - Daniel's list, Nov 17 (13:31):
-     - Real interiors: every building furnished for what it is (clinic: exam beds, medical carts, monitors, cabinets, plants, desk and computer; store: shelves of stock, counter, register; homes: sofas, beds, TVs, rugs, plants). Nothing placed in front of a shopkeeper. Pairs with "livelier interiors" (shoppers). About 2 to 3 hours.
-     - Town walkability: thin out bushes and props that block the way between buildings; sidewalks and paths from every door to the roads, front walks for every home. About 1.5 to 2 hours.
+     - Real interiors (DONE Nov 21 for the six shops): every building furnished for what it is (clinic: exam beds, medical carts, monitors, cabinets, plants, desk and computer; store: shelves of stock, counter, register; homes: sofas, beds, TVs, rugs, plants). Nothing placed in front of a shopkeeper. Pairs with "livelier interiors" (shoppers). About 2 to 3 hours.
+     - Town walkability (DONE Nov 21): thin out bushes and props that block the way between buildings; sidewalks and paths from every door to the roads, front walks for every home. About 1.5 to 2 hours.
      - A town surviving together: make it obvious at first glance (lookout towers manned, work crews reinforcing walls, a supply and ration depot with a queue, communal gardens, watch fires, warning and rationing notices, guards on patrol, a militia drill yard). About 2 to 3 hours.
      - Refugee camp in town: tents and tarps, an animated bonfire, tired and dirty-looking refugees (worn, faded clothes, grime), peace officers keeping order, plus story, quests and conflicts between townsfolk and refugees. About 4 to 6 hours.
      - Vehicle wrecks: replace the one holed black sedan with a mix of Modern Exteriors cars, pickups and vans, weathered rather than shot through; remove them if that doesn't look better. About 1 hour.
