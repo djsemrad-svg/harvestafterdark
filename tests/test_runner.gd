@@ -1332,6 +1332,11 @@ func run_arsenal() -> void:
 		var used := im.get_used_rect()
 		if used.size.x * used.size.y < 12: bad.append(id)
 	check("Arsenal: every weapon, gear, ammo and material item has an icon (%d items)" % ids.size(), bad.is_empty() and Data.weapons.size() >= 130 and Data.gear.size() >= 100, str(bad.slice(0, 8)))
+	var no_held := Data.weapons.keys().filter(func(w): return Data.weapons[w].type != "Fist" and Art.held_axis(w).is_empty())
+	var bat: Dictionary = Art.held_axis("baseball_bat")
+	var sling: Dictionary = Art.held_axis("slingshot")
+	check("Arsenal: every weapon has a held picture (Weapons v14) with its grip on the left", no_held.is_empty() and float(bat.grip.x) < 6.0 and absf(float(sling.angle)) < 0.8,
+		"missing=%s bat=%s" % [str(no_held.slice(0, 8)), str(bat.get("grip"))])
 
 	var bad_e := []
 	var rng := RandomNumberGenerator.new()

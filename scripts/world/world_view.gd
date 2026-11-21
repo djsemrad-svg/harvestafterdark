@@ -411,6 +411,9 @@ func _swing_pose(keys: Array, pr: float) -> Array:
 	elif float(b[0]) <= 0.65: k = k * k
 	return [(a[1] as Vector2).lerp(b[1], k), lerpf(float(a[2]), float(b[2]), k)]
 
+## Curved blades sweep low instead of chopping or thrusting.
+const SWEEPERS := ["scythe", "balanced_scythe", "gleaner", "last_harvest", "sickle"]
+
 func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	if p.swing == null or p.swing.get("shove", false):
 		return
@@ -423,7 +426,7 @@ func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	var flip: bool = p.dir == "left"
 	var hand: Vector2
 	var ang: float
-	var stab: bool = wt in ["Blade", "Polearm"] and not wid.begins_with("scythe")
+	var stab: bool = wt in ["Blade", "Polearm"] and not SWEEPERS.has(wid)
 	var watering := wid == "watering_can"
 	if stab:
 		# a thrust: drawn back, then straight out where you face
@@ -437,7 +440,7 @@ func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 		hand = {"down": Vector2(4, -8), "up": Vector2(3, -14), "right": Vector2(5, -10), "left": Vector2(-5, -10)}[p.dir]
 		ang = tip
 	else:
-		var keys: Array = (SWEEP_KEYS if wid.begins_with("scythe") else SWING_KEYS)[p.dir]
+		var keys: Array = (SWEEP_KEYS if SWEEPERS.has(wid) else SWING_KEYS)[p.dir]
 		var pose := _swing_pose(keys, pr)
 		hand = pose[0]; ang = pose[1]
 	# facing away, the tool is in front of you and so behind you on screen; facing you, it's raised behind
@@ -448,16 +451,21 @@ func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	var icon: Texture2D = Art.get_icon(wid, int(sw.get("tier", 0)))
 	var sc := Vector2(-1, 1) if flip else Vector2.ONE
 	var angd := -ang if flip else ang
+	# weapons swing their held picture, turned so it lies where the diagonal icon would and with the grip in the hand
+	var ha: Dictionary = Art.held_axis(wid) if sw.has("weapon") else {}
+	var tex: Texture2D = ha.get("tex", icon)
+	var off: Vector2 = -(ha.grip as Vector2) if not ha.is_empty() else Vector2(-2, -14)
+	var turn: Transform2D = Transform2D(-PI / 4 - float(ha.angle), Vector2.ZERO) if not ha.is_empty() else Transform2D.IDENTITY
 	# a faint smear behind the head of the tool through the strike
 	if not stab and not watering and pr > 0.3 and pr < 0.7:
-		var keys2: Array = (SWEEP_KEYS if wid.begins_with("scythe") else SWING_KEYS)[p.dir]
+		var keys2: Array = (SWEEP_KEYS if SWEEPERS.has(wid) else SWING_KEYS)[p.dir]
 		for gi in [2, 1]:
 			var gp := _swing_pose(keys2, maxf(0.0, pr - 0.06 * gi))
 			var ga: float = -float(gp[1]) if flip else float(gp[1])
-			draw_set_transform((p.pos + (gp[0] as Vector2)).round(), ga, sc)
-			draw_texture(icon, Vector2(-2, -14), Color(1, 1, 1, 0.12 * (3 - gi)))
-	draw_set_transform((p.pos + hand).round(), angd, sc)
-	draw_texture(icon, Vector2(-2, -14))
+			draw_set_transform_matrix(Transform2D(ga, sc, 0.0, (p.pos + (gp[0] as Vector2)).round()) * turn)
+			draw_texture(tex, off, Color(1, 1, 1, 0.12 * (3 - gi)))
+	draw_set_transform_matrix(Transform2D(angd, sc, 0.0, (p.pos + hand).round()) * turn)
+	draw_texture(tex, off)
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	# the hand over the grip
 	var skin := Color(str(Game.state.character.look.get("skin", "#e8b48f")))

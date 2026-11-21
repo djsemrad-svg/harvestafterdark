@@ -2212,3 +2212,60 @@ if os.path.isdir(CF):
         if fid not in new or fid in FRESH:
             save(Image.open(os.path.join(CF, "combined_fish", "icons_16", fn)).convert("RGBA"), "icons/" + fn); n += 1
     print("coastal fishing: %d fish icons" % n)
+
+# ---------------------------------------------------------------- Weapons v14 (Daniel's pack, Nov 21)
+# A 16x16 icon and a 24x16 held picture (pointing right, grip on the left) for all 131 weapons, with
+# Claude's touch-ups (tools/weapon_touchups.py). Replaces the icons and held pictures made above.
+WV = os.path.join(SRC, "Weapons_v14")
+if os.path.isdir(WV):
+    import json, re
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import weapon_touchups as WT
+    gear = open(os.path.join(os.path.dirname(OUT), "scripts", "autoload", "gear_db.gd")).read()
+    code_to_id = {c: i for i, c in re.findall(r'"id": "([a-z0-9_]+)", "code": "([A-Z]+-\d+)"', gear)}
+    import pixel_icons as PI
+    import numpy as np
+    # handguns and SMGs are drawn as big as rifles in the pack; shrink them so they sit in one hand
+    SMALL_GUNS = {"Pistol": 12, "Revolver": 13, "SMG": 16}
+
+    def small_gun(im, width):
+        b = im.getbbox()
+        core = im.crop(b)
+        oc = PI.outline_colour(core)
+        a = np.array(core).astype(int)
+        isout = (a[:, :, 3] > 0) & (np.abs(a[:, :, :3] - np.array(oc)).sum(-1) <= 30)
+        a[isout, 3] = 0
+        core = Image.fromarray(a.astype(np.uint8))
+        core = core.crop(core.getbbox())
+        k = (width - 2) / core.width
+        sm = PI.add_outline(_pad1(PI.shrink(core, width - 2, max(3, round(core.height * k)), cover=0.25, reoutline=False)), oc)
+        out = Image.new("RGBA", (24, 16), (0, 0, 0, 0))
+        out.alpha_composite(sm, (b[0], max(0, 12 - sm.height)))
+        return out
+
+    def _pad1(im):
+        r = Image.new("RGBA", (im.width + 2, im.height + 2), (0, 0, 0, 0))
+        r.alpha_composite(im, (1, 1))
+        return r
+
+    n = 0
+    for w in json.load(open(os.path.join(WV, "weapon_manifest.json"))):
+        wid = code_to_id.get(w["id"])
+        if wid is None:
+            continue
+        icon = Image.open(os.path.join(WV, w["icon"])).convert("RGBA")
+        held = Image.open(os.path.join(WV, w["held_right"])).convert("RGBA")
+        if wid in WT.SCYTHE_PAL:
+            icon, held = WT.scythe_icon(wid), WT.scythe_held(wid)
+        elif wid in WT.CROWBAR_PAL:
+            held = WT.crowbar_held(wid)
+        elif wid in WT.RECOLOUR_BOWS:
+            held = WT.bow_held(held)
+        elif wid in WT.SLING_PAL:
+            held = WT.sling_held(wid)
+        if w["type"] in SMALL_GUNS:
+            held = small_gun(held, SMALL_GUNS[w["type"]])
+        save(icon, "icons/%s.png" % wid)
+        save(held, "held/%s.png" % wid)
+        n += 1
+    print("weapons v14:", n)

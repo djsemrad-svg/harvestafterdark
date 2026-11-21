@@ -135,6 +135,26 @@ func _ready() -> void:
 		print("DND RESULT slot12=", inv[12], " slot20=", inv[20])
 		get_tree().quit()
 		return
+	if only == "aim":
+		# held pictures of guns, bows, slingshots and the chainsaw in each direction
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		for wid in ["pistol_9mm", "revolver_357", "compact_smg", "assault_rifle", "slingshot", "recurve_bow", "crossbow", "chainsaw"]:
+			Game.state.inventory[0] = null
+			Game.add_item(wid, 1)
+			for i in Game.state.inventory.size():
+				var st = Game.state.inventory[i]
+				if st != null and st.id == wid: Game.state.selected = i
+			for dir in ["down", "up", "left", "right"]:
+				Game.player.dir = dir
+				await frames(3)
+				await shot("aim_%s_%s" % [wid, dir])
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"
@@ -158,7 +178,7 @@ func _ready() -> void:
 		Game.change_map("town", 20, 22, "down", {"silent": true})
 		Game.enemies.clear()
 		Townsfolk.folk = []
-		for tool in ["scythe", "axe", "pickaxe", "watering_can", "kitchen_knife", "baseball_bat"]:
+		for tool in (["kitchen_knife", "crowbar", "balanced_scythe", "katana", "sledgehammer"] if OS.get_environment("SWING_WEAPONS") != "" else ["scythe", "axe", "pickaxe", "watering_can", "kitchen_knife", "baseball_bat"]):
 			for dir in ["down", "up", "left", "right"]:
 				for pr in [0.0, 0.2, 0.35, 0.5, 0.6, 0.8]:
 					Game.player.dir = dir

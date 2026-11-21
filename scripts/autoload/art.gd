@@ -913,6 +913,35 @@ func override(path: String) -> Texture2D:
 func has_override(path: String) -> bool:
 	return override(path) != null
 
+## A weapon's held picture (pointing right, grip on the left) with where the grip is and the angle from the
+## grip to the tip, so a swing can line the grip up with the hand and turn the weapon to the swing's angle.
+## Returns {} when the weapon has no held picture.
+var _held_axis := {}
+func held_axis(wid: String) -> Dictionary:
+	if _held_axis.has(wid):
+		return _held_axis[wid]
+	var r := {}
+	var tex := override("held/%s.png" % wid)
+	if tex != null:
+		var im := tex.get_image()
+		if im.is_compressed(): im.decompress()
+		var used := im.get_used_rect()
+		var grip := Vector2.ZERO
+		var n := 0
+		for y in range(used.position.y, used.end.y):
+			for x in range(used.position.x, mini(used.position.x + 4, used.end.x)):
+				if im.get_pixel(x, y).a > 0.5:
+					grip += Vector2(x, y); n += 1
+		grip = (grip / maxf(n, 1)).round() + Vector2(1, 0)
+		var tip := grip
+		for y in range(used.position.y, used.end.y):
+			for x in range(used.position.x, used.end.x):
+				if im.get_pixel(x, y).a > 0.5 and Vector2(x, y).distance_squared_to(grip) > tip.distance_squared_to(grip):
+					tip = Vector2(x, y)
+		r = {"tex": tex, "grip": grip, "angle": (tip - grip).angle()}
+	_held_axis[wid] = r
+	return r
+
 ## Ground tiles with hand-made art: tiles/<type>_<season>_<v>.png, tiles/<type>_<v>.png,
 ## tiles/<type>_<season>.png or tiles/<type>.png, first one found wins. Returns null when there is none.
 func tile_override(type: String, season: String, v: int) -> Image:
