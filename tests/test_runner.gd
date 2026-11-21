@@ -1318,6 +1318,7 @@ func run_all() -> void:
 	run_walkability()
 	run_town_life()
 	run_festivals()
+	run_picture_map()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -4025,3 +4026,34 @@ func run_festivals() -> void:
 	check("Festivals: the square is set up, neighbours and a crowd come, a merchant sells rare things, the planting race pays once, wish lanterns go up, and it's all cleared next day",
 		pots.size() == 12 and stall and at_square >= 4 and merchant and crowd >= 6 and stock >= 5 and won and once and pots_gone and dock and lantern and cleared,
 		"pots=%d stall=%s square=%d merchant=%s crowd=%d stock=%d won=%s once=%s dock=%s lantern=%s cleared=%s" % [pots.size(), stall, at_square, merchant, crowd, stock, won, once, dock, lantern, cleared])
+
+func run_picture_map() -> void:
+	# the Map tab draws every region from its real map, shades closed ones, and pins you, the shops and tasks
+	start("adventure", 2)
+	at("town", 30, 20)
+	var img := PictureMap.build(26)
+	var town_r: Dictionary = {}
+	var forest_r: Dictionary = {}
+	for r in Data.regions:
+		if r.id == "town": town_r = r
+		if r.id == "forest": forest_r = r
+	var road := false
+	for y in range(int(town_r.gy) * 26, (int(town_r.gy) + int(town_r.gh)) * 26):
+		for x in range(int(town_r.gx) * 26, (int(town_r.gx) + int(town_r.gw)) * 26):
+			var c := img.get_pixel(x, y)
+			if absf(c.r - c.g) < 0.06 and c.v < 0.5 and c.v > 0.3: road = true
+	var fc := img.get_pixel(int(forest_r.gx) * 26 + 20, int(forest_r.gy) * 26 + 20)
+	var shaded: bool = fc.v < 0.4
+	U.open("journal", {"tab": "map"})
+	var pins := 0
+	var you := false
+	var stack: Array = [U]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		stack.append_array(n.get_children())
+		if n is Panel and str(n.tooltip_text) != "":
+			pins += 1
+			if str(n.tooltip_text).begins_with("You are here"): you = true
+	U.close_all()
+	check("Picture map: regions drawn from the real maps on parchment, closed ones shaded, pins for you and the shops",
+		img.get_width() == 9 * 26 and road and shaded and you and pins >= 6, "road=%s shaded=%s you=%s pins=%d" % [road, shaded, you, pins])

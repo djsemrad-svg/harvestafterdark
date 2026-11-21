@@ -2289,38 +2289,15 @@ func _tab_map() -> Control:
 	var here := "mine" if Game.map.mine else ""
 	for r in Data.regions:
 		if r.has("maps") and r.maps.has(Game.map.id): here = r.id
-	var cell := 26.0
-	var wm := Panel.new()
-	wm.custom_minimum_size = Vector2(9 * cell + 4, 6 * cell + 4)
-	wm.add_theme_stylebox_override("panel", K.tinted("portrait", 5, 0, Color("#6a9a50"), Color("#8fbf70")) if K.textured else K.sb(Color("#6a9a50"), K.WOOD, 2, 3, K.OUTLINE, 1, 0))
-	for r in Data.regions:
-		var unlocked: bool = st.unlocked.get(r.id, false)
-		var name: String = st.property_name if r.id == "homestead" else r.name
-		var rp := PanelContainer.new()
-		var col := Color("#f8e2b0") if unlocked else Color(0.18, 0.14, 0.1, 0.65)
-		if K.textured:
-			rp.add_theme_stylebox_override("panel", K.tsb("badge_bad", 3, 1) if r.id == here else K.tinted("row", 3, 1, Color("#f8e2b0") if unlocked else Color(0.35, 0.3, 0.26, 0.8)))
-			if r.id == here: rp.self_modulate = Color(1, 1, 1, 0.95)
-		else:
-			rp.add_theme_stylebox_override("panel", K.sb(col, Color("#e8402a") if r.id == here else (K.WOOD if unlocked else Color("#8a7a6a")), 2 if r.id == here else 1, 3, Color(0, 0, 0, 0), 0, 1))
-		rp.position = Vector2(2 + r.gx * cell + 1, 2 + r.gy * cell + 1)
-		rp.size = Vector2(r.gw * cell - 2, r.gh * cell - 2)
-		rp.custom_minimum_size = rp.size
-		var l := K.label(name + ("\nYou are here" if r.id == here else ""), 5, K.WOOD_DARK if unlocked else Color("#e8dcc8"), true)
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rp.add_child(l)
-		var why: String = r.get("lock", Districts.UNLOCKS[r.id].locked if Districts.UNLOCKS.has(r.id) else "Locked")
-		rp.tooltip_text = name if unlocked else name + ": " + why
-		rp.mouse_filter = Control.MOUSE_FILTER_PASS
-		wm.add_child(rp)
-	h.add_child(wm)
+	var cell := 26
+	h.add_child(_picture_map(cell, here))
 	var v := K.vbox(2)
 	v.add_child(K.label("Current location", 8, K.WOOD_DARK))
 	v.add_child(K.label(Game.location_name(), 7))
 	v.add_child(K.label("Town services", 8, K.WOOD_DARK))
 	for id in Data.shops:
 		var s: Dictionary = Data.shops[id]
+		if s.has("keeper"): continue        # festival traders are listed under today's festival
 		v.add_child(K.rich("[b]%s[/b]: %s to %s, closed %s. %s" % [s.name, Game.fmt_time(s.open), Game.fmt_time(s.close), ", ".join(s.closed_days), "[color=#3f7a2c]Open now[/color]" if Game.is_shop_open(id) else "[color=#b3392e]Closed now[/color]"], 6))
 	v.add_child(K.label("Lantern Post tavern: boarded up for now.\nCommunity Archive: closed for restoration.", 6, null, true))
 	v.add_child(K.label("Old Mine", 8, K.WOOD_DARK))
@@ -2338,6 +2315,83 @@ func _tab_map() -> Control:
 	v.custom_minimum_size.x = 170
 	h.add_child(v)
 	return h
+
+## The Map tab's picture (PictureMap) in a parchment frame, with region names and pins: where you are,
+## the shops, today's festival and your tasks. Hover a pin or a closed region to read about it.
+func _picture_map(cell: int, here: String) -> Control:
+	var st: Dictionary = Game.state
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel", K.sb(Color("#e8d6a8"), Color("#7a5434"), 3, 2, K.OUTLINE, 1, 0))
+	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(9 * cell, 6 * cell)
+	frame.add_child(box)
+	var tr := TextureRect.new()
+	tr.texture = ImageTexture.create_from_image(PictureMap.build(cell))
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(tr)
+	for r in Data.regions:
+		var unlocked: bool = st.unlocked.get(r.id, false) or r.id == "homestead"
+		var name: String = st.property_name if r.id == "homestead" else r.name
+		var hit := Control.new()           # hover area with the region's name (and why it's closed)
+		hit.position = Vector2(int(r.gx) * cell, int(r.gy) * cell)
+		hit.size = Vector2(int(r.gw) * cell, int(r.gh) * cell)
+		var why: String = r.get("lock", Districts.UNLOCKS[r.id].locked if Districts.UNLOCKS.has(r.id) else "Locked")
+		hit.tooltip_text = name if unlocked else name + ": " + why
+		hit.mouse_filter = Control.MOUSE_FILTER_PASS
+		box.add_child(hit)
+		if int(r.gw) < 2: continue          # too small for a name: hover it instead
+		var l := K.label(name, 5, Color("#3a2414") if unlocked else Color("#e8dcc8"))
+		l.add_theme_color_override("font_outline_color", Color("#e8d6a8") if unlocked else Color("#2a1c12"))
+		l.add_theme_constant_override("outline_size", 3)
+		l.position = Vector2(int(r.gx) * cell + 2, int(r.gy) * cell + 1)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(l)
+	# pins
+	var pin := func(pos: Vector2, col: Color, tip: String, big := false):
+		var p := Panel.new()
+		var sz := 6.0 if big else 4.0
+		p.add_theme_stylebox_override("panel", K.sb(col, Color("#fff8e0") if big else Color("#3a2414"), 1, 3, Color(0, 0, 0, 0), 0, 0))
+		p.position = pos - Vector2(sz, sz) / 2.0
+		p.size = Vector2(sz, sz)
+		p.tooltip_text = tip
+		p.mouse_filter = Control.MOUSE_FILTER_PASS
+		box.add_child(p)
+	var town_r: Dictionary = {}
+	for r in Data.regions:
+		if r.id == "town": town_r = r
+	if Game.maps.has("town") and not town_r.is_empty():
+		for s0 in Game.maps.town.structures:
+			var wp = s0.get("warp")
+			if wp is Dictionary and wp.has("shop") and Data.shops.has(wp.shop):
+				var sh: Dictionary = Data.shops[wp.shop]
+				pin.call(PictureMap.to_picture(town_r, cell, "town", Vector2(int(s0.door_x), int(s0.door_y))), Color("#f0c040"), "%s: %s" % [sh.name, "open now" if Game.is_shop_open(wp.shop) else "closed now"])
+		var fest := Festivals.today()
+		if not fest.is_empty() and Festivals.center.x >= 0:
+			pin.call(PictureMap.to_picture(town_r, cell, "town", Vector2(Festivals.center)), Color("#e070c0"), "Today: %s (%s to %s)" % [fest.name, Game.fmt_time(int(fest.open)), Game.fmt_time(int(fest.close))])
+	var qi := 0
+	for qid in st.quests.active:
+		var d := Game.quest_def(qid)
+		var rid: String = {"mine_floor": "mine", "geode": "mine", "catch": "homestead", "plant": "homestead", "harvest": "homestead", "kill": "residential"}.get(str(d.get("type", "")), "town")
+		for r in Data.regions:
+			if r.id == rid:
+				pin.call(Vector2((int(r.gx) + int(r.gw)) * cell - 5 - qi * 6, (int(r.gy) + int(r.gh)) * cell - 5), Color("#d84030"), "Task: %s" % d.title)
+		qi += 1
+	# you are here
+	for r in Data.regions:
+		if r.id != here: continue
+		var mid := PictureMap.region_map(r)
+		var at := Vector2((int(r.gx) + int(r.gw) / 2.0) * cell, (int(r.gy) + int(r.gh) / 2.0) * cell)
+		if mid != "" and Game.map.id == mid:
+			at = PictureMap.to_picture(r, cell, mid, Game.player.pos / 16.0)
+		pin.call(at, Color("#e8402a"), "You are here: %s" % Game.location_name(), true)
+		var you := K.label("You", 5, Color("#fff8e0"))
+		you.add_theme_color_override("font_outline_color", Color("#7a1a10"))
+		you.add_theme_constant_override("outline_size", 3)
+		you.position = at + Vector2(4, -8)
+		you.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(you)
+	return frame
 
 func _tab_quests() -> Control:
 	var q: Dictionary = Game.state.quests

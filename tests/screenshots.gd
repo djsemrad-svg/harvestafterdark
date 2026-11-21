@@ -890,6 +890,14 @@ func _ready() -> void:
 		await shot("53_lanterns")
 		get_tree().quit()
 		return
+	if only == "maptab":
+		Game.state.day = 10
+		Festivals.setup(Game.maps)
+		Game.unlock_region("residential", true)
+		Game.change_map("town", 60, 40, "down", {"silent": true})
+		main.ui.open("journal", {"tab": "map"}); await frames(6); await shot("54_map_tab")
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:
