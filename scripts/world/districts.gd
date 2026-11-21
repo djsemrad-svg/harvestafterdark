@@ -59,6 +59,7 @@ const PROPS := {
 	"fryer": {"solid": true},
 	"hydrant": {"solid": true},
 	"traffic_cone": {"solid": true},
+	"police_tape": {"solid": false},
 	"stop_sign": {"solid": true},
 	"shopping_cart": {"solid": true},
 	"motorcycle_wreck": {"solid": true},
@@ -537,6 +538,8 @@ static func _dress(m: GameMap, r: RandomNumberGenerator, id: String) -> void:
 				_near(m, c[0], c[1], "traffic_cone", true, 2)
 			_near(m, 14, 26, "shopping_cart", true, 3)
 			_near(m, 50, 26, "motorcycle_wreck", false, 3)
+			for c in [[36, 19], [37, 19], [41, 19], [42, 19]]:
+				_near(m, c[0], c[1], "police_tape", true, 1)         # Precinct 9's lot is still taped off
 		"industrial":
 			for c in [[35, 15], [43, 15], [38, 36], [49, 36]]:
 				_near(m, c[0], c[1], "shipping_container", true, 1)  # the loading area and the mill yard

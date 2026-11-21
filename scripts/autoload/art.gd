@@ -971,7 +971,12 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 		return {}
 	var v: int = int(o.get("v", 0)) % 4
 	var searched: bool = (d.get("container", false) or t in ["supply_crate", "car_wreck"]) and DistrictArt.searched(o)
-	var key := "%s|%s|%d|%s|%d|%d|%s|%s" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1)), o.get("ore", ""), o.get("palette", "")]
+	var state := ""
+	if t == "display_case":
+		state = str(Game.state.has("day") and Restoration.museum().size() > int(o.get("v", 0)) % 6)
+	elif t == "stolen_goods":
+		state = str(Game.state.get("stolen") is Array and not Game.state.stolen.is_empty())
+	var key := "%s|%s|%d|%s|%d|%d|%s|%s|%s" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1)), o.get("ore", ""), o.get("palette", ""), state]
 	if _ovobj.has(key):
 		return _ovobj[key]
 	var names: Array = []
@@ -988,6 +993,8 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 			else: names = ["objects/rock.png" if v % 2 == 0 else "objects/rock2.png", "objects/rock.png"]
 		"ore_rock": names = ["objects/ore_rock_%s.png" % str(o.get("ore", "")), "objects/ore_rock.png"]
 		"geode_rock": names = ["objects/geode_rock.png"]
+		"display_case": names = ["objects/display_case_%d.png" % (int(o.get("v", 0)) % 4 + 1)] if state == "true" else ["objects/display_case.png"]
+		"stolen_goods": names = ["objects/stolen_goods_full.png", "objects/stolen_goods.png"] if state == "true" else ["objects/stolen_goods.png"]
 		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
 	var tex: Texture2D = null
 	if searched:

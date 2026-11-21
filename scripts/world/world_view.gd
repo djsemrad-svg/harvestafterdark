@@ -167,6 +167,9 @@ func _draw() -> void:
 			elif (t == "mwall" or t == "mwall2") and m.in_bounds(x, y + 1) and m.tile_at(x, y + 1).begins_with("mfloor"):
 				var face: Texture2D = Art.override("tiles/%s_face_%d.png" % [t, v % 2])
 				if face != null: draw_texture(face, pos)      # the rock face above a floor
+			if m.mine and m.decor.has(GameMap.k(x, y)):
+				var dt: Texture2D = Art.override("mine/%s.png" % m.decor[GameMap.k(x, y)])
+				if dt != null: draw_texture(dt, pos + Vector2(0, 16 - dt.get_height()) if t.begins_with("mwall") else pos)
 			if t == "water":
 				var above := m.tile_at(x, y - 1)
 				if above != "water" and above != "bridge":

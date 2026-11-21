@@ -432,6 +432,7 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 			var ct: Vector2i = cands[r.randi() % cands.size()]
 			m.add_obj(ct.x, ct.y, "supply_crate", {"quality": clampf(floor_n / 20.0, 0.0, 1.0)})
 	DeepMine.shape_floor(m, r)
+	_mine_details(m, r, entry, deep)
 	var count := r.randi_range(band.enemy_count[0], band.enemy_count[1])
 	var free := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 9)
 	for i in count:
@@ -441,6 +442,41 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		m.spawns.append({"x": free[idx].x, "y": free[idx].y, "type": weighted(r, band.enemies).id})
 		free.remove_at(idx)
 	return m
+
+## Details from Daniel's Selected Assets pack: lanterns (they light the tunnel), timber props, lichen and
+## seeps on the rock face; cracks, gravel, fungi, salt, webs and rusted rail on the floor; now and then an
+## old ore cart in an open spot. Pictures live in art/mine/; only the cart is an object.
+static func _mine_details(m: GameMap, r: RandomNumberGenerator, entry: Vector2i, deep: bool) -> void:
+	for y in range(1, m.h - 1):
+		for x in range(1, m.w - 1):
+			var t := m.tile_at(x, y)
+			var k := GameMap.k(x, y)
+			if t.begins_with("mwall") and m.tile_at(x, y + 1).begins_with("mfloor"):
+				var f := r.randf()
+				if f < 0.05:
+					m.decor[k] = "mine_lantern"
+					m.lights.append({"x": x, "y": y + 1, "r": 46})
+				elif f < 0.10: m.decor[k] = "timber_support"
+				elif f < 0.15: m.decor[k] = "wall_water_seep" if deep else "wall_lichen"
+			elif t.begins_with("mfloor") and not m.objects.has(k) and Vector2i(x, y) != entry and r.randf() < 0.08:
+				var by_wall := false
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+					if m.tile_at(x + d.x, y + d.y).begins_with("mwall"): by_wall = true
+				var pool: Array = ["floor_gravel", "salt_stones", "rail_scrap"]
+				pool.append("crystal_scatter" if deep else "small_fungi")
+				if by_wall: pool.append("web_patch")
+				m.decor[k] = pool[r.randi() % pool.size()]
+	if r.randf() < 0.45:
+		var open := m.floor_tiles.filter(func(t):
+			if absi(t.x - entry.x) + absi(t.y - entry.y) < 6: return false
+			for j in [-1, 0, 1]:
+				for i in [-1, 0, 1]:
+					if not m.tile_at(t.x + i, t.y + j).begins_with("mfloor") or m.objects.has(GameMap.k(t.x + i, t.y + j)): return false
+			return true)
+		if not open.is_empty():
+			var c: Vector2i = open[r.randi() % open.size()]
+			m.add_obj(c.x, c.y, "mine_cart")
+			m.decor.erase(GameMap.k(c.x, c.y))
 
 # ---------------------------------------------------------------- pathfinding (NPCs)
 static func find_path(m: GameMap, sx: int, sy: int, tx: int, ty: int, max_nodes := 4000):

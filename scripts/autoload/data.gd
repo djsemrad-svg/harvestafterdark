@@ -309,6 +309,7 @@ var obj_defs := {
 	"rubble": {"solid": true, "unbreakable": true, "text": "Collapsed rock. It will take heavy equipment to clear this."},
 	"chest": {"solid": true, "storage": "chest", "tool": "pickaxe", "returns": "chest"},
 	"torch_post": {"solid": true, "hp": 1, "tool": "axe", "returns": "torch_post", "light": 70},
+	"mine_cart": {"solid": true, "fixture": true, "unbreakable": true, "name": "Old Ore Cart"},
 	"oil_lantern": {"solid": true, "returns": "oil_lantern", "light": 110},
 	"floodlight": {"solid": true, "returns": "floodlight", "light": 170, "power": 1.0},
 	# barriers: hp, repair cost per repair, barbed (damage to attackers), electric (needs power)

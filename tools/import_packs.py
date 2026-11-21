@@ -2161,3 +2161,39 @@ if os.path.isfile(_cr):
     _i = Image.new("RGBA", (16, 16))
     _i.alpha_composite(_c.crop((0, 0, 16, min(16, _c.height))), (0, 16 - min(16, _c.height)))
     save(_i, "icons/wood_crate.png")
+
+# ---------------------------------------------------------------- Selected Assets v5 (Daniel's curated pack, Nov 21)
+# Inventory icons; crafting machines and turrets (32x32, 17 px painted, bottom anchored); closed wood and
+# metal gates and the reinforced wall as joining pieces (already in the game's mask order); watchtower and
+# wind turbine; museum cases, ledger, donation desk and stolen goods; police tape; mine details. The pack's
+# trellis, raised bed and electric fence world pictures are left out on purpose (the game has its own).
+SA = os.path.join(SRC, "Selected_Assets_v5")
+if os.path.isdir(SA):
+    n = 0
+    inv = os.path.join(SA, "Inventory_Overrides")
+    for fn in sorted(os.listdir(inv)):
+        if fn.endswith(".png"):
+            save(Image.open(os.path.join(inv, fn)).convert("RGBA"), "icons/" + fn); n += 1
+    WP = os.path.join(SA, "World_Proposals")
+    for fn in sorted(os.listdir(os.path.join(WP, "Stations"))):
+        if fn.endswith(".png") and fn not in ("cold_frame.png",):          # cold frame sits on a crop tile: keep the game's
+            save(Image.open(os.path.join(WP, "Stations", fn)).convert("RGBA"), "objects/" + fn); n += 1
+    for fn in ("arc_pylon", "crossbow_turret", "flame_turret", "nail_turret", "sentry_turret", "shotgun_turret", "watchtower", "wind_turbine"):
+        save(Image.open(os.path.join(WP, "Defenses", fn + ".png")).convert("RGBA"), "objects/%s.png" % fn); n += 1
+    GR = os.path.join(SA, "Godot_Ready", "art", "objects")
+    for fn in sorted(os.listdir(GR)):
+        if fn.endswith(".png"):
+            save(Image.open(os.path.join(GR, fn)).convert("RGBA"), "objects/" + fn); n += 1
+    TP = os.path.join(WP, "Town_Props")
+    for src, dst in (("display_case_empty", "display_case"), ("display_case_artifact", "display_case_1"),
+                     ("display_case_fossil", "display_case_2"), ("display_case_gem", "display_case_3"),
+                     ("display_case_ore", "display_case_4"), ("museum_desk", "museum_desk"), ("town_ledger", "town_ledger"),
+                     ("stolen_goods_covered", "stolen_goods"), ("stolen_goods_revealed", "stolen_goods_full"),
+                     ("police_tape", "police_tape")):
+        save(Image.open(os.path.join(TP, src + ".png")).convert("RGBA"), "objects/%s.png" % dst); n += 1
+    MD = os.path.join(WP, "Mine_Details")
+    for fn in sorted(os.listdir(MD)):
+        if fn.endswith(".png"):
+            save(Image.open(os.path.join(MD, fn)).convert("RGBA"), "mine/" + fn); n += 1
+    save(Image.open(os.path.join(MD, "broken_ore_cart.png")).convert("RGBA"), "objects/mine_cart.png"); n += 1
+    print("selected assets v5: %d pictures" % n)

@@ -501,6 +501,39 @@ func _ready() -> void:
 		main.ui.open("journal", {"tab": "inventory"}); await frames(4); await shot("81_weapons_inventory")
 		get_tree().quit()
 		return
+	if only == "sa5":
+		# Daniel's Selected Assets v5 on the farm: machines, turrets, the wind turbine, gates in fences
+		main.ui.close_all()
+		Game.state.time = 640
+		Game.state.weather = "sun"
+		Game.change_map("homestead", 24, 31, "down", {"silent": true})
+		var m = Game.map
+		for y in range(16, 46):
+			for x in range(8, 58):
+				m.objects.erase(GameMap.k(x, y))
+				m.soil.erase(GameMap.k(x, y))
+		var mach := ["ammo_bench", "anvil", "armory_bench", "brick_furnace", "butter_churn", "charcoal_kiln", "dehydrator", "grain_mill", "loom", "oil_press", "preserves_jar", "recycler", "seed_maker", "still", "tanning_rack"]
+		for i in mach.size():
+			m.objects[GameMap.k(10 + i, 22)] = {"type": mach[i], "x": 10 + i, "y": 22}
+		var tur := ["nail_turret", "shotgun_turret", "crossbow_turret", "flame_turret", "sentry_turret", "arc_pylon"]
+		for i in tur.size():
+			m.objects[GameMap.k(10 + i * 2, 26)] = {"type": tur[i], "x": 10 + i * 2, "y": 26}
+		m.objects[GameMap.k(26, 26)] = {"type": "wind_turbine", "x": 26, "y": 26}
+		var rings := [["fence", "wood_gate"], ["stone_wall", "metal_gate"], ["reinforced_wall", "reinforced_wall"]]
+		for ri in rings.size():
+			var ox := 10 + ri * 6
+			for xx in range(ox, ox + 5):
+				for yy in [30, 34]:
+					m.objects[GameMap.k(xx, yy)] = {"type": rings[ri][0], "x": xx, "y": yy}
+			for yy in range(31, 34):
+				m.objects[GameMap.k(ox, yy)] = {"type": rings[ri][0], "x": ox, "y": yy}
+				m.objects[GameMap.k(ox + 4, yy)] = {"type": rings[ri][1] if yy == 32 else rings[ri][0], "x": ox + 4, "y": yy}
+			m.objects[GameMap.k(ox + 2, 34)] = {"type": rings[ri][1], "x": ox + 2, "y": 34}
+		Game.player.pos = Vector2(18 * 16 + 8, 28 * 16 + 8)
+		await frames(6)
+		await shot("sa5_farm")
+		get_tree().quit()
+		return
 	if only == "objects":
 		# a showroom of pack objects and fences on a cleared field
 		main.ui.close_all()

@@ -15,6 +15,7 @@ var warps := []         # doors and map edges
 var clear := []         # rectangles kept free of random debris
 var purge := []         # rectangles where natural debris from older saves is removed on load
 var lights := []        # extra light sources [{x, y, r}]
+var decor := {}         # pictures painted on the ground or a rock face, by tile key (mine details); never solid
 var drops := []         # items lying on the ground (not saved)
 var outdoor := false
 var indoor := false
