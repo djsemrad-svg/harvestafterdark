@@ -2,10 +2,10 @@
 
 Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3x.
 
-## Status (Nov 17, 2026)
+## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 278 / 278 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 285 / 285 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -430,6 +430,35 @@ Swings have a wind-up, strike (with a smear) and follow-through; the grip sits i
 over it. Scythe sweeps, blades and spears thrust, the watering can tips and pours. Keyframes in world_view
 `SWING_KEYS` / `SWEEP_KEYS`. Screenshot mode `swing`.
 
+### Modern UI, inventory and portraits (Nov 21, roadmap items 1-5)
+- Modern UI windows and controls: `tools/mui_ui.py` (run at the end of the importer) cuts LimeZu's Modern
+  User Interface warm style into the same `art/ui/` names the game already used. Main windows (`K.panel`) use the
+  wood-beam `window` frame, inner panels the rounded rim, buttons are light cards with dark lettering (green and red
+  keep white), list rows and slots are rounded cards, HUD bars use the dark track with glossy fills, settings use
+  switches and a slider. `UIKit.FRAMES` holds each piece's border widths; `UIKit.modern()` is true when installed.
+  The bite screen is pale inside with a red rim.
+- Icon buttons: `✕`, `◀`, `▶` buttons become the pack's boxed icon buttons (`UIKit.icon_button`, `art/ui/ib_*.png`);
+  text buttons can carry a small dark symbol (`UIKit.with_glyph`, `art/ui/glyph_*.png`): Sort pack, Journal, Pause,
+  Settings, Back.
+- Inventory drag and drop: drag stacks between pack slots, the toolbar row and chests or fridges (empty slot moves,
+  same item tops up, anything else swaps; `UI.drop_stack`). A bin beside Sort pack takes a dragged stack; it and
+  Discard 1 ask "Are you sure?" first; starting tools can't be thrown away. Slot left-clicks act on release so a
+  press can start a drag. Screenshot mode `dnd` does a real mouse drag.
+- Pack size: new games start with 12 slots (both modes). Hal sells 5 upgrades (`Balance.inventory.pack_tiers`):
+  18 (500 gold, 20 fiber), 24 (1,500, 10 cloth, 5 thread), 30 (3,000, 5 leather, 10 thread), 36 (6,000, 10 leather,
+  5 rope), 48 (12,000, 15 leather, 10 rope). Found bags skip one tier for free. Older saves keep their size and carry
+  on from the next tier up. The old Large Backpack service is gone. Tests run with 36-slot packs (`START_SLOTS`
+  keeps the real value for the pack test). The starter kit fills 9 of the 12 slots.
+- Wooden Crate (`wood_crate`): 12-slot storage made by hand from 15 wood (item sheet row added). Fix: chest windows
+  use each box's own size, so the Large Chest really holds 48 (it showed 24).
+- Conversation portraits: LimeZu's Portrait Generator parts in `art/portraits/` (skin, eyes, hair, acc; first row of
+  each sheet, 10 idle frames, frame 2 blinks). They share the character generator's numbering, so `MiChars.portrait`
+  carries hair, eyes and accessory straight over and recolours the skin to the sprite's exact colour. Used by
+  `Art.get_portrait` everywhere (dialogue box blinks via `UIKit.blinking`); the infected keep the old sprite crop.
+  Screenshot mode `portraits` lays them out next to each sprite.
+- Known random test: "Residential District: infected roam the streets by day, none waiting at the gate" fails now and
+  then (an infected wanders near the gate); passed 4 of 4 reruns.
+
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
 - Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
@@ -525,7 +554,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
    - Corner sliding (agreed Nov 17, idea from Daniel's RPG Maker plugins): when the player clips the corner of a wall or object, nudge them sideways round it instead of stopping dead.
    - Re-planning paths (agreed Nov 17, same source): neighbours and townsfolk walking somewhere work out a new route when someone or something blocks the way. Pairs with "people block movement".
    - The plugins themselves (QMovement, QPathfind, QPlus, ColliderMap, CollisionMap) are for RPG Maker MV and can't run in Godot; not used.
-   - Modern User Interface pack (agreed Nov 17; pointers already done), in this order:
+   - Modern User Interface pack (agreed Nov 17): DONE Nov 21 (pointers, windows and controls, icon buttons, portraits; see above). Original plan:
      1. Conversation portraits from its Portrait Generator (hairstyles, skins, eyes, accessories), built to match each neighbour's and townsperson's look. About 1 hour.
      2. Windows, buttons, bars, switches and sliders from the warm style, replacing the Kenney pieces through `UIKit.tsb`; check every menu in screenshots. About 1 to 1.5 hours.
      3. Icon buttons in menus (close, settings, sort, arrows). About 30 minutes.
@@ -548,7 +577,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
        - Art: Daniel's Wearables Final Art Pass (100 items: HEAD, CHST, LEGS, FEET 001-025, copied to `<packs>/Wearables_Final/`; supersedes the earlier headgear pack in `<packs>/Headgear_v2/`). Overlay sheets match `mi/acc` exactly (896x256, 16x32 cells, rows idle to pickup, right/up/left/down); native 16x16 inventory icons, also used for drops. Checked Nov 17 on in-game characters: style matches LimeZu well.
        - Layer order: outfit, then legs, feet, chest, hair, head. When chest and legs are both worn, skip the base outfit so long coats or skirts don't show at the edges; with only one worn, keep the outfit for the uncovered half.
        - Fixes: hide hair under and above a worn hat so big styles (buns, pigtails) don't poke out; the Bandana Mask (HEAD-003) now sits on the lower face but is faint, so strengthen it; a light style touch-up pass where needed. Heavy armour stays inside the 16x32 body shape. Plus about 1 to 1.5 hours.
-     - Inventory drag and drop, and an "Are you sure?" box when deleting an item. About 1 to 1.5 hours.
+     - Inventory drag and drop, and an "Are you sure?" box when deleting an item. DONE Nov 21.
    - Claude's recommendations, agreed Nov 17:
      - Sound and music: music for farm, town, night and combat; ambience (birds, wind, rain loop, distant groans at night); real effects for tools, footsteps, doors and guns. Needs a sound or music pack from Daniel. About 2 to 4 hours to wire in once there are files.
      - Main story: an outline with a beginning, middle and end and key events per season, tying together the outbreak, Halvorsen, the Restoration Ledger and the refugees. Daniel may write it; Claude builds the events. Writing 1 to 2 hours, events 4 to 8 hours.
@@ -573,8 +602,8 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
      3. Coastal Region (new area): the journal map already shows it locked "beyond the Riverlands" but there is no map. Build a beach with docks and sea fishing spots for the 18 sea catches, 18 beach finds that wash up daily (shells, sea glass, driftwood, junk; rare ones fit the antique shop), all items added with journal entries and shop prices, and a way to unlock it. About 5 to 7 hours. Expanded Nov 20 (see "Ocean" below); total about 11 to 14 hours.
    - Daniel's list, Nov 20 (all agreed, not started):
      - Gun balance: today guns outclass melee (sustained DPS with reloads, average by rarity: melee 25 / 34 / 39 / 59, guns 55 / 70 / 77 / 98; one Normal gun does 231). Target: a legendary melee weapon beats normal and rare guns, is about even with epic guns and below legendary guns; tame the outliers. Ammo scarce in the first weeks but never so rare that guns get ignored; easy once the player crafts ammo at the Ammo Bench. Check loot and shop ammo rates. About 1.5 to 2 hours.
-     - Storage: Storage Chest (24), Large Chest (48), Lockbox (24, raider-proof), fridge, weapon rack and armor stand already exist. Add a cheap early Supply Crate (12 slots). About 20 minutes.
-     - Smaller starting inventory: start at 12 slots (both modes). Hal sells 5 pack upgrades for gold plus cloth, leather, thread and rope: 12 to 18, 24, 30, 36, 48. Found bags (Satchel, Hiking Pack, Military Rucksack) each skip one tier for free; the store backpack service is replaced. Old saves keep their current size. About 1 hour.
+     - Storage (DONE Nov 21 as the Wooden Crate, 12 slots): Storage Chest (24), Large Chest (48), Lockbox (24, raider-proof), fridge, weapon rack and armor stand already exist. Add a cheap early Supply Crate (12 slots). About 20 minutes.
+     - Smaller starting inventory (DONE Nov 21; the first tier uses 20 fiber instead of cloth so it's reachable in week one): start at 12 slots (both modes). Hal sells 5 pack upgrades for gold plus cloth, leather, thread and rope: 12 to 18, 24, 30, 36, 48. Found bags (Satchel, Hiking Pack, Military Rucksack) each skip one tier for free; the store backpack service is replaced. Old saves keep their current size. About 1 hour.
      - Armour: the heavy chest pieces (Juggernaut Riot Suit, The Briar King, Quarantine) get bulkier equipped looks (shoulder plates, padding, wider outline, still inside the 16x32 body). About 1 hour. Then screenshot every pose (walk, combat, pick up) with hat and chest combinations. About 30 minutes. Both go with "Worn gear shows on the character".
      - Picture map: replace the boxes in the Map tab with a map drawn from the real game maps shrunk down (roads, buildings, water, trees) in a parchment frame, a "you are here" marker, pins for shops and quests, locked areas darkened. Replaces "a map with markers" in Claude's recommendations. About 2 to 3 hours.
      - Farmhouse inside: fix the floating sink with a proper kitchen counter run (counter, sink, stove). Add 3 interior upgrades from Hal using Modern Interiors furniture: 1 cleaned-up cabin, 2 real kitchen and bedroom, 3 an extra room and a cellar for storage. About 2.5 to 3.5 hours.
