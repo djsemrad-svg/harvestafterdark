@@ -246,6 +246,12 @@ var services := {
 		{"to": 3, "name": "Fortify the farmhouse", "desc": "Iron-strapped door, taped windows, sandbags and a tarp over the worst of the roof.", "price": 2000, "mats": [["wood", 120], ["stone", 60], ["copper_bar", 2]]},
 		{"to": 4, "name": "Restore the farmhouse", "desc": "New shingles, fresh paint, curtains and flower boxes. A real home again.", "price": 5000, "mats": [["wood", 150], ["iron_bar", 3]]},
 	],
+	# Hal's work inside the farmhouse (MapBuilder.house). "needs" is the outside repair stage (house_condition) first.
+	"house_upgrades": [
+		{"to": 1, "needs": 0, "name": "Clean up the farmhouse", "desc": "Scrub, patch the floor and walls, a proper table and chairs, a reading corner and a plant.", "price": 3000, "mats": [["wood", 80], ["cloth", 10]]},
+		{"to": 2, "needs": 3, "name": "Kitchen and bedroom", "desc": "Knock through to the old storeroom: a long kitchen, a bedroom nook with a big bed and wardrobe, and a hearth.", "price": 10000, "mats": [["hardwood", 60], ["glass", 10], ["iron_bar", 5]]},
+		{"to": 3, "needs": 4, "name": "Spare room and cellar", "desc": "A spare room on the east side and a dry cellar with two big built-in chests.", "price": 25000, "mats": [["hardwood", 100], ["brick", 60], ["iron_bar", 10]]},
+	],
 	"refine_fee_per_bar": {"copper_bar": 15, "iron_bar": 30, "silver_bar": 60, "gold_bar": 100, "aurium_bar": 250},
 }
 

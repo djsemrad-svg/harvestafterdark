@@ -365,6 +365,20 @@ var obj_defs := {
 	"fridge": {"solid": true, "fixture": true, "storage": "fridge"},
 	"stove": {"solid": true, "fixture": true, "light": 18},
 	"sink": {"solid": true, "fixture": true},
+	# farmhouse furniture (Nov 21, Modern Interiors; MapBuilder.house)
+	"kitchen_counter": {"solid": true, "fixture": true},
+	"big_bed": {"solid": true, "fixture": true},
+	"nightstand": {"solid": true, "fixture": true},
+	"wardrobe": {"solid": true, "fixture": true, "storage": 24},
+	"bookcase": {"solid": true, "fixture": true},
+	"hearth": {"solid": true, "fixture": true, "light": 70},
+	"house_plant": {"solid": true, "fixture": true},
+	"armchair": {"solid": false, "fixture": true},
+	"chair_l": {"solid": false, "fixture": true},
+	"wall_art": {"solid": true, "fixture": true},
+	"wall_map": {"solid": true, "fixture": true},
+	"rug_round": {"solid": false, "fixture": true, "floor": true},
+	"cellar_ladder": {"solid": false, "fixture": true},
 	"table": {"solid": true, "fixture": true},
 	"chair": {"solid": false, "fixture": true},
 	"lamp": {"solid": true, "fixture": true, "light": 90},
@@ -1016,7 +1030,8 @@ func _init() -> void:
 		{"id": "t_shirt", "price": 80}, {"id": "hoodie", "price": 140}, {"id": "jeans", "price": 200}, {"id": "sneakers", "price": 90},
 		{"id": "rain_boots", "price": 100}, {"id": "work_boots", "price": 180}, {"id": "beanie", "price": 70}, {"id": "baseball_cap", "price": 70},
 		{"service": "pack_upgrade", "name": "Pack upgrade", "desc": "", "price": 0},
-		{"service": "house_repair", "name": "Farmhouse repairs", "desc": "", "price": 0}])
+		{"service": "house_repair", "name": "Farmhouse repairs", "desc": "", "price": 0},
+		{"service": "house_upgrade", "name": "Farmhouse inside", "desc": "", "price": 0}])
 	shops.general.stock = st
 	Arsenal.register(self)
 	Catalog.register(self)

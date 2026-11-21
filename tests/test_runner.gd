@@ -146,7 +146,7 @@ func run_all() -> void:
 
 	# ---------- movement and collision
 	start("adventure", 2)
-	at("house", 7, 5, "up")
+	at("house", 5, 4, "up")
 	var y0: float = G.player.pos.y
 	walk(Vector2.UP, 2000)
 	var y1: float = G.player.pos.y
@@ -154,8 +154,8 @@ func run_all() -> void:
 	var x0: float = G.player.pos.x
 	walk(Vector2.RIGHT, 600)
 	var fridge_blocks: bool = abs(G.player.pos.x - x0) < 4
-	walk(Vector2.LEFT, 300)
-	check("Player moves and collides with walls and furniture", y1 < y0 and blocked and fridge_blocks and G.player.pos.x < x0 - 10, "y0=%.1f y1=%.1f" % [y0, y1])
+	walk(Vector2.DOWN, 300)
+	check("Player moves and collides with walls and furniture", y1 < y0 and blocked and fridge_blocks and G.player.pos.y > y1 + 10, "y0=%.1f y1=%.1f x0=%.1f x=%.1f" % [y0, y1, x0, G.player.pos.x])
 
 	at("house", 6, 8, "down")
 	walk(Vector2.DOWN, 500)
@@ -1310,6 +1310,7 @@ func run_all() -> void:
 		if count_nodes(U.screen_root) < 8: bad_title.append(v)
 	check("Title screens render (main, mode, slots, creator, property, load, settings, help, restore)", bad_title.is_empty(), str(bad_title))
 	run_sandbox()
+	run_farmhouse()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3649,3 +3650,61 @@ func _save_files() -> Dictionary:
 	for f in d.get_files():
 		r[f] = FileAccess.get_modified_time(Game.SAVE_DIR + f)
 	return r
+
+## The farmhouse inside: a fixed kitchen, Hal's three upgrades, and your things coming along.
+func run_farmhouse() -> void:
+	var G = Game
+	start("adventure", 2)
+	var h: GameMap = G.maps.house
+	var sink = h.get_obj(7, 2)
+	var counter = h.get_obj(6, 2)
+	var kitchen_ok: bool = sink != null and sink.type == "sink" and counter != null and counter.type == "kitchen_counter" and h.get_obj(9, 2).type == "stove"
+	check("Farmhouse: the sink sits in a kitchen counter run (counter, sink, stove, fridge)", kitchen_ok, str(sink))
+	# your things before the upgrade: a placed crate with something in it, food in the fridge, tools in the chest
+	h.add_obj(8, 6, "wood_crate", {"items": [{"id": "stone", "qty": 7}, null, null]})
+	for kk in h.objects:
+		var o: Dictionary = h.objects[kk]
+		if o.type == "fridge": o.items = [{"id": "radish", "qty": 3}]
+		if o.type == "chest": o.items = [{"id": "copper_ore", "qty": 4}]
+	G.state.money = 50000
+	G.state.time = 600
+	var up: Dictionary = {}
+	for x in G.shop_stock("general"):
+		if x.get("service", "") == "house_upgrade": up = x
+	var no_mats: String = G.shop_buy("general", up, 1)
+	G.add_item("wood", 80, {"silent": true}); G.add_item("cloth", 10, {"silent": true})
+	var err: String = G.shop_buy("general", up, 1)
+	sleep()
+	h = G.maps.house
+	var crate_ok := false
+	var fridge_ok := false
+	var chest_ok := false
+	for kk in h.objects:
+		var o: Dictionary = h.objects[kk]
+		if o.type == "wood_crate" and o.items.any(func(st): return st != null and st.id == "stone"): crate_ok = true
+		if o.type == "fridge" and o.items.any(func(st): return st != null and st.id == "radish"): fridge_ok = true
+		if o.type == "chest" and o.items.any(func(st): return st != null and st.id == "copper_ore"): chest_ok = true
+	check("Farmhouse: Hal cleans it up overnight (wood and cloth); placed things and what's stored stay",
+		no_mats != "" and err == "" and G.house_level() == 1 and h.layout == "house1_v1" and crate_ok and fridge_ok and chest_ok and h.get_obj(2, 4) == null,
+		"no_mats=%s err=%s level=%d crate=%s fridge=%s chest=%s" % [no_mats, err, G.house_level(), crate_ok, fridge_ok, chest_ok])
+	# the next one waits for the outside repairs
+	G.add_item("hardwood", 60, {"silent": true}); G.add_item("glass", 10, {"silent": true}); G.add_item("iron_bar", 5, {"silent": true})
+	for x in G.shop_stock("general"):
+		if x.get("service", "") == "house_upgrade": up = x
+	var too_early: String = G.shop_buy("general", up, 1)
+	G.state.flags.house_condition = 4
+	err = G.shop_buy("general", up, 1)
+	sleep()
+	var big: bool = G.house_level() == 2 and G.maps.house.w == 18 and G.maps.house.get_obj(1, 2).type == "big_bed"
+	var door_ok: bool = G.maps.homestead.warps.any(func(wp): return wp.get("to", "") == "house" and int(wp.ty) == 10 and int(wp.tx) == 9)
+	G.set_house_level(3)
+	var cellar_ok: bool = G.maps.has("cellar") and G.maps.house.warps.any(func(wp): return wp.get("to", "") == "cellar")
+	G.change_map("cellar", 6, 3, "down", {"silent": true})
+	var in_cellar: bool = G.map.id == "cellar" and G.map.objects.values().filter(func(o): return o.type == "large_chest").size() == 2
+	# and saving and loading keeps it
+	G.write_save()
+	G.load_game("adventure", 2)
+	var kept: bool = G.house_level() == 3 and G.maps.has("cellar") and G.maps.house.objects.values().any(func(o): return o.type == "wood_crate")
+	check("Farmhouse: kitchen and bedroom need the outside repaired first; level 3 adds a spare room and a cellar; saves keep it",
+		too_early != "" and err == "" and big and door_ok and cellar_ok and in_cellar and kept,
+		"early=%s err=%s big=%s door=%s cellar=%s in=%s kept=%s" % [too_early, err, big, door_ok, cellar_ok, in_cellar, kept])

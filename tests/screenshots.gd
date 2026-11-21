@@ -188,6 +188,28 @@ func _ready() -> void:
 		await shot("wear_inventory")
 		get_tree().quit()
 		return
+	if only == "house":
+		# the farmhouse inside at each upgrade level (HOUSE_LEVELS=1 shows only the current one)
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720
+		for lv in range(0, 4):
+			if Game.has_method("set_house_level"): Game.set_house_level(lv)
+			elif lv > 0: break
+			Game.change_map("house", 6, 8, "up", {"silent": true})
+			var ol := []
+			for kk in Game.map.objects:
+				var oo: Dictionary = Game.map.objects[kk]
+				if oo.type != "part": ol.append("%s@%d,%d" % [oo.type, int(oo.x), int(oo.y)])
+			print("HOUSE ", lv, " ", ol)
+			await frames(6)
+			await shot("house_%d" % lv)
+			if Game.maps.has("cellar"):
+				Game.change_map("cellar", 6, 3, "down", {"silent": true})
+				await frames(6)
+				await shot("cellar_%d" % lv)
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()

@@ -789,7 +789,7 @@ func hint_text() -> String:
 		if o.type == "overpass_flare": return "E: Light the flare" if Game.event.is_empty() else "Hold the road!"
 		if o.type == "district_gate" and not o.get("open", false):
 			return "E: Look at the " + Districts.UNLOCKS[o.region].gate.to_lower()
-		var names := {"bed": "Sleep (save and end the day)", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
+		var names := {"bed": "Sleep (save and end the day)", "big_bed": "Sleep (save and end the day)", "wardrobe": "Open wardrobe", "shipping_box": "Open trade crate", "chest": "Open chest", "fridge": "Open refrigerator", "stove": "Cook", "mirror": "Change appearance", "pump": "Drink and refill watering can", "notice_board": "Read notices", "sign": "Read sign", "ladder_up": "Climb up", "mine_lift": "Use lift", "counter": "Shop"}
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "stolen_goods": return "E: Search the stolen goods"
 		if o.type == "town_ledger": return "E: Read the restoration ledger"

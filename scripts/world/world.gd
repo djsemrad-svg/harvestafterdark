@@ -1808,8 +1808,10 @@ func interact_object(o: Dictionary) -> void:
 	var st: Dictionary = Game.state
 	var def: Dictionary = Data.obj_defs.get(o.type, {})
 	match o.type:
-		"bed":
+		"bed", "big_bed":
 			Game.ui.confirm("Go to sleep and start the next day?", func(): Game.end_day("sleep"))
+		"wardrobe":
+			Game.ui.open("chest", {"obj": o, "title": "Wardrobe"})
 		"shipping_box":
 			Game.ui.open("ship")
 		"chest":
@@ -1858,7 +1860,12 @@ func interact_object(o: Dictionary) -> void:
 			Game.add_xp("foraging", 4)
 			Sfx.play("pickup")
 		"ladder_up":
-			Game.ui.confirm("Climb back up to the surface?", func(): Game.change_map("mountain", 19, 5, "down"))
+			if Game.map.id == "cellar":
+				Game.change_map("house", 21, 7, "down")
+			else:
+				Game.ui.confirm("Climb back up to the surface?", func(): Game.change_map("mountain", 19, 5, "down"))
+		"cellar_ladder":
+			Game.change_map("cellar", 6, 3, "down")
 		"ladder_down":
 			Game.change_map("mine", 0, 0, "down", {"floor": Game.map.floor_n + 1})
 		"mine_lift":

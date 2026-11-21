@@ -788,7 +788,7 @@ func load_game(mode: String, slot: int) -> String:
 func build_persistent_maps() -> void:
 	maps = {
 		"homestead": MapBuilder.homestead(int(state.seed)),
-		"house": MapBuilder.house(),
+		"house": MapBuilder.house(house_level()),
 		"town": MapBuilder.town(int(state.seed)),
 		"store": MapBuilder.store(),
 		"forge": MapBuilder.forge(),
@@ -817,6 +817,9 @@ func build_persistent_maps() -> void:
 	for b in state.get("buildings", []):
 		maps.homestead.add_structure(b)
 		maps[b.kind] = Livestock.interior(b)
+	if house_level() >= 3: maps.cellar = MapBuilder.cellar()
+	_fit_house(maps.house)
+	_sync_house_door()
 	for id in maps:
 		var m: GameMap = maps[id]
 		# a room whose layout changed since this save was made is rebuilt fresh
@@ -2943,6 +2946,16 @@ func shop_stock(shop_id: String) -> Array:
 			e.price = stage.price
 			e.mats = stage.mats
 			e.desc = stage.desc + " Needs " + ", ".join(stage.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
+		if e.get("service", "") == "house_upgrade":
+			var up := next_house_upgrade()
+			if up.is_empty() or state.flags.has("house_upgrade_to"):
+				continue
+			e.name = up.name
+			e.price = up.price
+			e.mats = up.mats
+			e.desc = up.desc + " Needs " + ", ".join(up.mats.map(func(m): return "%d %s" % [m[1], Data.items[m[0]].name])) + ". Ready tomorrow."
+			if house_condition() < int(up.needs):
+				e.desc = up.desc + " First the outside needs \"%s\"." % Balance.services.house_repairs.filter(func(r): return int(r.to) == int(up.needs))[0].name
 		if e.get("service", "") == "pack_upgrade":
 			var tier := next_pack_tier()
 			if tier.is_empty():
@@ -3023,6 +3036,24 @@ func shop_buy(shop_id: String, e: Dictionary, qty: int) -> String:
 		grow_pack(int(tier.size))
 		toast("Hal stitches on more pockets: your pack now holds %d." % int(tier.size), "", "gold")
 		Sfx.play("coin")
+		return ""
+	if e.get("service", "") == "house_upgrade":
+		var up := next_house_upgrade()
+		if up.is_empty():
+			return "There's nothing left for Hal to do inside."
+		if house_condition() < int(up.needs):
+			Sfx.play("error")
+			return "Hal wants the outside sound first: \"%s\"." % Balance.services.house_repairs.filter(func(r): return int(r.to) == int(up.needs))[0].name
+		for m in up.mats:
+			if count_item(m[0]) < m[1]:
+				Sfx.play("error")
+				return "Hal needs %d %s (you have %d)." % [m[1], Data.items[m[0]].name, count_item(m[0])]
+		for m in up.mats:
+			remove_item(m[0], m[1])
+		state.money = int(state.money) - cost
+		state.flags.house_upgrade_to = int(up.to)
+		Sfx.play("coin")
+		toast("Hal will work inside the farmhouse tonight. Anything you've placed stays.")
 		return ""
 	if e.get("service", "") == "house_repair":
 		var stage := next_house_repair()
@@ -3211,6 +3242,109 @@ func run_sprinklers() -> int:
 
 func house_condition() -> int:
 	return int(state.flags.get("house_condition", Data.buildings.farmhouse.condition))
+
+## How far Hal has done up the inside of the farmhouse (0 to 3, see MapBuilder.house).
+func house_level() -> int:
+	return int(state.get("house_level", 0))
+
+func next_house_upgrade() -> Dictionary:
+	for stage in Balance.services.house_upgrades:
+		if int(stage.to) == house_level() + 1:
+			return stage
+	return {}
+
+## The farmhouse rebuilt for its level. Everything you placed comes along (same spot, or the nearest free one),
+## and what was stored in the built-in chest, fridge or wardrobe moves to the new one.
+func rebuild_house() -> void:
+	var nm := MapBuilder.house(house_level())
+	_fit_house(nm)
+	maps.house = nm
+	if house_level() >= 3 and not maps.has("cellar"):
+		maps.cellar = MapBuilder.cellar()
+		if not state.maps_dyn.has("cellar"): state.maps_dyn.cellar = {"objects": maps.cellar.objects, "soil": maps.cellar.soil, "layout": maps.cellar.layout}
+		else: maps.cellar.objects = state.maps_dyn.cellar.objects
+	_sync_house_door()
+	if map != null and map.id == "house": map = nm
+
+## For tests and screenshots: jump straight to a level.
+func set_house_level(lv: int) -> void:
+	state.house_level = clampi(lv, 0, 3)
+	rebuild_house()
+
+func _fit_house(nm: GameMap) -> void:
+	var dyn = state.maps_dyn.get("house")
+	if not (dyn is Dictionary) or str(dyn.get("layout", "")) == nm.layout:
+		return
+	var old: Dictionary = dyn.get("objects", {})
+	var stored := {}
+	var placed := []
+	for kk in old:
+		var o: Dictionary = old[kk]
+		if o.type == "part": continue
+		var built: bool = o.get("fixture", false) or Data.obj_defs.get(o.type, {}).get("fixture", false)
+		if built:
+			if o.get("items") is Array:
+				if not stored.has(o.type): stored[o.type] = []
+				stored[o.type].append_array(o.items.filter(func(s): return s != null))
+			continue
+		placed.append(o)
+	# stored things go into the new built-ins of the same kind (a chest's into the chest, and so on)
+	for t in stored:
+		var dest: Array = []
+		for kk in nm.objects:
+			var o2: Dictionary = nm.objects[kk]
+			if o2.type == t and o2.get("items") is Array: dest.append(o2)
+		if dest.is_empty():
+			for kk in nm.objects:
+				if nm.objects[kk].type == "chest" and nm.objects[kk].get("items") is Array: dest.append(nm.objects[kk])
+		if dest.is_empty(): continue
+		var size: int = Balance.inventory.fridge_slots if t == "fridge" else Balance.inventory.chest_slots
+		var di := 0
+		for st in stored[t]:
+			while di < dest.size() - 1 and (dest[di].items as Array).filter(func(s): return s != null).size() >= size: di += 1
+			var lst: Array = dest[di].items
+			var slot := lst.find(null)
+			if slot >= 0: lst[slot] = st
+			else: lst.append(st)
+	# placed things keep their spot where they can, otherwise the nearest free floor
+	for o in placed:
+		var spot := _free_spot(nm, Vector2i(int(o.x), int(o.y)), int(o.get("w", 1)), int(o.get("h", 1)))
+		if spot.x < 0: continue
+		var extra: Dictionary = o.duplicate(true)
+		extra.erase("x"); extra.erase("y"); extra.erase("type")
+		nm.add_obj(spot.x, spot.y, o.type, extra)
+	state.maps_dyn.house = {"objects": nm.objects, "soil": nm.soil, "layout": nm.layout}
+
+func _free_spot(m: GameMap, want: Vector2i, w: int, h: int) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var bd := 1 << 30
+	for y in range(2, m.h - 1):
+		for x in range(1, m.w - 1):
+			var ok := true
+			for dy in h:
+				for dx in w:
+					var tx := x + dx; var ty := y + dy
+					if tx >= m.w - 1 or ty >= m.h - 1 or m.get_obj(tx, ty) != null or m.is_solid(tx, ty) or m.warps.any(func(wp): return Rect2i(int(wp.x), int(wp.y), int(wp.get("w", 1)), int(wp.get("h", 1))).has_point(Vector2i(tx, ty))):
+						ok = false
+			# keep the doorway and the wake-up spot clear
+			if Vector2i(x, y) == Vector2i(2, 4) or y == m.h - 2: ok = false
+			if not ok: continue
+			var d := (x - want.x) * (x - want.x) + (y - want.y) * (y - want.y)
+			if d < bd:
+				bd = d; best = Vector2i(x, y)
+	return best
+
+## The farm's door into the house lands you just inside the house's door.
+func _sync_house_door() -> void:
+	var door: int = MapBuilder.HOUSE_DOOR[clampi(house_level(), 0, 3)]
+	var hh: int = MapBuilder.HOUSE_SIZE[clampi(house_level(), 0, 3)].y
+	if not maps.has("homestead"): return
+	for w in maps.homestead.warps:
+		if w.get("to", "") == "house":
+			w.tx = door; w.ty = hh - 2
+	for st in maps.homestead.structures:
+		if st.get("warp", {}).get("to", "") == "house":
+			st.warp.tx = door; st.warp.ty = hh - 2
 
 func next_house_repair() -> Dictionary:
 	for stage in Balance.services.house_repairs:
@@ -3520,6 +3654,11 @@ func end_day(reason: String) -> void:
 		unlock_region(reg, true)
 		rep.lines.append({"industrial": "Jo got the east gate running overnight. The Industrial District is open.", "riverlands": "Jo rebuilt the far bridge overnight. The Riverlands are open."}.get(reg, "%s is open." % Districts.DISTRICTS[reg].name))
 	state.flags.erase("pending_unlocks")
+	if state.flags.has("house_upgrade_to"):
+		state.house_level = int(state.flags.house_upgrade_to)
+		state.flags.erase("house_upgrade_to")
+		rebuild_house()
+		rep.lines.append(["", "Hal cleaned up the farmhouse overnight. It finally feels like a home.", "Hal opened up the farmhouse overnight: a long kitchen, a bedroom nook and a hearth.", "Hal finished the spare room and the cellar overnight. The ladder is in the spare room."][house_level()])
 	if state.flags.has("house_repair_to"):
 		state.flags.house_condition = int(state.flags.house_repair_to)
 		state.flags.erase("house_repair_to")

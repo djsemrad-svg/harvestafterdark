@@ -2367,3 +2367,8 @@ if os.path.isfile(os.path.join(OUT, "icons", "fossil_nodule.png")):
         save(Image.open(p).convert("RGBA") if os.path.isfile(p) else base, "icons/%s.png" % name)
     save(_gold(base), "icons/legendary_unusual_stone.png")
     print("unusual stones: 4 icons")
+
+# ---------------------------------------------------------------- farmhouse furniture (Nov 21)
+# Kitchen counter run, sink halves, stove, beds, wardrobe, hearth and more for MapBuilder.house.
+if os.path.isdir(os.path.join(SRC, "moderninteriors-win")):
+    runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "house_furniture.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

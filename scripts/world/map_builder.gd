@@ -72,21 +72,116 @@ static func _interior(id: String) -> GameMap:
 	m.set_tile(6, 9, "floor")
 	return m
 
-static func house() -> GameMap:
-	var m := _interior("house")
+## The farmhouse inside. Hal upgrades it (Game.house_level, Balance.house_upgrades):
+##   0 the run-down cabin you start with, 1 cleaned up, 2 bigger with a real kitchen and a bedroom nook,
+##   3 a spare room and a cellar. The bed stays top left so you always wake at (2, 4).
+## The door is on the bottom wall; HOUSE_DOOR gives its column for each size.
+const HOUSE_SIZE := [Vector2i(12, 10), Vector2i(12, 10), Vector2i(18, 12), Vector2i(24, 12)]
+const HOUSE_DOOR := [6, 6, 9, 9]
+
+static func house(level := 0) -> GameMap:
+	level = clampi(level, 0, 3)
+	var sz: Vector2i = HOUSE_SIZE[level]
+	var door: int = HOUSE_DOOR[level]
+	var m := GameMap.new("house", sz.x, sz.y, ["floor", "floor_oak", "floor_oak", "floor_oak"][level])
+	m.indoor = true
+	m.layout = "house%d_v1" % level
+	var wall: String = ["wall", "wall_panel", "wall_paper", "wall_paper"][level]
+	m.fill(0, 0, sz.x, 1, "walltop"); m.fill(0, 1, sz.x, 1, wall)
+	m.fill(0, 0, 1, sz.y, "walltop"); m.fill(sz.x - 1, 0, 1, sz.y, "walltop"); m.fill(0, sz.y - 1, sz.x, 1, "walltop")
+	m.set_tile(door, sz.y - 1, m.tile_at(door, sz.y - 2))
 	m.placeable = true
-	m.warps.append({"x": 6, "y": 9, "w": 1, "h": 1, "to": "homestead", "tx": 11, "ty": 9, "dir": "down", "door": true})
-	m.add_obj(1, 2, "bed", {"h": 2})
-	m.add_obj(2, 2, "lamp")
-	m.add_obj(4, 2, "chest", {"items": [], "fixture": true})
-	m.add_obj(3, 1, "mirror")
-	m.add_obj(6, 1, "window"); m.add_obj(9, 1, "window")
-	m.add_obj(8, 2, "fridge", {"items": []})
-	m.add_obj(9, 2, "stove"); m.add_obj(10, 2, "sink")
-	m.add_obj(6, 5, "table"); m.add_obj(5, 5, "chair")
-	for i in range(4, 8):
-		m.add_obj(i, 7, "rug")
-	m.add_obj(10, 7, "crate"); m.add_obj(1, 7, "barrel")
+	m.warps.append({"x": door, "y": sz.y - 1, "w": 1, "h": 1, "to": "homestead", "tx": 11, "ty": 9, "dir": "down", "door": true})
+	var run := func(x0: int, pieces: Array) -> void:
+		# a kitchen counter run against the back wall: "c0".."c3" counter pieces, "s" the two sink halves, "stove", "fridge"
+		var x := x0
+		for p in pieces:
+			match p:
+				"s":
+					m.add_obj(x, 2, "sink", {"v": 0}); m.add_obj(x + 1, 2, "sink", {"v": 1}); x += 1
+				"stove": m.add_obj(x, 2, "stove")
+				"fridge": m.add_obj(x, 2, "fridge", {"items": []})
+				_: m.add_obj(x, 2, "kitchen_counter", {"v": int(str(p).substr(1))})
+			x += 1
+	m.add_obj(1, 2, "bed" if level < 2 else "big_bed", {"h": 2} if level < 2 else {"w": 2, "h": 2})
+	match level:
+		0:
+			m.add_obj(2, 2, "lamp")
+			m.add_obj(3, 1, "mirror")
+			m.add_obj(4, 2, "chest", {"items": [], "fixture": true})
+			m.add_obj(6, 1, "window"); m.add_obj(9, 1, "window")
+			run.call(6, ["c0", "s", "stove", "fridge"])
+			m.add_obj(6, 5, "table"); m.add_obj(5, 5, "chair")
+			for i in range(4, 8):
+				m.add_obj(i, 7, "rug")
+			m.add_obj(10, 7, "crate"); m.add_obj(1, 7, "barrel")
+		1:
+			m.add_obj(2, 2, "nightstand")
+			m.add_obj(3, 1, "mirror")
+			m.add_obj(4, 2, "chest", {"items": [], "fixture": true})
+			m.add_obj(5, 1, "wall_art", {"v": 0})
+			m.add_obj(6, 1, "window"); m.add_obj(9, 1, "window")
+			run.call(6, ["c0", "s", "stove", "fridge"])
+			m.add_obj(6, 5, "table"); m.add_obj(5, 5, "chair"); m.add_obj(7, 5, "chair_l")
+			m.add_obj(1, 5, "lamp"); m.add_obj(2, 6, "armchair")
+			m.add_obj(3, 6, "rug_round", {"w": 2, "h": 2})
+			m.add_obj(9, 8, "bookcase", {"w": 2})
+			m.add_obj(10, 6, "house_plant", {"v": 1})
+		2, 3:
+			# bedroom nook top left behind a short wall
+			m.fill(7, 0, 1, 5, "walltop")
+			m.add_obj(3, 2, "nightstand")
+			m.add_obj(4, 2, "chest", {"items": [], "fixture": true})
+			m.add_obj(5, 2, "wardrobe", {"w": 2, "items": []})
+			m.add_obj(3, 1, "wall_art", {"v": 1})
+			m.add_obj(3, 4, "rug_round", {"w": 2, "h": 2})
+			m.add_obj(1, 5, "mirror")
+			# kitchen and dining on tiles
+			m.fill(8, 2, sz.x - 9 if level == 2 else 9, 5, "floor_tile")
+			run.call(8, ["c0", "c1", "s", "c2", "stove", "c3", "fridge"])
+			m.add_obj(10, 1, "window"); m.add_obj(14, 1, "window")
+			m.add_obj(16, 2, "house_plant", {"v": 0})
+			m.add_obj(12, 5, "table"); m.add_obj(11, 5, "chair"); m.add_obj(13, 5, "chair_l")
+			m.add_obj(8, 1, "wall_map", {"w": 2})
+			# sitting room by the hearth
+			m.add_obj(1, 8, "hearth", {"w": 2, "h": 2})
+			m.add_obj(4, 9, "armchair"); m.add_obj(5, 8, "lamp")
+			m.add_obj(4, 7, "rug_round", {"w": 2, "h": 2})
+			m.add_obj(14, 9, "bookcase", {"w": 2})
+			m.add_obj(16, 10, "house_plant", {"v": 1})
+			m.lights = [{"x": 12, "y": 4, "r": 80}]
+			if level == 3:
+				# the spare room on the right, through an opening at the bottom, with the way down to the cellar
+				m.fill(17, 0, 1, 8, "walltop")
+				m.fill(18, 1, 5, 1, wall)
+				m.fill(18, 2, 5, 9, "floor_carpet")
+				m.add_obj(18, 2, "old_bed", {"h": 2})
+				m.add_obj(19, 2, "nightstand")
+				m.add_obj(20, 1, "window")
+				m.add_obj(22, 2, "bookcase", {"w": 1})
+				m.add_obj(21, 6, "cellar_ladder")
+				m.warps.append({"x": 21, "y": 6, "w": 1, "h": 1, "to": "cellar", "tx": 6, "ty": 3, "dir": "down"})
+				m.add_obj(22, 9, "house_plant", {"v": 0})
+				m.add_obj(18, 9, "armchair")
+	return m
+
+## Below the farmhouse (house level 3): two big built-in chests, shelves, barrels and crates.
+static func cellar() -> GameMap:
+	var m := GameMap.new("cellar", 12, 10, "floor_concrete")
+	m.indoor = true
+	m.layout = "cellar_v1"
+	m.mood = "cold"
+	m.fill(0, 0, 12, 1, "walltop"); m.fill(0, 1, 12, 1, "wall_brick")
+	m.fill(0, 0, 1, 10, "walltop"); m.fill(11, 0, 1, 10, "walltop"); m.fill(0, 9, 12, 1, "walltop")
+	m.placeable = true
+	m.add_obj(6, 2, "ladder_up")
+	m.warps.append({"x": 6, "y": 2, "w": 1, "h": 1, "to": "house", "tx": 21, "ty": 7, "dir": "down"})
+	m.add_obj(1, 2, "large_chest", {"items": [], "fixture": true})
+	m.add_obj(3, 2, "large_chest", {"items": [], "fixture": true})
+	m.add_obj(9, 2, "shelf"); m.add_obj(10, 2, "shelf")
+	m.add_obj(1, 7, "barrel"); m.add_obj(1, 8, "barrel"); m.add_obj(10, 8, "crate"); m.add_obj(9, 8, "crate")
+	m.add_obj(10, 5, "crate"); m.add_obj(10, 6, "barrel")
+	m.lights = [{"x": 6, "y": 4, "r": 70}]
 	return m
 
 static func store() -> GameMap:
