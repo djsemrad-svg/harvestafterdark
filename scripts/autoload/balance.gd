@@ -152,6 +152,32 @@ var weapons := {
 	"shove_cooldown": 0.8,
 }
 
+## Gun balance (Nov 21, see design/gun_balance_nov21.csv). Guns used to outclass melee; now a legendary
+## melee weapon beats normal and rare guns, is about even with epic guns and below legendary guns.
+## Target sustained DPS (with reloads) by rarity: Normal 40, Rare 50, Epic 65, Legendary 85, times a role
+## factor (SMG and shotgun 1.15, sniper 1.2, machine gun 1.25, revolver 0.85, others 1.0). Guns more than 15
+## percent over their target came down to 10 percent over: automatics lose fire rate and damage, semi-autos
+## mostly fire rate, slow guns only damage. Weapons not listed keep the sheet's numbers.
+var gun_tuning := {
+	"pistol_9mm": {"damage": 20.0, "aps": 2.7},
+	"pistol_45": {"damage": 28.0, "aps": 2.2},
+	"compact_smg": {"damage": 10.0, "aps": 8.0},
+	"smg_45": {"damage": 13.0, "aps": 6.0},
+	"pump_shotgun": {"damage": 9.0, "aps": 1.0},
+	"carbine": {"damage": 21.0, "aps": 2.4},
+	"battle_rifle": {"damage": 29.0, "aps": 1.9},
+	"assault_rifle": {"damage": 12.0, "aps": 4.9},
+	"light_machine_gun": {"damage": 13.0, "aps": 5.7, "auto": true},
+	"match_grade_9mm_pistol": {"damage": 24.0, "aps": 2.9},
+	"extended_compact_smg": {"damage": 11.0, "aps": 8.4},
+	"ported_pump_shotgun": {"damage": 12.0, "aps": 1.0},
+	"custom_assault_rifle": {"damage": 15.0, "aps": 5.1},
+	"tuned_light_machine_gun": {"damage": 15.0, "aps": 6.0, "auto": true},
+	"shock_trooper_smg": {"damage": 13.0, "aps": 9.6},
+	"acid_etched_assault_rifle": {"damage": 18.0, "aps": 5.6},
+	"turncoat": {"damage": 19.0, "aps": 7.6, "auto": true},
+}
+
 ## Achievements that unlock legendary gear.
 var achievements := {
 	"marksman_tiles": 15,         # Marksman: critical kills from at least this far away

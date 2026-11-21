@@ -166,6 +166,7 @@ static func register(d) -> void:
 	# ---------------------------------------------------------------- weapons
 	for w in DB.WEAPONS:
 		var wd: Dictionary = w.duplicate(true)
+		_tune(wd)
 		d.weapons[wd.id] = wd
 		var consumable: bool = wd.mode == "consumable"
 		d.def_item(wd.id, {"name": wd.name, "cat": "weapon", "stack": 20 if consumable else 1, "price": int(wd.price),
@@ -224,6 +225,14 @@ static func register(d) -> void:
 		if r.out == "incendiary_shell":
 			r.unlock = {"type": "has_item", "item": "shell_press"}
 			r.note = "Needs an Incendiary Shell Press in your pack."
+
+## Gun balance (Nov 21): Balance.gun_tuning replaces the sheet's Damage and Attacks/s for guns that
+## outclassed melee, and makes the machine guns fully automatic. Descriptions show the new numbers.
+static func _tune(wd: Dictionary) -> void:
+	var t: Dictionary = Balance.gun_tuning.get(wd.id, {})
+	if t.has("damage"): wd.damage = float(t.damage)
+	if t.has("aps"): wd.aps = float(t.aps)
+	if t.get("auto", false): wd.fx.auto = true
 
 static func rarity_color(r: String) -> String:
 	return RARITY.get(r, RARITY.Normal).color

@@ -1,0 +1,18 @@
+ID,Name,Rarity,Old Damage,Old Attacks/s,Old sustained DPS,New Damage,New Attacks/s,New sustained DPS
+pistol_9mm,9mm Pistol,Normal,22.0,3.0,51.6,20,2.7,43.1
+pistol_45,.45 Pistol,Normal,30.0,2.2,46.7,28,2.2,43.6
+compact_smg,Compact SMG,Normal,16.0,12.0,106.7,10,8.0,52.2
+smg_45,.45 SMG,Normal,21.0,9.0,105.5,13,6.0,51.0
+pump_shotgun,Pump Shotgun,Normal,12.0,1.0,64.0,9,1.0,48.0
+carbine,Carbine,Normal,30.0,4.0,92.8,21,2.4,42.9
+battle_rifle,Battle Rifle,Normal,40.0,3.0,88.2,29,1.9,44.9
+assault_rifle,Assault Rifle,Normal,30.0,10.0,169.8,12,4.9,42.7
+light_machine_gun,Light Machine Gun,Normal,32.0,12.0,231.3,13,5.7,56.4
+match_grade_9mm_pistol,Match-Grade 9mm Pistol,Rare,25.0,3.0,58.6,24,2.9,54.8
+extended_compact_smg,Extended Compact SMG,Rare,17.0,12.0,122.9,11,8.4,63.2
+ported_pump_shotgun,Ported Pump Shotgun,Rare,13.0,1.0,69.3,12,1.0,64.0
+custom_assault_rifle,Custom Assault Rifle,Rare,33.0,10.0,194.1,15,5.1,56.4
+tuned_light_machine_gun,Tuned Light Machine Gun,Rare,35.0,12.0,266.5,15,6.0,69.9
+shock_trooper_smg,Shock Trooper SMG,Epic,19.0,13.0,144.8,13,9.6,82.0
+acid_etched_assault_rifle,Acid-Etched Assault Rifle,Epic,37.0,10.0,213.5,18,5.6,71.5
+turncoat,Turncoat,Legendary,36.0,13.0,347.5,19,7.6,120.1

@@ -1333,6 +1333,22 @@ func run_arsenal() -> void:
 		var used := im.get_used_rect()
 		if used.size.x * used.size.y < 12: bad.append(id)
 	check("Arsenal: every weapon, gear, ammo and material item has an icon (%d items)" % ids.size(), bad.is_empty() and Data.weapons.size() >= 130 and Data.gear.size() >= 100, str(bad.slice(0, 8)))
+	# gun balance: sustained damage per second with reloads
+	var dps := func(w: Dictionary) -> float:
+		var per: float = float(w.damage) * float(w.projectiles)
+		if w.mode in ["shoot", "saw"] and (float(w.reload) > 0 or int(w.mag) > 1):
+			return per * float(w.mag) / (float(w.mag) / float(w.aps) + float(w.reload))
+		return per * float(w.aps)
+	var avg := func(cat: String, rar: String) -> float:
+		var v: Array = Data.weapons.values().filter(func(w): return w.category == cat and w.rarity == rar and w.type != "Launcher").map(func(w): return dps.call(w))
+		return v.reduce(func(a, b): return a + b, 0.0) / maxf(v.size(), 1)
+	var leg_melee: float = avg.call("Melee", "Legendary")
+	var top_low_gun: float = Data.weapons.values().filter(func(w): return w.category == "Firearm" and w.rarity in ["Normal", "Rare"]).map(func(w): return dps.call(w)).max()
+	var epic_guns: float = avg.call("Firearm", "Epic")
+	var leg_guns: float = avg.call("Firearm", "Legendary")
+	check("Gun balance: a legendary melee weapon beats normal and rare guns, is about even with epic guns, below legendary guns; machine guns are automatic",
+		top_low_gun < leg_melee and absf(epic_guns - leg_melee) < leg_melee * 0.15 and leg_guns > leg_melee and Data.weapons.light_machine_gun.fx.get("auto", false),
+		"legendary melee %.0f, best normal/rare gun %.0f, epic guns %.0f, legendary guns %.0f" % [leg_melee, top_low_gun, epic_guns, leg_guns])
 	var no_held := Data.weapons.keys().filter(func(w): return Data.weapons[w].type != "Fist" and Art.held_axis(w).is_empty())
 	var bat: Dictionary = Art.held_axis("baseball_bat")
 	var sling: Dictionary = Art.held_axis("slingshot")
