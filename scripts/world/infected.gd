@@ -309,7 +309,7 @@ func _attack_player(e: Dictionary, d: Dictionary, ai: String) -> void:
 	var p: Dictionary = Game.player
 	if Game.overlay_open():
 		return
-	if ai == "crawler" and not Game.gear_total().fx.get("grab_immune", false):
+	if ai == "crawler" and not Game.sandbox_on() and not Game.gear_total().fx.get("grab_immune", false):
 		if Game.gear_total().fx.get("grab_break", false):
 			w.cb.stun(e, 1.0)
 			Game.floaters.append({"text": "Broke free", "pos": p.pos + Vector2(0, -30), "t": 0.8, "color": Color("#c8e0ff")})

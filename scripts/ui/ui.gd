@@ -74,6 +74,15 @@ func _ready() -> void:
 	overlay_root.visible = false
 	hud.visible = false
 
+## The hidden weapons sandbox: Ctrl + Shift + W on the title screen.
+func _unhandled_key_input(e: InputEvent) -> void:
+	if Game.screen == "game" or flow.get("view", "") != "main":
+		return
+	var ke := e as InputEventKey
+	if ke != null and ke.pressed and not ke.echo and ke.keycode == KEY_W and ke.ctrl_pressed and ke.shift_pressed:
+		get_viewport().set_input_as_handled()
+		Game.start_sandbox()
+
 func _full() -> Control:
 	var c := Control.new()
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -609,7 +618,7 @@ func update_hud(dt: float) -> void:
 			h.add_child(track)
 			h.add_child(K.label(str(int(ceil(b[1]))), 6))
 			bars_box.add_child(h)
-		var tag := K.label(Balance.modes[st.mode].label.to_upper(), 5, Color.WHITE)
+		var tag := K.label("WEAPONS SANDBOX" if Game.sandbox_on() else Balance.modes[st.mode].label.to_upper(), 5, Color.WHITE)
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var tagp := PanelContainer.new()
 		tagp.add_theme_stylebox_override("panel", K.tsb("badge_bad" if st.mode == "survivor" else "badge_good", 3, 2) if K.textured else K.sb(Color("#8a3a2a") if st.mode == "survivor" else Color("#3f7a2c"), Color(0, 0, 0, 0), 0, 1, Color(0, 0, 0, 0), 0, 1))
@@ -857,6 +866,8 @@ func on_key(e: InputEventKey) -> void:
 				Game.recover_from_collapse()
 		"pause":
 			if k in [KEY_ESCAPE, KEY_P]: close()
+		"sandbox":
+			if k in [KEY_ESCAPE, KEY_K]: close()
 		"journal":
 			if k in [KEY_ESCAPE, KEY_TAB, KEY_I]:
 				close()
@@ -988,11 +999,49 @@ func _ov_pause() -> Control:
 	v.add_child(K.with_glyph(K.button("Journal", func(): Game.paused = false; open("journal", {"tab": "inventory"})), "list"))
 	v.add_child(K.with_glyph(K.button("Settings", func(): Game.paused = false; open("journal", {"tab": "settings"})), "gear"))
 	v.add_child(K.button("Controls", func(): Game.paused = false; open("help")))
-	v.add_child(K.button("Quit to Title", _quit_confirm, "danger"))
+	if Game.sandbox_on():
+		v.add_child(K.button("Spawn menu", func(): Game.paused = false; open("sandbox")))
+	v.add_child(K.button("Leave Sandbox" if Game.sandbox_on() else "Quit to Title", _quit_confirm, "danger"))
 	return pw[0]
 
 func _quit_confirm() -> void:
+	if Game.sandbox_on():
+		confirm("Leave the weapons sandbox? Nothing from it is kept.", func(): Game.quit_to_title())
+		return
 	confirm("Quit to the title screen? Anything since you last slept will be lost.", func(): Game.quit_to_title())
+
+## The weapons sandbox spawn menu: pick how many, then click an infected type.
+func _ov_sandbox() -> Control:
+	var pw := _window("Weapons Sandbox", 360)
+	var v: VBoxContainer = pw[1]
+	v.add_child(K.label("Nothing here is saved. The infected can't hurt you, ammo never runs out and nothing wears down. Weapons are in the chests.", 6, K.INK_SOFT, true))
+	var n: int = int(overlay.get("n", 3))
+	var cr := K.hbox(4)
+	cr.add_child(K.label("How many:", 7))
+	for c in Sandbox.COUNTS:
+		var cc: int = c
+		cr.add_child(K.button(("[%d]" if cc == n else "%d") % cc, func(): overlay.n = cc; render_overlay(), "big" if cc == n else ""))
+	v.add_child(cr)
+	var types: Array = Data.enemies.keys()
+	types.sort_custom(func(a, b): return [int(Data.enemies[a].get("boss", false)), str(Data.enemies[a].name)] < [int(Data.enemies[b].get("boss", false)), str(Data.enemies[b].name)])
+	var grid := GridContainer.new()
+	grid.columns = 3
+	for t in types:
+		var tt: String = t
+		var b := K.button(str(Data.enemies[tt].name), func():
+			var made := Sandbox.spawn(tt, n)
+			toast("Spawned %d %s." % [made, Data.enemies[tt].name], "", "")
+			render_overlay())
+		b.custom_minimum_size.x = 110
+		grid.add_child(b)
+	v.add_child(K.scroll(grid, 150))
+	v.add_child(K.label("Infected in the arena: %d" % Game.enemies.size(), 7))
+	var br := K.hbox(4)
+	br.add_child(K.button("Clear all", func(): Sandbox.clear(); render_overlay()))
+	br.add_child(K.button("Back to fighting", close, "big"))
+	br.add_child(K.button("Leave Sandbox", _quit_confirm, "danger"))
+	v.add_child(br)
+	return pw[0]
 
 func _ov_help() -> Control:
 	var pw := _window("How to play", 360)

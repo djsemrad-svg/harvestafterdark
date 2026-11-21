@@ -1286,6 +1286,7 @@ func run_all() -> void:
 		U.render_title()
 		if count_nodes(U.screen_root) < 8: bad_title.append(v)
 	check("Title screens render (main, mode, slots, creator, property, load, settings, help, restore)", bad_title.is_empty(), str(bad_title))
+	run_sandbox()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3525,3 +3526,68 @@ func run_portraits() -> void:
 	var hal_blink: Image = MiChars.portrait(Data.npcs.hal.look, 2)
 	var inf := Art.get_portrait(Data.enemies.shambler.look)
 	check("Conversation portraits: every neighbour has a Portrait Generator head that blinks; the infected keep the old crop", ok and bad.is_empty() and hal.get_data() != hal_blink.get_data() and inf != null and inf.get_width() == 16, "%s %s" % [ok, bad])
+
+## The hidden weapons sandbox: Ctrl + Shift + W on the title screen.
+func run_sandbox() -> void:
+	var G = Game
+	G.quit_to_title()
+	# what's on disk before: every save file and when it was written
+	var before := _save_files()
+	var key := InputEventKey.new()
+	key.keycode = KEY_W; key.ctrl_pressed = true; key.shift_pressed = true; key.pressed = true
+	U.flow = {"view": "main"}
+	U._unhandled_key_input(key)
+	var inside: bool = G.screen == "game" and G.map != null and G.map.id == "sandbox" and G.sandbox_on()
+	var in_chests := {}
+	for kk in G.map.objects:
+		var o: Dictionary = G.map.objects[kk]
+		if o.type == "large_chest":
+			for st in o.get("items", []):
+				if st != null: in_chests[st.id] = true
+	var all_weapons: Array = Data.weapons.keys().filter(func(w): return str(Data.weapons[w].category) in ["Firearm", "Melee", "Projectile"])
+	var missing: Array = all_weapons.filter(func(w): return not in_chests.has(w))
+	check("Sandbox: Ctrl+Shift+W on the title screen opens a fenced arena with every weapon in its chests", inside and missing.is_empty() and all_weapons.size() >= 120,
+		"inside=%s weapons=%d missing=%s" % [inside, all_weapons.size(), str(missing.slice(0, 5))])
+	# the spawn menu
+	U.open("sandbox")
+	var menu_ok: bool = ov() == "sandbox" and count_nodes(U.overlay_root) > 20
+	var made := Sandbox.spawn("shambler", 5) + Sandbox.spawn("brute", 1)
+	var near: bool = G.enemies.all(func(e): return e.pos.distance_to(G.player.pos) >= 4.5 * 16)
+	close_all()
+	check("Sandbox: the spawn menu adds any infected type (away from you) and Clear All removes them", menu_ok and made == 6 and G.enemies.size() == 6 and near, "menu=%s made=%d" % [menu_ok, made])
+	# they attack but do no damage, and the clock stands still
+	var hp: float = float(G.state.health)
+	var t0 := int(G.state.time)
+	W.cb.player_hurt(G.enemies[0].pos, 40.0, "bite", G.enemies[0])
+	G.damage_player(30.0, G.enemies[0].pos)
+	tick(4000)
+	var safe: bool = float(G.state.health) == hp and not G.state.flags.get("bitten", false) and int(G.state.time) == t0
+	check("Sandbox: the infected chase and bite but do no damage; the clock is stopped", safe, "hp %s -> %s time %d -> %d" % [hp, G.state.health, t0, int(G.state.time)])
+	# unlimited ammo, no wear
+	Sandbox.clear()
+	var pistol: Dictionary = give("pistol_9mm", {"mag": 0.0, "dur": 300})
+	var shots := 0
+	for i in 40:
+		G.player.cd = 0.0
+		G.player.reload = null
+		if W.cb.shoot(pistol, Data.weapons.pistol_9mm, Vector2.RIGHT, false): shots += 1
+		if G.player.reload != null: W.cb.finish_reload()
+	var bow: Dictionary = give("recurve_bow", {"dur": 150})
+	var arrows := 0
+	for i in 10:
+		if W.cb.shoot(bow, Data.weapons.recurve_bow, Vector2.RIGHT, false): arrows += 1
+	check("Sandbox: ammo never runs out and weapons don't wear down", shots >= 30 and arrows == 10 and int(pistol.dur) == 300 and int(bow.dur) == 150 and G.enemies.is_empty(),
+		"shots=%d arrows=%d dur=%d/%d" % [shots, arrows, int(pistol.dur), int(bow.dur)])
+	# leaving: back to the title, nothing on disk changed
+	G.write_save()
+	G.quit_to_title()
+	var after := _save_files()
+	check("Sandbox: leaving goes back to the title and no save file was written or changed", G.screen == "title" and G.state.is_empty() and before == after, "%d files before, %d after" % [before.size(), after.size()])
+
+func _save_files() -> Dictionary:
+	var r := {}
+	var d := DirAccess.open(Game.SAVE_DIR)
+	if d == null: return r
+	for f in d.get_files():
+		r[f] = FileAccess.get_modified_time(Game.SAVE_DIR + f)
+	return r

@@ -135,6 +135,21 @@ func _ready() -> void:
 		print("DND RESULT slot12=", inv[12], " slot20=", inv[20])
 		get_tree().quit()
 		return
+	if only == "sandbox":
+		Game.quit_to_title()
+		Game.start_sandbox()
+		await frames(10)
+		await shot("sb_arena")
+		Sandbox.spawn("shambler", 4); Sandbox.spawn("runner", 2); Sandbox.spawn("brute", 1)
+		main.ui.open("sandbox")
+		await frames(4)
+		await shot("sb_menu")
+		main.ui.close_all()
+		await frames(60)
+		await shot("sb_fight")
+		Game.quit_to_title()
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()

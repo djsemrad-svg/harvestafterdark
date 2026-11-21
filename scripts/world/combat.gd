@@ -322,7 +322,7 @@ func throw(s: Dictionary, wd: Dictionary, dir: Vector2, from_mouse: bool) -> boo
 	if wd.mode == "consumable":
 		if from_mouse and w.mouse_inside:
 			dist = minf(dist, maxf(24.0, (w.get_global_mouse_position() - start).length()))
-		Game.remove_from_slot(int(Game.state.selected), 1)
+		if not Game.sandbox_on(): Game.remove_from_slot(int(Game.state.selected), 1)
 		Game.projectiles.append({"pos": start, "vel": dir * 170.0, "life": dist / 170.0, "max_life": dist / 170.0, "kind": "lob", "owner": "player",
 			"src": s.id, "dmg": float(wd.damage), "hit": [], "lob": true})
 		Sfx.play("throw")
@@ -338,7 +338,7 @@ func throw(s: Dictionary, wd: Dictionary, dir: Vector2, from_mouse: bool) -> boo
 		return true
 	# thrown weapons you pick back up (knives, axes, javelins)
 	var cap: int = max(1, int(wd.mag))
-	if not s.has("mag"): s.mag = cap
+	if not s.has("mag") or Game.sandbox_on(): s.mag = cap
 	var n: int = max(1, int(wd.projectiles))
 	if Game.mag_of(s) < 1.0:
 		Game.toast("Nothing left to throw. Pick them back up first.", s.id, "warn")
@@ -776,6 +776,12 @@ func update_enemy_fx(e: Dictionary, dt: float) -> void:
 ## All damage to the player goes through here. kind: bite, acid, fire, blast, hit.
 func player_hurt(src: Vector2, dmg: float, kind: String, attacker, no_iframes := false) -> void:
 	var p: Dictionary = Game.player
+	if Game.sandbox_on():
+		# the sandbox: the hit lands but does nothing
+		if float(p.iframes) <= 0.0:
+			Game.floaters.append({"text": "0", "pos": p.pos + Vector2(0, -26), "t": 0.6, "color": Color("#c8e0ff")})
+			p.iframes = 0.4
+		return
 	var g: Dictionary = Game.gear_total()
 	var gfx: Dictionary = g.fx
 	var sprinting: bool = p.get("sprinting", false)

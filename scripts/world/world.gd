@@ -50,6 +50,9 @@ func handle_event(e: InputEvent) -> void:
 					if Game.mag_of(rs) < float(Data.weapons[rs.id].mag): Game.toast("No ammo for that.", "", "warn")
 				return
 			KEY_V: cb.shove(); return
+			KEY_K:
+				if Game.sandbox_on(): Game.ui.open("sandbox")
+				return
 			KEY_SHIFT:
 				# double-tap Shift to dash (with the right shoes)
 				var now := Time.get_ticks_msec() / 1000.0

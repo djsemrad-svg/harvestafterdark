@@ -159,6 +159,8 @@ func selected_stack():
 	return inv()[int(state.selected)]
 
 func count_item(id: String) -> int:
+	if sandbox_on() and is_ammo(id):
+		return 999       # the sandbox never runs out of ammo
 	var n := 0
 	for s in inv():
 		if s != null and s.id == id:
@@ -261,6 +263,8 @@ func add_item(id: String, qty: int, opts := {}) -> int:
 	return left
 
 func remove_item(id: String, qty: int) -> bool:
+	if sandbox_on() and is_ammo(id):
+		return true
 	if count_item(id) < qty:
 		return false
 	return consume_match(id, qty)
@@ -481,6 +485,8 @@ func _remove_stack_ref(s: Dictionary) -> void:
 ## Wears an item down. At zero it breaks: gone for good in Survivor Mode,
 ## unusable until repaired in Adventure Mode.
 func wear_item(s: Dictionary, n := 1) -> void:
+	if sandbox_on():
+		return
 	var m := max_dur(s.id)
 	if m <= 0 or is_broken(s):
 		return
@@ -672,6 +678,8 @@ func migrate_save(d: Dictionary) -> Dictionary:
 	return d
 
 func write_save() -> bool:
+	if sandbox_on():
+		return true      # the weapons sandbox never touches your saves
 	state.saved_at = Time.get_unix_time_from_system()
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
 	var path := slot_path(state.mode, int(state.slot))
@@ -912,6 +920,35 @@ func start_session() -> void:
 	Sfx.play_music(season())
 	state_loaded.emit()
 
+# ================================================================ the weapons sandbox
+## True while you're in the hidden weapons sandbox (see Sandbox).
+func sandbox_on() -> bool:
+	return not state.is_empty() and state.get("sandbox", false)
+
+var _ammo_ids := {}
+func is_ammo(id: String) -> bool:
+	if _ammo_ids.is_empty():
+		for w in Data.weapons:
+			for a in Arsenal.ammo_ids(Data.weapons[w]):
+				_ammo_ids[a] = true
+	return _ammo_ids.has(id)
+
+## Opens the sandbox from the title screen: a throwaway game that is never saved.
+func start_sandbox() -> void:
+	state = new_game_state({"mode": "adventure", "slot": 0, "name": "Tester", "look": Data.default_look.duplicate(true), "property_name": "Sandbox"})
+	state.sandbox = true
+	state.time = 720
+	state.inv_size = 36
+	while state.inventory.size() < 36: state.inventory.append(null)
+	for wid in ["baseball_bat", "pistol_9mm", "recurve_bow"]:
+		add_item(wid, 1, {"silent": true})
+	start_session()
+	maps["sandbox"] = Sandbox.build()
+	change_map("sandbox", Sandbox.START.x, Sandbox.START.y, "down", {"silent": true})
+	if ui:
+		ui.banner("Weapons sandbox")
+		toast("Weapons sandbox: nothing here is saved. Press K to spawn infected.", "", "gold")
+
 func quit_to_title() -> void:
 	screen = "title"
 	state = {}
@@ -1006,7 +1043,7 @@ func overlay_open() -> bool:
 	return ui != null and ui.overlay_open()
 
 func is_clock_paused() -> bool:
-	return screen != "game" or paused or overlay_open() or (fishing != null and fishing.phase == "mini")
+	return screen != "game" or sandbox_on() or paused or overlay_open() or (fishing != null and fishing.phase == "mini")
 
 func update_clock(dt: float) -> void:
 	if is_clock_paused():
@@ -3299,6 +3336,8 @@ func reload_checkpoint() -> bool:
 	return true
 
 func damage_player(amt: float, src = null, cause := "infected") -> void:
+	if sandbox_on():
+		return
 	state.health = max(0.0, state.health - amt)
 	player.iframes = Balance.player.iframes_sec
 	player.hurt_t = 0.0      # plays the hurt animation
