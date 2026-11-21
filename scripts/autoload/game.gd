@@ -1073,6 +1073,7 @@ func update_clock(dt: float) -> void:
 
 func tick10() -> void:
 	expire_buffs()
+	FirstWeek.check_reward()
 	conditions_tick10()
 	check_achievements()
 	if state.get("frost_night", false) and int(state.time) >= 1080 and int(state.flags.get("frost_warned", -1)) != int(state.day):

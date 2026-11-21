@@ -1311,6 +1311,7 @@ func run_all() -> void:
 	check("Title screens render (main, mode, slots, creator, property, load, settings, help, restore)", bad_title.is_empty(), str(bad_title))
 	run_sandbox()
 	run_farmhouse()
+	run_first_week()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3708,3 +3709,74 @@ func run_farmhouse() -> void:
 	check("Farmhouse: kitchen and bedroom need the outside repaired first; level 3 adds a spare room and a cellar; saves keep it",
 		too_early != "" and err == "" and big and door_ok and cellar_ok and in_cellar and kept,
 		"early=%s err=%s big=%s door=%s cellar=%s in=%s kept=%s" % [too_early, err, big, door_ok, cellar_ok, in_cellar, kept])
+
+## Plays a new player's first four days the plain way: plant the starter radishes, then chop and break what's
+## lying around the farm until energy or daylight runs out, sleep, repeat. Checks that before the first raid
+## night they can build a Workbench and a ring of fences, and still have a weapon.
+func run_first_week() -> void:
+	var G = Game
+	start("survivor", 3)
+	# the guided first week: today's goals show, tick off from the game state, and pay out once all are done
+	var g0: Array = FirstWeek.today()
+	var shown: bool = U.guide_panel != null and g0.size() == 3 and not g0[0][1]
+	G.state.npcs.hal.met = true
+	for i in 8: G.maps.homestead.soil[GameMap.k(30 + i, 30)] = {"w": 0, "crop": {"id": "radish", "g": 0}}
+	G.add_item("wood", 20, {"silent": true})
+	var m0: int = int(G.state.money)
+	G.tick10()
+	var paid: bool = int(G.state.money) == m0 + 150 and FirstWeek.today().all(func(x): return x[1])
+	G.tick10()
+	var once: bool = int(G.state.money) == m0 + 150
+	G.state.day = 8
+	var gone: bool = FirstWeek.today().is_empty()
+	check("Guided first week: today's goals show, tick off as you do them, pay once, and stop after day 7", shown and paid and once and gone, str(g0))
+	start("survivor", 3)
+	var log := []
+	var counts := {}
+	for o in G.maps.homestead.objects.values():
+		counts[o.type] = int(counts.get(o.type, 0)) + 1
+	log.append(str(counts))
+	var planted := false
+	for day in range(1, 5):
+		G.state.time = 400
+		var h: GameMap = G.maps.homestead
+		if not planted:
+			# a 5 x 3 bed of radishes by the farmhouse
+			for i in 15:
+				var tx := 6 + i % 5
+				var ty := 12 + i / 5
+				clear_tile(h, tx, ty)
+				h.soil[GameMap.k(tx, ty)] = {"w": 1, "crop": {"id": "radish", "g": 0}}
+				G.remove_item("radish_seed", 1)
+			planted = true
+		else:
+			for kk in h.soil:
+				h.soil[kk].w = 1
+		# gather until tired or it's evening
+		var targets: Array = h.objects.values().filter(func(o): return o.type in ["tree", "pine", "stump", "twig", "rock"])
+		var door := Vector2(11, 9)
+		# nearest first, but once there's wood enough for a bench and fences, go after rocks
+		var want_stone: bool = G.count_item("wood") >= 50
+		targets.sort_custom(func(a, b):
+			var ra: int = 0 if (a.type == "rock") == want_stone else 1
+			var rb: int = 0 if (b.type == "rock") == want_stone else 1
+			if ra != rb: return ra < rb
+			return Vector2(a.x, a.y).distance_to(door) < Vector2(b.x, b.y).distance_to(door))
+		for o in targets:
+			if float(G.state.energy) < 12 or int(G.state.time) > 18 * 60: break
+			var ox := int(o.x); var oy := int(o.y)
+			if h.get_obj(ox, oy) == null or h.is_solid(ox, oy + 1) or h.get_obj(ox, oy + 1) != null: continue
+			G.change_map("homestead", ox, oy + 1, "up", {"silent": true})
+			var tool: String = Data.obj_defs[o.type].tool
+			var n := 0
+			while h.get_obj(ox, oy) != null and n < 14 and float(G.state.energy) >= 2:
+				use(tool); n += 1
+			tick(1500)
+		log.append("day %d: wood %d stone %d energy %d time %d" % [day, G.count_item("wood"), G.count_item("stone"), int(G.state.energy), int(G.state.time)])
+		if day < 4: sleep()
+	var wood: int = G.count_item("wood")
+	var stone: int = G.count_item("stone")
+	var fences: int = (wood - 20) / 2 if wood >= 20 else 0
+	var weapon: bool = G.state.inventory.any(func(st): return st != null and Data.weapons.has(st.id))
+	check("First week: by the first raid night a new player can build a Workbench, 12+ fences, and still has a weapon",
+		wood >= 20 and stone >= 10 and fences >= 12 and weapon, "fences=%d; %s" % [fences, " | ".join(log)])

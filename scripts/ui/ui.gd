@@ -14,6 +14,8 @@ var flow := {}             # title screen state
 var toasts := []
 var toast_box: VBoxContainer
 var clock_lbl: RichTextLabel
+var guide_panel: Control
+var guide_lbl: RichTextLabel
 var bars_box: VBoxContainer
 var status_box: HBoxContainer
 var hint_lbl: Label
@@ -474,13 +476,26 @@ func build_hud() -> void:
 	# clock (top right)
 	var cp := K.panel(84)
 	cp.tape = false
-	cp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	cp.position = Vector2(-88, 3)
-	cp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	clock_lbl = K.rich("", 7)
 	clock_lbl.custom_minimum_size.x = 76
 	cp.add_child(clock_lbl)
-	hud.add_child(cp)
+	# the first week's goals (FirstWeek), under the clock
+	var gbox := K.vbox(2)
+	gbox.custom_minimum_size = Vector2(cp.get_combined_minimum_size().x, 0)
+	gbox.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	gbox.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	gbox.size = gbox.custom_minimum_size
+	gbox.position = Vector2(-gbox.custom_minimum_size.x - 4, 3)
+	gbox.add_child(cp)
+	var gp := K.panel(84)
+	gp.tape = false
+	guide_lbl = K.rich("", 6)
+	guide_lbl.custom_minimum_size.x = 76
+	gp.add_child(guide_lbl)
+	gbox.add_child(gp)
+	guide_panel = gp
+	gp.visible = false
+	hud.add_child(gbox)
 	# bars (top left)
 	var bp := K.panel(90)
 	bp.tape = false
@@ -587,6 +602,15 @@ func update_hud(dt: float) -> void:
 	if _last.get("clock") != clock:
 		clock_lbl.text = clock
 		_last.clock = clock
+	var goals := FirstWeek.today()
+	var gkey := str(goals)
+	if _last.get("guide") != gkey:
+		_last.guide = gkey
+		guide_panel.visible = not goals.is_empty()
+		var lines := ["[b]Today[/b] [color=#7a5434](day %d of 7)[/color]" % int(st.day)]
+		for g in goals:
+			lines.append(("[color=#5a8a3a][s]%s[/s][/color]" if g[1] else "• %s") % g[0])
+		guide_lbl.text = "\n".join(lines)
 	var bars := [["Health", st.health, Game.max_health(), Color("#d8453a")], ["Energy", st.energy, Game.max_energy(), Color("#e8c03a")]]
 	if Game.is_survivor():
 		bars.append(["Hunger", st.hunger, Balance.survival.hunger_max, Color("#d8823a")])

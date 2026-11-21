@@ -210,6 +210,21 @@ func _ready() -> void:
 				await shot("cellar_%d" % lv)
 		get_tree().quit()
 		return
+	if only == "guide":
+		# the first week's goals under the clock, on day 1 and day 2 (one done)
+		Game.quit_to_title()
+		Game.new_game({"mode": "survivor", "slot": 3, "name": "Tester", "look": Data.default_look.duplicate(true), "property_name": "Test Acres"})
+		main.ui.close_all()
+		Game.state.time = 480
+		Game.change_map("homestead", 11, 11, "down", {"silent": true})
+		await frames(8)
+		await shot("guide_day1")
+		Game.state.day = 2
+		Game.state.npcs.hal.met = true
+		await frames(8)
+		await shot("guide_day2")
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()
