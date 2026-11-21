@@ -613,10 +613,47 @@ func box_blocked(m: GameMap, pos: Vector2, hw: float, h: float) -> bool:
 
 func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 	var m: GameMap = Game.map
-	if delta.x != 0 and not box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h):
-		e.pos.x += delta.x
-	if delta.y != 0 and not box_blocked(m, e.pos + Vector2(0, delta.y), hw, h):
-		e.pos.y += delta.y
+	var me := e == Game.player
+	var wall_x := false
+	var wall_y := false
+	if delta.x != 0:
+		wall_x = box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h)
+		if not wall_x and not (me and person_blocked(e.pos, e.pos + Vector2(delta.x, 0))):
+			e.pos.x += delta.x
+	if delta.y != 0:
+		wall_y = box_blocked(m, e.pos + Vector2(0, delta.y), hw, h)
+		if not wall_y and not (me and person_blocked(e.pos, e.pos + Vector2(0, delta.y))):
+			e.pos.y += delta.y
+	# corner sliding: walking straight into the edge of a wall or post slips round it (not round people)
+	if me and delta.x != 0 and delta.y == 0 and wall_x:
+		_slide(m, e, Vector2(delta.x, 0), Vector2(0, 1), hw, h)
+	elif me and delta.y != 0 and delta.x == 0 and wall_y:
+		_slide(m, e, Vector2(0, delta.y), Vector2(1, 0), hw, h)
+
+const SLIDE_PX := 7
+
+func _slide(m: GameMap, e: Dictionary, step: Vector2, side: Vector2, hw: float, h: float) -> void:
+	for k in range(1, SLIDE_PX + 1):
+		for sgn in [-1, 1]:
+			var off: Vector2 = side * k * sgn
+			if not box_blocked(m, e.pos + off + step, hw, h) and not box_blocked(m, e.pos + side * sgn * minf(k, step.length()), hw, h):
+				e.pos += side * sgn * minf(float(k), step.length())
+				return
+
+## Neighbours and townsfolk are solid to the player (moving away from someone you overlap is always allowed).
+func person_blocked(from: Vector2, to: Vector2) -> bool:
+	var who := []
+	for id in Game.npcs:
+		var n: Dictionary = Game.npcs[id]
+		if n.map == Game.map.id: who.append(n.pos)
+	if Townsfolk.map_id == Game.map.id:
+		for f in Townsfolk.folk:
+			if Townsfolk.present(f): who.append(f.pos)
+	for q in who:
+		var d1: Vector2 = to - q
+		if absf(d1.x) < 9.0 and absf(d1.y) < 6.0 and d1.length() < (from - q).length():
+			return true
+	return false
 
 func update_player(dt: float) -> void:
 	var p: Dictionary = Game.player

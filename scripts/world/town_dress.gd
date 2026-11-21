@@ -35,6 +35,7 @@ static func dress(m: GameMap) -> void:
 	if m.id != "town":
 		return
 	_npc_spots()
+	m.layout = "town_v2"      # front walks and thinner planting (Nov 21): older saves get the new dressing
 	var r := RandomNumberGenerator.new()
 	r.seed = 0x7a11d5
 	_walls(m)
@@ -42,6 +43,7 @@ static func dress(m: GameMap) -> void:
 	for h in HOMES:
 		var st := _home(m, str(h[0]), int(h[1]), int(h[2]), str(h[3]))
 		if not st.is_empty(): homes.append(st)
+	_walks(m)
 	for st in homes:
 		_yard(m, st, r)
 	_square(m)
@@ -133,7 +135,7 @@ static func _sprinkle(m: GameMap, r: RandomNumberGenerator) -> void:
 	var kinds := ["shrub", "shrub", "flower_patch", "flower_patch", "topiary", "hedge"]
 	var placed := 0
 	for tries in 900:
-		if placed >= 55: break
+		if placed >= 32: break
 		var x := r.randi_range(4, m.w - 6); var y := r.randi_range(4, 63)
 		var t: String = kinds[r.randi() % kinds.size()]
 		var w := 1 if t == "topiary" else 2
@@ -147,10 +149,70 @@ static func _near_path(m: GameMap, x: int, y: int, w: int) -> bool:
 			if not m.in_bounds(xx, yy): return true
 			if str(m.tile_at(xx, yy)) != "grass": return true
 			for st in m.structures:
+				# keep the gaps between buildings open
+				if xx >= int(st.x) - 2 and xx < int(st.x) + int(st.w) + 2 and yy >= int(st.y) - 1 and yy < int(st.y) + int(st.h) + 1:
+					return true
 				# keep the ground in front of every door open
 				if xx >= int(st.door_x) - 1 and xx <= int(st.door_x) + 2 and yy > int(st.door_y) and yy <= int(st.door_y) + 3:
 					return true
 	return false
+
+## ---------------------------------------------------------------- front walks
+## A two-tile paved walk from every door to the nearest road or paving, laid before the yards and
+## shrubs so nothing is planted on it. Nature and clutter on the way are cleared (and purged from
+## older saves); a walk never goes through a building.
+const WALK_ON := ["grass", "dirt", "pave", "road", "bridge"]
+
+static func _walks(m: GameMap) -> void:
+	for st in m.structures:
+		if not st.has("door_x"): continue
+		var start := Vector2i(int(st.door_x), int(st.door_y) + 1)
+		var path := _walk_path(m, start)
+		for c in path:
+			for t in [c, c + Vector2i(1, 0)]:
+				if str(m.tile_at(t.x, t.y)) in ["grass", "dirt"]:
+					m.set_tile(t.x, t.y, "pave")
+				_clear(m, t.x, t.y, 1, 1, true)
+				m.purge.append(Rect2i(t.x, t.y, 1, 1))
+
+## Breadth-first from the doorstep over 2-wide steps until it reaches road or paving (not counting the
+## doorstep itself). Returns the left column of each step, or [] if nothing is in reach.
+static func _walk_path(m: GameMap, start: Vector2i) -> Array:
+	var prev := {start: start}
+	var q := [start]
+	var head := 0
+	while head < q.size() and q.size() < 3000:
+		var c: Vector2i = q[head]
+		head += 1
+		if c != start and c.y > start.y and _is_path(m, c) and _is_path(m, c + Vector2i(1, 0)):
+			var out := []
+			var k := c
+			while k != start:
+				k = prev[k]
+				if k != start: out.push_front(k)
+			out.push_front(start)
+			return out
+		for d in [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1)]:
+			var n: Vector2i = c + d
+			if prev.has(n) or not _walkable(m, n) or not _walkable(m, n + Vector2i(1, 0)): continue
+			prev[n] = c
+			q.append(n)
+	return []
+
+static func _is_path(m: GameMap, t: Vector2i) -> bool:
+	return str(m.tile_at(t.x, t.y)) in ["road", "pave", "bridge", "sand"]
+
+static func _walkable(m: GameMap, t: Vector2i) -> bool:
+	if not m.in_bounds(t.x, t.y) or not str(m.tile_at(t.x, t.y)) in WALK_ON: return false
+	for st in m.structures:
+		if t.x >= int(st.x) and t.x < int(st.x) + int(st.w) and t.y >= int(st.y) and t.y < int(st.y) + int(st.h): return false
+	var o = m.objects.get(GameMap.k(t.x, t.y))
+	if o == null: return true
+	var ot := str(o.type)
+	if ot == "part":
+		var parent = m.objects.get(str(o.of))
+		ot = str(parent.type) if parent != null else "part"
+	return NATURE.has(ot) or CLUTTER.has(ot) or not Data.obj_defs.get(ot, {}).get("solid", false)
 
 ## ---------------------------------------------------------------- helpers
 static func _prop(m: GameMap, x: int, y: int, type: String, w := 1, h := 1, on_pave := false) -> bool:

@@ -1315,6 +1315,7 @@ func run_all() -> void:
 	run_repairs()
 	run_modern_farm()
 	run_shop_rooms()
+	run_walkability()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -3874,3 +3875,61 @@ func run_shop_rooms() -> void:
 		if shoppers == 0: bad.append("%s empty" % id)
 	Townsfolk.refresh(null)
 	check("Shops: furnished for what they are, nothing in front of a counter, and shoppers browsing the floor", bad.is_empty(), "bad=%s furniture=%s" % [bad, counts])
+
+func run_walkability() -> void:
+	var G = Game
+	start("adventure", 2)
+	# 1. every door in town has a paved walk to a road or the square
+	var tm: GameMap = G.maps.town
+	var no_walk := []
+	for st in tm.structures:
+		if not st.has("door_x"): continue
+		var dx := int(st.door_x); var dy := int(st.door_y) + 1
+		if not str(tm.tile_at(dx, dy)) in ["pave", "road", "sand"]:
+			no_walk.append(str(st.get("kind", "?")))
+	# 2. people block the player
+	G.change_map("store", 6, 8, "up", {"silent": true})
+	W.step(0.01)
+	var hal: Dictionary = G.npcs.hal
+	G.player.pos = Vector2(6 * 16 + 8, 8 * 16 + 14)
+	var keep_hal = [hal.map, hal.pos, hal.path, hal.entry]
+	hal.map = "store"; hal.pos = Vector2(6 * 16 + 8, 7 * 16 + 14); hal.path = null
+	var y0: float = G.player.pos.y
+	for i in 30: W.move_entity(G.player, Vector2(0, -1), 5, 6)
+	var stopped: bool = G.player.pos.y > hal.pos.y + 5 and G.player.pos.y < y0
+	hal.map = keep_hal[0]; hal.pos = keep_hal[1]; hal.path = keep_hal[2]
+	# 3. corner sliding: walking up into the corner of a crate slips past it
+	at("homestead", 30, 30, "up")
+	var hm: GameMap = G.maps.homestead
+	var pt: Vector2i = W.player_tile()
+	for yy in range(pt.y - 4, pt.y + 2):
+		for xx in range(pt.x - 3, pt.x + 4): clear_tile(hm, xx, yy)
+	hm.add_obj(pt.x, pt.y - 2, "crate")
+	G.player.pos = Vector2(pt.x * 16 + 8 + 9, pt.y * 16 + 14)     # mostly beside the crate, its edge overlapping
+	for i in 60: W.move_entity(G.player, Vector2(0, -1), 5, 6)
+	var slid: bool = G.player.pos.y < (pt.y - 2) * 16
+	hm.remove_obj(pt.x, pt.y - 2)
+	# 4. a neighbour re-plans when something is built on the way
+	var nm: GameMap = G.maps.town
+	var n: Dictionary = G.npcs.ruth
+	var a := Vector2i(10, 40); var b := Vector2i(20, 40)
+	for xx in range(8, 23):
+		for yy in range(37, 44): clear_tile(nm, xx, yy)
+	n.map = "town"; n.pos = Vector2(a.x * 16 + 8, a.y * 16 + 14)
+	n.path = MapBuilder.find_path(nm, a.x, a.y, b.x, b.y)
+	var mid: Vector2i = n.path[3]
+	nm.add_obj(mid.x, mid.y, "crate")
+	n.entry = G.npc_entry_now("ruth")
+	var keep_e: Array = n.entry
+	var replanned := false
+	for i in 400:
+		n.entry = keep_e
+		G.update_npcs(0.05)
+		if n.path == null: break
+		for c in n.path:
+			if c == mid: replanned = false
+		if not n.path.has(mid): replanned = true
+	nm.remove_obj(mid.x, mid.y)
+	var arrived: bool = n.path == null or n.path.is_empty()
+	check("Town walkability: paved walks from every door, people block the player, corners slide, neighbours re-plan round new obstacles",
+		no_walk.is_empty() and stopped and slid and replanned, "no_walk=%s stopped=%s slid=%s replanned=%s arrived=%s" % [no_walk, stopped, slid, replanned, arrived])

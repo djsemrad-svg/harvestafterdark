@@ -2670,6 +2670,35 @@ func update_npcs(dt: float) -> void:
 				n.pos = Vector2(e[2] * 16 + 8, e[3] * 16 + 14)
 				n.dir = e[4]
 				n.path = null
+		if n.path != null and not n.path.is_empty() and maps.has(n.map):
+			var nm: GameMap = maps[n.map]
+			var here := Vector2i(int(n.pos.x) / 16, int(n.pos.y - 4) / 16)
+			var end: Vector2i = n.path[n.path.size() - 1]
+			# something was built in the way since the path was planned: find a new way (or skip ahead)
+			if n.path[0] != end and nm.is_solid(n.path[0].x, n.path[0].y):
+				var np = MapBuilder.find_path(nm, here.x, here.y, end.x, end.y)
+				if np == null or np.is_empty():
+					n.pos = Vector2(end.x * 16 + 8, end.y * 16 + 14)
+					n.path = null
+					n.dir = e[4] if e.size() > 4 else "down"
+					continue
+				n.path = np
+			# the player is standing in the way: wait a moment, then walk round them
+			var step: Vector2i = n.path[0]
+			var step_pos := Vector2(step.x * 16 + 8, step.y * 16 + 14)
+			if map != null and map.id == n.map and player.pos.distance_to(step_pos) < 11.0 and player.pos.distance_to(n.pos) < 22.0:
+				n.wait_t = float(n.get("wait_t", 0.0)) + dt
+				n.moving = false
+				n.frame = 0
+				if float(n.wait_t) < 1.0:
+					continue
+				n.wait_t = 0.0
+				var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
+				var around = MapBuilder.find_path(nm, here.x, here.y, end.x, end.y, 4000, {pt: true})
+				if around != null and not around.is_empty():
+					n.path = around
+				continue
+			n.wait_t = 0.0
 		if n.path != null and not n.path.is_empty():
 			var t: Vector2i = n.path[0]
 			var goal := Vector2(t.x * 16 + 8, t.y * 16 + 14)

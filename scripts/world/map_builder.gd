@@ -593,7 +593,8 @@ static func _mine_details(m: GameMap, r: RandomNumberGenerator, entry: Vector2i,
 			m.decor.erase(GameMap.k(c.x, c.y))
 
 # ---------------------------------------------------------------- pathfinding (NPCs)
-static func find_path(m: GameMap, sx: int, sy: int, tx: int, ty: int, max_nodes := 4000):
+## "avoid": extra tiles (Vector2i keys) to walk round, such as where the player is standing.
+static func find_path(m: GameMap, sx: int, sy: int, tx: int, ty: int, max_nodes := 4000, avoid := {}):
 	if sx == tx and sy == ty:
 		return []
 	var start := sy * m.w + sx
@@ -618,7 +619,7 @@ static func find_path(m: GameMap, sx: int, sy: int, tx: int, ty: int, max_nodes 
 			var ni := ny * m.w + nx
 			if prev.has(ni):
 				continue
-			if ni != goal and m.is_solid(nx, ny):
+			if ni != goal and (m.is_solid(nx, ny) or avoid.has(Vector2i(nx, ny))):
 				continue
 			prev[ni] = cur
 			q.append(ni)
