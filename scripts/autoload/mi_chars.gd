@@ -232,3 +232,57 @@ static func _dead(fr: Image) -> Image:
 			var g := c.get_luminance()
 			fr.set_pixel(x, y, Color(lerpf(c.r, g, 0.5) * 0.8, lerpf(c.g, g, 0.5) * 0.82, lerpf(c.b, g, 0.5) * 0.76, c.a))
 	return fr
+
+# ---------------------------------------------------------------- conversation portraits (Nov 21)
+# LimeZu's Portrait Generator (Modern User Interface pack): a head drawn for the dialogue box.
+# It shares the character generator's numbering, so the same hair, eyes and accessory carry over;
+# the skin is recoloured to the person's exact skin colour, like the walking sprite.
+const PG_SKIN_BASE := Color8(255, 184, 147)   # Portrait Generator skin 3, the one recoloured
+const PG_CROP := Rect2i(2, 1, 24, 24)         # the head and hats inside each 32x32 frame
+static var _pg := {}
+
+static func _pg_img(part: String, name: String) -> Image:
+	var k := part + "/" + name
+	if not _pg.has(k):
+		var tex: Texture2D = Art.override("portraits/%s/%s.png" % [part, name])
+		var im: Image = null
+		if tex != null:
+			im = tex.get_image().duplicate()
+			if im.is_compressed(): im.decompress()
+			im.convert(Image.FORMAT_RGBA8)
+		_pg[k] = im
+	return _pg[k]
+
+## True when the portrait parts are installed (art/portraits/).
+static func pg_available() -> bool:
+	return available() and _pg_img("skin", "3") != null
+
+## "11_Beanie_02" or "05_03" -> "11_Beanie_2" / "05_3": the generator pads colour numbers, the portraits don't.
+static func _pg_name(key: String) -> String:
+	var i := key.rfind("_")
+	if i < 0: return key
+	return key.substr(0, i) + "_" + str(int(key.substr(i + 1)))
+
+## The look's portrait head, 24x24 (frame 0-9 of the idle loop; frame 2 blinks), or null for the infected.
+static func portrait(look: Dictionary, frame := 0) -> Image:
+	if not pg_available() or look.get("infected", false):
+		return null
+	var p := parts(look)
+	var cell := Rect2i(posmod(frame, 10) * 32, 0, 32, 32)
+	var out := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	var layers := [["skin", "3"], ["eyes", "%02d" % int(p.eyes)]]
+	var hair := _pg_name(str(p.hair))
+	if _pg_img("hair", hair) == null: hair = str(p.hair).substr(0, 2) + "_1"
+	layers.append(["hair", hair])
+	if str(p.acc) != "":
+		var acc := _pg_name(str(p.acc))
+		if _pg_img("acc", acc) == null: acc = acc.substr(0, acc.rfind("_")) + "_1"
+		layers.append(["acc", acc])      # accessories the portraits don't have (gloves, helmets) are skipped
+	for l in layers:
+		var sh := _pg_img(l[0], l[1])
+		if sh == null: continue
+		var fr := sh.get_region(cell)
+		if l[0] == "skin":
+			fr = _skin(fr, Color(str(look.get("skin", "#e8b48f"))), PG_SKIN_BASE)
+		out.blend_rect(fr, Rect2i(0, 0, 32, 32), Vector2i.ZERO)
+	return out.get_region(PG_CROP)

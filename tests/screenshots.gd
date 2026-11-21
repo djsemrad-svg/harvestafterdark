@@ -48,6 +48,32 @@ func _ready() -> void:
 		main.ui.open("museum"); await frames(4); await shot("35_museum")
 		get_tree().quit()
 		return
+	if only == "portraits":
+		# every neighbour's new portrait next to their walking sprite, plus a few townsfolk, saved as one picture
+		var looks := []
+		for n in Data.npcs:
+			looks.append([n, Data.npcs[n].look])
+		for i in 6:
+			var rr := RandomNumberGenerator.new(); rr.seed = i * 7919 + 3
+			looks.append(["folk%d" % i, Townsfolk._make(rr, "walk", Vector2i.ZERO, "down").look])
+		var W := 56 * looks.size()
+		var img := Image.create(W, 40, false, Image.FORMAT_RGBA8)
+		img.fill(Color("#5a8a50"))
+		for i in looks.size():
+			var pt: Texture2D = Art.get_portrait(looks[i][1])
+			var ch: Texture2D = Art.get_char(looks[i][1], "down", 0)
+			var pi := pt.get_image(); pi.convert(Image.FORMAT_RGBA8)
+			var ci := ch.get_image(); ci.convert(Image.FORMAT_RGBA8)
+			img.blend_rect(pi, Rect2i(Vector2i.ZERO, pi.get_size()), Vector2i(i * 56 + 2, 8))
+			img.blend_rect(ci, Rect2i(Vector2i.ZERO, ci.get_size()), Vector2i(i * 56 + 32, 4))
+		img.resize(W * 4, 160, Image.INTERPOLATE_NEAREST)
+		img.save_png(out + "portraits.png")
+		print("PORTRAITS ", looks.map(func(l): return l[0]))
+		main.ui.dialogue("hal", ["Morning! Need seeds?"])
+		await frames(4)
+		await shot("portrait_dialogue")
+		get_tree().quit()
+		return
 	if only == "pack":
 		main.ui.close_all()
 		Game.state.time = 600

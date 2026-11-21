@@ -287,6 +287,19 @@ static func button(text: String, cb: Callable, kind := "", min_w := 0.0) -> Butt
 		cb.call())
 	return b
 
+## A conversation portrait that blinks now and then (Portrait Generator heads only).
+static func blinking(look: Dictionary, px: int) -> TextureRect:
+	var t := icon(Art.get_portrait(look), px)
+	if MiChars.pg_available() and not look.get("infected", false):
+		var open_tex := Art.get_portrait(look)
+		var shut := Art.get_portrait(look, 2)
+		var tw := t.create_tween().set_loops()
+		tw.tween_interval(2.6)
+		tw.tween_callback(func(): t.texture = shut)
+		tw.tween_interval(0.14)
+		tw.tween_callback(func(): t.texture = open_tex)
+	return t
+
 static func icon(tex: Texture2D, px := 16) -> TextureRect:
 	var t := TextureRect.new()
 	t.texture = tex

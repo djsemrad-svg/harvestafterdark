@@ -1383,7 +1383,10 @@ func get_char(look: Dictionary, dir: String, frame: int, anim := "walk") -> Imag
 	return cached("ch|%s|%s|%d|%s" % [look_key(look), dir, frame, anim], func(): return shade_pass(char_image(look, dir, frame, anim), 0.7) if detail else char_image(look, dir, frame, anim))
 
 ## Head and shoulders, used in dialogue boxes, shops and the social tab.
-func get_portrait(look: Dictionary) -> ImageTexture:
+func get_portrait(look: Dictionary, frame := 0) -> ImageTexture:
+	if MiChars.pg_available() and not look.get("infected", false):
+		var pg := cached("pg|%d|%s" % [frame, look_key(look)], func(): return MiChars.portrait(look, frame))
+		if pg != null: return pg
 	return cached("pt|" + look_key(look), func():
 		var im := char_image(look, "down", 0)
 		if MiChars.available() and im.get_width() == 16:

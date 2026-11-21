@@ -191,5 +191,33 @@ if os.path.isfile(SHEET):
             dark = recolour(g, {(i, j) for j in range(g.height) for i in range(g.width)}, "#5a3418")
             put(dark, "glyph_%s.png" % nm)
     print("modern ui: %d pieces" % count)
+
+    # Portrait Generator parts (16x16 set): the first row of each sheet (an idle loop of 10 frames,
+    # 32x32 each; frame 2 blinks). Same numbering as the character generator, so a person's hair,
+    # eyes and accessory map straight across. Saved to art/portraits/<part>/<name>.png.
+    PG = os.path.join(SRC, "modernuserinterface-win", "16x16", "Portrait_Generator")
+    pg_n = 0
+    if os.path.isdir(PG):
+        import re
+        for sub, part in (("Skins", "skin"), ("Eyes", "eyes"), ("Hairstyles", "hair"), ("Accessories", "acc")):
+            for fn in sorted(os.listdir(os.path.join(PG, sub))):
+                if not fn.endswith(".png"):
+                    continue
+                stem = fn[:-4]
+                if part == "skin":
+                    name = stem.split("_")[-1]                                   # PG_Skin_3 -> 3
+                elif part == "eyes":
+                    name = stem.split("_")[-1]                                   # PG_Eyes_01 -> 01
+                elif part == "hair":
+                    m = re.match(r"PG_Hairstyle_(\d+)_(\d+)", stem)             # -> 05_3
+                    name = "%s_%s" % (m.group(1), m.group(2))
+                else:
+                    name = stem.replace("PG_Accessory_", "")                     # -> 11_Beanie_2
+                strip = Image.open(os.path.join(PG, sub, fn)).convert("RGBA").crop((0, 0, 320, 32))
+                dst = os.path.join(OUT, "portraits", part, name + ".png")
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                strip.save(dst)
+                pg_n += 1
+    print("portrait parts: %d" % pg_n)
 else:
     print("modern ui: pack not found")

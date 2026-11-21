@@ -1266,6 +1266,7 @@ func run_all() -> void:
 	run_day_one()
 	run_weather_fx()
 	run_inventory_dnd()
+	run_portraits()
 	run_wildlife()
 
 	# ---------- title screens render
@@ -3503,3 +3504,14 @@ func run_inventory_dnd() -> void:
 	U._ask_discard(hoe, 1)
 	check("Starting tools can't be thrown away", ov() == "journal" and inv[hoe] != null)
 	close_all()
+
+func run_portraits() -> void:
+	var ok := MiChars.pg_available()
+	var bad := []
+	for n in Data.npcs:
+		var im: Image = MiChars.portrait(Data.npcs[n].look)
+		if im == null or im.get_size() != Vector2i(24, 24) or im.get_used_rect().size.x < 12: bad.append(n)
+	var hal: Image = MiChars.portrait(Data.npcs.hal.look)
+	var hal_blink: Image = MiChars.portrait(Data.npcs.hal.look, 2)
+	var inf := Art.get_portrait(Data.enemies.shambler.look)
+	check("Conversation portraits: every neighbour has a Portrait Generator head that blinks; the infected keep the old crop", ok and bad.is_empty() and hal.get_data() != hal_blink.get_data() and inf != null and inf.get_width() == 16, "%s %s" % [ok, bad])
