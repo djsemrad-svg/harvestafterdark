@@ -180,6 +180,8 @@ func _draw() -> void:
 			if s != null:
 				draw_texture(Art.get_soil(int(s.w) == 1, season), pos)
 				_soil_extras(s, pos)
+			if not m.height.is_empty():
+				_terrain(m, x, y, pos)
 	for w in wd:
 		_water_detail(m, w.x, w.y, Vector2(w.x * 16, w.y * 16), season)
 	if bd != null:
@@ -1221,6 +1223,15 @@ func draw_weather(ci: CanvasItem) -> void:
 
 ## Curbs where a road meets pavement or grass, and a ragged grass lip where dirt meets grass.
 const EDGE_SIDES := [["n", 0, -1], ["s", 0, 1], ["w", -1, 0], ["e", 1, 0]]
+## Raised ground: higher levels catch a little more light; lips, faces, steps and shadows go on top (Terrain).
+func _terrain(m: GameMap, x: int, y: int, pos: Vector2) -> void:
+	var lv := m.level(x, y)
+	if lv > 0 and not m.solid_mask[y * m.w + x]:
+		draw_rect(Rect2(pos, Vector2(16, 16)), Color(1.0, 0.97, 0.85, 0.06 * lv))
+	for path in m.tov.get(GameMap.k(x, y), []):
+		var tex: Texture2D = Art.override(path)
+		if tex != null: draw_texture(tex, pos)
+
 func _ground_edges(m: GameMap, t: String, x: int, y: int, pos: Vector2, season: String) -> void:
 	for sd in EDGE_SIDES:
 		if not m.in_bounds(x + sd[1], y + sd[2]): continue

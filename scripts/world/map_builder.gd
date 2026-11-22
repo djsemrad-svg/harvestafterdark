@@ -622,6 +622,8 @@ static func find_path(m: GameMap, sx: int, sy: int, tx: int, ty: int, max_nodes 
 				continue
 			if ni != goal and (m.is_solid(nx, ny) or avoid.has(Vector2i(nx, ny))):
 				continue
+			if not m.can_step(cx, cy, nx, ny):      # raised ground: only through steps
+				continue
 			prev[ni] = cur
 			q.append(ni)
 	if not found:

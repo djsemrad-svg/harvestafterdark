@@ -57,7 +57,10 @@ func tick(ms: float) -> void:
 		W.step(DT)
 		U.update_hud(DT)
 
+var terrain_on := false
+
 func start(mode: String, slot: int) -> void:
+	Terrain.enabled = terrain_on      # flat maps unless a test asks for raised ground (seeds differ every run)
 	Game.new_game({"mode": mode, "slot": slot, "name": "Tester", "look": LOOK.duplicate(), "property_name": "Testfield Acres"})
 	U.close_all()
 
@@ -1323,6 +1326,7 @@ func run_all() -> void:
 	run_curio()
 	run_tackle()
 	run_festivals2()
+	run_terrain()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -1774,7 +1778,7 @@ func reach(m: GameMap, from: Vector2i) -> Dictionary:
 		var c: Vector2i = q.pop_back()
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var n: Vector2i = c + d
-			if seen.has(n) or not m.in_bounds(n.x, n.y) or m.is_solid(n.x, n.y): continue
+			if seen.has(n) or not m.in_bounds(n.x, n.y) or m.is_solid(n.x, n.y) or not m.can_step(c.x, c.y, n.x, n.y): continue
 			seen[n] = true
 			q.append(n)
 	return seen
@@ -4434,3 +4438,78 @@ func run_festivals2() -> void:
 	var msg := Festivals.hearth_give("wildflower_honey")
 	var again := Festivals.hearth_give("wildflower_honey")
 	check("Warm Hearth Exchange: a gift for the name you drew counts double, and a present comes back", f6.has("hearth_table") and int(G.state.npcs[who].points) > p0 and msg.contains("present") and again.contains("already"), msg)
+
+## Raised ground (Nov 22): cliffs and banks with steps, on three different worlds.
+func run_terrain() -> void:
+	var G = Game
+	terrain_on = true
+	var bad := []
+	var counts := {}
+	var styles := {}
+	for k in 3:
+		start("adventure", 2)
+		for id in Terrain.PLANS:
+			var m: GameMap = G.maps[id]
+			counts[id] = int(counts.get(id, 0)) + m.rises.size()
+			for r in m.rises: styles[r.style] = true
+			# every way in or out, door and container can still be reached from the first way in
+			var w0: Dictionary = m.warps[0]
+			var from := Vector2i(-1, -1)
+			for dy in range(-1, 3):
+				for dx in range(-1, 3):
+					var t := Vector2i(int(w0.x) + dx, int(w0.y) + dy)
+					if from.x < 0 and m.in_bounds(t.x, t.y) and not m.is_solid(t.x, t.y): from = t
+			var seen := reach(m, from)
+			for w in m.warps:
+				var ok := false
+				for dy in range(-1, int(w.get("h", 1)) + 1):
+					for dx in range(-1, int(w.get("w", 1)) + 1):
+						if seen.has(Vector2i(int(w.x) + dx, int(w.y) + dy)): ok = true
+				if not ok: bad.append("%s warp to %s" % [id, w.get("to", "?")])
+			for kk in m.objects:
+				var o: Dictionary = m.objects[kk]
+				if o.type == "part": continue
+				var d: Dictionary = Data.obj_defs.get(o.type, {})
+				if (d.get("container", false) or o.type in ["sign", "notice_board", "counter"]) and not reachable(seen, o):
+					bad.append("%s %s at %d,%d" % [id, o.type, o.x, o.y])
+			# each rise: its top is reached by its own steps
+			for r in m.rises:
+				var top := Vector2i(int(r.stairs), int(r.y) + int(r.h) - 1)
+				if not seen.has(top) and not seen.has(top + Vector2i(1, 0)): bad.append("%s rise at %d,%d: steps not reachable" % [id, r.x, r.y])
+	var total := 0
+	for id in counts: total += int(counts[id])
+	check("Raised ground on 3 worlds: %d rises (%s); every way in, door and container still reachable, every rise reached by its steps" % [total, ", ".join(styles.keys())],
+		bad.is_empty() and total >= 12 and styles.size() == 3, str(bad.slice(0, 6)))
+	# walking: blocked at the face and the sides, up and down by the steps
+	var m: GameMap = G.maps.homestead
+	var r: Dictionary = {}
+	for id in ["homestead", "riverlands", "residential", "industrial", "dry_creek", "mountain", "halvorsen"]:
+		if not G.maps[id].rises.is_empty():
+			m = G.maps[id]
+			r = m.rises[0]
+			break
+	var W = main.world
+	var sx := int(r.stairs); var y1 := int(r.y) + int(r.h) - 1
+	var f: int = Terrain.FACE[r.style]
+	G.change_map(m.id, sx, y1 + f + 2, "up", {"silent": true})
+	G.enemies.clear()
+	var foot := Vector2(sx * 16 + 16, (y1 + f + 1) * 16 + 12)      # the foot of the steps (kept clear)
+	G.player.pos = foot
+	G.state.time = 720
+	walk(Vector2.UP, 2500)
+	var up_ok: bool = m.level_at(G.player.pos) == int(r.lvl)
+	var up_at: Vector2 = G.player.pos / 16.0
+	walk(Vector2.DOWN, 1500)
+	var down_ok: bool = m.level_at(G.player.pos) == int(r.lvl) - 1
+	# next to the steps, straight at the face: stopped
+	var side_x := int(r.x) if sx - int(r.x) >= 1 else int(r.x) + int(r.w) - 1
+	G.player.pos = Vector2(side_x * 16 + 8, (y1 + f + 2) * 16 + 12)
+	walk(Vector2.UP, 1500)
+	var face_stop: bool = G.player.pos.y > (y1 + f + 1) * 16
+	check("Raised ground: steps take you up and back down; the cliff face stops you", up_ok and down_ok and face_stop, "%s up=%s down=%s face=%s at %s rise %s" % [m.id, up_ok, down_ok, face_stop, up_at, r])
+	# kept between loads
+	var keep: Array = G.state.terrain[m.id].duplicate(true)
+	G.write_save()
+	G.load_game(G.state.mode, 2)
+	check("Raised ground is saved with the world and comes back the same", JSON.stringify(G.state.terrain[m.id]) == JSON.stringify(keep) and G.maps[m.id].rises.size() == keep.size())
+	terrain_on = false

@@ -43,6 +43,12 @@ var floor_tiles := []
 var ladder_shown := false
 ## How many real tiles one design tile became (see MapScale); design spots go through dt().
 var scale := 1
+# Height (Nov 22): raised ground. Empty when the map is flat. Tiles on different levels only connect through a
+# ramp tile (steps or a trail); cliff faces are solid. See scripts/world/terrain.gd.
+var height := PackedByteArray()
+var ramp := {}          # "x,y" -> true for steps and trails
+var tov := {}           # "x,y" -> [overlay picture paths] drawn over the ground (lips, faces, steps, shadow)
+var rises := []         # the raised areas on this map
 
 func dt(x: int, y: int) -> Vector2i:
 	return Vector2i(x * scale, y * scale)
@@ -159,6 +165,22 @@ func is_solid(x: int, y: int) -> bool:
 		if Data.obj_defs.get(o.type, {}).get("solid", false):
 			return true
 	return false
+
+func level(x: int, y: int) -> int:
+	if height.is_empty() or not in_bounds(x, y): return 0
+	return height[y * w + x]
+
+func level_at(pos: Vector2) -> int:
+	return level(int(floor(pos.x / 16.0)), int(floor((pos.y - 1) / 16.0)))
+
+func is_ramp(x: int, y: int) -> bool:
+	return ramp.has(k(x, y))
+
+## Can something walk from tile a to the next tile b? Only on the same level, or through steps.
+func can_step(ax: int, ay: int, bx: int, by: int) -> bool:
+	if height.is_empty(): return true
+	if level(ax, ay) == level(bx, by): return true
+	return is_ramp(ax, ay) or is_ramp(bx, by)
 
 func tile_free(x: int, y: int) -> bool:
 	return in_bounds(x, y) and not is_solid(x, y) and not objects.has(k(x, y)) and not soil.has(k(x, y))

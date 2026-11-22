@@ -270,7 +270,7 @@ func apply_tool(tool: String, tier: int, tiles: Array) -> void:
 					if m.soil[kk].get("crop") != null and m.soil[kk].crop.get("dead", false):
 						m.soil[kk].crop = null
 					continue
-				if not m.in_bounds(t.x, t.y) or not Art.TILE_PROPS[m.tile_at(t.x, t.y)].get("till", false) or m.solid_mask[t.y * m.w + t.x]:
+				if not m.in_bounds(t.x, t.y) or not Art.TILE_PROPS[m.tile_at(t.x, t.y)].get("till", false) or m.solid_mask[t.y * m.w + t.x] or m.is_ramp(t.x, t.y):
 					continue
 				if not m.farmable:
 					if not warned:
@@ -500,7 +500,7 @@ func place_at(t: Vector2i, id: String) -> void:
 		if not m.soil.has(GameMap.k(t.x, t.y)) or m.get_obj(t.x, t.y) != null:
 			Game.toast("Place it on tilled soil.", id, "warn")
 			return
-	elif not m.tile_free(t.x, t.y):
+	elif not m.tile_free(t.x, t.y) or m.is_ramp(t.x, t.y):
 		Game.toast("Something is in the way.", id, "warn")
 		return
 	if player_tile() == t and Data.obj_defs[it.place].get("solid", false):
@@ -617,7 +617,7 @@ func update_particles(dt: float) -> void:
 			Game.floaters.remove_at(i)
 
 # ================================================================ movement
-func box_blocked(m: GameMap, pos: Vector2, hw: float, h: float) -> bool:
+func box_blocked(m: GameMap, pos: Vector2, hw: float, h: float, lvl := -1) -> bool:
 	var x0 := int(floor((pos.x - hw) / 16.0))
 	var x1 := int(floor((pos.x + hw) / 16.0))
 	var y0 := int(floor((pos.y - h) / 16.0))
@@ -634,7 +634,17 @@ func box_blocked(m: GameMap, pos: Vector2, hw: float, h: float) -> bool:
 				return true
 			if m.is_solid(tx, ty):
 				return true
+			# raised ground: stay on your own level unless you're on steps (or stepping onto them)
+			if lvl >= 0 and m.level(tx, ty) != lvl and not m.is_ramp(tx, ty):
+				return true
 	return false
+
+## The level something is standing on, or -1 on steps (where both levels are open).
+func level_of(m: GameMap, pos: Vector2) -> int:
+	if m.height.is_empty(): return -1
+	var tx := int(floor(pos.x / 16.0))
+	var ty := int(floor((pos.y - 1) / 16.0))
+	return -1 if m.is_ramp(tx, ty) else m.level(tx, ty)
 
 func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 	var m: GameMap = Game.map
@@ -644,14 +654,15 @@ func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 	# people are solid, but after about a second of pushing into someone they let you squeeze past
 	var polite: bool = me and float(e.get("push_t", 0.0)) < 1.0
 	var pushed := false
+	var lvl := level_of(m, e.pos)
 	if delta.x != 0:
-		wall_x = box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h)
+		wall_x = box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h, lvl)
 		var px: bool = me and person_blocked(e.pos, e.pos + Vector2(delta.x, 0))
 		pushed = pushed or px
 		if not wall_x and not (px and polite):
 			e.pos.x += delta.x
 	if delta.y != 0:
-		wall_y = box_blocked(m, e.pos + Vector2(0, delta.y), hw, h)
+		wall_y = box_blocked(m, e.pos + Vector2(0, delta.y), hw, h, lvl)
 		var py: bool = me and person_blocked(e.pos, e.pos + Vector2(0, delta.y))
 		pushed = pushed or py
 		if not wall_y and not (py and polite):
@@ -660,17 +671,17 @@ func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 		e.push_t = float(e.get("push_t", 0.0)) + 1.0 / 60.0 if pushed else 0.0
 	# corner sliding: walking straight into the edge of a wall or post slips round it (not round people)
 	if me and delta.x != 0 and delta.y == 0 and wall_x:
-		_slide(m, e, Vector2(delta.x, 0), Vector2(0, 1), hw, h)
+		_slide(m, e, Vector2(delta.x, 0), Vector2(0, 1), hw, h, lvl)
 	elif me and delta.y != 0 and delta.x == 0 and wall_y:
-		_slide(m, e, Vector2(0, delta.y), Vector2(1, 0), hw, h)
+		_slide(m, e, Vector2(0, delta.y), Vector2(1, 0), hw, h, lvl)
 
 const SLIDE_PX := 7
 
-func _slide(m: GameMap, e: Dictionary, step: Vector2, side: Vector2, hw: float, h: float) -> void:
+func _slide(m: GameMap, e: Dictionary, step: Vector2, side: Vector2, hw: float, h: float, lvl := -1) -> void:
 	for k in range(1, SLIDE_PX + 1):
 		for sgn in [-1, 1]:
 			var off: Vector2 = side * k * sgn
-			if not box_blocked(m, e.pos + off + step, hw, h) and not box_blocked(m, e.pos + side * sgn * minf(k, step.length()), hw, h):
+			if not box_blocked(m, e.pos + off + step, hw, h, lvl) and not box_blocked(m, e.pos + side * sgn * minf(k, step.length()), hw, h, lvl):
 				e.pos += side * sgn * minf(float(k), step.length())
 				return
 
@@ -1588,6 +1599,7 @@ func spawn_raid(n: int) -> void:
 	for t in spots:
 		if made >= n: break
 		if m.is_solid(t.x, t.y) or m.tile_at(t.x, t.y) == "water": continue
+		if m.level(t.x, t.y) != 0 or m.is_ramp(t.x, t.y): continue      # not up on a cliff they can't get down from
 		if Vector2(t * 16).distance_to(Game.player.pos) < 120: continue
 		var e: Dictionary = spawn_enemy(raid_type(), t.x, t.y)
 		e.raider = true

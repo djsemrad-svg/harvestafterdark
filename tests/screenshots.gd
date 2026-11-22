@@ -947,6 +947,25 @@ func _ready() -> void:
 		await shot("60_curio_mabel")
 		get_tree().quit()
 		return
+	if only == "terrain":
+		# raised ground on each outdoor map: up to two views per map, centred on a rise's steps
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.weather = "sun"
+		Game.state.time = 720
+		for id in ["homestead", "town", "riverlands", "residential", "industrial", "mountain", "dry_creek", "halvorsen"]:
+			var rs: Array = Game.state.get("terrain", {}).get(id, [])
+			for i in mini(2, rs.size()):
+				var r: Dictionary = rs[i]
+				var sx := int(r.stairs); var sy := int(r.y) + int(r.h) + 3
+				Game.change_map(id, sx, sy, "up", {"silent": true})
+				Game.player.pos = Vector2(sx * 16 + 16, sy * 16 + 12)
+				main.world.view.snap_camera()
+				Game.enemies.clear()
+				await frames(20)
+				await shot("63_terrain_%s_%d" % [id, i])
+		get_tree().quit()
+		return
 	if only == "festivals2":
 		# the six later festivals on the square: [day, time, name]
 		main.ui.close_all()

@@ -2435,3 +2435,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "curio_a
 
 # ---------------------------------------------------------------- Wren's new tackle (Nov 22)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "tackle_icons.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- raised ground: cliffs, banks and steps (Nov 22)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "terrain_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

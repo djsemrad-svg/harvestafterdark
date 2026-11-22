@@ -839,6 +839,7 @@ func build_persistent_maps() -> void:
 			state.maps_dyn[id] = {"objects": m.objects, "soil": m.soil}
 		if m.layout != "": state.maps_dyn[id].layout = m.layout
 	sync_gates()
+	Terrain.setup(maps)
 	Festivals.setup(maps)
 	Relics.migrate()
 	Relics.daily()
@@ -1371,6 +1372,9 @@ func building_fits(m: GameMap, r: Rect2i) -> bool:
 				return false
 			if m.solid_mask[y * m.w + x] or m.get_obj(x, y) != null or m.soil.has(GameMap.k(x, y)) or m.structure_at(x, y) != null:
 				return false
+			# raised ground: the whole building and its door row on one level, and not on steps
+			if m.is_ramp(x, y) or m.level(x, y) != m.level(r.position.x, r.position.y):
+				return false
 	var pt := Vector2i(int(player.pos.x) / 16, int(player.pos.y - 4) / 16)
 	return not r.has_point(pt)
 
@@ -1559,7 +1563,7 @@ func _walk_animal(a: Dictionary, r: Dictionary, goal: Vector2, step_len: float) 
 			var tx := int(floor(np.x / 16))
 			var ty := int(floor((np.y - 3) / 16))
 			# the tile it already stands on never blocks it (something may have grown there)
-			if Vector2i(tx, ty) == here or map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)):
+			if Vector2i(tx, ty) == here or map.in_bounds(tx, ty) and not map.is_solid(tx, ty) and map.tile_at(tx, ty) != "water" and not Art.tile_solid(map.tile_at(tx, ty)) and map.can_step(here.x, here.y, tx, ty):
 				r.pos = np
 				moved = true
 				break

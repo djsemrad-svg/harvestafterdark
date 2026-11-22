@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 330 / 330 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 333 / 333 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -647,10 +647,29 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Every prize is once a year (`state.flags.fest_won_<year>_<kind>`). Tests `run_festivals2`; screenshot mode
   `festivals2`. Not built: the shooting range at the Trials and the lantern maze at Hollow Night.
 
+### Nov 22: raised ground, first pass (`scripts/world/terrain.gd`, art `tools/terrain_art.py` -> `art/terrain/`)
+- Daniel chose all three looks, each where it fits: earth cliffs (LimeZu Modern Exteriors cliff, 2-tile face, wooden
+  steps) on the farm and in the Riverlands, grey stone cliffs (same art recoloured, stone steps) in the districts,
+  on the Ridge path, at Dry Creek and Halvorsen, gentle grass banks (1 tile, drawn) in town and on the farm.
+- `GameMap.height` (level per tile), `ramp` (steps), `tov` (pictures drawn over the ground in `WorldView._terrain`),
+  `rises`. You stay on your level unless you're on steps (`World.box_blocked` lvl, `GameMap.can_step`); faces are
+  solid. Pathfinding, townsfolk, farm animals and the test reachability helper respect levels. Raid spawns skip
+  raised ground. Buildings and placed things can't straddle levels or sit on steps; steps can't be tilled.
+- Plans: `Terrain.PLANS` tries random rectangles per map (seeded by the world), keeps a rise only if it covers no
+  building, door, path, clear zone, crop or placed thing, cuts nothing off (every tile reachable before still is),
+  and its steps can be reached. Bigger rises can get a second level. Most stand out in the open; some lean on a map
+  edge. Kept in `state.terrain` (with `_v` = `Terrain.VERSION`), so old saves get terrain planned round what's
+  already there and the land never changes between loads.
+- Tests: `run_terrain` (3 worlds: every warp, door and container reachable, every rise's steps reachable; climbing
+  and the face; saved and loaded). The other tests run on flat maps (`Terrain.enabled`, set by the runner's
+  `terrain_on`), since every test world has a new random seed. Screenshot mode `terrain`.
+- Not done yet: town is so built up that random rises rarely fit (needs hand-placed ones, for example south of the
+  river); steep trails without steps; waterfalls over cliffs (art in the same LimeZu sheet); a side shadow on the
+  east of cliffs; winter tint on the cliff tops' green edge.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
-1. Terrain with height: hills, cliffs and rises that need steps, ramps or a steep trail; added to the farm, town
-   edges, districts and Riverlands, and used in all world building from now on. Estimate to be given before starting.
+1. Terrain with height (first pass done Nov 22, see above; still to do listed there).
 2. Daniel's new LimeZu packs (uploaded Nov 22): Modern Office Revamped v1.2, Kitchen and more 16x16, Serene Village
    revamped v1.9 (partly used already for wildflowers and blossoms). Check style, use everywhere they fit, and
    replace non-LimeZu art where these packs have a match.

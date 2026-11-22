@@ -302,9 +302,10 @@ static func _walk(m: GameMap, f: Dictionary, dt: float) -> void:
 			if f.role == "browse": reach = 40.0
 			var g: Vector2 = f.home + Vector2(randf_range(-reach, reach), randf_range(-reach * 0.75, reach * 0.75))
 			var ok: bool = not (f.role == "browse" and int(g.y / 16) < SHOP_FLOOR_Y)
+			var lv := m.level(int(f.pos.x / 16), int(f.pos.y / 16))
 			for s in 12:
 				var q: Vector2 = f.pos.lerp(g, (s + 1) / 12.0)
-				if not _ok(m, int(q.x / 16), int(q.y / 16)): ok = false; break
+				if not _ok(m, int(q.x / 16), int(q.y / 16)) or m.level(int(q.x / 16), int(q.y / 16)) != lv: ok = false; break
 			if ok:
 				f.goal = g
 				break
