@@ -966,6 +966,40 @@ func _ready() -> void:
 				await shot("63_terrain_%s_%d" % [id, i])
 		get_tree().quit()
 		return
+	if only == "terrain2":
+		# second terrain pass: town's banks, every waterfall, trails, and one cliff in winter
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.weather = "sun"
+		Game.state.time = 720
+		var n := 0
+		for id in ["town", "homestead", "riverlands", "residential", "industrial", "mountain", "dry_creek", "halvorsen"]:
+			var rs: Array = Game.state.get("terrain", {}).get(id, [])
+			print("TERRAIN %s: %d rises, falls %s, ways %s" % [id, rs.size(), str(rs.map(func(q): return int(q.get("fall", -1)))), str(rs.map(func(q): return str(q.get("way", "")))) ])
+			for r in rs:
+				var show: bool = id == "town" or int(r.get("fall", -1)) >= 0 or (str(r.get("way", "")) == "trail" and n < 6)
+				if not show: continue
+				n += 1
+				var sx := int(r.stairs) if int(r.get("fall", -1)) < 0 else int(r.fall) + 1
+				var sy := int(r.y) + int(r.h) + 4
+				Game.change_map(id, sx, sy, "up", {"silent": true})
+				Game.player.pos = Vector2(sx * 16 + 8, sy * 16 + 12)
+				main.world.view.snap_camera()
+				Game.enemies.clear()
+				await frames(20)
+				await shot("65_terrain2_%s_%d_%d" % [id, int(r.x), int(r.y)])
+		# winter on the farm's first cliff
+		var hs: Array = Game.state.get("terrain", {}).get("homestead", [])
+		if not hs.is_empty():
+			Game.state.day = 100; Game.state.weather = "sun"
+			var r0: Dictionary = hs[0]
+			Game.change_map("homestead", int(r0.stairs), int(r0.y) + int(r0.h) + 4, "up", {"silent": true})
+			Game.player.pos = Vector2(int(r0.stairs) * 16 + 8, (int(r0.y) + int(r0.h) + 4) * 16 + 12)
+			main.world.view.snap_camera(); Game.enemies.clear()
+			await frames(20)
+			await shot("65_terrain2_winter")
+		get_tree().quit()
+		return
 	if only == "festivals2":
 		# the six later festivals on the square: [day, time, name]
 		main.ui.close_all()

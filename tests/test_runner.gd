@@ -1878,6 +1878,7 @@ func run_districts() -> void:
 	var police_ok := true
 	for id in got:
 		var from_police: bool = Data.loot_tags.get("police", []).has(id) or Data.loot_tags.get("uncommon", []).has(id) or Arsenal.LOOT_MATS.police.any(func(x): return x[0] == id) or Data.loot_items.get("police", []).any(func(x): return x[0] == id) or RELICS_TAGGED(id, "police")
+		if id == "conspiracy_note": from_police = true      # the They Knew notes turn up in any search
 		if not from_police: police_ok = false
 	G.map.drops.clear()
 	W.search(locker, locker.loot, "the locker", 0.0, [1, 2])
@@ -4447,12 +4448,23 @@ func run_terrain() -> void:
 	var bad := []
 	var counts := {}
 	var styles := {}
+	var ways := {}
+	var falls := []
+	var town_banks := 0
 	for k in 3:
 		start("adventure", 2)
 		for id in Terrain.PLANS:
 			var m: GameMap = G.maps[id]
 			counts[id] = int(counts.get(id, 0)) + m.rises.size()
-			for r in m.rises: styles[r.style] = true
+			if id == "town": town_banks += m.rises.size()
+			for r in m.rises:
+				styles[r.style] = true
+				ways[str(r.get("way", ""))] = true
+				if int(r.get("fall", -1)) >= 0:
+					# a waterfall: a pond on top, the fall's pictures on the face, a pool at the foot
+					var fx := int(r.fall); var y1 := int(r.y) + int(r.h) - 1; var f: int = Terrain.FACE[r.style]
+					falls.append(m.tile_at(fx + 1, y1 - 1) == "water" and m.tile_at(fx + 1, y1 + f + 1) == "water" and m.tile_at(fx + 1, y1 + f + 2) == "water"
+						and str(m.tov.get(GameMap.k(fx + 1, y1 + 1), [""])[0]).begins_with("terrain/fall_"))
 			# every way in or out, door and container can still be reached from the first way in
 			var w0: Dictionary = m.warps[0]
 			var from := Vector2i(-1, -1)
@@ -4481,6 +4493,14 @@ func run_terrain() -> void:
 	for id in counts: total += int(counts[id])
 	check("Raised ground on 3 worlds: %d rises (%s); every way in, door and container still reachable, every rise reached by its steps" % [total, ", ".join(styles.keys())],
 		bad.is_empty() and total >= 12 and styles.size() == 3, str(bad.slice(0, 6)))
+	check("Terrain pass 2: town gets its hand-placed banks south of the river, and both steps and steep trails are used",
+		town_banks >= 6 and ways.has("steps") and ways.has("trail"), "town=%d ways=%s" % [town_banks, str(ways.keys())])
+	check("Terrain pass 2: every waterfall has a pond on top, the fall down the face and a pool at the foot", falls.all(func(x): return x), "falls=%s" % str(falls))
+	var art_ok := true
+	for pth in ["terrain/trail_earth_2_l.png", "terrain/trail_turf_1_r.png", "terrain/fall_stone_1_2_f3.png", "terrain/fall_earth_top_0_f0.png",
+			"terrain/fall_foam_2_f1.png", "terrain/shadow_e.png", "terrain/earth_n_winter.png", "terrain/turf_f1_winter.png"]:
+		if Art.override(pth) == null: art_ok = false
+	check("Terrain pass 2: trail, waterfall, east shadow and winter edge pictures are in the game", art_ok)
 	# walking: blocked at the face and the sides, up and down by the steps
 	var m: GameMap = G.maps.homestead
 	var r: Dictionary = {}
@@ -4500,7 +4520,7 @@ func run_terrain() -> void:
 	walk(Vector2.UP, 2500)
 	var up_ok: bool = m.level_at(G.player.pos) == int(r.lvl)
 	var up_at: Vector2 = G.player.pos / 16.0
-	walk(Vector2.DOWN, 1500)
+	walk(Vector2.DOWN, 3500)      # long enough for the tallest rise (it can walk to the far top edge going up)
 	var down_ok: bool = m.level_at(G.player.pos) == int(r.lvl) - 1
 	# next to the steps, straight at the face: stopped
 	var side_x := int(r.x) if sx - int(r.x) >= 1 else int(r.x) + int(r.w) - 1
@@ -4551,3 +4571,4 @@ func run_limezu() -> void:
 	check("Brightwater's square has Serene Village flower boxes", planters >= 3, "planters=%d" % planters)
 	# saves made before Nov 22 get the new rooms: an older layout name means a fresh room
 	check("Changed rooms carry a new layout version so older saves rebuild them", G.maps.mh_police.layout == "police_v2" and G.maps.mh_house1.layout.ends_with("_v2") and G.maps.ind_scrap.layout == "office")
+

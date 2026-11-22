@@ -127,4 +127,139 @@ for y in range(9):
     for x in range(16):
         sh.putpixel((x, y), (10, 20, 10, a))
 save(sh, "terrain/shadow.png")
-print("terrain art:", n + 1)
+n += 1
+
+
+# ---------------------------------------------------------------- second pass (Nov 22)
+# east shadow: the ground just east of a rise, darkest against the face
+def shadow_e(alpha):
+    im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for x in range(11):
+        a = int(alpha * (1 - x / 11.0) ** 1.4)
+        for y in range(16):
+            im.putpixel((x, y), (10, 16, 26, a))
+    return im
+
+
+save(shadow_e(70), "terrain/shadow_e.png")
+save(shadow_e(34), "terrain/shadow_e_turf.png")
+n += 2
+
+# steep dirt trail: a worn slope up the face instead of steps (same footprint: 2 tiles wide, face rows + 1)
+DIRT, DIRT_LT, DIRT_DK, EDGE, PEB = (128, 92, 62), (152, 114, 78), (98, 68, 46), (64, 44, 34), (170, 160, 150)
+
+
+def trail(rows, stony):
+    """A worn path up the slope: the game's own dirt (grey gravel on stone cliffs), darker toward the foot, ragged
+    grass-worn edges, footholds and pebbles. No hard border, so it reads as ground, not a plank."""
+    import random
+    rnd = random.Random(7 + rows + (3 if stony else 0))
+    src = os.path.join(OUT, "tiles", "dirt_summer_0.png" if os.path.isfile(os.path.join(OUT, "tiles", "dirt_summer_0.png")) else "dirt_0.png")
+    tex = Image.open(src).convert("RGBA") if os.path.isfile(src) else Image.new("RGBA", (16, 16), DIRT + (255,))
+    h = rows * 16
+    im = Image.new("RGBA", (32, h), (0, 0, 0, 0))
+    px = im.load()
+    tp = tex.load()
+    y0 = 6
+    left = [3 + rnd.randint(0, 2) for _ in range(h)]
+    right = [28 - rnd.randint(0, 2) for _ in range(h)]
+    for y in range(y0, h):
+        t = (y - y0) / max(1, h - y0 - 1)                 # 0 at the top of the slope, 1 at the foot
+        shade = 1.08 - 0.32 * t
+        for x in range(32):
+            if x < left[y] or x > right[y]:
+                continue
+            r, g, b, _ = tp[x % 16, y % 16]
+            if stony:
+                v = (r + g + b) // 3
+                r, g, b = int(v * 0.96), int(v * 0.98), int(v * 1.06)
+            edge = min(x - left[y], right[y] - x)
+            a = 150 if edge == 0 else 255
+            k = shade * (0.82 if edge <= 1 else 1.0)
+            px[x, y] = (min(255, int(r * k)), min(255, int(g * k)), min(255, int(b * k)), a)
+        # footholds: a dark scuff with a light lip above, every 6 px
+        if (y - y0) % 6 == 5:
+            for x in range(left[y] + 3, right[y] - 2):
+                if rnd.random() < 0.8:
+                    q = px[x, y]
+                    px[x, y] = (int(q[0] * 0.7), int(q[1] * 0.7), int(q[2] * 0.7), q[3])
+                    q = px[x, y - 1]
+                    px[x, y - 1] = (min(255, int(q[0] * 1.15)), min(255, int(q[1] * 1.15)), min(255, int(q[2] * 1.15)), q[3])
+    for _ in range(rows * 5):
+        x, y = rnd.randint(7, 24), rnd.randint(y0 + 3, h - 3)
+        px[x, y] = PEB + (255,)
+        px[x + 1, y + 1] = (80, 70, 64, 255)
+    return im
+
+
+for style, rows, stony in (("earth", 3, False), ("stone", 3, True), ("turf", 2, False)):
+    tr = trail(rows, stony)
+    for k in range(rows):
+        save(tr.crop((0, k * 16, 16, k * 16 + 16)), "terrain/trail_%s_%d_l.png" % (style, k))
+        save(tr.crop((16, k * 16, 32, k * 16 + 16)), "terrain/trail_%s_%d_r.png" % (style, k))
+        n += 2
+
+# waterfalls: LimeZu's falls from the same Modern Exteriors sheet (columns 25-27, rows 49-54), the water rolling
+# down through 4 frames (_f0.._f3); the rock walls stay still. Stone cliffs get the rock in grey.
+FOAM = (236, 246, 250)
+if os.path.isfile(SHEET):
+    FALL = ME.crop((25 * 16, 49 * 16, 28 * 16, 55 * 16))      # 48 x 96
+
+    def is_water(p):
+        return p[3] and p[2] > p[0] + 30
+
+    def frame(k):
+        src = FALL.load()
+        out = FALL.copy()
+        o = out.load()
+        for y in range(16, 80):                            # rows 50-53 cycle
+            sy = 16 + (y - 16 - k * 4) % 64
+            for x in range(48):
+                if is_water(src[x, y]) and is_water(src[x, sy]):
+                    o[x, y] = src[x, sy]
+        return out
+
+    for style, fn in (("earth", lambda im: im), ("stone", stone)):
+        for k in range(4):
+            fr = fn(frame(k))
+            for dx in range(3):
+                save(fr.crop((dx * 16, 0, dx * 16 + 16, 16)), "terrain/fall_%s_top_%d_f%d.png" % (style, dx, k))
+                for row in range(2):
+                    save(fr.crop((dx * 16, 16 + row * 16, dx * 16 + 16, 32 + row * 16)), "terrain/fall_%s_%d_%d_f%d.png" % (style, row, dx, k))
+                n += 3
+    # foam on the pool at the foot
+    for k in range(4):
+        for dx in range(3):
+            im = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+            d = ImageDraw.Draw(im)
+            for i in range(5):
+                x = (i * 7 + k * 3 + dx * 5) % 16
+                y = 1 + (i * 5 + k * 2) % 9
+                d.line((x, y, min(15, x + 3), y), fill=FOAM + (220 - y * 15,))
+            d.line((0, 0, 15, 0), fill=FOAM + (230,))
+            save(im, "terrain/fall_foam_%d_f%d.png" % (dx, k))
+            n += 1
+
+
+# winter: the green edges of the cliffs and banks under snow
+def snowy(im):
+    im = im.copy()
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if a and g > r + 8 and g >= b:
+                l = (r + g + b) / 3
+                v = 0.62 + 0.38 * min(1.0, l / 150)
+                px[x, y] = (int(222 * v), int(230 * v), int(242 * v), a)
+    return im
+
+
+for f in sorted(os.listdir(os.path.join(OUT, "terrain"))):
+    if f.startswith(("earth_", "stone_", "turf_")) and f.endswith(".png") and "_winter" not in f:
+        im = Image.open(os.path.join(OUT, "terrain", f)).convert("RGBA")
+        w = snowy(im)
+        if list(w.getdata()) != list(im.getdata()):
+            save(w, "terrain/" + f.replace(".png", "_winter.png"))
+            n += 1
+print("terrain art:", n)

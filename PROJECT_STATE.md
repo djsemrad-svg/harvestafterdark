@@ -663,9 +663,21 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Tests: `run_terrain` (3 worlds: every warp, door and container reachable, every rise's steps reachable; climbing
   and the face; saved and loaded). The other tests run on flat maps (`Terrain.enabled`, set by the runner's
   `terrain_on`), since every test world has a new random seed. Screenshot mode `terrain`.
-- Not done yet: town is so built up that random rises rarely fit (needs hand-placed ones, for example south of the
-  river); steep trails without steps; waterfalls over cliffs (art in the same LimeZu sheet); a side shadow on the
-  east of cliffs; winter tint on the cliff tops' green edge.
+- Second pass, done Nov 22 (`Terrain.VERSION` 2, so plans from the first pass are made again):
+  - Town: hand-placed grass banks on the south bank of the river (`Terrain.FIXED`, brush round them cleared); usually
+    3 or 4 fit.
+  - Steep dirt trails: the way up is steps or a worn dirt path (`r.way`, `Terrain.TRAIL`: half of earth and turf
+    rises, a fifth of stone ones). Same footprint as steps; pictures `terrain/trail_<style>_<row>_<l|r>`.
+  - Waterfalls (`r.fall`, about one per map at most, `FALL_CHANCE` 0.65 when a rise has room): a pond on top, LimeZu's
+    fall down the face (Modern Exteriors terrain sheet, columns 25-27, rows 49-54; grey rock on stone cliffs), a pool
+    with foam at the foot. The water runs through 4 frames (`_f0`-`_f3`, `WorldView._terrain`). If the pool would
+    cut ground off, the rise is kept without a fall; a nook of up to 3 empty tiles beside a pool is allowed.
+  - East shadow (`terrain/shadow_e`, lighter for banks) on the ground east of every rise.
+  - Winter: green edges of cliffs and banks turn to snow (`<piece>_winter.png`, used when the season is winter).
+  - Districts get smaller rises (`SIZES` residential, industrial) and more tries, so they get some.
+  - Tests in `run_terrain` (town banks, both ways up, every waterfall's pond, fall and pool, the pictures).
+    Screenshot mode `terrain2`.
+- Still open: the Serene Village boulder plateau as another stone look; rises on the farm at level 2 are rare.
 
 ### Nov 22: LimeZu Modern Office, Kitchen and more, Serene Village (order item 2; art `tools/limezu_more.py`)
 - Packs unzipped as `<packs>/Modern_Office_Revamped_v1.2`, `Kitchen_and_more_tileset_16x16`,
@@ -691,7 +703,7 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
-1. Terrain with height (first pass done Nov 22, see above; still to do listed there).
+1. Terrain with height: done Nov 22 (two passes, see above).
 2. Daniel's new LimeZu packs: done Nov 22 (see above).
 3. Quick fixes: readable ammo count on gun icons (dark backing and outline); bigger, brighter muzzle flash.
 4. Animations (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
