@@ -1076,6 +1076,38 @@ func _ready() -> void:
 			await shot("50_room_" + rid)
 		get_tree().quit()
 		return
+	if only == "limezu":
+		# LimeZu Office, Kitchen and Serene Village furniture: offices, the precinct, homes, the diner and bar,
+		# Brightwater's square with its flower boxes, and field rocks and a vending machine outdoors
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720
+		Game.state.weather = "sun"
+		for rid in ["ind_scrap", "ind_lumber", "mh_police", "mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_diner", "ind_bar"]:
+			Game.change_map(rid, 6, 9, "up", {"silent": true})
+			Game.enemies.clear()
+			main.world.view.snap_camera()
+			await frames(10)
+			await shot("64_lz_" + rid)
+		Game.change_map("town", 56, 28, "up", {"silent": true})
+		Game.enemies.clear(); main.world.view.snap_camera()
+		await frames(20)
+		await shot("64_lz_square")
+		for id in ["residential", "industrial"]:
+			var m: GameMap = Game.maps[id]
+			var vm := Vector2i(-1, -1); var rk := Vector2i(-1, -1)
+			for kk in m.objects:
+				var o: Dictionary = m.objects[kk]
+				if o.type == "vending_machine" and vm.x < 0: vm = Vector2i(int(o.x), int(o.y))
+				if o.type == "rock" and rk.x < 0: rk = Vector2i(int(o.x), int(o.y))
+			for p in [vm, rk]:
+				if p.x < 0: continue
+				Game.change_map(id, p.x, p.y + 2, "up", {"silent": true})
+				Game.enemies.clear(); main.world.view.snap_camera()
+				await frames(20)
+				await shot("64_lz_%s_%d_%d" % [id, p.x, p.y])
+		get_tree().quit()
+		return
 	if only == "outposts":
 		main.ui.close_all()
 		await outpost_shots()

@@ -1327,6 +1327,7 @@ func run_all() -> void:
 	run_tackle()
 	run_festivals2()
 	run_terrain()
+	run_limezu()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4513,3 +4514,40 @@ func run_terrain() -> void:
 	G.load_game(G.state.mode, 2)
 	check("Raised ground is saved with the world and comes back the same", JSON.stringify(G.state.terrain[m.id]) == JSON.stringify(keep) and G.maps[m.id].rises.size() == keep.size())
 	terrain_on = false
+
+func run_limezu() -> void:
+	# LimeZu Modern Office, Kitchen and more, Serene Village (Nov 22)
+	var G = Game
+	start("adventure", 2)
+	var missing := []
+	for n in ["office_desk_0", "office_desk_3", "filing_cabinet", "copier_0", "copier_3", "water_cooler", "office_plant_3", "office_sofa",
+			"whiteboard_3", "certificate_3", "lounge_chair_3", "potted_plant_3", "wall_tv", "picture_frame_3", "microwave", "planter_3",
+			"mailbox_3", "vending_machine_3", "rock", "rock2"]:
+		if not FileAccess.file_exists("res://art/objects/%s.png" % n): missing.append(n)
+	check("LimeZu packs: every new picture is in the game", missing.is_empty(), str(missing))
+	# every room that uses the new furniture: the door, every search spot and the furniture itself can be reached
+	var bad := []
+	var seen_types := {}
+	for rid in ["ind_scrap", "ind_lumber", "mh_police", "mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_diner", "ind_bar"]:
+		var m: GameMap = G.maps[rid]
+		var w0: Dictionary = m.warps[0]
+		var seen := reach(m, Vector2i(int(w0.x), int(w0.y) - 1))
+		for kk in m.objects:
+			var o: Dictionary = m.objects[kk]
+			seen_types[o.type] = true
+			if Data.obj_defs.get(o.type, {}).get("container", false) and not reachable(seen, o): bad.append("%s %s at %d,%d" % [rid, o.type, o.x, o.y])
+			if o.type in Districts.ON_WALL and not Art.tile_solid(m.tile_at(int(o.x), int(o.y))): bad.append("%s %s off the wall" % [rid, o.type])
+	check("LimeZu rooms: every desk, cabinet and fridge can be reached, and pictures hang on walls", bad.is_empty(), str(bad))
+	var want := ["office_desk", "filing_cabinet", "copier", "water_cooler", "office_plant", "office_sofa", "whiteboard", "certificate",
+		"lounge_chair", "potted_plant", "wall_tv", "picture_frame", "microwave"]
+	check("LimeZu rooms: offices, the precinct, homes, the diner and the bar use all the new furniture", want.all(func(t): return seen_types.has(t)), str(want.filter(func(t): return not seen_types.has(t))))
+	var desk: Dictionary = {}
+	for kk in G.maps.ind_scrap.objects:
+		if G.maps.ind_scrap.objects[kk].type == "office_desk": desk = G.maps.ind_scrap.objects[kk]
+	check("An office desk is 2 tiles wide and searchable, with the building's loot", not desk.is_empty() and int(desk.get("w", 1)) == 2 and Data.obj_defs.office_desk.container and (desk.loot as Array).has("scrapyard"))
+	var planters := 0
+	for kk in G.maps.town.objects:
+		if G.maps.town.objects[kk].type == "planter": planters += 1
+	check("Brightwater's square has Serene Village flower boxes", planters >= 3, "planters=%d" % planters)
+	# saves made before Nov 22 get the new rooms: an older layout name means a fresh room
+	check("Changed rooms carry a new layout version so older saves rebuild them", G.maps.mh_police.layout == "police_v2" and G.maps.mh_house1.layout.ends_with("_v2") and G.maps.ind_scrap.layout == "office")

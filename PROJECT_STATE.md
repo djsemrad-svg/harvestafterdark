@@ -667,12 +667,32 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   river); steep trails without steps; waterfalls over cliffs (art in the same LimeZu sheet); a side shadow on the
   east of cliffs; winter tint on the cliff tops' green edge.
 
+### Nov 22: LimeZu Modern Office, Kitchen and more, Serene Village (order item 2; art `tools/limezu_more.py`)
+- Packs unzipped as `<packs>/Modern_Office_Revamped_v1.2`, `Kitchen_and_more_tileset_16x16`,
+  `Serene_Village_revamped_v1.9`. The tool runs last in `import_packs.py`, so its pictures win.
+- Replaced non-LimeZu art: field rocks `rock`, `rock2` (PostApocalypse -> Serene Village rocks); vending machines
+  0-3 (PostApocalypse -> Modern Office, a little dusty). Also mailboxes 0-3 (they were bird houses) -> Serene
+  Village red and wooden mailboxes.
+- New furniture (`Districts.PROPS`/`CONTAINERS`, room letters in `Districts.LETTERS`): office desk with computer
+  (`d`, searchable, 2 wide), filing cabinet (`x`, searchable), copier `o`, water cooler `e`, office plant `a`,
+  sofa `s`, armchairs in four colours `l`, potted plants `p`, microwave `u`; on the back wall (`Districts.ON_WALL`,
+  the tile becomes wall): whiteboard `g`, certificate `n`, TV `t`, picture `r`.
+- New room `office` (Scrapyard Office and Lumber Co. Office, with a little kitchenette). Precinct 9 got office desks,
+  filing cabinets, a copier, water cooler, whiteboard and certificate. All four home layouts, Rosie's Diner and the
+  Rusty Spoke got armchairs, plants, a microwave, a TV or pictures. Changed rooms are versioned
+  (`Districts.ROOM_VER`, layout `police_v2` and so on), so older saves rebuild them.
+- Brightwater: flower boxes (Serene Village) on the square's edge and beside shop doors (`town_v3`).
+- Looked at and not used: the Serene Village trees. They're about a third the size of ours, with blue-green leaves
+  and no autumn or winter versions, so they read as shrubs next to buildings (picture sent to Daniel). Kept the
+  Pixel Crawler trees and bushes. The Serene boulder-rimmed plateau with stone stairs is the planned look for
+  stone rises in the next terrain pass. The office backpacks and cash are 13 x 21, too tall for 16 px icons.
+- Tests `run_limezu` (every picture present; every searchable thing reachable in the changed rooms; wall pieces on
+  walls; all furniture used; desk size and loot; flower boxes; layout versions). Screenshot mode `limezu`.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height (first pass done Nov 22, see above; still to do listed there).
-2. Daniel's new LimeZu packs (uploaded Nov 22): Modern Office Revamped v1.2, Kitchen and more 16x16, Serene Village
-   revamped v1.9 (partly used already for wildflowers and blossoms). Check style, use everywhere they fit, and
-   replace non-LimeZu art where these packs have a match.
+2. Daniel's new LimeZu packs: done Nov 22 (see above).
 3. Quick fixes: readable ammo count on gun icons (dark backing and outline); bigger, brighter muzzle flash.
 4. Animations (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
    farmer rows), a grip point on every frame so items stop floating, weapon wind-up, strike and follow-through with

@@ -35,7 +35,7 @@ static func dress(m: GameMap) -> void:
 	if m.id != "town":
 		return
 	_npc_spots()
-	m.layout = "town_v2"      # front walks and thinner planting (Nov 21): older saves get the new dressing
+	m.layout = "town_v3"      # v2 front walks and thinner planting (Nov 21); v3 flower boxes on the square (Nov 22)
 	var r := RandomNumberGenerator.new()
 	r.seed = 0x7a11d5
 	_walls(m)
@@ -117,13 +117,15 @@ static func _square(m: GameMap) -> void:
 	# the edge of the square, softened with planting
 	for x in range(42, 72, 5):
 		if x >= 53 and x <= 59: continue
-		_prop(m, x, 25, "shrub" if (x / 5) % 2 == 0 else "flower_bed", 2)
+		_prop(m, x, 25, ["shrub", "flower_bed", "planter"][(x / 5) % 3], 1 if (x / 5) % 3 == 2 else 2)
 	# topiaries either side of the shop doors
 	for st in m.structures:
 		if not st.has("warp"): continue
 		var dx := int(st.door_x); var dy := int(st.door_y)
 		_prop(m, dx - 2, dy + 1, "topiary")
 		_prop(m, dx + 3, dy + 1, "topiary")
+		_prop(m, dx - 3, dy + 1, "planter")      # flower boxes (Serene Village) beside the topiaries
+		_prop(m, dx + 4, dy + 1, "planter")
 
 ## ---------------------------------------------------------------- a town surviving together
 ## Watch fires and notices at the gates, a ration depot on the square (Townsfolk queue at it), communal

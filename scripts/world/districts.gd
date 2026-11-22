@@ -34,6 +34,9 @@ const CONTAINERS := {
 	"vending_machine": {"name": "Vending Machine", "what": "the vending machine", "tags": ["kitchen"], "rolls": [1, 2]},
 	"bus_wreck": {"name": "Wrecked Bus", "what": "the bus", "tags": ["vehicle", "home"], "rolls": [1, 2], "w": 4, "h": 2},
 	"shipping_container": {"name": "Shipping Container", "what": "the shipping container", "tags": ["hardware", "scrapyard"], "rolls": [1, 2], "w": 3},
+	# LimeZu Modern Office (Nov 22)
+	"office_desk": {"name": "Office Desk", "what": "the desk", "tags": ["home"], "mix": true, "rolls": [1, 2], "w": 2},
+	"filing_cabinet": {"name": "Filing Cabinet", "what": "the filing cabinet", "tags": ["home"], "mix": true, "rolls": [1, 1]},
 }
 
 ## Props that only look the part.
@@ -75,7 +78,23 @@ const PROPS := {
 	"statue": {"solid": true},
 	"garden_shed": {"solid": true},
 	"salvage_wall": {"solid": true},
+	# LimeZu Modern Office, Kitchen and more, Serene Village (Nov 22). Wall pieces hang on a wall tile.
+	"copier": {"solid": true},
+	"water_cooler": {"solid": true},
+	"office_plant": {"solid": true},
+	"office_sofa": {"solid": true, "w": 2},
+	"whiteboard": {"solid": true, "w": 2},
+	"certificate": {"solid": false},
+	"lounge_chair": {"solid": true},
+	"potted_plant": {"solid": true},
+	"wall_tv": {"solid": false, "w": 2},
+	"picture_frame": {"solid": false},
+	"microwave": {"solid": true},
+	"planter": {"solid": true},
 }
+
+## Things that hang on the back wall: their letters turn the floor under them into wall.
+const ON_WALL := ["whiteboard", "certificate", "wall_tv", "picture_frame"]
 
 ## Interiors, 14 x 11 tiles, door at the bottom. Letters:
 ## W wall, w window, . floor, z where an infected may be waiting.
@@ -83,22 +102,25 @@ const PROPS := {
 ## U desk, V shelves, C crate, A medicine cabinet, k car, q fire engine.
 ## Props: b bed, S shelf, T table, h chair, B bench, N counter, O barrel, X crate,
 ## L lamp, R rug, I cell bars, J stall rail, H hay bale, E tires, ~ water.
+## LimeZu furniture (Nov 22): d office desk (searchable, 2 wide), x filing cabinet (searchable), o copier,
+## e water cooler, a office plant, s sofa (2 wide), l armchair, p potted plant, u microwave; on the back
+## wall: g whiteboard (2 wide), n certificate, t TV (2 wide), r picture.
 const ROOMS := {
 	"house": [
 		"WWWWWWWWWWWWWW", "WKFKwKWSwMM.bW", "W.....W....z.W", "W.hTh.W......W", "W..T..WW.WWWWW", "W............W",
-		"WS..RRRR...U.W", "W...RRRR..z..W", "WO..........MW", "W.z.......L..W", "WWWWWW..WWWWWW"],
+		"WS..RRRR...U.W", "Wl..RRRR..z..W", "WO..........MW", "W.z.....p.L..W", "WWWWWW..WWWWWW"],
 	"house2": [
 		"WWWWWWWWWWWWWW", "WbMMwW.KKFKSwW", "W....W......zW", "W.z..W..T.T..W", "WWW.WW..hTh..W", "W............W",
-		"W.U.....RRR..W", "W.h.....RRR.OW", "WM...z.......W", "WL..........SW", "WWWWWW..WWWWWW"],
+		"W.U.....RRR..W", "W.h.....RRRlOW", "WM...z.......W", "WL.p........SW", "WWWWWW..WWWWWW"],
 	"shop": [
 		"WWWWWWWWWWWWWW", "WVSSwSSVSwSSVW", "W............W", "W.SS..SV..SS.W", "W.SS..SS..SV.W", "W.....z......W",
 		"W.SS..SS.....W", "W..........z.W", "WNNN.....GGS.W", "WC...U....L..W", "WWWWWW..WWWWWW"],
 	"diner": [
-		"WWWWWWWWWWWWWW", "WFKSKFWwWWwWWW", "W.z...W......W", "WNNN.NN..hTh.W", "W............W", "W.hhhh...hTh.W",
+		"WWWWWWWWWWWWWW", "WFKuKFWwWrwWWW", "W.z...W......W", "WNNN.NN..hTh.W", "W............W", "W.hhhh...hTh.W",
 		"W............W", "WhTh.....hTh.W", "W..z.........W", "WO.........L.W", "WWWWWW..WWWWWW"],
 	"police": [
-		"WWWWWWWWWWWWWW", "WQQSwSQWSwSGGW", "W......W....zW", "W.UhT..W..TU.W", "W......WW.WWWW", "W............W",
-		"W.T......WIIIW", "W.h..z...W..bW", "W........W...W", "WNNN.....WWWWW", "WWWWWW..WWWWWW"],
+		"WWWWWWWWWWWWWW", "WQQxwgWWnwxGGW", "W......W....zW", "W.d.e..W..d..W", "W......WW.WWWW", "W............W",
+		"W.d......WIIIW", "Wa...z...W..bW", "W........W...W", "WNNNo....WWWWW", "WWWWWW..WWWWWW"],
 	"gym": [
 		"WWWWWWWWWWWWWW", "WQSQSwWWwSQSQW", "W............W", "W.BB..z...BB.W", "W............W", "W...RRRRRR...W",
 		"W...RRRRRR.z.W", "W............W", "WXX.......VV.W", "WO........L..W", "WWWWWW..WWWWWW"],
@@ -112,7 +134,7 @@ const ROOMS := {
 		"WWWWWWWWWWWWWW", "WQSSQwWWwSAKFW", "W............W", "W..q.....T.h.W", "W.........T..W", "W.........h..W",
 		"W.......z....W", "W.z..........W", "WEE.......BB.W", "WO......L...OW", "WWWWWW..WWWWWW"],
 	"bar": [
-		"WWWWWWWWWWWWWW", "WSKSKSwWWwSFKW", "W............W", "WNNNNNNN.....W", "W.hhhhh..hTh.W", "W............W",
+		"WWWWWWWWWWWWWW", "WSKSKSwtWwSFKW", "W............W", "WNNNNNNN.....W", "W.hhhhh..hTh.W", "W............W",
 		"W..hTh..z....W", "W.......hTh..W", "W.z..........W", "WOO.....L..UXW", "WWWWWW..WWWWWW"],
 	"cabin": [
 		"WWWWWWWWWWWWWW", "WbMSwGSSwKFSOW", "W.....z......W", "W..RRR...hTh.W", "W..RRR....T..W", "W............W",
@@ -127,14 +149,17 @@ const ROOMS := {
 		"WWWWWWWWWWWWWW", "WFKffKwWwKFVKW", "W.....W......W", "W..z..W..C.z.W", "WNNN.NNN.....W", "W..z.......z.W",
 		"W.hTh..hTh...W", "W............W", "W.hTh.z.hTh.zW", "WL.........OOW", "WWWWWW..WWWWWW"],
 	"house3": [
-		"WWWWWWWWWWWWWW", "WKFKSwWbMwMbLW", "W.....W......W", "W.hTh.W..z...W", "W..T..W......W", "W.....WWW.WWWW",
-		"W............W", "W.z..RRRR....W", "WS...RRRR..U.W", "WO.....L...z.W", "WWWWWW..WWWWWW"],
+		"WWWWWWWWWWWWWW", "WKFuSwWbMwMbLW", "W.....W......W", "W.hTh.W..z...W", "W..T..W......W", "W.....WWW.WWWW",
+		"W............W", "W.z..RRRR....W", "WS...RRRR..U.W", "WO..l..L...zpW", "WWWWWW..WWWWWW"],
 	"house4": [
 		"WWWWWWWWWWWWWW", "WMbwSSWKFKwKSW", "W.....W......W", "W..z..W.hTh..W", "W.....W..T.z.W", "WWW.WWW......W",
-		"W............W", "W..RRR...hTh.W", "WU.RRR.z.....W", "WL.......OO.MW", "WWWWWW..WWWWWW"],
+		"Wp...........W", "W..RRR...hTh.W", "WU.RRRlz.....W", "WL.......OO.MW", "WWWWWW..WWWWWW"],
 	"shop2": [
 		"WWWWWWWWWWWWWW", "WVVSwVVSwVVSVW", "W............W", "W.S.S.S.S.S..W", "W.S.S.S.S.SzVW", "W.S.S.S.S.S..W",
 		"W............W", "W.z........z.W", "WNNN....GG.C.W", "WC.....U..L..W", "WWWWWW..WWWWWW"],
+	"office": [
+		"WWWWWWWWWWWWWW", "WxxnwgWWwnWeaW", "W............W", "W.d...d...d..W", "W.....z......W", "W.d...d...d..W",
+		"W..........z.W", "W.......WWWW.W", "Wa..s.l.WKFu.W", "Wo.....pW....W", "WWWWWW..WWWWWW"],
 	"church": [
 		"WWWWWWWWWWWWWW", "WCw..LTL...wUW", "W.....z......W", "W..BBB..BBB..W", "W............W", "W..BBB..BBB..W",
 		"W............W", "W..BBB..BBB..W", "W....z.......W", "WO..........OW", "WWWWWW..WWWWWW"],
@@ -170,7 +195,12 @@ const STYLES := {
 	"lab": [["floor_lab", "wall_lab"]],
 	"vault": [["floor_lab", "wall_concrete"]],
 	"clubhouse": [["floor_concrete", "wall_panel"]],
+	"office": [["floor_carpet", "wall_paper"], ["floor_tile", "wall_concrete"]],
 }
+
+## Rooms whose rows changed since saves were made: a saved room with an older version is built fresh
+## (Game rebuilds a room whose layout name differs). Nov 22: LimeZu furniture.
+const ROOM_VER := {"house": 2, "house2": 2, "house3": 2, "house4": 2, "diner": 2, "police": 2, "bar": 2}
 const STYLE_OF_ROOM := {"house2": "house", "house3": "house", "house4": "house", "shop2": "shop", "hv_main": "lab", "hv_lab6": "lab", "hv_vault": "vault"}
 
 ## Which layout and style a building gets.
@@ -195,6 +225,11 @@ const LETTERS := {
 	"U": "loot_desk", "V": "loot_shelf", "C": "loot_crate", "A": "loot_medicine", "q": "fire_truck",
 	"b": "old_bed", "S": "shelf", "T": "table", "h": "chair", "B": "bench", "N": "counter", "O": "barrel", "X": "crate",
 	"f": "fryer", "L": "lamp", "R": "rug", "I": "cell_bars", "J": "stall_rail", "H": "hay_bale", "E": "tire_stack", "k": "car_wreck",
+	# LimeZu Modern Office, Kitchen and more (Nov 22). d and s are 2 wide (put a "." after them), and so are
+	# g and t, which hang on the back wall (put a "W" after them).
+	"d": "office_desk", "x": "filing_cabinet", "o": "copier", "e": "water_cooler", "a": "office_plant", "s": "office_sofa",
+	"g": "whiteboard", "n": "certificate", "l": "lounge_chair", "p": "potted_plant", "t": "wall_tv", "r": "picture_frame",
+	"u": "microwave",
 }
 
 ## Outside looks for the buildings (merged into Data.buildings).
@@ -287,8 +322,8 @@ const DISTRICTS := {
 			{"id": "ind_fire", "kind": "d_firehouse", "x": 22, "y": 10, "w": 9, "h": 7, "room": "firehouse", "name": "Fire Station 4", "tags": ["fire_station"], "q": 0.4, "foes": [["charred", 2], ["shambler", 1]]},
 			{"id": "ind_warehouse", "kind": "d_warehouse", "x": 35, "y": 6, "w": 11, "h": 8, "room": "warehouse", "name": "Warehouse 3", "tags": ["construction", "hardware"], "q": 0.4, "foes": [["brute", 1], ["shambler", 2], ["spitter", 1]]},
 			{"id": "ind_bar", "kind": "d_bar", "x": 2, "y": 23, "w": 8, "h": 6, "room": "bar", "name": "The Rusty Spoke", "tags": ["biker_bar"], "q": 0.35, "foes": [["shambler", 2], ["runner", 2]]},
-			{"id": "ind_scrap", "kind": "d_scrap_office", "x": 14, "y": 23, "w": 5, "h": 4, "room": "warehouse", "name": "Scrapyard Office", "tags": ["scrapyard", "garage"], "q": 0.3, "foes": [["shambler", 2]]},
-			{"id": "ind_lumber", "kind": "d_lumber_office", "x": 3, "y": 35, "w": 6, "h": 4, "room": "cabin", "swap": {"G": "Y", "F": "C", "M": "C"}, "name": "Lumber Co. Office", "tags": ["lumber", "construction"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
+			{"id": "ind_scrap", "kind": "d_scrap_office", "x": 14, "y": 23, "w": 5, "h": 4, "room": "office", "name": "Scrapyard Office", "tags": ["scrapyard", "garage"], "q": 0.3, "foes": [["shambler", 2]]},
+			{"id": "ind_lumber", "kind": "d_lumber_office", "x": 3, "y": 35, "w": 6, "h": 4, "room": "office", "name": "Lumber Co. Office", "tags": ["lumber", "construction"], "q": 0.3, "foes": [["shambler", 2], ["lurcher", 1]]},
 			{"id": "ind_chicken", "kind": "d_chicken", "x": 25, "y": 3, "w": 7, "h": 5, "room": "fastfood", "name": "Cluck Hut", "tags": ["kitchen"], "q": 0.2, "foes": [["charred", 2], ["shambler", 2], ["runner", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "ind_taco", "kind": "d_taco", "x": 38, "y": 21, "w": 7, "h": 4, "room": "fastfood", "name": "Taco Rancho", "tags": ["kitchen"], "q": 0.2, "foes": [["shambler", 3], ["brute", 1], ["spitter", 1]], "fast_food": true, "spot_chance": 1.0},
 			{"id": "ind_mill", "kind": "d_mill", "x": 39, "y": 27, "w": 13, "h": 8, "room": "warehouse", "name": "Mill Works", "tags": ["construction", "scrapyard", "hardware"], "q": 0.55, "foes": [["brute", 2], ["charred", 1], ["spitter_brute", 1], ["shambler", 1]]},
@@ -415,7 +450,7 @@ static func _place(m: GameMap, x: int, y: int, type: String, extra := {}) -> voi
 static func interior(district: String, b: Dictionary) -> GameMap:
 	var lay := pick_layout(b)
 	var m := interior_rows(district, b, ROOMS[lay])
-	m.layout = lay
+	m.layout = lay + ("_v%d" % ROOM_VER[lay] if ROOM_VER.has(lay) else "")
 	return m
 
 ## Builds a 14 x 11 room from rows of letters (see ROOMS); other places reuse it.
@@ -450,6 +485,9 @@ static func interior_rows(district: String, b: Dictionary, rows: Array, letters 
 					m.warps.append({"x": x, "y": y, "w": 1, "h": 1, "to": district, "tx": door_x, "ty": int(b.y) + int(b.h), "dir": "down", "door": true})
 			elif letters.has(ch) or LETTERS.has(ch):
 				var t: String = letters.get(ch, LETTERS.get(ch, ""))
+				if t in ON_WALL:
+					m.set_tile(x, y, wl)
+					if PROPS[t].get("w", 1) > 1: m.set_tile(x + 1, y, wl)
 				if CONTAINERS.has(t):
 					_container(m, x, y, t, b.tags, float(b.q))
 				elif t == "car_wreck":

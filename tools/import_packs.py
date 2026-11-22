@@ -7,6 +7,7 @@ Packs used:
   Free_pixel_food_16x16 (alexkovacsart): crop, food and drink icons
   Kyrises_16x16_RPG_Icon_Pack_V1.3: gem, bar, log, plank, bone, candle icons
   GunsPack (greenpixels): ammo icons
+  LimeZu Modern Office, Kitchen and more, Serene Village: see tools/limezu_more.py
 The game picks these files up by name (see Art.override and Art.obj_override). Delete a file to go back
 to the generated art for that thing.
 """
@@ -2438,3 +2439,7 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "tackle_
 
 # ---------------------------------------------------------------- raised ground: cliffs, banks and steps (Nov 22)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "terrain_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- LimeZu Modern Office, Kitchen and more, Serene Village (Nov 22)
+# last on purpose: its rocks, vending machines and mailboxes replace the earlier ones
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "limezu_more.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})
