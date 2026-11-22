@@ -1,0 +1,11 @@
+June: Every name went in the hat, and everyone drew one. Yours is written on the card by the tree.
+- What are you selling?
+	June: Cocoa, string lights, pies. Wrapping is free.
+	[signal arg="shop:festival"]
+- I'd like to wrap my gift.
+	June: Lovely. Pick something they'll like, and I'll wrap it with the good paper.
+	[signal arg="open:hearth"]
+- Who drew my name?
+	June: That's a secret until the presents are open. That's the whole fun of it.
+- Maybe later.
+	June: The table's open until ten.

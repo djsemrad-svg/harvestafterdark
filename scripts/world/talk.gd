@@ -77,6 +77,8 @@ static func _on_signal(arg) -> void:
 			_after.append(func(): Game.ui.open("shop", {"shop": p[1]}))
 		"open":
 			_after.append(func(): Game.ui.open(p[1]))
+		"costume":
+			_after.append(func(): Festivals.costume())
 		"give":
 			if Data.items.has(p[1]): Game.add_item(p[1], int(p[2]) if p.size() > 2 else 1)
 		"gold":

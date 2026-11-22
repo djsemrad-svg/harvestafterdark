@@ -1,0 +1,11 @@
+Ada: Welcome to the Militia Trials. Today we find out who can still swing after a long winter.
+- What's for sale?
+	Ada: Ammunition, bandages, sandbags. Everything a militia runs out of.
+	[signal arg="shop:festival"]
+- How does the gauntlet work?
+	Ada: Eight padded dummies past the fountain. Hit one and the clock starts. Two good strikes each puts them down.
+	Ada: All eight in forty seconds. Under twenty-five and you take first prize.
+- Is the militia recruiting?
+	Ada: Always. Drill is every afternoon by the guild. Cole will tell you it's voluntary. Cole will be watching.
+- Maybe later.
+	Ada: Stay sharp out there.

@@ -1,0 +1,12 @@
+Ottoline: Forty years I judged the county fair. The marrows were bigger then, but the people are braver now.
+- What are you selling?
+	Ottoline: Pies, honey, cheese. Things to inspire you, dear.
+	[signal arg="shop:festival"]
+- How does judging work?
+	Ottoline: Bring three things you grew, cooked or made. The finer and rarer, the better. Gold-star quality counts extra.
+	Ottoline: You keep them, of course. I only look. And sniff. Occasionally taste.
+	[signal arg="open:showcase"]
+- What wins?
+	Ottoline: Something only you could have brought. Last year it was a truffle. The year before, a perfect melon.
+- Maybe later.
+	Ottoline: The table is open until five.

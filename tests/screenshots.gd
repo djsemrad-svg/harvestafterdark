@@ -947,6 +947,31 @@ func _ready() -> void:
 		await shot("60_curio_mabel")
 		get_tree().quit()
 		return
+	if only == "festivals2":
+		# the six later festivals on the square: [day, time, name]
+		main.ui.close_all()
+		main.ui.visible = false
+		for fd in [[39, 700, "fishing"], [53, 700, "trials"], [72, 700, "showcase"], [85, 1260, "hollow"], [98, 1150, "frostlight"], [112, 1000, "hearth"]]:
+			Game.state.day = int(fd[0]); Game.state.time = int(fd[1])
+			Game.state.weather = "snow" if int(fd[0]) > 90 else "sun"
+			Festivals.setup(Game.maps)
+			Townsfolk.map_id = ""
+			Game.sync_npcs()
+			var c: Vector2i = Festivals.center
+			Game.change_map("town", c.x, c.y + 5, "up", {"silent": true})
+			Game.sync_npcs()
+			Game.enemies.clear()
+			if fd[2] == "hollow":
+				for kk in Game.map.objects:
+					if Game.map.objects[kk].type == "whack_hole":
+						Festivals.whack(Game.map.objects[kk])
+						break
+				Festivals.game.up = {0: 0.8, 4: 0.8, 7: 0.8}
+			await frames(30)
+			await shot("62_fest_%s" % fd[2])
+			Festivals.game = {}
+		get_tree().quit()
+		return
 	if only == "festival":
 		main.ui.close_all()
 		main.ui.visible = false

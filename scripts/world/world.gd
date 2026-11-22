@@ -1880,6 +1880,7 @@ func finish_catch(id: String) -> void:
 		Sfx.play("catch")
 		var size := Angling.roll_size(id, has_tackle("braided_line"))
 		var record := Angling.log_catch(id, size)
+		Festivals.on_catch(id, size)
 		Game.floaters.append({"text": Angling.fmt(size), "pos": Game.player.pos + Vector2(0, -40), "t": 1.6, "color": Color("#c8f0ff")})
 		if record:
 			Game.toast("New record: %s, %s!" % [Data.items[id].name, Angling.fmt(size)], id, "gold")
@@ -1993,8 +1994,21 @@ func interact_object(o: Dictionary) -> void:
 			else: Game.ui.open("notices")
 		"race_pot":
 			Festivals.use_pot(o)
+		"fest_dummy":
+			Festivals.hit_dummy(o)
+		"whack_hole":
+			Festivals.whack(o)
+		"fest_ghost":
+			Game.ui.say("", "A bedsheet ghost on a pole. Someone drew the eyes on with charcoal.")
+		"fest_cauldron":
+			Game.ui.say("", "Green punch, bubbling over dry ice. It tastes of apples.")
+		"fest_tree", "fest_gifts_0", "fest_gift_sack":
+			Game.ui.say("", "Wrapped gifts under a tree hung with salvaged lights.")
 		"fest_table":
 			if o.get("lantern_dock", false): Festivals.use_dock()
+			elif o.get("derby", false): Festivals.use_derby()
+			elif o.get("showcase", false): Game.ui.open("showcase")
+			elif o.get("exchange", false): Game.ui.open("hearth")
 			else: Game.ui.say("", "A festival table, sticky with cider.")
 		"fest_sign":
 			Game.ui.say("", str(o.get("text", "")))

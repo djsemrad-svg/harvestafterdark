@@ -58,3 +58,69 @@ for y, row in enumerate(L):
             ic.putpixel((x, y), PAL[ch])
 save(ic, "icons/wish_lantern.png")
 print("festival art:", n + 1)
+
+# ---------------------------------------------------------------- the later festivals (Nov 22)
+# Hollow Night: jack-o'-lanterns, a ghost, a bubbling cauldron and a candy bucket (Modern Interiors Halloween).
+# Frostlight and the Warm Hearth Exchange: a decorated tree and gift piles (Modern Interiors Christmas).
+# Militia Trials: padded dummies (the gym punching bag, standing and knocked over). Whack-a-zombie holes are drawn here.
+TS = os.path.join(SRC, "moderninteriors-win", "1_Interiors", "16x16", "Theme_Sorter_Shadowless")
+
+
+def _pick(sheet, px, py):
+    w, h = sheet.size
+    a = sheet.load()
+    if a[px, py][3] == 0:
+        px, py = min(((x, y) for x in range(max(0, px - 10), min(w, px + 11)) for y in range(max(0, py - 10), min(h, py + 11)) if a[x, y][3] > 0),
+                     key=lambda q: (q[0] - px) ** 2 + (q[1] - py) ** 2)
+    seen = {(px, py)}
+    todo = [(px, py)]
+    while todo:
+        x, y = todo.pop()
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                q = (x + dx, y + dy)
+                if q in seen or not (0 <= q[0] < w and 0 <= q[1] < h) or a[q][3] == 0:
+                    continue
+                seen.add(q)
+                todo.append(q)
+    xs = [q[0] for q in seen]
+    ys = [q[1] for q in seen]
+    out = Image.new("RGBA", (max(xs) - min(xs) + 1, max(ys) - min(ys) + 1), (0, 0, 0, 0))
+    for q in seen:
+        out.putpixel((q[0] - min(xs), q[1] - min(ys)), a[q])
+    return out
+
+
+m = 0
+HW = os.path.join(TS, "11_Halloween_Shadowless.png")
+if os.path.isfile(HW):
+    hw = Image.open(HW).convert("RGBA")
+    for name, p in [("fest_pumpkin_0", (87, 15)), ("fest_pumpkin_1", (135, 15)), ("fest_pumpkin_2", (183, 44)), ("fest_pumpkin_3", (247, 44)),
+                    ("fest_ghost", (230, 180)), ("fest_cauldron", (47, 142)), ("fest_candy", (150, 180))]:
+        save(mute(_pick(hw, *p), 0.06), "objects/%s.png" % name)
+        m += 1
+XM = os.path.join(TS, "15_Christmas_Shadowless.png")
+if os.path.isfile(XM):
+    xm = Image.open(XM).convert("RGBA")
+    for name, p in [("fest_tree", (37, 27)), ("fest_gifts_0", (77, 70)), ("fest_gifts_1", (10, 52)), ("fest_gift_sack", (150, 207))]:
+        save(mute(_pick(xm, *p), 0.06), "objects/%s.png" % name)
+        m += 1
+PB = os.path.join(OUT, "objects", "punching_bag.png")
+if os.path.isfile(PB):
+    bag = Image.open(PB).convert("RGBA")
+    save(bag, "objects/fest_dummy_0.png")
+    down = bag.rotate(90, expand=True)
+    save(down, "objects/fest_dummy_1.png")
+    m += 2
+# a whack-a-zombie hole: a ring of turned earth round a dark hole
+hole = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+for y in range(16):
+    for x in range(16):
+        dx, dy = (x - 7.5) / 7.0, (y - 10.0) / 4.5
+        r = dx * dx + dy * dy
+        if r <= 0.45:
+            hole.putpixel((x, y), (28, 20, 18, 255))
+        elif r <= 1.0:
+            hole.putpixel((x, y), (112, 80, 52, 255) if (x + y) % 3 else (90, 62, 40, 255))
+save(hole, "objects/whack_hole.png")
+print("later festival art:", m + 1)

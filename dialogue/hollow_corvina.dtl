@@ -1,0 +1,11 @@
+Corvina: Happy Hollow Night. The dead walk every night now, so tonight we make fun of them.
+- What are you selling?
+	Corvina: Masks, hats, candy apples. Everything a body needs to look like something else.
+	[signal arg="shop:festival"]
+- How's my costume?
+	[signal arg="costume"]
+- What's whack-a-zombie?
+	Corvina: Nine holes past the fountain, and something keeps poking its head up. Hit a hole to start, then hit the heads.
+	Corvina: Six heads earns a prize. Twelve, and you're the champion of Hollow Night.
+- Maybe later.
+	Corvina: Mind the dark past the pumpkins.

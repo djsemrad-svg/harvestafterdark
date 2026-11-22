@@ -1,0 +1,11 @@
+Gus: Derby day! Every fish you land in Brightwater's waters counts. Forty inches in all and the first prize is yours.
+- What are you selling?
+	Gus: The good stuff. Lures I've tied myself, braided line, and minnows still kicking.
+	[signal arg="shop:festival"]
+- How does the derby work?
+	Gus: Fish the river and the ponds in town until five. Every catch gets measured. Come weigh in at the table on the bank.
+	Gus: Twenty inches gets you second prize. Forty gets you first.
+- Any tips?
+	Gus: A Spoon Lure for the pike, minnows for anything with teeth. And fish the shady side of the bridge.
+- Maybe later.
+	Gus: The fish aren't going anywhere. Well. They are. Into my bucket.

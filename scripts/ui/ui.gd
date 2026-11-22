@@ -824,6 +824,14 @@ func hint_text() -> String:
 		if o.type == "town_ledger": return "E: Read the restoration ledger"
 		if o.type == "museum_desk": return "E: Donate to the cabinets"
 		if o.type == "curio_wall": return "E: The metal and gem wall"
+		if o.type == "fest_dummy": return "E: Strike the dummy"
+		if o.type == "whack_hole": return "E: Whack!"
+		if o.type == "race_pot": return "E: Plant"
+		if o.type == "fest_table":
+			if o.get("derby", false): return "E: Weigh in"
+			if o.get("showcase", false): return "E: Enter the Harvest Showcase"
+			if o.get("exchange", false): return "E: Wrap a gift"
+			if o.get("lantern_dock", false): return "E: Let a lantern go"
 		if o.type in ["curio_cabinet", "curio_wide"]: return "E: Look"
 		if names.has(o.type): return "E: " + names[o.type]
 		if o.type == "boulder" or o.type == "big_stump": return Data.obj_defs[o.type].hint
@@ -1316,6 +1324,68 @@ func _ov_museum() -> Control:
 	if not any:
 		list.add_child(K.label("Nothing in your pack the cabinets don't already have.", 7, K.INK_SOFT, true))
 	v.add_child(K.scroll(list, 150))
+	v.add_child(_close_btn())
+	return pw[0]
+
+## The Harvest Showcase: pick up to three things you grew, cooked or made; the judges score them. You keep them.
+func _ov_showcase() -> Control:
+	var pw := _window("The Harvest Showcase", 360)
+	var v: VBoxContainer = pw[1]
+	if not overlay.has("picked"): overlay.picked = []
+	var picked: Array = overlay.picked
+	v.add_child(K.label("Pick up to three: crops, forage, fish, dishes, artisan goods or animal products. Better quality scores more. You keep your entries. %d for second prize, %d for first." % [Festivals.SHOW_SECOND, Festivals.SHOW_FIRST], 7, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 7, K.MOSS, true))
+	var list := K.vbox(2)
+	var any := false
+	for i in Game.state.inventory.size():
+		var st = Game.state.inventory[i]
+		if st == null or not Festivals.show_ok(st.id): continue
+		any = true
+		var row := K.hbox(4)
+		row.add_child(K.icon(Art.get_icon(st.id), 16))
+		var qn := Game.quality_of(st)
+		var nm := K.label(("%s " % FarmCare.QUALITY[qn] if qn > 0 else "") + Data.items[st.id].name, 7)
+		nm.custom_minimum_size.x = 200
+		row.add_child(nm)
+		var slot: int = i
+		var on := picked.has(slot)
+		row.add_child(K.button("Remove" if on else "Enter", func():
+			if picked.has(slot): picked.erase(slot)
+			elif picked.size() < 3: picked.append(slot)
+			overlay.erase("msg")
+			render_overlay(), "small"))
+		list.add_child(row)
+	if not any: list.add_child(K.label("Nothing in your pack to show. Bring crops, dishes, fish or animal products.", 7, K.INK_SOFT, true))
+	v.add_child(K.scroll(list, 120))
+	var entries := picked.map(func(sl): return [Game.state.inventory[sl].id, Game.quality_of(Game.state.inventory[sl])] if Game.state.inventory[sl] != null else ["", 0])
+	v.add_child(K.label("Entered: %d of 3 · score %d" % [picked.size(), Festivals.show_score(entries)], 7, K.WOOD_DARK))
+	v.add_child(K.button("Judge my entries", func(): overlay.msg = Festivals.enter_showcase(entries); overlay.picked = []; render_overlay()))
+	v.add_child(_close_btn())
+	return pw[0]
+
+## The Warm Hearth Exchange: wrap a gift for the neighbour whose name you drew.
+func _ov_hearth() -> Control:
+	var pw := _window("The Warm Hearth Exchange", 340)
+	var v: VBoxContainer = pw[1]
+	var who := Festivals.hearth_pick()
+	v.add_child(K.label("You drew %s from the hat. A gift at the exchange counts double, and someone has a present for you too." % Data.npcs[who].name, 7, K.INK_SOFT, true))
+	if overlay.has("msg"):
+		v.add_child(K.label(str(overlay.msg), 7, K.MOSS, true))
+	else:
+		var list := K.vbox(2)
+		for i in Game.state.inventory.size():
+			var st = Game.state.inventory[i]
+			if st == null or not Festivals.hearth_ok(st.id): continue
+			var row := K.hbox(4)
+			row.add_child(K.icon(Art.get_icon(st.id), 16))
+			var known: String = str(Game.state.npcs.get(who, {}).get("known", {}).get(st.id, ""))
+			var nm := K.label(Data.items[st.id].name + ("  (%s)" % known if known != "" else ""), 7)
+			nm.custom_minimum_size.x = 200
+			row.add_child(nm)
+			var gid: String = st.id
+			row.add_child(K.button("Wrap it", func(): overlay.msg = Festivals.hearth_give(gid); render_overlay(), "small"))
+			list.add_child(row)
+		v.add_child(K.scroll(list, 140))
 	v.add_child(_close_btn())
 	return pw[0]
 

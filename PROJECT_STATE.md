@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 322 / 322 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 330 / 330 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -625,6 +625,45 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   carried in `World.TACKLE` order are used, as before. The item details say whether a piece is on your rod.
 - Held back for the Coastal Region: the Jig (sea fish) and Shrimp bait.
 - Tests `run_tackle`; screenshot mode `tackle`. The Precinct 9 locker test now accepts police relics.
+
+### Nov 22: summer, autumn and winter festivals (roadmap item 29)
+All in `scripts/world/festivals.gd` (`FEST`, `DECOR`); art in `tools/festival_art.py` (Modern Interiors Halloween and
+Christmas sheets, the gym punching bag as dummies, a drawn whack-a-zombie hole). Each festival has a visiting
+merchant with a Dialogic conversation (`dialogue/<talk>.dtl`, characters in `dialogue/characters/`). Two names
+changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollow Night.
+- River and Fishing Festival (summer 9, 6 am to 5 pm, Gus): every fish landed in town counts (`Festivals.on_catch`,
+  called from `World.finish_catch`); weigh in at the derby table on the bank: 20 inches second prize, 40 first.
+- Militia Trials (summer 23, Ada): eight padded dummies; the first strike starts a 40 s clock, two strikes each;
+  all down in 25 s for first prize.
+- Harvest Showcase (autumn 12, Ottoline): enter up to three crops, forage, fish, dishes, artisan goods or animal
+  products (window `showcase`); score is price times quality; 600 second prize, 1500 first. Entries are kept.
+- Hollow Night (autumn 25, 6 pm to midnight, Corvina): pumpkins that glow, ghosts, a cauldron; whack-a-zombie
+  (9 holes, 30 s, heads pop up for 1.6 s; 6 second prize, 12 first); wear a cosmetic hat for Corvina's costume prize.
+  New item Candy Apple.
+- Frostlight Gathering (winter 8, 4 pm to 11 pm, Henrik): a bonfire on the square (counts as a fire for warmth),
+  ice fishing (three fish in town for a prize). New item Hot Cocoa (cold resistance for 4 hours).
+- Warm Hearth Exchange (winter 22, June): you drew a neighbour's name (`Festivals.hearth_pick`, fixed per year);
+  wrap a gift at the table under the tree (window `hearth`): double friendship, and a present comes back.
+- Every prize is once a year (`state.flags.fest_won_<year>_<kind>`). Tests `run_festivals2`; screenshot mode
+  `festivals2`. Not built: the shooting range at the Trials and the lantern maze at Hollow Night.
+
+### Agreed with Daniel on Nov 22 (the order after item 29)
+- Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
+1. Terrain with height: hills, cliffs and rises that need steps, ramps or a steep trail; added to the farm, town
+   edges, districts and Riverlands, and used in all world building from now on. Estimate to be given before starting.
+2. Daniel's new LimeZu packs (uploaded Nov 22): Modern Office Revamped v1.2, Kitchen and more 16x16, Serene Village
+   revamped v1.9 (partly used already for wildflowers and blossoms). Check style, use everywhere they fit, and
+   replace non-LimeZu art where these packs have a match.
+3. Quick fixes: readable ammo count on gun icons (dark backing and outline); bigger, brighter muzzle flash.
+4. Animations (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
+   farmer rows), a grip point on every frame so items stop floating, weapon wind-up, strike and follow-through with
+   hit-stop and sparks, gun aiming pose with recoil and casings, the body turning to face the aim with the gun
+   rotating to the pointer (smoothed, slight lean), and blended pose changes.
+5. Audio (old item 23, about 5 to 6.5 hours): Daniel's music packs (Mystery 1 and 2, Action 1 and 2, Adventure 1
+   and 2: 63 tracks, leaving out the sci-fi ones), Home Sound Effects (18) and 18 ambience loops (weather, birds,
+   cicadas, night, water and fires by distance, caves), converted to OGG. Playlists per place and time with fades,
+   combat music, volume sliders for music, sound and ambience. Uploads are in /mnt/user-data/uploads/.
+Order of 3 to 5 against 1 and 2 still to be confirmed with Daniel.
 
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).

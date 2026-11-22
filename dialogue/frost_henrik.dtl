@@ -1,0 +1,10 @@
+Henrik: Come closer to the fire. Frostlight is the one night we keep the bonfire going until the stars go pale.
+- What are you selling?
+	Henrik: Hot cocoa, warm hats, and a few lures that work when the water's this cold.
+	[signal arg="shop:festival"]
+- Ice fishing?
+	Henrik: Three fish from the town's waters tonight, and I'll pay you for the trouble. Weigh them in at the table on the bank.
+- Where are you from?
+	Henrik: North, where the lakes freeze so hard you can drive a truck on them. Nobody drives trucks now. More's the pity.
+- Maybe later.
+	Henrik: The fire will be here.

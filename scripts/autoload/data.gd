@@ -723,8 +723,8 @@ var story := [
 
 var festivals := [
 	{"season": "spring", "day": 10, "name": "Seed and Sprout Fair"}, {"season": "spring", "day": 24, "name": "Lantern Creek Gathering"},
-	{"season": "summer", "day": 9, "name": "River and Fishing Festival"}, {"season": "summer", "day": 23, "name": "Summer Community Market"},
-	{"season": "autumn", "day": 12, "name": "Harvest Showcase"}, {"season": "autumn", "day": 25, "name": "Forager's Supper"},
+	{"season": "summer", "day": 9, "name": "River and Fishing Festival"}, {"season": "summer", "day": 23, "name": "Militia Trials"},
+	{"season": "autumn", "day": 12, "name": "Harvest Showcase"}, {"season": "autumn", "day": 25, "name": "Hollow Night"},
 	{"season": "winter", "day": 8, "name": "Frostlight Gathering"}, {"season": "winter", "day": 22, "name": "Warm Hearth Exchange"},
 ]
 

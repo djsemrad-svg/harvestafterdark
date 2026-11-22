@@ -1322,6 +1322,7 @@ func run_all() -> void:
 	run_festivals()
 	run_curio()
 	run_tackle()
+	run_festivals2()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4334,3 +4335,102 @@ func run_tackle() -> void:
 	var used: bool = G.count_item("minnows") == 2 and G.count_item("bait") == 3 and G.fishing.get("minnows", false)
 	G.fishing = null
 	check("Minnows: used first, one per cast, as live bait", used, "minnows=%d bait=%d" % [G.count_item("minnows"), G.count_item("bait")])
+
+## The summer, autumn and winter festivals (Nov 22).
+func run_festivals2() -> void:
+	var G = Game
+	start("adventure", 2)
+	var t: GameMap = G.maps.town
+	var setup_at := func(day: int, time: int) -> Dictionary:
+		G.state.day = day; G.state.time = time
+		Festivals.setup(G.maps)
+		G.sync_npcs()
+		Townsfolk.map_id = ""
+		var found := {}
+		for kk in t.objects:
+			var o: Dictionary = t.objects[kk]
+			if o.get("fest", false): found[o.type] = int(found.get(o.type, 0)) + 1
+			if o.get("derby", false): found["derby_table"] = 1
+			if o.get("showcase", false): found["show_table"] = 1
+			if o.get("exchange", false): found["hearth_table"] = 1
+		return found
+	var all_ok := true
+	var names := []
+	for f in Data.festivals:
+		var day: int = int(f.day) + {"spring": 0, "summer": 30, "autumn": 60, "winter": 90}[f.season]
+		var fd: Dictionary = Festivals.FEST.get(f.name, {})
+		if fd.is_empty(): all_ok = false; names.append(f.name); continue
+		setup_at.call(day, int(fd.open) + 30)
+		var today := Festivals.today()
+		var stock: int = Data.shops.festival.stock.size() if Data.shops.has("festival") else 0
+		if today.get("name", "") != f.name or stock < 3 or not Talk.has(str(fd.talk)): all_ok = false; names.append(f.name)
+	check("All 8 festivals have their own merchant, stock and conversation", all_ok, str(names))
+	# River and Fishing Festival (summer 9): the derby
+	setup_at.call(39, 600)
+	at("town", 20, 20)
+	Festivals.on_catch("river_chub", 22.0)
+	Festivals.on_catch("river_chub", 20.0)
+	var gold0 := int(G.state.money)
+	Festivals.use_derby()
+	U.close_all()
+	var derby_ok: bool = int(G.state.money) == gold0 + 800 and G.count_item("treasure_hook") >= 1
+	gold0 = int(G.state.money)
+	Festivals.use_derby()
+	U.close_all()
+	check("Fishing derby: 40 inches of fish landed in town wins first prize, once a year", derby_ok and int(G.state.money) == gold0)
+	# Militia Trials (summer 23): the gauntlet
+	var f2: Dictionary = setup_at.call(53, 600)
+	var dummies := []
+	for kk in t.objects:
+		if t.objects[kk].type == "fest_dummy": dummies.append(t.objects[kk])
+	gold0 = int(G.state.money)
+	for o in dummies:
+		for h in Festivals.DUMMY_HITS: Festivals.hit_dummy(o)
+	check("Militia Trials: knock down all 8 dummies quickly for first prize", dummies.size() == Festivals.DUMMIES and int(G.state.money) == gold0 + 700, "dummies=%d" % dummies.size())
+	# Harvest Showcase (autumn 12)
+	var f3: Dictionary = setup_at.call(72, 600)
+	var low := Festivals.enter_showcase([["radish", 0]])
+	gold0 = int(G.state.money)
+	var high := Festivals.enter_showcase([["truffle", 2], ["pumpkin_pie", 2], ["goat_cheese", 2]])
+	check("Harvest Showcase: three fine entries win first prize; a single radish doesn't", f3.has("show_table") and low.contains("kindly") and int(G.state.money) == gold0 + 1500, "%s | %s" % [low, high])
+	# Hollow Night (autumn 25, evening): whack-a-zombie and pumpkins
+	var f4: Dictionary = setup_at.call(85, 1150)
+	at("town", 20, 20)
+	var holes := []
+	for kk in t.objects:
+		if t.objects[kk].type == "whack_hole": holes.append(t.objects[kk])
+	Festivals.whack(holes[0])
+	gold0 = int(G.state.money)
+	for i in 12:
+		Festivals.game.up[i % 9] = 1.0
+		Festivals.whack(holes.filter(func(o): return int(o.i) == i % 9)[0])
+	Festivals.game.t = 0.01
+	Festivals.update(0.1)
+	check("Hollow Night: pumpkins and a ghost on the square; whack 12 heads for first prize", holes.size() == 9 and f4.has("fest_pumpkin_0") and f4.has("fest_ghost") and int(G.state.money) == gold0 + 500, "holes=%d" % holes.size())
+	# the costume prize: a cosmetic hat
+	G.state.equip.head = {"id": "viking_horns", "qty": 1}
+	var c0 := G.count_item("candy_apple")
+	Festivals.costume()
+	U.close_all()
+	check("Hollow Night: wearing a cosmetic hat earns Corvina's candy", G.count_item("candy_apple") == c0 + 3)
+	G.state.equip.head = null
+	# Frostlight Gathering (winter 8, evening): the bonfire and ice fishing
+	var f5: Dictionary = setup_at.call(98, 1100)
+	var fire := Vector2i(-1, -1)
+	for kk in t.objects:
+		if t.objects[kk].type == "campfire" and t.objects[kk].get("fest", false): fire = Vector2i(int(t.objects[kk].x), int(t.objects[kk].y))
+	if fire.x >= 0: G.change_map("town", fire.x, fire.y + 1, "up", {"silent": true})
+	var warm: bool = G.near_fire()
+	for i in 3: Festivals.on_catch("ice_smelt", 6.0)
+	gold0 = int(G.state.money)
+	Festivals.use_derby()
+	U.close_all()
+	check("Frostlight Gathering: a bonfire to warm up by; three fish through the ice win a prize; hot cocoa keeps the cold off", fire.x >= 0 and warm and int(G.state.money) == gold0 + 500 and Data.items.hot_cocoa.buffs.size() == 1, "fire=%s warm=%s" % [fire, warm])
+	# Warm Hearth Exchange (winter 22)
+	var f6: Dictionary = setup_at.call(112, 1000)
+	var who := Festivals.hearth_pick()
+	var p0 := int(G.state.npcs[who].points)
+	G.add_item("wildflower_honey", 1, {"silent": true})
+	var msg := Festivals.hearth_give("wildflower_honey")
+	var again := Festivals.hearth_give("wildflower_honey")
+	check("Warm Hearth Exchange: a gift for the name you drew counts double, and a present comes back", f6.has("hearth_table") and int(G.state.npcs[who].points) > p0 and msg.contains("present") and again.contains("already"), msg)

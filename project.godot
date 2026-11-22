@@ -28,14 +28,26 @@ Dialogic="*uid://ds2q0uclmolvu"
 [dialogic]
 
 directories/dch_directory={
+"ada": "res://dialogue/characters/ada.dch",
+"corvina": "res://dialogue/characters/corvina.dch",
+"gus": "res://dialogue/characters/gus.dch",
+"henrik": "res://dialogue/characters/henrik.dch",
+"june": "res://dialogue/characters/june.dch",
 "mabel": "res://dialogue/characters/mabel.dch",
 "marguerite": "res://dialogue/characters/marguerite.dch",
+"ottoline": "res://dialogue/characters/ottoline.dch",
 "tobias": "res://dialogue/characters/tobias.dch"
 }
 directories/dtl_directory={
 "curio_mabel": "res://dialogue/curio_mabel.dtl",
+"fishing_gus": "res://dialogue/fishing_gus.dtl",
+"frost_henrik": "res://dialogue/frost_henrik.dtl",
+"hearth_june": "res://dialogue/hearth_june.dtl",
+"hollow_corvina": "res://dialogue/hollow_corvina.dtl",
 "lantern_tobias": "res://dialogue/lantern_tobias.dtl",
-"seed_fair_marguerite": "res://dialogue/seed_fair_marguerite.dtl"
+"seed_fair_marguerite": "res://dialogue/seed_fair_marguerite.dtl",
+"showcase_ottoline": "res://dialogue/showcase_ottoline.dtl",
+"trials_ada": "res://dialogue/trials_ada.dtl"
 }
 layout/style_directory={}
 
