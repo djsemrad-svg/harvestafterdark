@@ -824,13 +824,23 @@ func _draw_player() -> void:
 			draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 		if p.get("flash", 0.0) > 0:
-			# muzzle flash: a hot core and a short star of fire along the barrel
-			var mz: Vector2 = hand + dv * 10.0
-			var side := Vector2(-dv.y, dv.x)
-			draw_circle(mz, 3.5, Color(1, 0.75, 0.3, 0.55))
-			draw_line(mz - dv * 1.0, mz + dv * 7.0, Color(1, 0.85, 0.4, 0.9), 2.0)
-			draw_line(mz - side * 4.0, mz + side * 4.0, Color(1, 0.8, 0.35, 0.7), 1.0)
-			draw_circle(mz, 2.0, Color(1, 1, 0.85, 1))
+			# muzzle flash at the end of the barrel: a glow, a white-hot core, a cone of fire along the shot and a
+			# short star across it, turned a little at random each shot; big for the first half, then shrinking
+			var reach: float = (held.get_width() - 3.0) if held != null else 10.0
+			var mz: Vector2 = hand + dv * (reach - 1.0)
+			var life: float = clampf(float(p.flash) / Combat.FLASH_TIME, 0.0, 1.0)
+			var sz: float = float(p.get("flash_size", 1.0)) * (0.55 + 0.45 * life)
+			var fd: Vector2 = dv.rotated(float(p.get("flash_rot", 0.0)) * 0.3)
+			var side := Vector2(-fd.y, fd.x)
+			var al: float = 0.35 + 0.65 * life
+			draw_circle(mz + fd * 4.0 * sz, 6.5 * sz, Color(1, 0.6, 0.15, 0.18 * al))
+			draw_circle(mz + fd * 2.0 * sz, 3.5 * sz, Color(1, 0.78, 0.3, 0.7 * al))
+			draw_colored_polygon(PackedVector2Array([mz - side * 3.2 * sz, mz + fd * 15.0 * sz, mz + side * 3.2 * sz]), Color(1, 0.82, 0.35, 0.95 * al))
+			draw_colored_polygon(PackedVector2Array([mz - side * 1.6 * sz, mz + fd * 8.0 * sz, mz + side * 1.6 * sz]), Color(1, 0.97, 0.75, al))
+			var r2: float = float(p.get("flash_rot", 0.0))
+			for sp in [side.rotated(r2), -side.rotated(-r2)]:
+				draw_line(mz + fd * 2.0 * sz, mz + fd * 2.0 * sz + sp * 5.5 * sz, Color(1, 0.85, 0.4, 0.85 * al), 1.0)
+			draw_circle(mz + fd * 1.5 * sz, 2.0 * sz, Color(1, 1, 0.92, 1))
 	if p.get("reload") != null:
 		var r: Dictionary = p.reload
 		var bw := 14.0
@@ -1030,7 +1040,7 @@ func update_lighting(m: GameMap) -> void:
 				pr = int(pr * 2.2) if not m.mine else 160
 			srcs.append([Game.player.pos + Vector2(0, -16), pr, false])
 			if Game.player.get("flash", 0.0) > 0:
-				srcs.push_front([Game.player.pos + Vector2(0, -12), 70, true])
+				srcs.push_front([Game.player.pos + Vector2(0, -12), 120, true])      # a gunshot lights up the dark
 		var mid: Vector2 = c + vs / 2.0
 		srcs.sort_custom(func(a1, b1): return a1[0].distance_squared_to(mid) < b1[0].distance_squared_to(mid))
 		for s in srcs:

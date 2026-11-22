@@ -410,17 +410,31 @@ static func slot(stack, on_click = null, tier := 0, selected := false, locked :=
 		if Data.weapons.has(stack.id):
 			var wd: Dictionary = Data.weapons[stack.id]
 			if int(wd.mag) > 1 and wd.mode in ["shoot", "throw", "saw"]:
-				var ml := label(str(int(Game.mag_of(stack))), 5, Color("#ffe080"))
-				ml.add_theme_constant_override("outline_size", 2)
-				ml.add_theme_color_override("font_outline_color", Color.BLACK)
-				ml.position = Vector2(size - 4 - 3 * str(int(Game.mag_of(stack))).length(), size - 11)
+				# rounds loaded: crisp 7 px digits on a dark tab in the top-right corner (amber, red when empty)
+				var rounds := int(Game.mag_of(stack))
+				var txt := str(rounds)
+				var tw: float = ui_font().get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+				var tab := ColorRect.new()
+				tab.color = Color(0.08, 0.06, 0.05, 0.85)
+				tab.size = Vector2(ceilf(tw) + 3, 8)
+				tab.position = Vector2(size - tab.size.x - 1, 1)
+				tab.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				b.add_child(tab)
+				var ml := label(txt, 7, Color("#ff6a50") if rounds == 0 else Color("#ffd860"))
+				ml.position = Vector2(tab.position.x + 2, 0)
+				ml.size = Vector2(tw + 2, 9)
 				ml.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				b.add_child(ml)
 		if int(stack.qty) > 1:
-			var q := label(str(stack.qty), 6, Color.WHITE)
-			q.add_theme_constant_override("outline_size", 2)
-			q.add_theme_color_override("font_outline_color", Color.BLACK)
-			q.position = Vector2(size - 4 - 4 * str(stack.qty).length(), size - 10)
+			# stack count: crisp 7 px digits with a hard dark shadow (a thick outline smeared them)
+			var qtxt := str(stack.qty)
+			var q := label(qtxt, 7, Color.WHITE)
+			q.add_theme_color_override("font_shadow_color", Color(0.05, 0.03, 0.02, 0.95))
+			q.add_theme_constant_override("shadow_offset_x", 1)
+			q.add_theme_constant_override("shadow_offset_y", 1)
+			q.add_theme_constant_override("shadow_outline_size", 1)
+			var qw: float = ui_font().get_string_size(qtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 7).x
+			q.position = Vector2(size - 2 - ceilf(qw), size - 11)
 			b.add_child(q)
 		b.tooltip_text = Game.item_display_name(stack.id) + ("" if it.price <= 0 else "  (%d gold each)" % it.price) + ("  [BROKEN]" if Game.is_broken(stack) else "") + "\n" + it.desc
 	if on_click != null:

@@ -4,6 +4,8 @@ extends RefCounted
 ## much damage the player takes. Weapon and gear stats come from Data.weapons
 ## and Data.gear (Daniel's spreadsheets). Infected behaviour is in infected.gd.
 
+const FLASH_TIME := 0.1      # muzzle flash: a big star for the first half, a smaller fading one after
+
 const DIRS := {"up": Vector2(0, -1), "down": Vector2(0, 1), "left": Vector2(-1, 0), "right": Vector2(1, 0)}
 
 var w   # the World node
@@ -256,7 +258,15 @@ func shoot(s: Dictionary, wd: Dictionary, dir: Vector2, repeat: bool) -> bool:
 		Game.projectiles.append({"pos": muzzle, "vel": v, "dmg": float(wd.damage), "life": life * (randf_range(0.8, 1.0) if kind == "pellet" else 1.0),
 			"kind": kind, "owner": "player", "src": s.id, "pierce": int(fx.get("pierce", 0)), "hit": [], "start": muzzle,
 			"ammo": ammo_used, "crit": forced_crit, "double": shots == 2})
-	p.flash = 0.07
+	if not kind in ["arrow", "bolt", "stone", "harpoon"]:      # bows, slingshots and spearguns don't flash
+		p.flash = FLASH_TIME
+		p.flash_rot = randf_range(-0.35, 0.35)
+		p.flash_size = 1.35 if n > 2 else (1.15 if float(wd.damage) >= 60 else (0.85 if int(wd.noise) <= 3 else 1.0))
+		if Game.settings.get("effects", true):
+			var mz: Vector2 = muzzle + dir * 6.0
+			for i in 5:      # sparks and a puff of smoke
+				Game.particles.append({"pos": mz, "vel": dir.rotated(randf_range(-0.7, 0.7)) * randf_range(60, 140), "t": randf_range(0.08, 0.16), "color": Color(1, 0.85, 0.4, 1), "g": 0.0})
+			Game.particles.append({"pos": mz, "vel": dir * 14 + Vector2(0, -10), "t": 0.45, "color": Color(0.75, 0.75, 0.72, 0.45), "g": -8.0})
 	p.shoot_t = 0.15
 	Sfx.play("twang" if kind in ["arrow", "bolt", "stone", "harpoon"] else ("shot_big" if float(wd.damage) * n >= 80 else ("shot_small" if int(wd.noise) <= 3 else "shot")))
 	Game.wear_item(s, 1)

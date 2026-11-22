@@ -285,6 +285,48 @@ func _ready() -> void:
 				await shot("aim_%s_%s" % [wid, dir])
 		get_tree().quit()
 		return
+	if only == "gunfx":
+		# readable rounds on gun icons (hotbar and pack), and the muzzle flash by day and at night
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "right", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		var guns := ["pistol_9mm", "revolver_357", "compact_smg", "carbine", "pump_shotgun", "bolt_action_rifle"]
+		for i in guns.size():
+			Game.state.inventory[i] = null
+		for wid in guns:
+			if Data.items.has(wid): Game.add_item(wid, 1)
+		var k := 0
+		for i in Game.state.inventory.size():
+			var st = Game.state.inventory[i]
+			if st != null and Data.weapons.has(st.id) and Data.weapons[st.id].mode == "shoot":
+				st.mag = [0, 6, 25, 30, 3, 5][k % 6]
+				k += 1
+		Game.state.selected = 1
+		main.ui.close_all()
+		main.ui.visible = true
+		await frames(5)
+		await shot("gunfx_hotbar")
+		main.ui.open("journal", {"tab": "inventory"})
+		await frames(8)
+		await shot("gunfx_pack")
+		main.ui.close_all()
+		main.ui.visible = false
+		for t in [[720, "day"], [1320, "night"]]:
+			Game.state.time = t[0]
+			for i in [3, 4]:
+				Game.state.selected = i
+				Game.player.dir = "right"
+				var st2 = Game.state.inventory[i]
+				Game.player.flash = Combat.FLASH_TIME
+				Game.player.flash_rot = 0.2
+				Game.player.flash_size = 1.35 if st2 != null and st2.id == "pump_shotgun" else 1.0
+				Game.paused = true      # hold the flash still for the picture
+				await frames(2)
+				await shot("gunfx_flash_%s_%d" % [t[1], i])
+				Game.paused = false
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

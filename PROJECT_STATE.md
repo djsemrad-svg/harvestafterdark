@@ -701,11 +701,19 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Tests `run_limezu` (every picture present; every searchable thing reachable in the changed rooms; wall pieces on
   walls; all furniture used; desk size and loot; flower boxes; layout versions). Screenshot mode `limezu`.
 
+### Nov 22: gun quick fixes (order item 3)
+- Rounds loaded: crisp 7 px digits on a dark tab in the slot's top-right corner, amber, red when empty
+  (`UIKit.slot`). Stack counts are 7 px with a hard shadow instead of a smeared outline.
+- Muzzle flash (`Combat.FLASH_TIME` 0.1 s, `WorldView` player drawing): at the real end of the held gun picture, a
+  glow, a cone of fire, a white-hot core and a short star turned at random each shot; big for the first half, then
+  shrinking. Shotguns bigger, quiet guns smaller (`p.flash_size`). Sparks and a smoke puff. Bows, slingshots and
+  spearguns no longer flash. The gunshot light reaches further at night (120). Screenshot mode `gunfx`.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).
 2. Daniel's new LimeZu packs: done Nov 22 (see above).
-3. Quick fixes: readable ammo count on gun icons (dark backing and outline); bigger, brighter muzzle flash.
+3. Quick fixes (ammo count, muzzle flash): done Nov 22.
 4. Animations (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
    farmer rows), a grip point on every frame so items stop floating, weapon wind-up, strike and follow-through with
    hit-stop and sparks, gun aiming pose with recoil and casings, the body turning to face the aim with the gun
