@@ -28,10 +28,12 @@ Dialogic="*uid://ds2q0uclmolvu"
 [dialogic]
 
 directories/dch_directory={
+"mabel": "res://dialogue/characters/mabel.dch",
 "marguerite": "res://dialogue/characters/marguerite.dch",
 "tobias": "res://dialogue/characters/tobias.dch"
 }
 directories/dtl_directory={
+"curio_mabel": "res://dialogue/curio_mabel.dtl",
 "lantern_tobias": "res://dialogue/lantern_tobias.dtl",
 "seed_fair_marguerite": "res://dialogue/seed_fair_marguerite.dtl"
 }
