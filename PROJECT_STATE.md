@@ -709,6 +709,18 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   shrinking. Shotguns bigger, quiet guns smaller (`p.flash_size`). Sparks and a smoke puff. Bows, slingshots and
   spearguns no longer flash. The gunshot light reaches further at night (120). Screenshot mode `gunfx`.
 
+### Nov 22: animations, part 1 (order item 4): aiming and hit feel
+- Aiming (`World.update_aim`, `WorldView._draw_held_gun`): guns and bows turn smoothly to the pointer (`p.aim_a`,
+  eased) while the mouse is in use (moved or clicked in the last 4 s, `World.mouse_aim_t`); otherwise they point the
+  way you face. Your body turns to face the aim. The gun is flipped so it's never upside down, drawn behind you when
+  aiming up, and has hands on it: rear hand on the grip and, on long guns, a front hand under the barrel (found once
+  per held picture, `_gun_grips`). Standing still you lean a pixel into a sideways aim.
+- Recoil (`p.recoil`, more for big guns): the gun kicks back and the muzzle climbs, then settles; a spent casing
+  flicks out and drops (red shells for shotguns). Shots now leave from the end of the barrel unless that's in a wall.
+- Melee hits (`Combat.impact`): hit-stop (`Game.hitstop`, 0.03 to 0.09 s by damage; `World.step` holds still),
+  sparks off the way you swung, a white impact flash, a small shake for heavy hits.
+- The chainsaw keeps its four-way pose. Tests `run_aimfx`; screenshot modes `aimturn`, `gunfx`.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

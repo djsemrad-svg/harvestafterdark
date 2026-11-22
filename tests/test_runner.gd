@@ -1328,6 +1328,7 @@ func run_all() -> void:
 	run_festivals2()
 	run_terrain()
 	run_limezu()
+	run_aimfx()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4572,3 +4573,46 @@ func run_limezu() -> void:
 	# saves made before Nov 22 get the new rooms: an older layout name means a fresh room
 	check("Changed rooms carry a new layout version so older saves rebuild them", G.maps.mh_police.layout == "police_v2" and G.maps.mh_house1.layout.ends_with("_v2") and G.maps.ind_scrap.layout == "office")
 
+
+func run_aimfx() -> void:
+	# Nov 22: guns turn to the aim, kick, flash and drop casings; bows don't flash; melee hits stop for a moment
+	var G = Game
+	start("adventure", 2)
+	at("town", 20, 22, "right")
+	G.enemies.clear()
+	G.add_item("pistol_9mm", 1); G.add_item("ammo_9mm", 30)
+	select("pistol_9mm")
+	var s = G.selected_stack(); s.mag = 10.0
+	W.mouse_aim_t = 99.0      # no mouse in use: the gun points the way you face
+	G.player.dir = "up"
+	tick(300)
+	var faced: bool = absf(angle_difference(float(G.player.aim_a), -PI / 2)) < 0.05
+	G.player.dir = "right"
+	tick(300)
+	G.particles.clear()
+	W.cb.attack(s, false)
+	var shot_ok: bool = float(G.player.get("recoil", 0.0)) > 0.5 and float(G.player.flash) > 0 and G.particles.any(func(q): return float(q.g) > 200.0)
+	tick(400)
+	var settled: bool = float(G.player.recoil) == 0.0 and float(G.player.flash) == 0.0
+	check("Aiming: with no mouse the gun follows your facing; a shot kicks it back, flashes and drops a casing, then settles", faced and shot_ok and settled,
+		"faced=%s shot=%s settled=%s" % [faced, shot_ok, settled])
+	G.add_item("recurve_bow", 1); G.add_item("arrow", 10)
+	select("recurve_bow")
+	G.player.cd = 0.0; G.player.flash = 0.0
+	W.cb.attack(G.selected_stack(), false)
+	check("Bows don't make a muzzle flash", float(G.player.get("flash", 0.0)) == 0.0)
+	# a melee hit on an infected right in front: the action holds still for a few hundredths of a second
+	G.add_item("baseball_bat", 1)
+	select("baseball_bat")
+	var e: Dictionary = W.spawn_enemy("shambler", int(G.player.pos.x / 16) + 1, int(G.player.pos.y / 16))
+	e.pos = G.player.pos + Vector2(14, 0)
+	G.hitstop = 0.0
+	W.cb.impact(e.pos, Vector2.RIGHT, 22.0)
+	var hs: float = G.hitstop
+	var t0: int = G.state.time
+	var before: Vector2 = e.pos
+	W.step(0.016)
+	check("A melee hit lands with a brief freeze (longer for heavy weapons) and sparks", hs > 0.02 and hs < 0.1 and G.particles.size() > 5 and e.pos == before,
+		"hitstop=%.3f" % hs)
+	tick(200)
+	check("After the freeze the game carries on", G.hitstop <= 0.0)

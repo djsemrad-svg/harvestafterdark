@@ -153,6 +153,18 @@ func _melee_hit(s: Dictionary, wd: Dictionary) -> void:
 	if not targets.is_empty():
 		Game.wear_item(s, 1)
 		alert(p.pos, float(wd.noise) * Balance.weapons.melee_noise_tiles * 16.0)
+		impact(targets[0].pos + Vector2(0, -12) - dirv * 4.0, dirv, float(wd.damage))
+
+## A melee hit that connects: a brief freeze (longer for heavy weapons), sparks flying off the way you swung,
+## and a little shake for the big ones. Purely for feel; nothing about the hit changes.
+func impact(at: Vector2, dirv: Vector2, dmg: float) -> void:
+	Game.hitstop = clampf(0.03 + dmg / 900.0, 0.03, 0.09)
+	if not Game.settings.get("effects", true): return
+	if dmg >= 40: Game.shake = maxf(Game.shake, 0.12)
+	for i in 6 + int(dmg / 12.0):
+		var v := dirv.rotated(randf_range(-1.1, 1.1)) * randf_range(50, 130) + Vector2(0, -20)
+		Game.particles.append({"pos": at, "vel": v, "t": randf_range(0.1, 0.22), "color": Color(1, 0.95, 0.7) if i % 3 else Color(1, 0.7, 0.3), "g": 120.0})
+	Game.particles.append({"pos": at, "vel": Vector2.ZERO, "t": 0.07, "color": Color(1, 1, 1, 0.9), "g": 0.0, "size": 4.0})
 
 # ---------------------------------------------------------------- chainsaw
 func saw(s: Dictionary, wd: Dictionary) -> bool:
@@ -243,7 +255,12 @@ func shoot(s: Dictionary, wd: Dictionary, dir: Vector2, repeat: bool) -> bool:
 	var multi = fx.get("multishot", null)
 	if multi != null:
 		n = int(multi[0])
+	# shots leave from the end of the barrel (the held picture's length), never from inside a wall
+	var hp := Art.override("held/%s.png" % s.id)
 	var muzzle: Vector2 = p.pos + Vector2(0, -11) + dir * 7.0
+	if hp != null:
+		var far: Vector2 = p.pos + Vector2(0, -11) + dir * clampf(hp.get_width() + 1.0, 7.0, 16.0)
+		if not Game.map.is_solid(int(far.x) / 16, int(far.y + 11) / 16): muzzle = far
 	var speed := shot_speed(kind)
 	var life: float = minf(float(wd.range), Balance.weapons.max_range_tiles) * 16.0 / speed
 	p.shots = int(p.get("shots", 0)) + 1
@@ -261,6 +278,13 @@ func shoot(s: Dictionary, wd: Dictionary, dir: Vector2, repeat: bool) -> bool:
 	if not kind in ["arrow", "bolt", "stone", "harpoon"]:      # bows, slingshots and spearguns don't flash
 		p.flash = FLASH_TIME
 		p.flash_rot = randf_range(-0.35, 0.35)
+		p.recoil = clampf(0.6 + float(wd.damage) * n / 120.0, 0.6, 1.0)      # the gun kicks back and up, more for big guns
+		p.aim_a = dir.angle()      # the gun points where the shot went
+		if Game.settings.get("effects", true) and kind in ["bullet", "pellet"]:
+			# a spent casing flicks out of the side and drops (shells from shotguns are red)
+			var side := Vector2(-dir.y, dir.x) * (1.0 if dir.x >= 0 else -1.0)
+			Game.particles.append({"pos": p.pos + Vector2(0, -12) + dir * 5.0, "vel": (-side * 30.0 + Vector2(randf_range(-10, 10), -55)), "t": 0.45,
+				"color": Color("#c83a2a") if kind == "pellet" else Color("#e0b040"), "g": 260.0})
 		p.flash_size = 1.35 if n > 2 else (1.15 if float(wd.damage) >= 60 else (0.85 if int(wd.noise) <= 3 else 1.0))
 		if Game.settings.get("effects", true):
 			var mz: Vector2 = muzzle + dir * 6.0

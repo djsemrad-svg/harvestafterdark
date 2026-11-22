@@ -8,6 +8,31 @@ const TOOLBAR_KEYS := [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, K
 
 var view                # WorldView
 var mouse_inside := true
+var mouse_aim_t := 99.0   # seconds since the mouse last moved or clicked: guns follow the pointer while it's in use
+
+func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseMotion or ev is InputEventMouseButton:
+		mouse_aim_t = 0.0
+
+## Aiming a gun or bow (Nov 22): the angle you aim at, smoothed so the gun swings round rather than snapping, and
+## your body turns to face it. With the mouse in use you aim at the pointer; otherwise the way you face.
+func aiming_weapon() -> bool:
+	var hs = Game.selected_stack()
+	return hs != null and Data.weapons.has(hs.id) and Data.weapons[hs.id].mode == "shoot" and Game.player.swing == null and Game.fishing == null
+
+func update_aim(dt: float) -> void:
+	var p: Dictionary = Game.player
+	mouse_aim_t += dt
+	var dirs := {"up": -PI / 2, "down": PI / 2, "left": PI, "right": 0.0}
+	var target: float = dirs.get(p.dir, 0.0)
+	if aiming_weapon() and mouse_inside and mouse_aim_t < 4.0:
+		var d: Vector2 = get_global_mouse_position() - (p.pos + Vector2(0, -11))
+		if d.length() > 4:
+			target = d.angle()
+			p.dir = (("right" if d.x > 0 else "left") if abs(d.x) >= abs(d.y) else ("down" if d.y > 0 else "up"))
+	if not p.has("aim_a"): p.aim_a = target
+	p.aim_a = lerp_angle(float(p.aim_a), target, 1.0 - exp(-dt * 20.0))
+	p.recoil = maxf(0.0, float(p.get("recoil", 0.0)) - dt * 6.0)
 var held_use := false   # Space or left mouse held (used by fishing, charging and automatic weapons)
 var cb: Combat          # attacks, projectiles, damage (combat.gd)
 var inf: Infected       # the infected: looks and behaviour (infected.gd)
@@ -109,12 +134,16 @@ func use_released() -> void:
 func step(dt: float) -> void:
 	if Game.screen != "game" or Game.paused or Game.overlay_open():
 		return
+	if Game.hitstop > 0:
+		Game.hitstop -= dt      # hold everything still for a moment on a solid melee hit (the picture keeps drawing)
+		return
 	if Game.charge != null:
 		Game.charge.t += dt
 	Game.update_clock(dt)
 	if Game.screen != "game" or Game.overlay_open() or Talk.running():
 		return
 	update_player(dt)
+	update_aim(dt)
 	update_fishing(dt)
 	var mini: bool = Game.fishing != null and Game.fishing.phase == "mini"
 	if not mini:

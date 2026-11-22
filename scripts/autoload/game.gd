@@ -37,6 +37,7 @@ var arcs := []                 # arc pylon lightning, drawn briefly
 var bombs := []                # lit charges on the current map
 var fires := []                # burning ground, acid puddles and gas clouds
 var shake := 0.0
+var hitstop := 0.0      # a melee hit freezes the action for a few hundredths of a second, so it lands with weight
 var rng := RandomNumberGenerator.new()
 
 var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false, "effects": true, "keys": {}}

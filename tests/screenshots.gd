@@ -327,6 +327,32 @@ func _ready() -> void:
 				Game.paused = false
 		get_tree().quit()
 		return
+	if only == "aimturn":
+		# the gun turned to eight aims round the player, with hands on it, plus a shot with recoil
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		for wid in ["pistol_9mm", "carbine", "pump_shotgun", "recurve_bow"]:
+			Game.state.inventory[0] = null
+			Game.add_item(wid, 1)
+			for i in Game.state.inventory.size():
+				var st = Game.state.inventory[i]
+				if st != null and st.id == wid: Game.state.selected = i
+			for k in 8:
+				var a := k * PI / 4.0
+				Game.player.aim_a = a
+				Game.player.dir = (("right" if cos(a) > 0 else "left") if absf(cos(a)) >= absf(sin(a)) - 0.01 else ("down" if sin(a) > 0 else "up"))
+				Game.player.recoil = 1.0 if k == 0 else 0.0
+				Game.player.flash = Combat.FLASH_TIME if k == 0 and wid != "recurve_bow" else 0.0
+				Game.paused = true
+				await frames(2)
+				await shot("aimturn_%s_%d" % [wid, k])
+				Game.paused = false
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

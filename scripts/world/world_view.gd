@@ -284,7 +284,11 @@ func _draw() -> void:
 	for cr in Wildlife.critters if Game.screen == "game" else []:
 		if Wildlife.is_airborne(cr): _draw_critter(cr, true)
 	for q in Game.particles if Game.screen == "game" else []:
-		draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
+		var qs: float = float(q.get("size", 1.0))
+		if qs > 1.0:
+			draw_circle(q.pos.round(), qs, q.color)      # an impact flash
+		else:
+			draw_rect(Rect2(q.pos.round(), Vector2.ONE), q.color)
 	if Game.screen == "game":
 		for f in Game.fires:
 			var fa: float = clampf(f.t / maxf(f.dur, 0.01), 0.0, 1.0)
@@ -791,56 +795,128 @@ func player_anim(p: Dictionary) -> Array:
 		return ["walk6", int(p.frame)]
 	return ["idle", int(anim_t / 0.16)]
 
+## The gun or bow you're aiming, if any (the chainsaw keeps its four-way pose).
+func _aimed_gun(p: Dictionary):
+	var hs = Game.selected_stack()
+	if p.swing != null or hs == null or not Data.weapons.has(hs.id) or Data.weapons[hs.id].mode != "shoot" or Game.fishing != null:
+		return null
+	return hs
+
+## Where the hands go on a held gun picture (it points right): the rear hand on the grip (the lowest part of
+## the back half) and, on long guns, the front hand under the barrel. Found once per picture.
+var _grips := {}
+func _gun_grips(id: String, tex: Texture2D) -> Array:
+	if _grips.has(id): return _grips[id]
+	var out := [Vector2(1, 1), null]
+	if tex != null:
+		var im := tex.get_image()
+		if im.is_compressed(): im.decompress()
+		var w := im.get_width(); var h := im.get_height(); var cy := roundi(h / 2.0)
+		var bottom := func(x: int) -> int:
+			for y in range(h - 1, -1, -1):
+				if im.get_pixel(x, y).a > 0.5: return y
+			return -1
+		var gx := 1; var gy := -1
+		for x in range(0, maxi(2, int(w * 0.6))):
+			var b: int = bottom.call(x)
+			if b > gy: gy = b; gx = x
+		out[0] = Vector2(gx - 1, clampi(gy - 3, cy - 1, cy + 3) - cy)
+		if w >= 15:
+			var fx := int(w * 0.55); var fy := -1
+			for x in range(int(w * 0.4), int(w * 0.8)):
+				var b: int = bottom.call(x)
+				if b > fy: fy = b; fx = x
+			out[1] = Vector2(fx - 1, clampi(fy - 1, cy - 2, cy + 2) - cy)
+	_grips[id] = out
+	return out
+
+## A gun or bow turned to your aim (smoothed in World.update_aim): flipped so it's never upside down, kicked
+## back and up by recoil, with your hands on the grip and under the barrel, and the muzzle flash at its end.
+func _draw_held_gun(p: Dictionary, hs: Dictionary) -> void:
+	var a: float = float(p.get("aim_a", 0.0))
+	var rec: float = float(p.get("recoil", 0.0))
+	var left: bool = cos(a) < -0.02
+	var av := Vector2.from_angle(a)
+	var hand: Vector2 = p.pos + Vector2(0, -11) + av * 4.0 - av * 2.5 * rec
+	var ang: float = a + (0.25 * rec if left else -0.25 * rec)      # the muzzle climbs
+	var held := Art.override("held/%s.png" % hs.id)
+	var tex: Texture2D = held if held != null else Art.get_icon(hs.id)
+	var sc := Vector2(1, -1) if left else Vector2.ONE
+	var top := Vector2(-3, -roundf(tex.get_height() / 2.0)) if held != null else Vector2(-4, -8)
+	draw_set_transform(hand.round(), ang, sc * (1.0 if held != null else 0.7))
+	draw_texture(tex, top)
+	if held != null:
+		var skin := Color(str(Game.state.character.look.get("skin", "#e8b48f")))
+		var gr := _gun_grips(hs.id, held)
+		for g in gr:
+			if g == null: continue
+			var hp: Vector2 = top + Vector2(3, roundf(tex.get_height() / 2.0)) + (g as Vector2) + Vector2(-3, 0)
+			draw_rect(Rect2(hp + Vector2(0, 2), Vector2(3, 1)), skin.darkened(0.45))
+			draw_rect(Rect2(hp, Vector2(3, 2)), skin)
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	if p.get("flash", 0.0) > 0:
+		# muzzle flash at the end of the barrel: a glow, a white-hot core, a cone of fire along the shot and a
+		# short star across it, turned a little at random each shot; big for the first half, then shrinking
+		var reach: float = (tex.get_width() - 3.0) if held != null else 10.0
+		var fd := Vector2.from_angle(ang)
+		var mz: Vector2 = hand + fd * (reach - 1.0)
+		var life: float = clampf(float(p.flash) / Combat.FLASH_TIME, 0.0, 1.0)
+		var sz: float = float(p.get("flash_size", 1.0)) * (0.55 + 0.45 * life)
+		fd = fd.rotated(float(p.get("flash_rot", 0.0)) * 0.3)
+		var side := Vector2(-fd.y, fd.x)
+		var al: float = 0.35 + 0.65 * life
+		draw_circle(mz + fd * 4.0 * sz, 6.5 * sz, Color(1, 0.6, 0.15, 0.18 * al))
+		draw_circle(mz + fd * 2.0 * sz, 3.5 * sz, Color(1, 0.78, 0.3, 0.7 * al))
+		draw_colored_polygon(PackedVector2Array([mz - side * 3.2 * sz, mz + fd * 15.0 * sz, mz + side * 3.2 * sz]), Color(1, 0.82, 0.35, 0.95 * al))
+		draw_colored_polygon(PackedVector2Array([mz - side * 1.6 * sz, mz + fd * 8.0 * sz, mz + side * 1.6 * sz]), Color(1, 0.97, 0.75, al))
+		var r2: float = float(p.get("flash_rot", 0.0))
+		for sp in [side.rotated(r2), -side.rotated(-r2)]:
+			draw_line(mz + fd * 2.0 * sz, mz + fd * 2.0 * sz + sp * 5.5 * sz, Color(1, 0.85, 0.4, 0.85 * al), 1.0)
+		draw_circle(mz + fd * 1.5 * sz, 2.0 * sz, Color(1, 1, 0.92, 1))
+
 func _draw_player() -> void:
 	var p: Dictionary = Game.player
 	var blink: bool = p.iframes > 0 and p.get("hurt_t", 9.0) >= 0.36 and int(anim_t / 0.08) % 2 == 0
 	var pa := player_anim(p)
+	var gun = _aimed_gun(p)
+	var aim_a: float = float(p.get("aim_a", 0.0))
+	var gun_behind: bool = gun != null and sin(aim_a) < -0.45
+	# leaning a pixel into a sideways aim, rocked back a pixel by a big shot
+	var lean := Vector2.ZERO
+	if gun != null and absf(cos(aim_a)) > 0.5 and not p.get("moving", false):
+		lean.x = signf(cos(aim_a)) * (1.0 if float(p.get("recoil", 0.0)) < 0.5 else -1.0)
 	if p.get("crouching", false):
 		_shadow(p.pos, 10)
+		if gun != null and gun_behind:
+			_draw_held_gun(p, gun)
 		var ct: Texture2D = Art.get_char(Game.state.character.look, p.dir, int(pa[1]), str(pa[0]))
 		draw_set_transform(p.pos.round(), 0, Vector2(1, 0.8))
 		draw_texture(ct, Vector2(-ct.get_width() / 2, -ct.get_height() + 1), Color(1, 1, 1, 0.35 if blink else 1.0))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	else:
 		_draw_tool_swing(p, true)
-		_draw_char(Game.state.character.look, p.pos, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
+		if gun != null and gun_behind:
+			_draw_held_gun(p, gun)      # aiming up and away: the gun is on the far side of you
+		_draw_char(Game.state.character.look, p.pos + lean, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
 	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0 and Game.settings.get("effects", true):
 		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
-	# a held gun, bow or chainsaw points where you aim
+	# a held chainsaw points the way you face (guns and bows are drawn by _draw_held_gun, turned to your aim)
 	var hs = Game.selected_stack()
-	if p.swing == null and hs != null and Data.weapons.has(hs.id) and Data.weapons[hs.id].mode in ["shoot", "saw"]:
+	if p.swing == null and hs != null and Data.weapons.has(hs.id) and Data.weapons[hs.id].mode == "saw":
 		var dv: Vector2 = {"up": Vector2(0, -1), "down": Vector2(0, 1), "left": Vector2(-1, 0), "right": Vector2(1, 0)}[p.dir]
 		var hand: Vector2 = p.pos + Vector2(0, -11) + dv * 4.0 + Vector2(0, 1 if p.get("saw_t", 0.0) > 0 and int(anim_t * 30) % 2 == 0 else 0)
-		var kick: float = -2.0 if p.get("shoot_t", 0.0) > 0.08 else 0.0
 		var flipx: bool = p.dir == "left"
 		var ang2: float = 0.0 if p.dir in ["left", "right"] else (PI / 2 if p.dir == "down" else -PI / 2)
 		var held := Art.override("held/%s.png" % hs.id)
 		if held != null:
-			# pack weapons have a side-on picture pointing right
-			draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-1, 1) if flipx else Vector2.ONE)
+			draw_set_transform(hand.round(), ang2 if not flipx else 0.0, Vector2(-1, 1) if flipx else Vector2.ONE)
 			draw_texture(held, Vector2(-3, -roundf(held.get_height() / 2.0)))
 		else:
-			draw_set_transform((hand + dv * kick).round(), ang2 if not flipx else 0.0, Vector2(-0.7, 0.7) if flipx else Vector2(0.7, 0.7))
+			draw_set_transform(hand.round(), ang2 if not flipx else 0.0, Vector2(-0.7, 0.7) if flipx else Vector2(0.7, 0.7))
 			draw_texture(Art.get_icon(hs.id), Vector2(-4, -8))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-		if p.get("flash", 0.0) > 0:
-			# muzzle flash at the end of the barrel: a glow, a white-hot core, a cone of fire along the shot and a
-			# short star across it, turned a little at random each shot; big for the first half, then shrinking
-			var reach: float = (held.get_width() - 3.0) if held != null else 10.0
-			var mz: Vector2 = hand + dv * (reach - 1.0)
-			var life: float = clampf(float(p.flash) / Combat.FLASH_TIME, 0.0, 1.0)
-			var sz: float = float(p.get("flash_size", 1.0)) * (0.55 + 0.45 * life)
-			var fd: Vector2 = dv.rotated(float(p.get("flash_rot", 0.0)) * 0.3)
-			var side := Vector2(-fd.y, fd.x)
-			var al: float = 0.35 + 0.65 * life
-			draw_circle(mz + fd * 4.0 * sz, 6.5 * sz, Color(1, 0.6, 0.15, 0.18 * al))
-			draw_circle(mz + fd * 2.0 * sz, 3.5 * sz, Color(1, 0.78, 0.3, 0.7 * al))
-			draw_colored_polygon(PackedVector2Array([mz - side * 3.2 * sz, mz + fd * 15.0 * sz, mz + side * 3.2 * sz]), Color(1, 0.82, 0.35, 0.95 * al))
-			draw_colored_polygon(PackedVector2Array([mz - side * 1.6 * sz, mz + fd * 8.0 * sz, mz + side * 1.6 * sz]), Color(1, 0.97, 0.75, al))
-			var r2: float = float(p.get("flash_rot", 0.0))
-			for sp in [side.rotated(r2), -side.rotated(-r2)]:
-				draw_line(mz + fd * 2.0 * sz, mz + fd * 2.0 * sz + sp * 5.5 * sz, Color(1, 0.85, 0.4, 0.85 * al), 1.0)
-			draw_circle(mz + fd * 1.5 * sz, 2.0 * sz, Color(1, 1, 0.92, 1))
+	if gun != null and not gun_behind:
+		_draw_held_gun(p, gun)
 	if p.get("reload") != null:
 		var r: Dictionary = p.reload
 		var bw := 14.0
