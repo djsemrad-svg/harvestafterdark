@@ -108,6 +108,7 @@ static func open_box(o: Dictionary) -> void:
 				1: give.call(pick.call(PARTS), rng.randi_range(2, 5))
 				2: give.call(pick.call(FOOD), rng.randi_range(1, 3))
 				3: give.call(pick.call(gems), 1)
+			give.call(Relics.roll("box", rng), 1)          # now and then a relic (Curio Cabinet)
 			if rng.randf() < 0.01 + fl * 0.0004:          # 1% near the top, 5% at the bottom
 				var w := weapon_of(["Rare"])
 				if w != "" and rng.randf() < 0.5: give.call(w, 1)

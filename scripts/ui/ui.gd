@@ -822,7 +822,9 @@ func hint_text() -> String:
 		if o.type == "forage": return "E: Pick up " + Data.items[o.item].name
 		if o.type == "stolen_goods": return "E: Search the stolen goods"
 		if o.type == "town_ledger": return "E: Read the restoration ledger"
-		if o.type == "museum_desk": return "E: Donate to the Archive"
+		if o.type == "museum_desk": return "E: Donate to the cabinets"
+		if o.type == "curio_wall": return "E: The metal and gem wall"
+		if o.type in ["curio_cabinet", "curio_wide"]: return "E: Look"
 		if names.has(o.type): return "E: " + names[o.type]
 		if o.type == "boulder" or o.type == "big_stump": return Data.obj_defs[o.type].hint
 	var stc = m.structure_at(t.x, t.y)
@@ -1286,14 +1288,17 @@ func _ov_restoration() -> Control:
 	return pw[0]
 
 func _ov_museum() -> Control:
-	var pw := _window("Community Archive: donations", 340)
+	var pw := _window("The Curio Cabinet: donations", 340)
 	var v: VBoxContainer = pw[1]
 	var mus := Restoration.museum()
+	var total := 0
+	for id in Data.items:
+		if Restoration.donatable(id): total += 1
 	var next := -1
-	for mr in Restoration.MUSEUM_REWARDS:
+	for mr in Relics.DESK_REWARDS:
 		if mus.size() < int(mr[0]): next = int(mr[0]); break
-	v.add_child(K.label("Ruth takes minerals, gems and artifacts for the Archive's cases, one of each. %d donated.%s" % [mus.size(), (" Next thank-you at %d." % next) if next > 0 else ""], 6, K.INK_SOFT, true))
-	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	v.add_child(K.label("Mabel puts one of every relic, artifact and mineral in her cabinets. %d of %d donated.%s Gems and metal bars go on the wall." % [mus.size(), total, (" Next thank-you at %d." % next) if next > 0 else ""], 7, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 7, K.MOSS, true))
 	var list := K.vbox(2)
 	var any := false
 	for i in Game.state.inventory.size():
@@ -1309,8 +1314,39 @@ func _ov_museum() -> Control:
 		row.add_child(K.button("Donate", func(): overlay.msg = Restoration.donate(slot); render_overlay(), "small"))
 		list.add_child(row)
 	if not any:
-		list.add_child(K.label("Nothing in your pack the Archive doesn't already have.", 7, K.INK_SOFT, true))
+		list.add_child(K.label("Nothing in your pack the cabinets don't already have.", 7, K.INK_SOFT, true))
 	v.add_child(K.scroll(list, 150))
+	v.add_child(_close_btn())
+	return pw[0]
+
+## The metal and gem wall: one bar of every metal, one of every gem.
+func _ov_curio_wall() -> Control:
+	var pw := _window("The metal and gem wall", 360)
+	var v: VBoxContainer = pw[1]
+	var wi := Relics.wall_items()
+	var have := Relics.wall().size()
+	v.add_child(K.label("One bar of every metal and one of every gem. %d of %d on the wall.%s" % [have, wi[0].size() + wi[1].size(),
+		" Complete!" if Relics.wall_done() else " Mabel pays well for a full wall."], 7, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 7, K.MOSS, true))
+	for group in [["Metals", wi[0]], ["Gems", wi[1]]]:
+		v.add_child(K.label(group[0], 7, K.WOOD_DARK))
+		var grid := GridContainer.new()
+		grid.columns = 6
+		grid.add_theme_constant_override("h_separation", 3)
+		grid.add_theme_constant_override("v_separation", 3)
+		for id in group[1]:
+			var cell := K.hbox(2)
+			var ic := K.icon(Art.get_icon(id), 14)
+			var on: bool = Relics.wall().has(id)
+			if not on: ic.modulate = Color(0.3, 0.3, 0.3, 0.6)
+			cell.add_child(ic)
+			if not on and Game.count_item(id) > 0:
+				var gid: String = id
+				cell.add_child(K.button("Give", func(): overlay.msg = Relics.wall_give(gid); render_overlay(), "small"))
+			cell.tooltip_text = Data.items[id].name + ("" if on else " (missing)")
+			cell.mouse_filter = Control.MOUSE_FILTER_PASS
+			grid.add_child(cell)
+		v.add_child(grid)
 	v.add_child(_close_btn())
 	return pw[0]
 
@@ -1765,7 +1801,9 @@ func _ov_shop() -> Control:
 	var sh: Dictionary = Data.shops[overlay.shop]
 	var pw := _window("", 410)
 	var v: VBoxContainer = pw[1]
-	if sh.has("keeper"):        # a visiting merchant (festivals): their own face and name, open today only
+	if sh.get("resident", false):        # a shopkeeper who isn't a neighbour (Mabel at the Curio Cabinet)
+		v.add_child(_shop_head(sh.look, sh.name, "%s · Open %s to %s · Closed %s" % [sh.keeper, Game.fmt_time(sh.open), Game.fmt_time(sh.close), ", ".join(sh.closed_days)]))
+	elif sh.has("keeper"):        # a visiting merchant (festivals): their own face and name, open today only
 		v.add_child(_shop_head(sh.look if not sh.look.is_empty() else Data.npcs[sh.owner].look, sh.name, "%s · Here today until %s" % [sh.keeper, Game.fmt_time(sh.close)]))
 	else:
 		v.add_child(_shop_head(sh.owner, sh.name, "%s · Open %s to %s · Closed %s" % [Data.npcs[sh.owner].name, Game.fmt_time(sh.open), Game.fmt_time(sh.close), ", ".join(sh.closed_days)]))

@@ -885,6 +885,41 @@ func _ready() -> void:
 				await shot("52_" + str(o.type))
 		get_tree().quit()
 		return
+	if only == "curio":
+		# the Curio Cabinet: the room half filled, the wall, Mabel's conversation, the shop and the donations
+		main.ui.close_all()
+		Game.state.day = 2; Game.state.time = 600
+		Restoration.st().archive = {"given": [], "done": true, "ready": false}
+		Restoration.apply_one(Game.maps, "archive")
+		Relics.daily()
+		var ids := Relics.ids()
+		for i in 30: Restoration.museum()[ids[i]] = 1
+		var wi := Relics.wall_items()
+		for i in 7: Relics.wall()[wi[0][i]] = 1
+		for i in 5: Relics.wall()[wi[1][i]] = 1
+		for id in ["music_box", "gold_doubloon", "pewter_king", "ruby", "silver_bar", "heart_locket"]:
+			Game.add_item(id, 1, {"silent": true})
+		Townsfolk.map_id = ""
+		Game.change_map("archive", 6, 7, "up", {"silent": true})
+		main.ui.visible = false
+		await frames(20)
+		await shot("60_curio_room")
+		main.ui.visible = true
+		main.ui.open("curio_wall")
+		await frames(4)
+		await shot("60_curio_wall")
+		main.ui.open("museum")
+		await frames(4)
+		await shot("60_curio_donate")
+		main.ui.open("shop", {"shop": "curio"})
+		await frames(4)
+		await shot("60_curio_shop")
+		main.ui.close_all()
+		Talk.play("curio_mabel")
+		await frames(40)
+		await shot("60_curio_mabel")
+		get_tree().quit()
+		return
 	if only == "festival":
 		main.ui.close_all()
 		main.ui.visible = false

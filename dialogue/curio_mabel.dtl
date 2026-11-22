@@ -1,0 +1,17 @@
+Mabel: Welcome to the Curio Cabinet. Everything in here was somebody's, once. Mind the glass.
+- Show me what you're selling.
+	Mabel: Four pieces this week. They change on Sundays, so come back if you're missing something.
+	[signal arg="shop:curio"]
+- I'd like to donate something.
+	Mabel: One of each for the cabinets. Relics, artifacts, minerals. Every one gets a card with where it was found.
+	[signal arg="open:museum"]
+- The metal and gem wall?
+	Mabel: One bar of every metal and one of every gem, all in a row. It's vain of me, but I want it full.
+	Mabel: Fill it and I'll make it worth your while.
+	[signal arg="open:curio_wall"]
+- Where do relics turn up?
+	Mabel: Everywhere people used to live. Drawers, glove boxes, the pawn shop, the bottom of the lake.
+	Mabel: Dig spots and the mine hold the oldest ones. And sometimes the infected still have something in their pockets.
+	Mabel: Bring me your spares too. I pay fair.
+- Just looking.
+	Mabel: Look all you like. Looking is free. Breaking is not.

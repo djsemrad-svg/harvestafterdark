@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 310 / 310 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 316 / 316 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -586,6 +586,33 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   943 pocket watch, 962 RAM, 964 SIM, 977 handheld game, 1114 life ring, 1116 shell, 1157-1160 coins and banknote,
   1167/1168 skulls, 1169 glass eye, 166-170 medals, 302-305 masks, 316 top hat.
 
+### Nov 22: hats, shop prices and the Curio Cabinet (roadmap item 27)
+- Hats (Daniel: "still look kind of weird"): the pack's side views were 7 to 9 px wide on a 13 px head and sat
+  higher or lower than the front. `tools/fit_hats.py` (run by the importer on every HEAD sheet) gives hats that hug
+  the head (`FITTED`) the front view's height in side views, widens them toward the back of the head and covers the
+  top of the head; tall hats (cone, horns, chef's hat, the Lighthouse) keep their shape and sit on one brim line;
+  masks are untouched. The Cowboy Hat's skin-like tan crown is now leather brown. `MiChars._under_hat` keeps hair
+  that lies over the head (the bare scalp showed above low hats). Screenshot mode `hats` (every hat, 3 hair styles).
+- Shop buy rows: the price was squeezed to one pixel wide (the stray marks). Fixed; old soft-ink colour in rich text
+  updated too.
+- The Curio Cabinet (`scripts/world/relics.gd`, art `tools/curio_art.py`): when the Community Archive project is
+  done, the Archive opens as Mabel Quill's antique and oddities shop (9 am to 6 pm, closed Mondays; she stands behind
+  her counter, `Townsfolk` role `curio_keeper`; her conversation is Dialogic `dialogue/curio_mabel.dtl`).
+  - 70 relics (icons from Item Pack 16x16, `RELIC_ICONS`), all in the artifact category, so 95 artifacts and relics
+    in the Relics & Artifacts collection. Each relic has place tags. Found: searching containers (6%, the pawn shop
+    35%), dig spots and mine rocks (`Relics.dig_pick`, half the time a buried relic), mine loot boxes (5%), fishing
+    junk (2%, the Treasure Hook adds three), tilling (0.4%), infected pockets (0.3%), district Unusual Stones.
+  - Donation desk: one of every relic, artifact and mineral; thank-yous at 5, 10, 20, 30, 45, 60, 80 and 100
+    (`Relics.DESK_REWARDS`). Six museum cabinets (Modern Interiors museum theme) fill at 1, 12, 25, 40, 55 and 70.
+    Repeats sell to Mabel; she sells four relics a week at three times their price.
+  - Metal and gem wall: one bar of every metal (scrap ingot excluded) and one of every gem, 22 in all; the picture
+    shows each one on its shelf (`Relics.wall_image`); complete pays 8,000 gold and 2 Legendary Unusual Stones.
+    Gems are no longer taken at the desk; older saves move donated gems to the wall (`Relics.migrate`).
+  - Decided without Daniel (change if wanted): the shop's name and keeper, keeping the Archive restoration project
+    as the way to open it, and the reward amounts. Screenshot mode `curio`.
+  - Not done from the Nov 20 "more gems" item: about 10 new gems.
+- Known random test failure added: "Survivor: low meters slow movement" (a townsperson can block the walk).
+
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
 - Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
@@ -670,7 +697,7 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
    - Mine progression less like Stardew: every floor has a way down from the start (stairs, sometimes guarded or hidden behind rubble), so you choose to fight or sneak past. Optional: some floors lock the stairs until the floor's infected are cleared.
    - Mine loot: small loot boxes scattered on floors (gold, healing, common parts, food, common gems; 1-5% for something rarer); a big chest every 10 floors (more gold, rare and epic weapons and gear, rare parts and dishes, 10% legendary); a legendary chest on the last floor (1 legendary weapon, 1 legendary armour piece, a lot of gold). The mine is 20 floors now, so the last floor is 20 until more are added.
    - Mine elevator on floor 1 and every 10th floor (10, 20, and later 30, 40...): visiting a floor unlocks it; the elevator rides between unlocked floors with a rumble sound and a shaking screen.
-   - Antique and oddities shop (agreed Nov 17; replaces the Archive museum idea): the restored Archive becomes an antique / oddities shop with a keeper.
+   - Antique and oddities shop (DONE Nov 22 as the Curio Cabinet, see above; agreed Nov 17; replaces the Archive museum idea): the restored Archive becomes an antique / oddities shop with a keeper.
      - 75-100 relics (pre-outbreak finds: old tech, toys, keepsakes, documents, oddities). Art made first from Daniel's packs (Item Pack 16x16, Kyrise, props pack, Modern Interiors/Exteriors pieces) so every relic has a picture.
      - Relics turn up again and again (scavenging, digging, the mine, fishing junk). The first of each goes on display for collection rewards; repeats sell to the shop for gold.
      - A display wall with one bar of every metal and one of every gem (diamond, ruby, pearl, amethyst, emerald, sapphire, topaz, etc.), with its own reward when complete.

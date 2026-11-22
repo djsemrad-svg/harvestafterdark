@@ -2429,3 +2429,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "festiva
 
 # ---------------------------------------------------------------- mine depth bands 21-100 (Nov 21)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mine_bands.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- The Curio Cabinet (Nov 22): relic icons and museum furniture
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "curio_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})

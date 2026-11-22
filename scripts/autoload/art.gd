@@ -1009,6 +1009,10 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 	var state := ""
 	if t == "display_case":
 		state = str(Game.state.has("day") and Restoration.museum().size() > int(o.get("v", 0)) % 6)
+	elif t in ["curio_cabinet", "curio_wide"]:
+		state = str(Relics.cabinet_full(o)) + str(int(o.get("i", 0)))
+	elif t == "curio_wall":
+		state = str(Relics.wall().size()) if Game.state.has("day") else "0"
 	elif t == "stolen_goods":
 		state = str(Game.state.get("stolen") is Array and not Game.state.stolen.is_empty())
 	var key := "%s|%s|%d|%s|%d|%d|%s|%s|%s" % [t, season, v, searched, int(o.get("w", 1)), int(o.get("h", 1)), o.get("ore", ""), o.get("palette", ""), state]
@@ -1029,9 +1033,15 @@ func obj_override(o: Dictionary, season: String) -> Dictionary:
 		"ore_rock": names = ["objects/ore_rock_%s.png" % str(o.get("ore", "")), "objects/ore_rock.png"]
 		"geode_rock": names = ["objects/geode_rock.png"]
 		"display_case": names = ["objects/display_case_%d.png" % (int(o.get("v", 0)) % 4 + 1)] if state == "true" else ["objects/display_case.png"]
+		"curio_cabinet": names = ["objects/curio_cabinet_full_%d.png" % (int(o.get("i", 0)) % 3)] if Relics.cabinet_full(o) else ["objects/curio_cabinet_empty.png"]
+		"curio_wide": names = ["objects/curio_wide_full.png"] if Relics.cabinet_full(o) else ["objects/curio_wide_empty.png"]
+		"curio_vase": names = ["objects/curio_vase_%d.png" % (int(o.get("v", 0)) % 3)]
 		"stolen_goods": names = ["objects/stolen_goods_full.png", "objects/stolen_goods.png"] if state == "true" else ["objects/stolen_goods.png"]
 		_: names = ["objects/%s_%s_%d.png" % [t, season, v], "objects/%s_%d.png" % [t, v], "objects/%s_%s.png" % [t, season], "objects/%s.png" % t]
 	var tex: Texture2D = null
+	if t == "curio_wall" and Game.state.has("day"):
+		var base := override("objects/curio_wall.png")
+		if base != null: tex = ImageTexture.create_from_image(Relics.wall_image(base.get_image()))
 	if searched:
 		tex = override("objects/%s_open.png" % t)
 	var dim := false
@@ -1859,6 +1869,10 @@ func obj_state_key(o: Dictionary, nb: int, frame: int) -> String:
 	var k := ""
 	if o.type == "display_case":
 		k += "|m%d" % mini(Restoration.museum().size(), 6) if Game.state.has("day") else ""
+	if o.type in ["curio_cabinet", "curio_wide"]:
+		k += "|c%s" % Relics.cabinet_full(o)
+	if o.type == "curio_wall":
+		k += "|w%d" % Relics.wall().size() if Game.state.has("day") else ""
 	if o.type == "sapling":
 		k += "|g%d%s" % [Woodland.stage(o), o.get("kind", "tree")]
 	if o.type == "stolen_goods":

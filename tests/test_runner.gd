@@ -1320,6 +1320,7 @@ func run_all() -> void:
 	run_walkability()
 	run_town_life()
 	run_festivals()
+	run_curio()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4172,3 +4173,84 @@ func run_mine_depths() -> void:
 	check("Mine depths: every floor has a way down, loot boxes daily, chests once, a legendary chest on 100, lifts on 1 and every 10th, banded stone and tougher infected",
 		no_way.is_empty() and tiles_ok and boxes >= 1 and boxes2 == 0 and chest != null and paid and not chest_again and legend and tough and lift1,
 		"no_way=%s tiles=%s boxes=%d again=%d chest=%s paid=%s chest_again=%s legend=%s tough=%s lift1=%s" % [no_way, tiles_ok, boxes, boxes2, chest != null, paid, chest_again, legend, tough, lift1])
+
+## The Curio Cabinet (Nov 22): relics, Mabel's shop, the cabinets and the metal and gem wall.
+func run_curio() -> void:
+	var G = Game
+	start("adventure", 2)
+	# relics exist, each with its own picture, and the artifact collection reaches 75 to 100
+	var relic_ids := Relics.ids()
+	var with_icons := relic_ids.filter(func(id): return Data.items.has(id) and FileAccess.file_exists("res://art/icons/%s.png" % id))
+	var artifacts := 0
+	for id in Data.items:
+		if str(Data.items[id].get("cat", "")) == "artifact": artifacts += 1
+	check("Relics: %d relics, each with an icon; %d artifacts and relics in all" % [relic_ids.size(), artifacts], relic_ids.size() >= 50 and with_icons.size() == relic_ids.size() and artifacts >= 75 and artifacts <= 110, "icons %d" % with_icons.size())
+	# where relics turn up
+	var r := RandomNumberGenerator.new()
+	r.seed = 7
+	var pawn := 0
+	var kitchen_ok := true
+	for i in 300:
+		var a := Relics.roll_search(["pawn"], r)
+		if a != "": pawn += 1
+		var k := Relics.pick(r, ["kitchen"])
+		if k != "" and not RELICS_TAGGED(k, "kitchen"): kitchen_ok = false
+	var digs := 0
+	for i in 100:
+		var d := Relics.dig_pick(r)
+		if Data.items.has(d) and str(Data.items[d].cat) == "artifact": digs += 1
+	check("Relics turn up by place: the pawn shop often has one, a kitchen only gives kitchen things, dig spots give artifacts and relics", pawn > 60 and kitchen_ok and digs == 100, "pawn=%d digs=%d" % [pawn, digs])
+	# restore the Archive: it opens as the Curio Cabinet
+	Restoration.st().archive = {"given": [], "done": true, "ready": false}
+	Restoration.apply_one(G.maps, "archive")
+	var arch: GameMap = G.maps.archive
+	var n_cab := 0
+	var wall_o := {}
+	var counter := false
+	for k in arch.objects:
+		var o: Dictionary = arch.objects[k]
+		if o.type in ["curio_cabinet", "curio_wide"]: n_cab += 1
+		if o.type == "curio_wall": wall_o = o
+		if o.type == "counter" and o.get("shop", "") == "curio": counter = true
+	G.state.day = 2; G.state.time = 600      # a Tuesday morning
+	Relics.daily()
+	var stock: Array = G.shop_stock("curio")
+	var open_now: bool = G.is_shop_open("curio")
+	Townsfolk.map_id = ""
+	Townsfolk.refresh(arch)
+	var mabel := Townsfolk.folk.any(func(f): return f.role == "curio_keeper" and f.name == Relics.KEEPER and Townsfolk.present(f))
+	check("The Curio Cabinet: six cabinets, the metal and gem wall, Mabel behind her counter in shop hours, four relics for sale", n_cab == 6 and not wall_o.is_empty() and counter and stock.size() == 4 and open_now and mabel and Talk.has("curio_mabel"), "cab=%d stock=%d open=%s mabel=%s" % [n_cab, stock.size(), open_now, mabel])
+	# donations fill the cabinets; gems go on the wall instead
+	var first: Dictionary = {}
+	for k in arch.objects:
+		if arch.objects[k].get("i", -1) == 0: first = arch.objects[k]
+	var empty_before := not Relics.cabinet_full(first)
+	G.add_item("music_box", 2, {"silent": true})
+	var m1: String = Restoration.donate(idx("music_box"))
+	var full_after := Relics.cabinet_full(first)
+	var gem_desk := Restoration.donatable("ruby")
+	var sells: bool = G.shop_buys_item("curio", "music_box")
+	check("Donating fills the first cabinet; repeats sell to Mabel; gems aren't taken at the desk", empty_before and full_after and m1.contains("Donated") and not gem_desk and sells, m1)
+	# the metal and gem wall
+	var wi := Relics.wall_items()
+	var money0 := int(G.state.money)
+	var msgs := []
+	for id in wi[0] + wi[1]:
+		G.add_item(id, 1, {"silent": true})
+		msgs.append(Relics.wall_give(id))
+	var done := Relics.wall_done()
+	var paid := int(G.state.money) - money0
+	G.add_item(wi[1][0], 1, {"silent": true})
+	var again := Relics.wall_give(wi[1][0])
+	var ov: Dictionary = Art.obj_override(wall_o, "spring")
+	check("Metal and gem wall: %d bars and %d gems; complete pays once; the wall shows what's on it" % [wi[0].size(), wi[1].size()], wi[0].size() >= 10 and wi[1].size() >= 10 and done and paid == 8000 and again == "" and ov.has("tex") and ov.tex != null, "paid=%d last=%s" % [paid, msgs[msgs.size() - 1]])
+	# older saves: gems donated to the old museum move to the wall
+	Game.state.curio_wall = {}
+	Restoration.museum()["emerald"] = 3
+	Relics.migrate()
+	check("Older saves: gems in the old Archive move to the wall", Relics.wall().has("emerald") and not Restoration.museum().has("emerald"))
+
+static func RELICS_TAGGED(id: String, tag: String) -> bool:
+	for r in Relics.RELICS:
+		if r[0] == id: return (r[3] as Array).has(tag)
+	return false

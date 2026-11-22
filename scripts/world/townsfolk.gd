@@ -40,6 +40,7 @@ const LINES := {
 		"Every one of them stands a night on the wall by summer.", "Want to join? Afternoons, here. Bring boots."],
 	"crowd": ["Best day of the season, this. Don't let anyone tell you otherwise.", "Have you tried the stew? Ruth's outdone herself.",
 		"Feels almost like before, doesn't it? Almost.", "My kids have been counting down to this for a week."],
+	"curio_keeper": ["Mind the cabinets, dear. Everything in them was somebody's."],
 	"browse": ["Just looking. Well, looking and counting what I can afford.", "They had flour last week. I live in hope.",
 		"Don't mind me, I'm waiting my turn.", "Good to have somewhere warm to stand for a minute."],
 	"walk": ["Busy day. Busy every day, now.", "Morning. Or afternoon? I've stopped keeping track.",
@@ -71,6 +72,8 @@ static func refresh(m: GameMap) -> void:
 	if m.id == "town" and not fest.is_empty():
 		plan["crowd"] = 10
 		plan["merchant"] = 1
+	if m.id == "archive" and Relics.open():
+		plan = {"curio_keeper": 1, "browse": 1}
 	if plan.is_empty():
 		return
 	var r := RandomNumberGenerator.new()
@@ -173,6 +176,13 @@ static func refresh(m: GameMap) -> void:
 							if Data.shops.has("festival"): Data.shops.festival.look = mc.look
 							folk.append(mc)
 							break
+				"curio_keeper":
+					# Mabel behind her counter during shop hours
+					var mk := _make(r, "curio_keeper", Vector2i(6, 3), "down")
+					mk.name = Relics.KEEPER
+					mk.look = Relics.KEEPER_LOOK.duplicate()
+					mk.hours = [Relics.OPEN, Relics.CLOSE]
+					folk.append(mk)
 				"browse":
 					var spot := Vector2i(-1, -1)
 					for tries in 60:
@@ -328,6 +338,10 @@ static func in_front(pos: Vector2, dirv: Vector2i) -> Variant:
 	return null
 
 static func talk(f: Dictionary) -> void:
+	if f.role == "curio_keeper":
+		if not Talk.play("curio_mabel"):
+			Game.ui.open("shop", {"shop": Relics.SHOP_ID})
+		return
 	if f.role == "merchant" and Data.shops.has("festival"):
 		# a conversation written in Dialogic if there is one (Talk), otherwise straight to the stall
 		if not Talk.play(str(Festivals.today().get("talk", ""))):

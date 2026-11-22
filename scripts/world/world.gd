@@ -277,6 +277,8 @@ func apply_tool(tool: String, tier: int, tiles: Array) -> void:
 					continue
 				m.soil[kk] = {"w": 1 if (Data.weather_info[st.weather].waters and m.outdoor) else 0, "crop": null}
 				tilled += 1
+				var turned := Relics.roll("till", Game.rng)      # the hoe turns up something old now and then
+				if turned != "": spawn_drop(turned, 1, Vector2(t.x * 16 + 8, t.y * 16 + 8))
 				burst(Vector2(t.x * 16 + 8, t.y * 16 + 10), Color("#7a5a3a"), 4)
 			if tilled:
 				Sfx.play("hoe")
@@ -399,8 +401,7 @@ func break_object(o: Dictionary) -> void:
 		for i in n: spawn_drop(Stones.roll_tier(rng, Stones.depth_of(m)), 1, c)
 	if o.type == "rock" and m.mine:
 		if rng.randf() < 0.008:
-			var keys := Data.artifacts.keys()
-			spawn_drop(keys[rng.randi() % keys.size()], 1, c)
+			spawn_drop(Relics.dig_pick(rng), 1, c)
 		if rng.randf() < 0.05:
 			spawn_drop("coal", 1, c)
 	if def.get("dig", false):
@@ -408,8 +409,7 @@ func break_object(o: Dictionary) -> void:
 		if roll == "geode":
 			roll = Stones.roll_tier(rng)
 		if roll == "artifact":
-			var keys := Data.artifacts.keys()
-			roll = keys[rng.randi() % keys.size()]
+			roll = Relics.dig_pick(rng)
 		spawn_drop(roll, 3 if roll == "stone" else 1, c)
 	if def.has("xp"):
 		Game.add_xp(def.xp[0], def.xp[1])
@@ -821,6 +821,8 @@ func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [
 	var got := Arsenal.roll_loot(tags, Game.rng, Game.rng.randi_range(int(rolls[0]), int(rolls[1])), quality)
 	for extra in Game.contract_collect_roll(tags):
 		got.append([extra, 1])
+	var relic := Relics.roll_search(tags, Game.rng)      # now and then a relic from that kind of place
+	if relic != "": got.append([relic, 1])
 	# the medevac crash: a very small chance of an antiviral in the medical supplies
 	if o.type in ["medical_tent", "heli_wreck"] and Game.rng.randf() < float(Balance.injuries.antiviral_find):
 		got.append(["antiviral", 1])
@@ -1050,6 +1052,8 @@ func kill_enemy(e: Dictionary) -> void:
 		if Game.rng.randf() < float(dr[1]):
 			spawn_drop(dr[0], 1, e.pos + Vector2(0, -6))
 			Game.toast("Rare drop: %s!" % Data.items[dr[0]].name, dr[0], "gold")
+	var pocket := Relics.roll("kill", Game.rng)      # something still in their pockets
+	if pocket != "": spawn_drop(pocket, 1, e.pos + Vector2(0, -6))
 	Game.add_xp("survival", d.xp)
 	Game.state.stats.infected_defeated = int(Game.state.stats.infected_defeated) + 1
 	Game.quest_event("kill", {"n": 1})
@@ -1743,8 +1747,10 @@ func pick_fish(zone: String) -> String:
 			pool.append({"id": id, "w": d.w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
 		if has_tackle("treasure_hook") and Game.rng.randf() < 0.4:
-			var arts := ["old_coin", "wedding_ring", "pocket_watch", "polaroid", "cassette_tape", "rusted_key"]
+			var arts := ["old_coin", "wedding_ring", "pocket_watch", "polaroid", "cassette_tape", "rusted_key", "silver_dollar", "life_ring", "brass_compass"]
 			return arts[Game.rng.randi() % arts.size()]
+		var lost := Relics.roll("fish", Game.rng)
+		if lost != "": return lost
 		var junk := ["soggy_paper", "old_can", "broken_glasses", "torn_boot", "empty_bottle", "bent_fork", "dead_battery", "plastic_bag", "shredded_tire"]
 		return junk[Game.rng.randi() % junk.size()]
 	return MapBuilder.weighted(Game.rng, pool).id
@@ -1921,6 +1927,8 @@ func interact_object(o: Dictionary) -> void:
 			if not o.has("shop"):
 				return
 			if Game.is_shop_open(o.shop):
+				if o.shop == Relics.SHOP_ID and Talk.play("curio_mabel"):      # Mabel talks first (Dialogic)
+					return
 				Game.ui.open("forge" if o.shop == "forge" else "shop", {"shop": o.shop})
 			else:
 				Game.ui.say("", Game.shop_closed_text(o.shop) if Game.shop_owner_present(o.shop) else "Nobody is behind the counter. " + Game.shop_closed_text(o.shop))
@@ -1938,6 +1946,10 @@ func interact_object(o: Dictionary) -> void:
 			Game.ui.open("restoration")
 		"museum_desk":
 			Game.ui.open("museum")
+		"curio_wall":
+			Game.ui.open("curio_wall")
+		"curio_cabinet", "curio_wide":
+			Game.ui.say("", "Behind the glass: relics from before. Pocket watches, keys, a music box, an old map." if Relics.cabinet_full(o) else "An empty glass cabinet. Mabel fills one each time the collection grows.")
 		"sign":
 			Game.ui.say("", str(o.get("text", "")).replace("$PROPERTY", Game.state.property_name + ". Est. Spring, Year 1."))
 		"forage":

@@ -15,8 +15,8 @@ const PROJECTS := [
 		"unlock": "Dr. Elias stocks Antibiotics, Splints, Painkillers and Sterile Bandages, and his treatment costs half as much.",
 		"needs": [["bandage", 10], ["antiseptic", 5], ["glass_bottle", 10], ["cloth", 20], ["gold", 1500]]},
 	{"id": "archive", "name": "Community Archive", "who": "Ruth",
-		"desc": "Fix the roof and the old library so the town has a museum again.",
-		"unlock": "The Archive opens as a museum. Donate minerals, gems and artifacts for rewards.",
+		"desc": "Fix the roof and the old library so the town has a place for what's left of the old world.",
+		"unlock": "The Archive opens as The Curio Cabinet, Mabel Quill's antique and oddities shop. Donate relics, artifacts and minerals, fill the metal and gem wall, and sell her your spares.",
 		"needs": [["hardwood", 30], ["stone", 100], ["glass", 15], ["cat:artifact", 3], ["gold", 3000]]},
 	{"id": "watchtower", "name": "Watchtowers", "who": "Cole",
 		"desc": "Lookout towers on the town's edges.",
@@ -35,8 +35,9 @@ const ARCHIVE := {"id": "archive", "x": 35, "y": 24, "w": 9, "h": 6, "door": [39
 const ROOMS := {
 	"tavern": ["WWWWWWWWWWWWWW", "WOOSSwWWwSSOOW", "W............W", "WNNNNNN..hTh.W", "W.hhhhh......W", "W........hTh.W",
 		"W.hTh........W", "W.....RRRR...W", "W.hTh.RRRR.hTW", "WL..........LW", "WWWWWW..WWWWWW"],
-	"archive": ["WWWWWWWWWWWWWW", "WSSSSwWWwSSSSW", "W............W", "W.cc..cc..cc.W", "W............W", "W.cc..cc..cc.W",
-		"W............W", "W....mmm.....W", "W............W", "WL..RRRRRR..LW", "WWWWWW..WWWWWW"],
+	# The Curio Cabinet (Nov 22): Mabel's counter, cabinets round the walls (placed in _curio), the donation desk
+	"archive": ["WWWWWWWWWWWWWW", "WWWWWWWWWWWWWW", "W............W", "W............W", "W....NNNN....W", "W............W",
+		"W............W", "W............W", "W.mmm........W", "WL...........W", "WWWWWW..WWWWWW"],
 }
 const LETTERS := {"c": "display_case", "m": "museum_desk"}
 
@@ -44,7 +45,6 @@ const TAVERN_SHOP := {"name": "Lantern Post Tavern", "owner": "ruth", "map": "ta
 	"buys": ["cooked"], "daily_sale": true,
 	"stock": [{"id": "bread_loaf", "price": 90}, {"id": "fried_egg", "price": 80}, {"id": "veggie_stew", "price": 220}, {"id": "trout_chowder", "price": 260},
 		{"id": "forager_salad", "price": 180}, {"id": "hard_cider", "price": 150}, {"id": "ale", "price": 150}]}
-const MUSEUM_REWARDS := [[5, [["gold", 500]]], [10, [["quality_fertilizer", 20], ["gold", 1000]]], [20, [["gold_bar", 5], ["gold", 2000]]], [30, [["gold", 5000]]]]
 
 static func register(d) -> void:
 	for p in PROJECTS:
@@ -55,13 +55,14 @@ static func register(d) -> void:
 	sh.stock = sh.stock.filter(func(e): return d.items.has(e.id))
 	d.shops["tavern"] = sh
 	d.location_names["tavern"] = "Lantern Post Tavern"
-	d.location_names["archive"] = "Community Archive"
+	d.location_names["archive"] = "The Curio Cabinet"
 	var t: Dictionary = d.buildings.tavern.duplicate(); t.erase("boarded"); t.condition = 4; t.door = "#7a3a2a"; t.curtain = "#e8c070"
 	d.buildings["tavern_open"] = t
 	var a: Dictionary = d.buildings.archive.duplicate(); a.erase("boarded"); a.condition = 4; a.door = "#4a4a5a"; a.curtain = "#d8d0b8"
 	d.buildings["archive_open"] = a
 	d.obj_defs["town_ledger"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true, "name": "Restoration Ledger"}
 	d.obj_defs["museum_desk"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true, "name": "Donation Desk"}
+	Relics.register(d)
 	d.obj_defs["display_case"] = {"solid": true, "fixture": true, "unbreakable": true, "district_art": true, "name": "Display Case"}
 	for r in d.regions:
 		if r.get("maps", []).has("town"):
@@ -168,8 +169,21 @@ static func setup(maps: Dictionary) -> void:
 	maps["archive"] = _room(ARCHIVE, "archive", "wall_paper", "floor_oak")
 	for c in maps.tavern.objects.values():
 		if c.type == "counter": c.shop = "tavern"
+	_curio(maps.archive)
 	for p in PROJECTS:
 		if done(p.id): apply_one(maps, p.id, true)
+
+## The Curio Cabinet's furniture: four small cabinets along the back wall, a wide one and the metal and gem wall
+## in the middle of the room, one more cabinet and a vase by the door, pictures on the back wall.
+static func _curio(m: GameMap) -> void:
+	m.layout = "curio_v2"
+	for c in m.objects.values():
+		if c.type == "counter": c.shop = Relics.SHOP_ID
+	for f in [[1, 2, "curio_cabinet", {"w": 2, "i": 0}], [3, 2, "curio_cabinet", {"w": 2, "i": 1}], [9, 2, "curio_cabinet", {"w": 2, "i": 2}],
+			[11, 2, "curio_cabinet", {"w": 2, "i": 3}], [1, 7, "curio_wide", {"w": 5, "i": 4}], [8, 7, "curio_wall", {"w": 5}],
+			[11, 9, "curio_cabinet", {"w": 2, "i": 5}], [9, 9, "curio_vase", {"w": 2, "v": 1}], [5, 1, "curio_landscape", {"w": 2}], [7, 1, "curio_bugs", {"w": 2}]]:
+		m.add_obj(int(f[0]), int(f[1]), str(f[2]), f[3])
+	m.lights = [{"x": 6, "y": 4, "r": 90}, {"x": 3, "y": 7, "r": 70}, {"x": 10, "y": 7, "r": 70}]
 
 static func _room(b0: Dictionary, room: String, wall: String, flo: String) -> GameMap:
 	var b: Dictionary = b0.duplicate(true)
@@ -187,7 +201,7 @@ static func apply_one(maps: Dictionary, id: String, loading := false) -> void:
 	var t: GameMap = maps.town
 	match id:
 		"tavern": _open_building(t, "tavern", "tavern_open", "tavern", "tavern")
-		"archive": _open_building(t, "archive", "archive_open", "archive", "")
+		"archive": _open_building(t, "archive", "archive_open", "archive", Relics.SHOP_ID)
 		"watchtower":
 			if not loading:
 				_place_near(t, 4, 13, "lookout"); _place_near(t, 52, 22, "lookout"); _place_near(t, 30, 3, "lookout")
@@ -251,21 +265,13 @@ static func donatable(id: String) -> bool:
 static func donate(slot: int) -> String:
 	var s = Game.state.inventory[slot]
 	if s == null or not donatable(s.id): return ""
-	if museum().has(s.id): return "The Archive already has one."
+	if museum().has(s.id): return "The cabinets already have one. Mabel will buy it at the counter."
 	museum()[s.id] = int(Game.state.day)
 	Game.remove_item(s.id, 1)
 	var n := museum().size()
 	var msg := "Donated %s. %d in the collection." % [Data.items[s.id].name, n]
-	for mr in MUSEUM_REWARDS:
+	for mr in Relics.DESK_REWARDS:
 		if n == int(mr[0]):
-			var parts := []
-			for r in mr[1]:
-				if r[0] == "gold":
-					Game.state.money = int(Game.state.money) + int(r[1]); parts.append("%d gold" % int(r[1]))
-				else:
-					var left: int = Game.add_item(r[0], int(r[1]), {"silent": true})
-					if left > 0 and Game.world: Game.world.spawn_drop(r[0], left, Game.player.pos)
-					parts.append("%s x%d" % [Data.items[r[0]].name, int(r[1])])
-			msg += " Ruth's thank-you for %d donations: %s." % [n, ", ".join(parts)]
+			msg += " Mabel's thank-you for %d donations: %s." % [n, Relics._pay(mr[1])]
 	Sfx.play("coin")
 	return msg

@@ -840,6 +840,8 @@ func build_persistent_maps() -> void:
 		if m.layout != "": state.maps_dyn[id].layout = m.layout
 	sync_gates()
 	Festivals.setup(maps)
+	Relics.migrate()
+	Relics.daily()
 	# older saves: clear anything sitting where a newer building now stands
 	for id in ["homestead", "town"] + Districts.DISTRICTS.keys():
 		var mm: GameMap = maps[id]
@@ -2937,6 +2939,7 @@ func complete_quest(d: Dictionary) -> void:
 # ================================================================ shops
 func shop_owner_present(shop_id: String) -> bool:
 	var sh: Dictionary = Data.shops[shop_id]
+	if sh.get("resident", false): return true      # a shopkeeper who keeps shop hours (Mabel)
 	return npcs.has(sh.owner) and npcs[sh.owner].map == sh.map
 
 func shop_hours_open(shop_id: String) -> bool:
@@ -3730,6 +3733,7 @@ func end_day(reason: String) -> void:
 	# 7. daily activities
 	spawn_daily_content(false)
 	Festivals.setup(maps)
+	Relics.daily()
 	# 8. relationships and events
 	if shipped:
 		quest_event("ship", {"n": shipped})
