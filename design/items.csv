@@ -266,6 +266,15 @@ Lead Weight,lead_weight,Fishing Tackle,New,Craft,Workbench,Lead Bar,Fish dart ar
 Trap Bobber,trap_bobber,Fishing Tackle,New,Craft,Workbench,Copper Bar + Iron Bar,Fish escape slower
 Glow Lure,glow_lure,Fishing Tackle,New,Craft,Workbench,Glowcap x3 + Glass,Better night and cave fishing
 Treasure Hook,treasure_hook,Fishing Tackle,New,Craft,Workbench,Gold Bar + Magnet,Higher chance to hook artifacts and treasure
+Circle Hook,circle_hook,Fishing Tackle,New,Buy,Calloway Bait Shack,,Fish bite faster (bite wait 15% shorter)
+Barbed Hook,barbed_hook,Fishing Tackle,New,Buy,Calloway Bait Shack,,Fewer fish get away (longer time to strike and slower escapes)
+Braided Line,braided_line,Fishing Tackle,New,Buy,Calloway Bait Shack,,Bigger fish
+Fluorocarbon Line,fluoro_line,Fishing Tackle,New,Buy,Calloway Bait Shack,,Better in clear water (ponds and lakes: faster bites and a bigger catch zone)
+Crankbait,crankbait,Fishing Tackle,New,Buy,Calloway Bait Shack,,Bass and perch bite more often
+Spoon Lure,spoon_lure,Fishing Tackle,New,Buy,Calloway Bait Shack,,"Pike, pickerel and gar bite more often"
+Popper,popper,Fishing Tackle,New,Buy,Calloway Bait Shack,,Much faster bites at dawn and dusk
+Moonlight Lure,moonlight_lure,Fishing Tackle,New,Buy,Calloway Bait Shack,,Much faster bites at night and in caves; night fish bite more often
+Minnows,minnows,Farm Supply,New,Buy,Calloway Bait Shack,,Live bait: fish bite faster and predators bite more often. One used per cast
 Chicken,chicken,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Eggs and Large Eggs; drops Feathers"
 Duck,duck,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Duck Eggs; drops Feathers"
 Quail,quail,Livestock,New,Buy,"Ranch trader or rescue quests; lives in Coop",,"Lays Quail Eggs; small and cheap to feed"

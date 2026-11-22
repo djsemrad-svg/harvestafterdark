@@ -202,6 +202,8 @@ func use_selected(level := 0, from_mouse := false) -> void:
 	elif it.has("bomb"): place_bomb(t, s.id)
 	elif it.has("building"): place_building(t, s.id)
 	elif it.has("place"): place_at(t, s.id)
+	elif it.has("tackle"):
+		rig_toggle(s.id)
 	elif it.has("pack_slots"):
 		var pid: String = s.id
 		var nt := Game.next_pack_tier()
@@ -1665,11 +1667,12 @@ func release_cast() -> void:
 	if f == null or f.phase != "charge":
 		return
 	Game.state.energy = max(0.0, Game.state.energy - 3)
-	for bt in ["premium_bait", "bait"]:
+	for bt in ["minnows", "premium_bait", "bait"]:
 		if Game.count_item(bt) > 0:
 			Game.remove_item(bt, 1)
 			f.bait = true
 			f.premium = bt == "premium_bait"
+			f.minnows = bt == "minnows"
 			break
 	var d: Vector2i = DIRS[Game.player.dir]
 	var pt := player_tile()
@@ -1701,12 +1704,12 @@ func update_fishing(dt: float) -> void:
 				Sfx.play("splash")
 				if fx_on(): splash(tl)
 				f.phase = "wait"
-				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0) * (0.6 if f.get("premium", false) else 1.0) * (0.75 if has_tackle("spinner") else 1.0) * (0.7 if has_tackle("glow_lure") and (Game.map.mine or int(Game.state.time) >= 1140) else 1.0)
+				f.t = (F.bite_min_sec + Game.rng.randf() * (F.bite_max_sec - F.bite_min_sec)) * (0.5 if f.get("bait", false) else 1.0) * (0.6 if f.get("premium", false) else 1.0) * (0.75 if has_tackle("spinner") else 1.0) * (0.7 if has_tackle("glow_lure") and (Game.map.mine or int(Game.state.time) >= 1140) else 1.0) * bite_bonus()
 		"wait":
 			f.t -= dt
 			if f.t <= 0:
 				f.phase = "bite"
-				f.t = F.react_sec
+				f.t = F.react_sec + (0.5 if has_tackle("barbed_hook") else 0.0)
 				Sfx.play("bite")
 		"bite":
 			f.t -= dt
@@ -1725,15 +1728,63 @@ func rod_id() -> String:
 	var s = Game.selected_stack()
 	return s.id if s != null else ""
 
+## Tackle, in Wren's shop order. You choose what's on your rod by using a piece from the toolbar (rig_toggle);
+## until you do, the first pieces you carry in this order are used.
+const TACKLE := ["spinner", "cork_bobber", "lead_weight", "trap_bobber", "glow_lure", "treasure_hook", "circle_hook", "barbed_hook",
+	"braided_line", "fluoro_line", "crankbait", "spoon_lure", "popper", "moonlight_lure"]
+const PREDATORS := ["pike", "pickerel", "gar", "bass", "trout", "char", "catfish", "lurker", "sturgeon"]
+
+func rod_slots(rod := "") -> int:
+	return {"fishing_rod_fiberglass": 1, "fishing_rod_ironreel": 2, "fishing_rod_aurium": 2}.get(rod if rod != "" else rod_id(), 0)
+
+## The tackle on the rod in your hand.
+func rigged(rod := "") -> Array:
+	var slots := rod_slots(rod)
+	var out := []
+	if slots <= 0: return out
+	for t in Game.state.get("rig", []):
+		if Game.count_item(t) > 0 and out.size() < slots: out.append(t)
+	if out.is_empty():
+		for t in TACKLE:
+			if Game.count_item(t) > 0 and out.size() < slots: out.append(t)
+	return out
+
 func has_tackle(t: String) -> bool:
-	var slots: int = {"fishing_rod_fiberglass": 1, "fishing_rod_ironreel": 2, "fishing_rod_aurium": 2}.get(rod_id(), 0)
-	if slots <= 0 or Game.count_item(t) <= 0: return false
-	var owned := 0
-	for tk in ["spinner", "cork_bobber", "lead_weight", "trap_bobber", "glow_lure", "treasure_hook"]:
-		if Game.count_item(tk) > 0:
-			owned += 1
-			if tk == t: return owned <= slots
+	return rigged().has(t)
+
+## Using a piece of tackle puts it on your rod (or takes it off). Up to two are kept; a Fiberglass rod uses the first.
+func rig_toggle(id: String) -> void:
+	var rig: Array = (Game.state.get("rig", []) as Array).duplicate()
+	var nm: String = Data.items[id].name
+	if rig.has(id):
+		rig.erase(id)
+		Game.toast("You take the %s off your rod." % nm, id)
+	else:
+		rig.push_front(id)
+		while rig.size() > 2: rig.pop_back()
+		var names: Array = rig.map(func(x): return Data.items[x].name)
+		Game.toast("On your rod: %s. A Fiberglass rod uses the first; Iron-Reel and Aurium rods use both." % " and ".join(names), id)
+	Game.state.rig = rig
+	Sfx.play("pick")
+
+func _fish_name_has(id: String, words: Array) -> bool:
+	for w in words:
+		if id.contains(w): return true
 	return false
+
+## Ponds and lakes count as clear water (the Fluorocarbon Line); rivers and cave pools don't.
+func clear_water() -> bool:
+	return Game.map != null and Game.map.fish_zone in ["pond", "lake"]
+
+## How much the new tackle shortens the wait for a bite (1.0 = no change).
+func bite_bonus() -> float:
+	var k := 1.0
+	var tm := int(Game.state.time)
+	if has_tackle("circle_hook"): k *= 0.85
+	if has_tackle("fluoro_line") and clear_water(): k *= 0.9
+	if has_tackle("popper") and ((tm >= 300 and tm < 480) or (tm >= 1050 and tm < 1230)): k *= 0.6
+	if has_tackle("moonlight_lure") and (Game.map.mine or tm >= 1140 or tm < 300): k *= 0.55
+	return k
 
 func pick_fish(zone: String) -> String:
 	var st: Dictionary = Game.state
@@ -1744,7 +1795,12 @@ func pick_fish(zone: String) -> String:
 		var d: Dictionary = Data.fish[id]
 		if id == "lantern_queen" and (not Game.map.mine or Game.map.floor_n < DeepMine.QUEEN_FLOOR): continue
 		if d.locs.has(zone) and d.seasons.has(s) and int(st.time) >= d.time[0] and int(st.time) < d.time[1] and (d.weather == "any" or (d.weather == "rain" and rainy)):
-			pool.append({"id": id, "w": d.w})
+			var w: float = float(d.w)
+			if has_tackle("crankbait") and _fish_name_has(id, ["bass", "perch"]): w *= 3.0
+			if has_tackle("spoon_lure") and _fish_name_has(id, ["pike", "pickerel", "gar"]): w *= 3.0
+			if has_tackle("moonlight_lure") and int(d.time[0]) >= 1080: w *= 2.0
+			if Game.fishing != null and Game.fishing.get("minnows", false) and _fish_name_has(id, PREDATORS): w *= 2.5
+			pool.append({"id": id, "w": w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
 		if has_tackle("treasure_hook") and Game.rng.randf() < 0.4:
 			var arts := ["old_coin", "wedding_ring", "pocket_watch", "polaroid", "cassette_tape", "rusted_key", "silver_dollar", "life_ring", "brass_compass"]
@@ -1773,9 +1829,9 @@ func hook_fish() -> void:
 	f.move_t = 0.0
 	f.bar = 0.2
 	f.bar_v = 0.0
-	f.bar_size = F.bar_base + Game.skill_level("fishing") * F.bar_per_level + (0.05 if has_tackle("cork_bobber") else 0.0) + (0.05 if Game.buff("easier catches") > 0 else 0.0)
+	f.bar_size = F.bar_base + Game.skill_level("fishing") * F.bar_per_level + (0.05 if has_tackle("cork_bobber") else 0.0) + (0.05 if Game.buff("easier catches") > 0 else 0.0) + (0.04 if has_tackle("fluoro_line") and clear_water() else 0.0)
 	f.calm = has_tackle("lead_weight")
-	f.slow_loss = (0.7 if has_tackle("trap_bobber") else 1.0) * (0.7 if rod_id() == "fishing_rod_aurium" and Data.fish[id].get("legendary", false) else 1.0)
+	f.slow_loss = (0.7 if has_tackle("trap_bobber") else 1.0) * (0.7 if rod_id() == "fishing_rod_aurium" and Data.fish[id].get("legendary", false) else 1.0) * (0.85 if has_tackle("barbed_hook") else 1.0)
 	f.fast_reel = 1.2 if rod_id() in ["fishing_rod_ironreel", "fishing_rod_aurium"] else 1.0
 	f.prog = F.start_progress
 	f.inside = false
@@ -1822,7 +1878,7 @@ func finish_catch(id: String) -> void:
 		Game.quest_event("catch", {"n": 1})
 		Game.contract_event("catch", {"map": Game.map.id})
 		Sfx.play("catch")
-		var size := Angling.roll_size(id)
+		var size := Angling.roll_size(id, has_tackle("braided_line"))
 		var record := Angling.log_catch(id, size)
 		Game.floaters.append({"text": Angling.fmt(size), "pos": Game.player.pos + Vector2(0, -40), "t": 1.6, "color": Color("#c8f0ff")})
 		if record:

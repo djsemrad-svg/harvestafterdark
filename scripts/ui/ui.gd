@@ -2164,6 +2164,9 @@ func _tab_inventory() -> Control:
 			var todo: String = str(it.get("todo", od.get("todo", "")))
 			if todo != "":
 				dv.add_child(K.label("Not in the game yet: " + todo, 6, Color("#9a8a7a"), true))
+			if it.has("tackle") and Game.world != null:
+				var on: bool = (Game.state.get("rig", []) as Array).has(sel.id)
+				dv.add_child(K.label(("On your rod. Use it from the toolbar to take it off." if on else "Use it from the toolbar to put it on your rod (a Fiberglass rod holds 1 piece, Iron-Reel and Aurium rods 2)."), 6, K.MOSS if on else K.INK_SOFT, true))
 			if it.has("sheet") and it.sheet.where != "" and not it.has("weapon"):
 				dv.add_child(K.label(("Made at: " if it.sheet.source in ["Craft", "Cook", "Machine", "Upgrade"] else "Found: ") + str(it.sheet.where), 5, K.INK_SOFT, true))
 		if it.has("tool") and Data.tool_defs[it.tool].upgradable:

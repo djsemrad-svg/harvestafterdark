@@ -1321,6 +1321,7 @@ func run_all() -> void:
 	run_town_life()
 	run_festivals()
 	run_curio()
+	run_tackle()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -1870,7 +1871,7 @@ func run_districts() -> void:
 	var got: Array = G.map.drops.map(func(d): return d.id)
 	var police_ok := true
 	for id in got:
-		var from_police: bool = Data.loot_tags.get("police", []).has(id) or Data.loot_tags.get("uncommon", []).has(id) or Arsenal.LOOT_MATS.police.any(func(x): return x[0] == id) or Data.loot_items.get("police", []).any(func(x): return x[0] == id)
+		var from_police: bool = Data.loot_tags.get("police", []).has(id) or Data.loot_tags.get("uncommon", []).has(id) or Arsenal.LOOT_MATS.police.any(func(x): return x[0] == id) or Data.loot_items.get("police", []).any(func(x): return x[0] == id) or RELICS_TAGGED(id, "police")
 		if not from_police: police_ok = false
 	G.map.drops.clear()
 	W.search(locker, locker.loot, "the locker", 0.0, [1, 2])
@@ -4254,3 +4255,82 @@ static func RELICS_TAGGED(id: String, tag: String) -> bool:
 	for r in Relics.RELICS:
 		if r[0] == id: return (r[3] as Array).has(tag)
 	return false
+
+## Wren's new tackle (Nov 22): the pieces, putting them on your rod, and what each one does.
+func run_tackle() -> void:
+	var G = Game
+	var W = main.world
+	start("adventure", 2)
+	var ids := ["circle_hook", "barbed_hook", "braided_line", "fluoro_line", "crankbait", "spoon_lure", "popper", "moonlight_lure", "minnows"]
+	var stock: Array = Data.shops.baitshack.stock.map(func(e): return e.id)
+	var ok := ids.filter(func(id): return Data.items.has(id) and stock.has(id) and FileAccess.file_exists("res://art/icons/%s.png" % id))
+	check("Wren sells 9 new pieces of tackle, each with an icon", ok.size() == ids.size(), str(ids.filter(func(id): return not ok.has(id))))
+	# putting tackle on the rod: two kept, the Fiberglass rod uses the first, Iron-Reel both
+	G.add_item("fishing_rod_fiberglass", 1, {"silent": true})
+	G.add_item("fishing_rod_ironreel", 1, {"silent": true})
+	for id in ["spinner", "circle_hook", "braided_line", "crankbait"]: G.add_item(id, 1, {"silent": true})
+	G.state.rig = []
+	select("fishing_rod_fiberglass")
+	var legacy: bool = W.has_tackle("spinner") and not W.has_tackle("circle_hook")
+	select("circle_hook"); W.use_selected(0, false)
+	select("braided_line"); W.use_selected(0, false)
+	select("fishing_rod_fiberglass")
+	var one: Array = W.rigged()
+	select("fishing_rod_ironreel")
+	var two: Array = W.rigged()
+	select("crankbait"); W.use_selected(0, false)
+	select("fishing_rod_ironreel")
+	var after: Array = W.rigged()
+	select("crankbait"); W.use_selected(0, false)
+	select("fishing_rod_ironreel")
+	var off: Array = W.rigged()
+	check("Tackle goes on the rod from the toolbar: a Fiberglass rod uses 1, an Iron-Reel 2, a third pushes the oldest off, using it again takes it off",
+		legacy and one == ["braided_line"] and two == ["braided_line", "circle_hook"] and after == ["crankbait", "braided_line"] and off == ["braided_line"],
+		"%s %s %s %s" % [one, two, after, off])
+	# bite times
+	G.state.rig = ["circle_hook"]
+	var hook_k: float = W.bite_bonus()
+	G.add_item("popper", 1, {"silent": true}); G.add_item("moonlight_lure", 1, {"silent": true})
+	G.state.rig = ["popper"]
+	G.state.time = 400
+	var dawn: float = W.bite_bonus()
+	G.state.time = 720
+	var noon: float = W.bite_bonus()
+	G.state.rig = ["moonlight_lure"]
+	G.state.time = 1250
+	var night: float = W.bite_bonus()
+	check("Circle Hook bites 15% sooner; the Popper at dawn and dusk; the Moonlight Lure at night", is_equal_approx(hook_k, 0.85) and dawn < 0.7 and is_equal_approx(noon, 1.0) and night < 0.6, "%.2f %.2f %.2f %.2f" % [hook_k, dawn, noon, night])
+	# which fish bite: the Spoon Lure brings pike, pickerel and gar
+	G.add_item("spoon_lure", 1, {"silent": true})
+	at("riverlands", 20, 20)
+	var zone := "river"
+	G.state.time = 720
+	G.state.weather = "sun"
+	var count := func(rig: Array) -> int:
+		G.state.rig = rig
+		var n := 0
+		var keep: float = Balance.fishing.junk_chance
+		Balance.fishing.junk_chance = 0.0
+		G.rng.seed = 11
+		for i in 600:
+			var f: String = W.pick_fish(zone)
+			if f.contains("pike") or f.contains("pickerel") or f.contains("gar"): n += 1
+		Balance.fishing.junk_chance = keep
+		return n
+	var plain: int = count.call(["circle_hook"])
+	var spoon: int = count.call(["spoon_lure"])
+	check("Spoon Lure: pike, pickerel and gar bite much more often", spoon > plain * 2 and spoon > 0, "%d vs %d" % [spoon, plain])
+	# bigger fish with the Braided Line
+	var tot := [0.0, 0.0]
+	G.rng.seed = 3
+	for i in 400: tot[0] += Angling.roll_size("lake_perch", false)
+	G.rng.seed = 3
+	for i in 400: tot[1] += Angling.roll_size("lake_perch", true)
+	check("Braided Line: bigger fish on average", tot[1] > tot[0] * 1.05, "%.1f vs %.1f" % [tot[1] / 400, tot[0] / 400])
+	# minnows are used first as bait
+	G.add_item("minnows", 3, {"silent": true}); G.add_item("bait", 3, {"silent": true})
+	G.fishing = {"phase": "charge", "power": 0.5, "up": true}
+	W.release_cast()
+	var used: bool = G.count_item("minnows") == 2 and G.count_item("bait") == 3 and G.fishing.get("minnows", false)
+	G.fishing = null
+	check("Minnows: used first, one per cast, as live bait", used, "minnows=%d bait=%d" % [G.count_item("minnows"), G.count_item("bait")])

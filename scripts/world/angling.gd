@@ -12,6 +12,9 @@ const SHOP := {
 		{"id": "fishing_rod_bamboo", "price": 1800}, {"id": "fishing_rod_fiberglass", "price": 5000},
 		{"id": "spinner", "price": 500}, {"id": "cork_bobber", "price": 750}, {"id": "lead_weight", "price": 750},
 		{"id": "trap_bobber", "price": 1000}, {"id": "glow_lure", "price": 1200}, {"id": "treasure_hook", "price": 1500},
+		{"id": "minnows", "price": 25}, {"id": "circle_hook", "price": 600}, {"id": "barbed_hook", "price": 800},
+		{"id": "braided_line", "price": 900}, {"id": "fluoro_line", "price": 900}, {"id": "crankbait", "price": 700},
+		{"id": "spoon_lure", "price": 700}, {"id": "popper", "price": 800}, {"id": "moonlight_lure", "price": 1600},
 	],
 }
 const LOOK := {"roof": "#4a6a7a", "roof2": "#3a5664", "wall": "#9a7a5a", "trim": "#3a2a1a", "sign": "BAIT", "windows": 1, "condition": 3, "door": "#2f8f8f"}
@@ -61,10 +64,10 @@ static func size_range(id: String) -> Vector2:
 	return Vector2(base * 0.7, base * 1.3)
 
 ## Rolls the size of a catch. Fishing skill nudges it toward the top of the range.
-static func roll_size(id: String) -> float:
+static func roll_size(id: String, braided := false) -> float:
 	var r := size_range(id)
 	var lvl: int = Game.skill_level("fishing")
-	var t := pow(Game.rng.randf(), maxf(0.4, 1.0 - lvl * 0.05))
+	var t := pow(Game.rng.randf(), maxf(0.4, 1.0 - lvl * 0.05) * (0.6 if braided else 1.0))      # a Braided Line lands bigger fish
 	return snappedf(lerpf(r.x, r.y, t), 0.1)
 
 ## Records a catch in the journal. Returns true for a new personal record.

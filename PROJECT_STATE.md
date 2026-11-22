@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 316 / 316 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 322 / 322 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -612,6 +612,19 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
     as the way to open it, and the reward amounts. Screenshot mode `curio`.
   - Not done from the Nov 20 "more gems" item: about 10 new gems.
 - Known random test failure added: "Survivor: low meters slow movement" (a townsperson can block the walk).
+
+### Nov 22: more fishing tackle (roadmap item 28)
+- Nine new items, in `design/items.csv` and sold by Wren (`Angling.SHOP`), icons from Item Pack 16x16
+  (`tools/tackle_icons.py`): Circle Hook (bite wait x0.85), Barbed Hook (+0.5 s to strike, escapes x0.85),
+  Braided Line (bigger fish, `Angling.roll_size(id, braided)`), Fluorocarbon Line (ponds and lakes: bites x0.9,
+  catch zone +0.04), Crankbait (bass and perch x3), Spoon Lure (pike, pickerel, gar x3), Popper (5-8 am and
+  5:30-8:30 pm bites x0.6), Moonlight Lure (night and caves bites x0.55, night fish x2), Minnows (live bait used
+  before other bait; predators x2.5). Effects in `World.bite_bonus`, `pick_fish`, `hook_fish`.
+- Choosing tackle: using a piece from the toolbar puts it on your rod (`World.rig_toggle`, `state.rig`, two kept,
+  newest first); a Fiberglass rod uses the first, Iron-Reel and Aurium both. With nothing chosen, the first pieces
+  carried in `World.TACKLE` order are used, as before. The item details say whether a piece is on your rod.
+- Held back for the Coastal Region: the Jig (sea fish) and Shrimp bait.
+- Tests `run_tackle`; screenshot mode `tackle`. The Precinct 9 locker test now accepts police relics.
 
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).

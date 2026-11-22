@@ -859,6 +859,33 @@ func _ready() -> void:
 			await shot("41_farm_" + ("detail" if pass_on else "before"))
 		get_tree().quit()
 		return
+	if only == "tackle":
+		# Wren's shop with the new tackle, and a piece's details in the pack
+		main.ui.close_all()
+		Game.state.day = 2; Game.state.time = 600
+		Game.state.money = 20000
+		for id in ["fishing_rod_ironreel", "circle_hook", "spoon_lure"]: Game.add_item(id, 1, {"silent": true})
+		Game.state.rig = ["spoon_lure"]
+		Game.change_map("baitshack", 6, 7, "up", {"silent": true})
+		await frames(10)
+		main.ui.open("shop", {"shop": "baitshack"})
+		await frames(4)
+		await shot("61_wren_shop")
+		var sc: ScrollContainer = null
+		for n in main.ui.find_children("*", "ScrollContainer", true, false):
+			if n.is_visible_in_tree(): sc = n; break
+		if sc != null: sc.scroll_vertical = 2000
+		await frames(4)
+		await shot("61_wren_shop_end")
+		main.ui.close_all()
+		for i in Game.state.inventory.size():
+			var st = Game.state.inventory[i]
+			if st != null and st.id == "spoon_lure": Game.state.selected = i
+		main.ui.open("journal", {"tab": "inventory", "sel": Game.state.selected})
+		await frames(4)
+		await shot("61_tackle_details")
+		get_tree().quit()
+		return
 	if only == "shops":
 		main.ui.close_all()
 		Game.state.time = 720
