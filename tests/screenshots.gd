@@ -911,6 +911,22 @@ func _ready() -> void:
 		Keys.waiting = ""
 		get_tree().quit()
 		return
+	if only == "dialogic":
+		main.ui.close_all()
+		Game.state.weather = "sun"
+		Game.state.day = 10; Game.state.time = 660
+		Festivals.setup(Game.maps)
+		var c: Vector2i = Festivals.center
+		Game.change_map("town", c.x, c.y + 4, "up", {"silent": true})
+		await frames(10)
+		for f in Townsfolk.folk:
+			if f.role == "merchant":
+				Game.player.pos = f.pos + Vector2(0, 18)
+				Townsfolk.talk(f)
+		await frames(90)
+		await shot("56_dialogic")
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:

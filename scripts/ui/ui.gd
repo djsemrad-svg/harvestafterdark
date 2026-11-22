@@ -749,6 +749,8 @@ func toast(text: String, icon := "", style := "") -> void:
 func hint_text() -> String:
 	if overlay_open() or Game.paused or Game.map == null or Game.world == null:
 		return ""
+	if Talk.running():
+		return ""
 	var f = Game.fishing
 	if f != null:
 		match f.phase:

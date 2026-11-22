@@ -9,12 +9,12 @@ extends RefCounted
 ## The set-up is made of objects marked "fest" on the town map; setup() clears and rebuilds them each day.
 
 const FEST := {
-	"Seed and Sprout Fair": {"id": "seed_fair", "open": 540, "close": 1080, "keeper": "Marguerite", "stall": "fest_flower_cart",
+	"Seed and Sprout Fair": {"id": "seed_fair", "talk": "seed_fair_marguerite", "open": 540, "close": 1080, "keeper": "Marguerite", "stall": "fest_flower_cart",
 		"blurb": "Seed swap all day! Rare seeds from upriver at Marguerite's cart. Planting race by the fountain: fill all 12 pots before the time runs out.",
 		"stock": [["moonbloom_seed", 240], ["coffee_bean_seed", 200], ["cinder_bean_seed", 180], ["ashgrain_seed", 160], ["bluebell_berry_seed", 150],
 			["strawbloom_seed", 150], ["basil_seed", 90], ["apple_sapling", 1800], ["cherry_sapling", 1800], ["quality_fertilizer", 60]],
 		"challenge": "plant_race"},
-	"Lantern Creek Gathering": {"id": "lantern", "open": 960, "close": 1380, "keeper": "Tobias", "stall": "fest_stall_1",
+	"Lantern Creek Gathering": {"id": "lantern", "talk": "lantern_tobias", "open": 960, "close": 1380, "keeper": "Tobias", "stall": "fest_stall_1",
 		"blurb": "The Lantern Creek Gathering. Market stalls until late. After dark, take a wish lantern down to the river bank and let it go.",
 		"stock": [["wish_lantern", 80], ["string_lights", 300], ["veggie_stew", 200], ["trout_chowder", 240], ["hard_cider", 140], ["wildflower_honey", 120]],
 		"challenge": "lanterns"},

@@ -1320,6 +1320,7 @@ func run_all() -> void:
 	run_festivals()
 	run_picture_map()
 	run_keys_and_fx()
+	run_dialogic()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -4099,3 +4100,26 @@ func run_keys_and_fx() -> void:
 	var dusty: bool = G.particles.size() > 0
 	check("Settings: keys can be rebound (a taken key moves over), Enter always interacts, a controller's A interacts, and walking on dirt kicks up dust",
 		g_use and swapped and enter and pad and back and dusty, "g_use=%s swapped=%s enter=%s pad=%s back=%s dusty=%s" % [g_use, swapped, enter, pad, back, dusty])
+
+func run_dialogic() -> void:
+	# conversations written in Dialogic play in game, the game waits, and signals reach the game
+	var G = Game
+	start("adventure", 2)
+	at("town", 30, 20)
+	var started := Talk.play("seed_fair_marguerite")
+	var running := Talk.running()
+	var p0: Vector2 = G.player.pos
+	W.test_input = Vector2(1, 0)
+	for i in 20: W.step(1.0 / 30.0)
+	W.test_input = Vector2.ZERO
+	var still: bool = G.player.pos == p0
+	var n0 := G.count_item("moonbloom_seed")
+	Talk._on_signal("give:moonbloom_seed:2")
+	var given: bool = G.count_item("moonbloom_seed") == n0 + 2
+	var dlg = get_tree().root.get_node_or_null("Dialogic")
+	if dlg != null: dlg.end_timeline()
+	Talk._on_end()       # (the textbox loads a frame later, so close it by hand in a test)
+	var ended: bool = not Talk.running()
+	var missing: bool = not Talk.play("no_such_timeline")
+	check("Dialogic: a timeline plays, the game waits, signals give items, and missing timelines fall back",
+		started and running and still and given and ended and missing, "started=%s running=%s still=%s given=%s ended=%s missing=%s" % [started, running, still, given, ended, missing])

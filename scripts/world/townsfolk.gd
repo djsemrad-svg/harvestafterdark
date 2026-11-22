@@ -329,7 +329,9 @@ static func in_front(pos: Vector2, dirv: Vector2i) -> Variant:
 
 static func talk(f: Dictionary) -> void:
 	if f.role == "merchant" and Data.shops.has("festival"):
-		Game.ui.open("shop", {"shop": "festival"})
+		# a conversation written in Dialogic if there is one (Talk), otherwise straight to the stall
+		if not Talk.play(str(Festivals.today().get("talk", ""))):
+			Game.ui.open("shop", {"shop": "festival"})
 		return
 	var lines: Array = LINES.get(f.role, LINES.walk)
 	f.dir = {"up": "down", "down": "up", "left": "right", "right": "left"}[Game.player.dir]

@@ -1,0 +1,19 @@
+{
+"@path": "res://addons/dialogic/Resources/character.gd",
+"@subpath": NodePath(""),
+"_translation_id": "",
+"color": Color(0.95, 0.7, 0.35, 1),
+"custom_info": {
+"sound_mood_default": "",
+"sound_moods": {},
+"style": ""
+},
+"default_portrait": "",
+"description": "Lantern maker from the hill farms. Comes for the Lantern Creek Gathering.",
+"display_name": "Tobias",
+"mirror": false,
+"nicknames": [""],
+"offset": Vector2(0, 0),
+"portraits": {},
+"scale": 1.0
+}

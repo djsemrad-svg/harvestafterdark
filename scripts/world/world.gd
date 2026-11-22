@@ -28,7 +28,7 @@ func on_map_changed() -> void:
 
 # ================================================================ input
 func handle_event(e: InputEvent) -> void:
-	if not (Game.screen == "game") or Game.overlay_open() or Game.paused:
+	if not (Game.screen == "game") or Game.overlay_open() or Game.paused or Talk.running():
 		return
 	if (e is InputEventKey and e.pressed and not e.echo) or (e is InputEventJoypadButton and e.pressed):
 		match Keys.action_of(e):      # rebindable keys and controller buttons (Keys)
@@ -112,7 +112,7 @@ func step(dt: float) -> void:
 	if Game.charge != null:
 		Game.charge.t += dt
 	Game.update_clock(dt)
-	if Game.screen != "game" or Game.overlay_open():
+	if Game.screen != "game" or Game.overlay_open() or Talk.running():
 		return
 	update_player(dt)
 	update_fishing(dt)

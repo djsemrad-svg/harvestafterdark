@@ -23,6 +23,19 @@ Data="*res://scripts/autoload/data.gd"
 Art="*res://scripts/autoload/art.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Game="*res://scripts/autoload/game.gd"
+Dialogic="*uid://ds2q0uclmolvu"
+
+[dialogic]
+
+directories/dch_directory={
+"marguerite": "res://dialogue/characters/marguerite.dch",
+"tobias": "res://dialogue/characters/tobias.dch"
+}
+directories/dtl_directory={
+"lantern_tobias": "res://dialogue/lantern_tobias.dtl",
+"seed_fair_marguerite": "res://dialogue/seed_fair_marguerite.dtl"
+}
+layout/style_directory={}
 
 [display]
 
@@ -33,6 +46,10 @@ window/size/window_height_override=810
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/dialogic/plugin.cfg")
 
 [gui]
 

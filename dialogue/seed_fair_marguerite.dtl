@@ -1,0 +1,12 @@
+Marguerite: Seeds from upriver! Moonbloom, coffee, cinder beans. Things that won't grow anywhere near here unless somebody carries them in.
+- Show me what you've got.
+	Marguerite: Take your time. Everything's in a jar with its name on.
+	[signal arg="shop:festival"]
+- What's the planting race?
+	Marguerite: Twelve pots by the fountain. You plant all of them before the time runs out, and the fastest hands win a prize.
+	Marguerite: Under thirty seconds gets first prize. I've seen it done once. Grandmother of nine.
+- Where did you come from?
+	Marguerite: Three days down the river by flatboat. Every spring, so long as the river's kind.
+	Marguerite: It was kind this year. Tell your neighbours.
+- Maybe later.
+	Marguerite: I'll be here until six.
