@@ -599,7 +599,7 @@ func update_hud(dt: float) -> void:
 		return
 	var st: Dictionary = Game.state
 	var late: bool = st.time >= Balance.time.midnight
-	var clock := "[right][b]%s. %s %d[/b] [color=#7a5434]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#7a5434]%s · %s[/color]\n[b][color=#6a4a10]%s gold[/color][/b]%s[/right]" % [
+	var clock := "[right][b]%s. %s %d[/b] [color=#5c3a1c]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#5c3a1c]%s · %s[/color]\n[b][color=#6a4a10]%s gold[/color][/b]%s[/right]" % [
 		Game.weekday(), Game.season().capitalize(), Game.day_of_season(), Game.year(), "#b3392e" if late else "#5a2c0e", Game.fmt_time(int(st.time)),
 		Data.weather_info[st.weather].name, Game.location_name(), _num(int(st.money)), "\n[color=#b3392e][b]PAUSED[/b][/color]" if Game.paused else ""]
 	if _last.get("clock") != clock:
@@ -610,7 +610,7 @@ func update_hud(dt: float) -> void:
 	if _last.get("guide") != gkey:
 		_last.guide = gkey
 		guide_panel.visible = not goals.is_empty()
-		var lines := ["[b]Today[/b] [color=#7a5434](day %d of 7)[/color]" % int(st.day)]
+		var lines := ["[b]Today[/b] [color=#5c3a1c](day %d of 7)[/color]" % int(st.day)]
 		for g in goals:
 			lines.append(("[color=#5a8a3a][s]%s[/s][/color]" if g[1] else "• %s") % g[0])
 		guide_lbl.text = "\n".join(lines)
@@ -1254,7 +1254,7 @@ func _ov_restoration() -> Control:
 		var box := K.row_box(Color("#e8f0d8") if Restoration.done(p.id) else Color("#fff6e4"))
 		var col := K.vbox(1)
 		var state_txt: String = "[color=#3f7a2c]Done[/color]" if Restoration.done(p.id) else ("[color=#c87a1a]Crews finish it tonight[/color]" if Restoration.ready(p.id) else "")
-		col.add_child(K.rich("[b]%s[/b]  [color=#7a5434](%s)[/color]  %s" % [p.name, p.who, state_txt], 7))
+		col.add_child(K.rich("[b]%s[/b]  [color=#5c3a1c](%s)[/color]  %s" % [p.name, p.who, state_txt], 7))
 		col.add_child(K.label(p.desc + " Unlocks: " + p.unlock, 6, K.INK_SOFT, true))
 		if not Restoration.done(p.id) and not Restoration.ready(p.id):
 			var g := Restoration.given(p.id)
@@ -1348,7 +1348,7 @@ func _ov_contracts() -> Control:
 		var b := K.row_box(Color("#fff6e4"))
 		var col := K.vbox(1)
 		var kind_label: String = {"boss": "Boss", "kill": "Hunt", "find": "Search", "collect": "Gather", "fish": "Fishing", "waves": "Defend"}[c.kind]
-		col.add_child(K.rich("[b]%s[/b]  [color=#8a3a2a]%s[/color]  [color=#7a5434]Posted by %s[/color]" % [c.title, kind_label, Data.npcs[c.giver].name.split(" ")[0]], 7))
+		col.add_child(K.rich("[b]%s[/b]  [color=#8a3a2a]%s[/color]  [color=#5c3a1c]Posted by %s[/color]" % [c.title, kind_label, Data.npcs[c.giver].name.split(" ")[0]], 7))
 		var dl := K.label(c.desc, 6, null, true)
 		dl.custom_minimum_size.x = 330
 		col.add_child(dl)
@@ -1372,7 +1372,7 @@ func _ov_contracts() -> Control:
 				continue
 			var b2 := K.row_box()
 			b2.modulate = Color(1, 1, 1, 0.6)
-			b2.add_child(K.rich("[b]%s[/b]  [color=#7a5434]%s[/color]" % [c.title, why], 6))
+			b2.add_child(K.rich("[b]%s[/b]  [color=#5c3a1c]%s[/color]" % [c.title, why], 6))
 			list.add_child(b2)
 			shown += 1
 	if shown == 0:
@@ -1694,11 +1694,13 @@ func _shop_box(shop_id: String) -> Control:
 		elif e.get("service", "") == "animal": rh.add_child(K.icon(Art.get_animal(e.animal, 0, "down", 0, true), 14))
 		elif e.get("service", "") == "coop": rh.add_child(K.icon(Art.get_icon("coop_kit"), 14))
 		else: rh.add_child(K.label("★", 10, K.GOLD))
-		var nm := K.rich("[b]%s[/b]%s\n[font_size=5][color=#7a5434]%s[/color][/font_size]" % [Data.items[e.id].name if e.has("id") else e.name, " [color=#b3392e]SALE[/color]" if e.sale else "", Data.items[e.id].desc if e.has("id") else e.desc], 6)
+		var nm := K.rich("[b]%s[/b]%s\n[font_size=5][color=#5c3a1c]%s[/color][/font_size]" % [Data.items[e.id].name if e.has("id") else e.name, " [color=#b3392e]SALE[/color]" if e.sale else "", Data.items[e.id].desc if e.has("id") else e.desc], 6)
 		nm.custom_minimum_size.x = 110
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		rh.add_child(nm)
-		rh.add_child(K.rich(("[s]%d[/s] " % e.price if e.sale else "") + "[b]%d[/b]" % e.final_price, 6))
+		var pl := K.rich(("[s]%d[/s] " % e.price if e.sale else "") + "[b]%d[/b]" % e.final_price, 6)
+		pl.autowrap_mode = TextServer.AUTOWRAP_OFF      # without this the price was squeezed to one pixel wide
+		rh.add_child(pl)
 		if owned:
 			rh.add_child(K.label("Owned", 6, K.INK_SOFT))
 		else:
@@ -2218,7 +2220,7 @@ func gear_info(s: Dictionary) -> String:
 			var pt := part.strip_edges()
 			if pt == "": continue
 			shown.append(("[color=#9a8a7a]%s (not in the game yet)[/color]" % pt) if inactive.has(pt) and not _flavor(pt) else pt)
-		t += "[color=#7a5434]%s:[/color] %s\n" % [k[1], "; ".join(shown)]
+		t += "[color=#5c3a1c]%s:[/color] %s\n" % [k[1], "; ".join(shown)]
 	if d.get("look", "") != "": t += "[i]%s[/i]\n" % d.look
 	if d.get("flavor", "") != "": t += "[color=#6a5a4a][i]%s[/i][/color]\n" % d.flavor
 	elif it.has("gear") and d.get("cosmetic", false): t += "Cosmetic. Changes nothing but how you feel.\n"
@@ -2259,7 +2261,7 @@ func _tab_skills() -> Control:
 		var v := K.vbox(1)
 		if s.phase > 1:
 			box.modulate = Color(1, 1, 1, 0.6)
-			v.add_child(K.rich("[b]%s[/b]  [color=#7a5434]Not yet available[/color]" % s.name, 7))
+			v.add_child(K.rich("[b]%s[/b]  [color=#5c3a1c]Not yet available[/color]" % s.name, 7))
 			v.add_child(K.label("%s. %s" % [s.gain, s.perk], 6, K.INK_SOFT, true))
 		else:
 			var lvl := Game.skill_level(id)
@@ -2328,7 +2330,7 @@ func _tab_map() -> Control:
 func _picture_map(cell: int, here: String) -> Control:
 	var st: Dictionary = Game.state
 	var frame := PanelContainer.new()
-	frame.add_theme_stylebox_override("panel", K.sb(Color("#e8d6a8"), Color("#7a5434"), 3, 2, K.OUTLINE, 1, 0))
+	frame.add_theme_stylebox_override("panel", K.sb(Color("#e8d6a8"), Color("#5c3a1c"), 3, 2, K.OUTLINE, 1, 0))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var box := Control.new()
 	box.custom_minimum_size = Vector2(9 * cell, 6 * cell)
@@ -2412,7 +2414,7 @@ func _tab_quests() -> Control:
 		if r.has("money"): rew.append("%d gold" % r.money)
 		for pair in r.get("items", []): rew.append("%d %s" % [pair[1], Data.items[pair[0]].name])
 		var b := K.row_box()
-		b.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [d.title, Game.quest_progress_text(d), d.desc, Data.npcs[d.giver].name, ", ".join(rew)], 6))
+		b.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#5c3a1c]From: %s · Reward: %s[/color][/font_size]" % [d.title, Game.quest_progress_text(d), d.desc, Data.npcs[d.giver].name, ", ".join(rew)], 6))
 		v.add_child(b)
 	var cs := Game.contract_state()
 	v.add_child(K.label("Contracts (Cole's board at the Combat Guild)", 8, K.WOOD_DARK))
@@ -2420,7 +2422,7 @@ func _tab_quests() -> Control:
 	for id in cs.active:
 		var c := Contracts.get_def(id)
 		var b0 := K.row_box()
-		b0.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#7a5434]From: %s · Reward: %s[/color][/font_size]" % [c.title, Game.contract_progress_text(c), c.desc, Data.npcs[c.giver].name, contract_reward_text(c)], 6))
+		b0.add_child(K.rich("[b]%s[/b]  [color=#5a2c0e]%s[/color]\n%s\n[font_size=5][color=#5c3a1c]From: %s · Reward: %s[/color][/font_size]" % [c.title, Game.contract_progress_text(c), c.desc, Data.npcs[c.giver].name, contract_reward_text(c)], 6))
 		v.add_child(b0)
 	var ach: Array = Game.state.get("achievements", {}).get("done", [])
 	v.add_child(K.label("Achievements (%d of %d)" % [ach.size(), Contracts.ACHIEVEMENTS.size()], 8, K.WOOD_DARK))
@@ -2437,12 +2439,12 @@ func _tab_quests() -> Control:
 			var val := Game.achievement_value(a.stat)
 			prog = "%s / %s" % [str(snappedf(val, 0.1)) if a.stat == "sprint_km" else str(int(val)), str(int(a.goal))]
 		var rw: String = Data.items[a.reward].name
-		b1.add_child(K.rich("%s[b]%s[/b]  %s\n%s [color=#7a5434]Reward: [color=%s]%s[/color][/color]" % ["✔ " if got else "", a.title, prog, a.desc, Arsenal.rarity_color(Data.items[a.reward].get("rarity", "Normal")), rw], 6))
+		b1.add_child(K.rich("%s[b]%s[/b]  %s\n%s [color=#5c3a1c]Reward: [color=%s]%s[/color][/color]" % ["✔ " if got else "", a.title, prog, a.desc, Arsenal.rarity_color(Data.items[a.reward].get("rarity", "Normal")), rw], 6))
 		v.add_child(b1)
 	for ny in Contracts.NOT_YET:
 		var b3 := K.row_box()
 		b3.modulate = Color(1, 1, 1, 0.55)
-		b3.add_child(K.rich("[b]%s[/b]  [color=#9a8a7a]Not in the game yet: %s[/color]\n[color=#7a5434]Reward: %s[/color]" % [ny[0], ny[1], ", ".join(ny[2].map(func(i): return Data.items[i].name))], 6))
+		b3.add_child(K.rich("[b]%s[/b]  [color=#9a8a7a]Not in the game yet: %s[/color]\n[color=#5c3a1c]Reward: %s[/color]" % [ny[0], ny[1], ", ".join(ny[2].map(func(i): return Data.items[i].name))], 6))
 		v.add_child(b3)
 	v.add_child(K.label("Main story", 8, K.WOOD_DARK))
 	for s in Data.story:
@@ -2480,7 +2482,7 @@ func _tab_social() -> Control:
 		var where := "At home"
 		var nm: String = Game.npcs[id].map
 		if nm != "": where = st.property_name if nm == "homestead" else Data.location_names.get(nm, nm)
-		var t := K.rich("[b]%s[/b] [font_size=5][color=#7a5434]%s[/color][/font_size]\n%s\n[font_size=5]Talked today: %s · Gift today: %s · Birthday: %s %d%s\nGift tastes: %s\nRecruitment: available in a later update.[/font_size]" % [
+		var t := K.rich("[b]%s[/b] [font_size=5][color=#5c3a1c]%s[/color][/font_size]\n%s\n[font_size=5]Talked today: %s · Gift today: %s · Birthday: %s %d%s\nGift tastes: %s\nRecruitment: available in a later update.[/font_size]" % [
 			d.name if rel.met else "???", d.role if rel.met else "Not met yet", K.hearts(Game.hearts(id)), "✔" if int(rel.talked_day) == int(st.day) else "–", "✔" if int(rel.gifted_day) == int(st.day) else "–",
 			d.birthday.season.capitalize(), d.birthday.day, (" · Now: " + where) if rel.met else "", ", ".join(known) if not known.is_empty() else "give gifts to learn what they like"], 6)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2508,7 +2510,7 @@ func _animals_box() -> Control:
 		var ic := K.icon(Art.get_animal(a.type, int(a.color), "down", 0, Game.animal_mature(a)), 16)
 		h.add_child(ic)
 		var hearts := int(a.friendship) / 200
-		var t := K.rich("[b]%s[/b] [font_size=5][color=#7a5434]%s%s[/color][/font_size]\n%s\n[font_size=5]Mood: %s · Petted today: %s[/font_size]" % [a.name, Data.animals[a.type].name, "" if Game.animal_mature(a) else " (baby)", K.hearts(hearts), Game.animal_mood(a), "✔" if int(a.petted_day) == int(Game.state.day) else "–"], 6)
+		var t := K.rich("[b]%s[/b] [font_size=5][color=#5c3a1c]%s%s[/color][/font_size]\n%s\n[font_size=5]Mood: %s · Petted today: %s[/font_size]" % [a.name, Data.animals[a.type].name, "" if Game.animal_mature(a) else " (baby)", K.hearts(hearts), Game.animal_mood(a), "✔" if int(a.petted_day) == int(Game.state.day) else "–"], 6)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(t)
 		b.add_child(h)
@@ -2529,7 +2531,7 @@ func _tab_collections() -> Control:
 	for col in Data.collections:
 		var ids := Game.collection_items(col)
 		var n := ids.filter(func(i): return found.has(i)).size()
-		v.add_child(K.rich("[b]%s[/b]  [color=#7a5434]%d/%d (%d%%)[/color]" % [Data.collections[col], n, ids.size(), int(100.0 * n / max(1, ids.size()))], 7))
+		v.add_child(K.rich("[b]%s[/b]  [color=#5c3a1c]%d/%d (%d%%)[/color]" % [Data.collections[col], n, ids.size(), int(100.0 * n / max(1, ids.size()))], 7))
 		var flow_c := HFlowContainer.new()
 		for id in ids:
 			var cell := PanelContainer.new()
@@ -2548,7 +2550,7 @@ func _tab_collections() -> Control:
 		v.add_child(flow_c)
 	# the fish journal: how many of each fish you've landed and your biggest
 	var flog: Dictionary = Game.state.get("fish_log", {}) if Game.state.get("fish_log") is Dictionary else {}
-	v.add_child(K.rich("[b]Fish Journal[/b]  [color=#7a5434]%d/%d species landed[/color]" % [flog.size(), Data.fish.size()], 7))
+	v.add_child(K.rich("[b]Fish Journal[/b]  [color=#5c3a1c]%d/%d species landed[/color]" % [flog.size(), Data.fish.size()], 7))
 	var fj := GridContainer.new()
 	fj.columns = 3
 	var fids: Array = Data.fish.keys()
@@ -2573,7 +2575,7 @@ func _tab_collections() -> Control:
 		if Data.items[id].cat in ["crop", "forage", "fish", "artisan"]: ship_ids.append(id)
 	var shipped: Dictionary = Game.state.collections.shipped
 	var sn := ship_ids.filter(func(i): return shipped.has(i)).size()
-	v.add_child(K.rich("[b]Shipping Log[/b]  [color=#7a5434]%d/%d shipped (%d%%)[/color]" % [sn, ship_ids.size(), int(100.0 * sn / max(1, ship_ids.size()))], 7))
+	v.add_child(K.rich("[b]Shipping Log[/b]  [color=#5c3a1c]%d/%d shipped (%d%%)[/color]" % [sn, ship_ids.size(), int(100.0 * sn / max(1, ship_ids.size()))], 7))
 	var sf := HFlowContainer.new()
 	for id in ship_ids:
 		var cell := PanelContainer.new()

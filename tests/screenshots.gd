@@ -150,6 +150,31 @@ func _ready() -> void:
 		Game.quit_to_title()
 		get_tree().quit()
 		return
+	if only == "hats":
+		# every hat on three hair styles, 4 directions, walk and idle: one row per hat
+		var hats := []
+		for g in Arsenal.DB.GEAR:
+			if str(g.slot) == "head": hats.append(str(g.id))
+		var hairs := [str(OS.get_environment("HAT_HAIR1")) if OS.get_environment("HAT_HAIR1") != "" else "13_04", "05_02", "21_06"]
+		var sheet := Image.create((16 * 4 + 4) * hairs.size() + 2, 34 * (hats.size() + 1), false, Image.FORMAT_RGBA8)
+		sheet.fill(Color("#7aa060"))
+		for r in hats.size() + 1:
+			var x := 1
+			for hr in hairs:
+				var look: Dictionary = Data.default_look.duplicate(true)
+				look.mi_hair = hr
+				if r > 0: look.wear = {"head": hats[r - 1]}
+				for d in ["down", "right", "up", "left"]:
+					var im: Image = MiChars.compose(look, d, 0, "idle")
+					if im != null: sheet.blend_rect(im, Rect2i(0, 0, 16, 32), Vector2i(x, r * 34 + 1))
+					x += 16
+				x += 4
+		sheet.resize(sheet.get_width() * 3, sheet.get_height() * 3, Image.INTERPOLATE_NEAREST)
+		sheet.save_png(out + "hats.png")
+		var f := FileAccess.open(out + "hats.txt", FileAccess.WRITE)
+		f.store_string("\n".join(PackedStringArray(hats)))
+		get_tree().quit()
+		return
 	if only == "wear":
 		# worn gear on the character in every pose: one row per outfit, 4 directions x (walk, idle, hit, stab, pickup)
 		var outfits := [{}, {"head": "baseball_cap", "chest": "denim_jacket", "legs": "jeans", "feet": "sneakers"},

@@ -2342,6 +2342,10 @@ if os.path.isdir(WF):
                         c = px[x, y]
                         if c[3] and c[:3] in RE: px[x, y] = RE[c[:3]] + (c[3],)
             if code in HEAVY: sh = shoulders(sh)
+            if code.startswith("HEAD"):
+                sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+                import fit_hats
+                sh = fit_hats.fit(sh, code)          # same size and brim line in every direction (Nov 22)
             save(sh, "characters/mi/wear/%s.png" % gid)
             save(Image.open(os.path.join(WF, slot, "inventory_16", fn)).convert("RGBA"), "icons/%s.png" % gid)
             n += 1

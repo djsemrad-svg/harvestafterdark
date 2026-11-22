@@ -209,7 +209,7 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 		elif infected:
 			fr = _dead(fr)
 		if layer[0] == "hair" and hat != null:
-			fr = _under_hat(fr, hat)
+			fr = _under_hat(fr, hat, out)
 		out.blend_rect(fr, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
 	if hat != null:
 		out.blend_rect(_dead(hat) if infected else hat, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
@@ -217,7 +217,9 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 
 ## Hair under a hat: nothing pokes out above the top of the hat (buns, spikes, high pigtails); hair at the
 ## sides below that stays. Face masks (a bandana, a gas mask) start low on the face and leave the hair alone.
-static func _under_hat(hair: Image, hat: Image) -> Image:
+## Hair lying on the head itself (over `under`, the body drawn so far) always stays, or the bare scalp would
+## show above a hat that sits low.
+static func _under_hat(hair: Image, hat: Image, under: Image = null) -> Image:
 	var hu := hat.get_used_rect()
 	var hr := hair.get_used_rect()
 	if hu.size.x == 0 or hr.size.x == 0 or hu.position.y > hr.position.y + 4:
@@ -234,6 +236,7 @@ static func _under_hat(hair: Image, hat: Image) -> Image:
 		for y in range(hr.position.y, hr.end.y):
 			if out.get_pixel(x, y).a == 0.0: continue
 			var cut: bool = (y < int(tops[x])) if tops.has(x) else (y < brim)
+			if cut and under != null and under.get_pixel(x, y).a > 0.5: cut = false
 			if cut: out.set_pixel(x, y, Color(0, 0, 0, 0))
 	return out
 
