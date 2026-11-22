@@ -10,7 +10,7 @@ const WOOD := Color("#a8561b")
 const WOOD_DARK := Color("#5a2c0e")
 const OUTLINE := Color("#2e1607")
 const INK := Color("#4a2a12")
-const INK_SOFT := Color("#7a5434")
+const INK_SOFT := Color("#5c3a1c")
 const MOSS := Color("#3f7a2c")
 const EMBER := Color("#c8642a")
 const DANGER := Color("#b3392e")
@@ -192,11 +192,17 @@ static func panel(min_w := 0.0, min_h := 0.0) -> WornPanel:
 		p.add_theme_stylebox_override("panel", tsb("window", 8, 9))
 	return p
 
+## The pixel font is drawn on a 7 px grid. Sizes in between (8, 10, 12...) stretch some
+## pixel columns and not others, which makes letters look smeared, so snap to 7, 14, 21 or 28.
+static func crisp_size(size: int) -> int:
+	if size <= 7: return size
+	return clampi(int(round(size / 7.0)) * 7, 7, 28)
+
 static func label(text: String, size := 0, color = null, wrap := false) -> Label:
 	var l := Label.new()
 	l.text = text
 	if size > 0:
-		l.add_theme_font_size_override("font_size", size)
+		l.add_theme_font_size_override("font_size", crisp_size(size))
 	if color != null:
 		l.add_theme_color_override("font_color", color)
 	if wrap:
@@ -216,7 +222,7 @@ static func rich(bbcode: String, size := 0) -> RichTextLabel:
 		r.add_theme_font_size_override("bold_font_size", size)
 	return r
 
-static func title(text: String, size := 12) -> Label:
+static func title(text: String, size := 14) -> Label:
 	var l := label(text, size, WOOD_DARK)
 	return l
 

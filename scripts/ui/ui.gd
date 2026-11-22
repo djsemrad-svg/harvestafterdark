@@ -141,15 +141,18 @@ func _title_main() -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	# wooden sign logo
 	var sign := PanelContainer.new()
-	var ss: StyleBox = K.tsb("button", 4, 10) if K.textured else K.sb(Color("#b8682a"), Color("#6a3412"), 3, 4, K.OUTLINE, 3, 8)
+	# a dark wooden sign so the light lettering stands out (the light Modern UI panel made it unreadable)
+	var ss: StyleBox = K.sb(Color("#7a3e16"), Color("#3a1a08"), 3, 4, K.OUTLINE, 3, 8)
 	sign.add_theme_stylebox_override("panel", ss)
-	var lv := K.vbox(0)
-	var t1 := K.label("HARVEST", 26, Color("#ffe6b0"))
-	var t2 := K.label("AFTERDARK", 26, Color("#ffe6b0"))
+	var lv := K.vbox(2)
+	var t1 := K.label("HARVEST", 28, Color("#ffe6b0"))       # 28 = four times the pixel font's 7 px grid, so every pixel stays square
+	var t2 := K.label("AFTERDARK", 28, Color("#ffe6b0"))
 	for t in [t1, t2]:
 		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		t.add_theme_constant_override("outline_size", 6)
-		t.add_theme_color_override("font_outline_color", Color("#4a1e06"))
+		t.add_theme_constant_override("outline_size", 0)
+		t.add_theme_constant_override("shadow_offset_x", 0)
+		t.add_theme_constant_override("shadow_offset_y", 3)
+		t.add_theme_color_override("font_shadow_color", Color("#2a1004"))
 		lv.add_child(t)
 	var sub := K.label("a homestead at the end of the world", 8, Color("#ffd9a0"))
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

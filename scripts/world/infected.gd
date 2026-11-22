@@ -346,7 +346,10 @@ func _turned(e: Dictionary, dt: float) -> void:
 ## it's hit while any of them are left; then it keeps sending more until destroyed.
 func _nest(e: Dictionary, dt: float, dist: float) -> void:
 	var H: Dictionary = Balance.hordes
-	var id: String = e.nest_id
+	var id: String = str(e.get("nest_id", ""))
+	if id == "":       # a nest spawned on its own (sandbox): it just sits there
+		e.state = "nest"
+		return
 	e.state = "nest"
 	e.walk_t = float(e.get("walk_t", 0.0)) + dt
 	var flag := "nest_found_" + id
