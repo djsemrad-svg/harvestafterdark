@@ -845,6 +845,20 @@ var mine_bands := [
 	{"floors": [16, 20], "name": "The Deep", "palette": "lower", "rock_density": 0.42,
 		"ores": [{"id": "iron_ore", "w": 6}, {"id": "silver_ore", "w": 5}, {"id": "gold_ore", "w": 2}, {"id": "coal", "w": 5}, {"id": "saltpeter", "w": 3}], "ore_chance": 0.15, "geode_chance": 0.05, "geode": "deep_geode",
 		"gem_chance": 0.025, "gems": ["topaz", "emerald", "emerald"], "enemies": [{"id": "runner", "w": 2}, {"id": "brute", "w": 2}, {"id": "stalker", "w": 2}, {"id": "riot", "w": 2}, {"id": "soldier", "w": 2}, {"id": "charred", "w": 2}, {"id": "spitter_brute", "w": 1}], "enemy_count": [3, 6]},
+	# depth bands below the Deep (Nov 21): "tile" picks mfloorN/mwallN, "power" multiplies the infected's health and
+	# damage, "tint" colours them so each band's infected look different
+	{"floors": [21, 40], "name": "Ancient Cave", "palette": "ancient", "tile": "3", "rock_density": 0.42, "power": 1.3, "tint": "#f0d8b8",
+		"ores": [{"id": "iron_ore", "w": 4}, {"id": "silver_ore", "w": 6}, {"id": "gold_ore", "w": 4}, {"id": "coal", "w": 4}], "ore_chance": 0.16, "geode_chance": 0.05, "geode": "deep_geode",
+		"gem_chance": 0.028, "gems": ["amethyst", "topaz", "emerald", "ruby", "jade"], "enemies": [{"id": "runner", "w": 2}, {"id": "brute", "w": 2}, {"id": "stalker", "w": 3}, {"id": "spitter", "w": 2}, {"id": "charred", "w": 2}, {"id": "crawler", "w": 2}], "enemy_count": [4, 6]},
+	{"floors": [41, 60], "name": "Green Living Cave", "palette": "living", "tile": "4", "rock_density": 0.44, "power": 1.7, "tint": "#c0e8b8",
+		"ores": [{"id": "silver_ore", "w": 4}, {"id": "gold_ore", "w": 6}, {"id": "aurium_ore", "w": 1}, {"id": "coal", "w": 3}], "ore_chance": 0.17, "geode_chance": 0.055, "geode": "deep_geode",
+		"gem_chance": 0.03, "gems": ["emerald", "jade", "ruby", "sapphire"], "enemies": [{"id": "stalker", "w": 3}, {"id": "spitter_brute", "w": 2}, {"id": "brute", "w": 2}, {"id": "screamer", "w": 2}, {"id": "runner", "w": 3}, {"id": "lurcher", "w": 2}], "enemy_count": [4, 7]},
+	{"floors": [61, 80], "name": "Crumbling Dungeon", "palette": "crumbling", "tile": "5", "rock_density": 0.36, "power": 2.3, "tint": "#e0c8a8",
+		"ores": [{"id": "gold_ore", "w": 6}, {"id": "aurium_ore", "w": 3}, {"id": "coal", "w": 3}], "ore_chance": 0.18, "geode_chance": 0.06, "geode": "deep_geode",
+		"gem_chance": 0.032, "gems": ["ruby", "sapphire", "opal"], "enemies": [{"id": "riot", "w": 3}, {"id": "soldier", "w": 3}, {"id": "brute", "w": 2}, {"id": "charred", "w": 2}, {"id": "stalker", "w": 2}, {"id": "spitter_brute", "w": 1}], "enemy_count": [5, 7]},
+	{"floors": [81, 100], "name": "Pristine Dungeon", "palette": "pristine", "tile": "6", "rock_density": 0.34, "power": 3.0, "tint": "#c8d4f4",
+		"ores": [{"id": "gold_ore", "w": 4}, {"id": "aurium_ore", "w": 6}], "ore_chance": 0.2, "geode_chance": 0.065, "geode": "deep_geode",
+		"gem_chance": 0.035, "gems": ["sapphire", "opal", "diamond"], "enemies": [{"id": "soldier", "w": 3}, {"id": "riot", "w": 3}, {"id": "spitter_brute", "w": 2}, {"id": "brute", "w": 2}, {"id": "stalker", "w": 2}, {"id": "screamer", "w": 1}], "enemy_count": [5, 8]},
 ]
 
 var regions := [

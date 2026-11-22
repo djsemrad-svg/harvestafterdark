@@ -17,7 +17,8 @@ var PINE := ["#163f2a", "#1f5a36", "#2e7a46", "#46985a"]
 
 const TILE_TYPES := ["grass", "dirt", "road", "pave", "sand", "water", "floor", "wall", "walltop", "mfloor", "mwall", "cliff", "bridge", "void", "mfloor2", "mwall2",
 	"floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab",
-	"wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
+	"wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab",
+	"mfloor3", "mwall3", "mfloor4", "mwall4", "mfloor5", "mwall5", "mfloor6", "mwall6"]      # mine depth bands 21-100
 ## Floor and wall styles for rooms (Districts.STYLES picks them per building).
 const FLOOR_STYLES := ["floor", "floor_oak", "floor_tile", "floor_carpet", "floor_concrete", "floor_lab"]
 const WALL_STYLES := ["wall", "wall_paper", "wall_rose", "wall_panel", "wall_brick", "wall_concrete", "wall_lab"]
@@ -27,6 +28,7 @@ var TILE_PROPS := {
 	"water": {"solid": true, "water": true}, "floor": {}, "wall": {"solid": true}, "walltop": {"solid": true},
 	"mfloor": {}, "mwall": {"solid": true}, "cliff": {"solid": true}, "bridge": {}, "void": {"solid": true},
 	"mfloor2": {}, "mwall2": {"solid": true},
+	"mfloor3": {}, "mwall3": {"solid": true}, "mfloor4": {}, "mwall4": {"solid": true}, "mfloor5": {}, "mwall5": {"solid": true}, "mfloor6": {}, "mwall6": {"solid": true},
 	"floor_oak": {}, "floor_tile": {}, "floor_carpet": {}, "floor_concrete": {}, "floor_lab": {},
 	"wall_paper": {"solid": true}, "wall_rose": {"solid": true}, "wall_panel": {"solid": true}, "wall_brick": {"solid": true},
 	"wall_concrete": {"solid": true}, "wall_lab": {"solid": true},
@@ -419,14 +421,14 @@ func _draw_tile(type: String, season: String, v: int, frame: int) -> Image:
 			for r in 3: R(x, 0, r * 4 + 3, 16, 1, "#c0cccc")
 			R(x, 7, 0, 1, 13, "#c0cccc")
 			R(x, 0, 13, 16, 3, "#6a7a80")
-		"mfloor", "mfloor2":
-			var deep := type == "mfloor2"
+		"mfloor", "mfloor2", "mfloor3", "mfloor4", "mfloor5", "mfloor6":
+			var deep := type != "mfloor"
 			R(x, 0, 0, 16, 16, "#4a4654" if deep else "#6a5a4a")
 			for i in 10:
 				var c2 = ("#35313c" if i % 2 else "#565262") if deep else ("#5e4e40" if i % 2 else "#7a6a58")
 				P(x, int(hash2(i, s, 1) * 16), int(hash2(i, s, 2) * 16), c2)
-		"mwall", "mwall2":
-			var p4: Array = ["#1e1b24", "#2a2632", "#3a3644", "#4a4656"] if type == "mwall2" else ["#2a221c", "#3a3028", "#4e4236", "#62543e"]
+		"mwall", "mwall2", "mwall3", "mwall4", "mwall5", "mwall6":
+			var p4: Array = ["#1e1b24", "#2a2632", "#3a3644", "#4a4656"] if type != "mwall" else ["#2a221c", "#3a3028", "#4e4236", "#62543e"]
 			R(x, 0, 0, 16, 16, p4[1])
 			for i in 18:
 				P(x, int(hash2(i, s, 1) * 16), int(hash2(i, s, 2) * 16), p4[i % 4])
@@ -499,6 +501,10 @@ func get_obj(o: Dictionary, season: String, frame: int = 0, nb: int = 0) -> Dict
 
 func rock_pal(p) -> Array:
 	if p == "upper": return ["#4a4038", "#6a5a4a", "#8a7a64", "#a89880"]
+	if p == "ancient": return ["#5a4028", "#8a6a44", "#b08a5a", "#d0ae7a"]
+	if p == "living": return ["#1e3a2a", "#2e5a3e", "#4a7a56", "#6a9a6e"]
+	if p == "crumbling": return ["#3e3226", "#5e4e3a", "#7e6a50", "#9e8a6a"]
+	if p == "pristine": return ["#4a5260", "#6a7484", "#8e98a8", "#b8c2d0"]
 	if p == "lower": return ["#38343e", "#4e4a58", "#686474", "#8a8698"]
 	return ["#5a5a5e", "#7a7a80", "#9a9aa0", "#bcbcc2"]
 

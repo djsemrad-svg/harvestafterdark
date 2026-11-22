@@ -2422,3 +2422,6 @@ if os.path.isfile(VEH + "Car_Right_1.png"):
 
 # ---------------------------------------------------------------- festival set dressing (Nov 21)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "festival_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})
+
+# ---------------------------------------------------------------- mine depth bands 21-100 (Nov 21)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "mine_bands.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

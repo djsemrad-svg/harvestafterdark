@@ -1119,7 +1119,10 @@ func spawn_map_enemies() -> void:
 	var m: GameMap = Game.map
 	if m.mine:
 		for s in m.spawns:
-			spawn_enemy(s.type, s.x, s.y)
+			var en := spawn_enemy(s.type, s.x, s.y, {"hp_mult": float(s.get("power", 1.0))})
+			if s.has("power"):      # deeper bands: tougher, and tinted so they look different
+				en.dmg_mult = float(s.power)
+				en.tint = str(s.tint)
 	if m.id == "mountain" and int(Game.state.time) >= 1200:
 		spawn_night_infected()
 	if not m.foes.is_empty():
@@ -1735,7 +1738,7 @@ func pick_fish(zone: String) -> String:
 	var pool := []
 	for id in Data.fish:
 		var d: Dictionary = Data.fish[id]
-		if id == "lantern_queen" and (not Game.map.mine or Game.map.floor_n < int(Balance.mining.max_floor_phase1)): continue
+		if id == "lantern_queen" and (not Game.map.mine or Game.map.floor_n < DeepMine.QUEEN_FLOOR): continue
 		if d.locs.has(zone) and d.seasons.has(s) and int(st.time) >= d.time[0] and int(st.time) < d.time[1] and (d.weather == "any" or (d.weather == "rain" and rainy)):
 			pool.append({"id": id, "w": d.w})
 	if pool.is_empty() or Game.rng.randf() < Balance.fishing.junk_chance:
@@ -1957,6 +1960,8 @@ func interact_object(o: Dictionary) -> void:
 			Game.change_map("mine", 0, 0, "down", {"floor": Game.map.floor_n + 1})
 		"mine_lift":
 			Game.ui.open("lift")
+		"mine_loot_box", "mine_big_chest", "mine_legendary_chest":
+			DeepMine.open_box(o)
 		"car_wreck":
 			search(o, o.get("loot", ["vehicle", "garage"]), "the wreck", float(o.get("quality", 0.0)))
 		"suitcase":

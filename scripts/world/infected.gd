@@ -316,7 +316,7 @@ func _attack_player(e: Dictionary, d: Dictionary, ai: String) -> void:
 		else:
 			p.grab = float(d.get("grab", 1.2))
 			Game.floaters.append({"text": "Grabbed!", "pos": p.pos + Vector2(0, -30), "t": 0.8, "color": Color("#ff8060")})
-	var dmg: float = float(d.damage)
+	var dmg: float = float(d.damage) * float(e.get("dmg_mult", 1.0))
 	if ai == "brute":
 		Game.shake = 0.3
 	if d.get("human", false):

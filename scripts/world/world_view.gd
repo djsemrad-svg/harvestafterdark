@@ -164,7 +164,7 @@ func _draw() -> void:
 			draw_texture(Art.get_tile(t, season, v, (wf + v) % 4 if t == "water" else 0), pos)
 			if t == "road" or t == "dirt" or t == "sand":
 				_ground_edges(m, t, x, y, pos, season)
-			elif (t == "mwall" or t == "mwall2") and m.in_bounds(x, y + 1) and m.tile_at(x, y + 1).begins_with("mfloor"):
+			elif t.begins_with("mwall") and m.in_bounds(x, y + 1) and m.tile_at(x, y + 1).begins_with("mfloor"):
 				var face: Texture2D = Art.override("tiles/%s_face_%d.png" % [t, v % 2])
 				if face != null: draw_texture(face, pos)      # the rock face above a floor
 			if m.mine and m.decor.has(GameMap.k(x, y)):
@@ -622,6 +622,7 @@ func _draw_enemy(en: Dictionary) -> void:
 	if d.get("ai", "") == "stalker" and en.state in ["wander", "asleep"] and en.pos.distance_to(Game.player.pos) > 40.0:
 		alpha = 0.22
 	var mod := Color(1, 1, 1, alpha)
+	if en.has("tint"): mod = Color(en.tint) * Color(1, 1, 1, alpha)      # deeper mine bands
 	if en.flash > 0: mod = Color(2.6, 2.6, 2.6, alpha) if Game.settings.get("effects", true) else Color(1, 1, 1, 0.5)      # hit flash
 	if en.get("turned", 0.0) > 0: mod = Color(0.6, 1.2, 0.6, alpha)
 	elif en.has("fx") and en.fx.has("burn") and int(anim_t * 8) % 2 == 0: mod = Color(1.3, 0.9, 0.6, alpha)

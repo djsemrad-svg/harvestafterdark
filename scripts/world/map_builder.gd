@@ -437,11 +437,14 @@ static func weighted(r: RandomNumberGenerator, table: Array) -> Dictionary:
 
 static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> GameMap:
 	var band := mine_band(floor_n)
-	var deep: bool = band.palette == "lower"
+	var deep: bool = band.palette != "upper"
 	var W := 30
 	var H := 22
 	var wall := "mwall2" if deep else "mwall"
 	var flo := "mfloor2" if deep else "mfloor"
+	if band.has("tile"):       # floors 21-100: each depth band has its own stone
+		wall = "mwall" + str(band.tile)
+		flo = "mfloor" + str(band.tile)
 	var m: GameMap
 	var r: RandomNumberGenerator
 	var attempt := 0
@@ -505,7 +508,7 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 			break
 	m.entry = entry
 	m.add_obj(entry.x, entry.y, "ladder_up")
-	if floor_n % Balance.mining.lift_every == 0:
+	if floor_n % Balance.mining.lift_every == 0 or floor_n == 1:
 		for t in tiles:
 			if abs(t.x - entry.x) + abs(t.y - entry.y) == 2 and not m.objects.has(GameMap.k(t.x, t.y)) and t != entry + Vector2i(0, 1):
 				m.add_obj(t.x, t.y, "mine_lift")
@@ -531,14 +534,9 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 			rocks.append(o)
 		elif v < band.rock_density + 0.012:
 			m.add_obj(t.x, t.y, "crystal")
-	if floor_n < Balance.mining.max_floor_phase1 and not rocks.is_empty():
-		var far := rocks.filter(func(o): return abs(o.x - entry.x) + abs(o.y - entry.y) > 8)
-		var pool: Array = far if not far.is_empty() else rocks
-		pool[r.randi() % pool.size()].has_ladder = true
-	if floor_n >= Balance.mining.max_floor_phase1:
-		var t: Vector2i = tiles[tiles.size() - 3]
-		m.remove_obj(t.x, t.y)
-		m.add_obj(t.x, t.y, "sign", {"text": "The tunnel below has caved in completely. You can hear water and something mechanical far beneath. Heavier equipment will be needed to dig through."})
+	if floor_n < Balance.mining.max_floor_phase1 and not DeepMine.boss_due(floor_n):
+		DeepMine.add_stairs(m, r, tiles)
+	DeepMine.add_loot(m, r)
 	# an old supply crate now and then, more often deeper down
 	if r.randf() < 0.2 + floor_n * 0.02:
 		var cands := m.floor_tiles.filter(func(t): return not m.objects.has(GameMap.k(t.x, t.y)) and abs(t.x - entry.x) + abs(t.y - entry.y) > 5)
@@ -555,6 +553,9 @@ static func mine_floor(floor_n: int, world_seed: int, day: int, visit: int) -> G
 		var idx := r.randi() % free.size()
 		m.spawns.append({"x": free[idx].x, "y": free[idx].y, "type": weighted(r, band.enemies).id})
 		free.remove_at(idx)
+	if band.has("power"):
+		for sp in m.spawns:
+			if sp.type != "boss_foreman": sp.power = float(band.power); sp.tint = str(band.tint)
 	return m
 
 ## Details from Daniel's Selected Assets pack: lanterns (they light the tunnel), timber props, lichen and

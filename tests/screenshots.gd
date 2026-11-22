@@ -927,6 +927,15 @@ func _ready() -> void:
 		await shot("56_dialogic")
 		get_tree().quit()
 		return
+	if only == "depths":
+		main.ui.close_all()
+		for fl in [25, 50, 70, 90]:
+			Game.state.mine.box_days = {}
+			Game.change_map("mine", 0, 0, "down", {"floor": fl})
+			await frames(20)
+			await shot("57_floor_%d" % fl)
+		get_tree().quit()
+		return
 	if only == "rooms":
 		main.ui.close_all()
 		for rid in ["mh_house1", "mh_house2", "mh_house3", "mh_house4", "mh_guns", "mh_burger", "ind_garage", "hv_main"]:

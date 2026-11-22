@@ -223,8 +223,9 @@ var armor := {"armor_k": 60.0}
 
 var mining := {
 	"ladder_chance_per_rock": 0.035,
-	"lift_every": 5,
-	"max_floor_phase1": 20,
+	"lift_every": 10,          # a lift on floor 1 and every 10th floor
+	"max_floor_phase1": 100,   # the bottom of the mine (floors 21-100 added Nov 21)
+	"loot_boxes": [1, 3],      # small loot boxes per floor, on your first visit to that floor each day
 }
 
 var friendship := {

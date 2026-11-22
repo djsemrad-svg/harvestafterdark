@@ -578,6 +578,10 @@ func run_all() -> void:
 	for k in mm.objects:
 		if mm.objects[k].get("has_ladder", false): hidden = mm.objects[k]
 	var ladder = null
+	if hidden == null:      # the stairs are already in the open on this floor (DeepMine.add_stairs)
+		var stv: Vector2i = mm.get_meta("stairs")
+		ladder = mm.get_obj(stv.x, stv.y)
+		W.interact_object(ladder)
 	if hidden != null:
 		var hx: int = hidden.x
 		var hy: int = hidden.y
@@ -592,19 +596,17 @@ func run_all() -> void:
 	check("Mine: floors contain stone, ore, geodes; ladder leads deeper; deepest tracked", rocks > 50 and ores > 5 and geodes > 1 and ladder != null and ladder.type == "ladder_down" and G.map.floor_n == 2 and int(G.state.mine.deepest) == 2, "rocks=%d ores=%d geodes=%d floor=%d" % [rocks, ores, geodes, G.map.floor_n])
 
 	G.change_map("mine", 0, 0, "down", {"floor": 3})
-	G.change_map("mine", 0, 0, "down", {"floor": 5})
+	G.change_map("mine", 0, 0, "down", {"floor": 10})
 	var mine_q: bool = G.state.quests.done.has("q_mine")
-	var lift: bool = G.state.mine.lifts.has(5)
+	var lift: bool = G.state.mine.lifts.has(10) and not G.state.mine.lifts.has(3)
 	G.change_map("mountain", 19, 5, "down")
-	check("Mine: lift checkpoint at floor 5 and quest progress for floor 3", mine_q and lift and G.map.id == "mountain", "quest=%s lift=%s" % [mine_q, lift])
+	check("Mine: lift checkpoint at floor 10 and quest progress for floor 3", mine_q and lift and G.map.id == "mountain", "quest=%s lift=%s" % [mine_q, lift])
 
-	var m10: GameMap = MapBuilder.mine_floor(20, 99, 1, 1)
+	var m10: GameMap = MapBuilder.mine_floor(100, 99, 1, 1)
 	var any_ladder := false
-	var any_sign := false
 	for k in m10.objects:
-		if m10.objects[k].get("has_ladder", false): any_ladder = true
-		if m10.objects[k].type == "sign": any_sign = true
-	check("Mine: floor 20 is the current limit (no ladder, cave-in sign)", not any_ladder and any_sign)
+		if m10.objects[k].get("has_ladder", false) or m10.objects[k].type == "ladder_down": any_ladder = true
+	check("Mine: floor 100 is the bottom (no way further down)", not any_ladder and not m10.has_meta("stairs"))
 
 	# ---------- forge
 	start("adventure", 2)
@@ -1321,6 +1323,7 @@ func run_all() -> void:
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
+	run_mine_depths()
 
 # ---------------------------------------------------------------- weapons, gear and the infected
 func arena(mode := "adventure") -> void:
@@ -4123,3 +4126,49 @@ func run_dialogic() -> void:
 	var missing: bool = not Talk.play("no_such_timeline")
 	check("Dialogic: a timeline plays, the game waits, signals give items, and missing timelines fall back",
 		started and running and still and given and ended and missing, "started=%s running=%s still=%s given=%s ended=%s missing=%s" % [started, running, still, given, ended, missing])
+
+func run_mine_depths() -> void:
+	# floors 1-100: every floor has its way down, loot boxes, chests every 10th floor, a lift on 1 and every
+	# 10th, and five depth bands with their own stone and tougher infected
+	var G = Game
+	start("adventure", 2)
+	var no_way := []
+	var tiles_ok := true
+	for fl in [1, 7, 21, 33, 45, 62, 77, 85, 99]:
+		G.state.mine.box_days = {}
+		var m: GameMap = MapBuilder.mine_floor(fl, int(G.state.seed), int(G.state.day), fl)
+		if not m.has_meta("stairs") and not DeepMine.boss_due(fl): no_way.append(fl)
+		var want: String = "mfloor" + str(m.band.get("tile", "2" if m.band.palette != "upper" else ""))
+		if str(m.tile_at(m.entry.x, m.entry.y)) != want: tiles_ok = false
+	# loot: boxes appear once a day per floor, the big chest pays once ever
+	G.state.mine.box_days = {}
+	var m20: GameMap = MapBuilder.mine_floor(20, int(G.state.seed), int(G.state.day), 1)
+	var boxes := 0
+	var chest = null
+	for kk in m20.objects:
+		if m20.objects[kk].type == "mine_loot_box": boxes += 1
+		if m20.objects[kk].type == "mine_big_chest": chest = m20.objects[kk]
+	var again: GameMap = MapBuilder.mine_floor(20, int(G.state.seed), int(G.state.day), 2)
+	var boxes2 := 0
+	for kk in again.objects:
+		if again.objects[kk].type == "mine_loot_box": boxes2 += 1
+	G.change_map("mine", 0, 0, "down", {"floor": 20})
+	var gold0 := int(G.state.money)
+	if chest != null: DeepMine.open_box(chest)
+	var paid: bool = int(G.state.money) > gold0 + 500
+	var m20b: GameMap = MapBuilder.mine_floor(20, int(G.state.seed), int(G.state.day) + 1, 3)
+	var chest_again := false
+	for kk in m20b.objects:
+		if m20b.objects[kk].type == "mine_big_chest": chest_again = true
+	# the bottom: a legendary chest; the deeper infected are tougher
+	G.state.mine.box_days = {}
+	var m100: GameMap = MapBuilder.mine_floor(100, int(G.state.seed), int(G.state.day), 4)
+	var legend := false
+	for kk in m100.objects:
+		if m100.objects[kk].type == "mine_legendary_chest": legend = true
+	var tough: bool = m100.spawns.size() > 0 and float(m100.spawns[0].get("power", 1.0)) >= 3.0
+	G.change_map("mine", 0, 0, "down", {"floor": 1})
+	var lift1: bool = G.state.mine.lifts.has(1)
+	check("Mine depths: every floor has a way down, loot boxes daily, chests once, a legendary chest on 100, lifts on 1 and every 10th, banded stone and tougher infected",
+		no_way.is_empty() and tiles_ok and boxes >= 1 and boxes2 == 0 and chest != null and paid and not chest_again and legend and tough and lift1,
+		"no_way=%s tiles=%s boxes=%d again=%d chest=%s paid=%s chest_again=%s legend=%s tough=%s lift1=%s" % [no_way, tiles_ok, boxes, boxes2, chest != null, paid, chest_again, legend, tough, lift1])

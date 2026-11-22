@@ -991,7 +991,7 @@ func change_map(id: String, tx: int, ty: int, dir: String, opts := {}) -> void:
 		dir = "down"
 		if fl > int(state.mine.deepest):
 			state.mine.deepest = fl
-		if fl % Balance.mining.lift_every == 0 and not state.mine.lifts.has(fl):
+		if (fl % Balance.mining.lift_every == 0 or fl == 1) and not state.mine.lifts.has(fl):
 			state.mine.lifts.append(fl)
 			toast("Lift checkpoint unlocked: Floor %d" % fl, "", "gold")
 		quest_event("mine_floor", {"floor": fl})

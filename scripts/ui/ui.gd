@@ -1397,7 +1397,7 @@ func _ov_lift() -> Control:
 	var pw := _window("Mine lift", 180)
 	var v: VBoxContainer = pw[1]
 	var here: int = Game.map.floor_n if Game.map.mine else 0
-	v.add_child(K.label("Checkpoints unlock every %d floors. Deepest reached: %d." % [Balance.mining.lift_every, Game.state.mine.deepest], 7, K.INK_SOFT, true))
+	v.add_child(K.label("A lift stops on floor 1 and every %d floors you've reached. Deepest reached: %d of %d." % [Balance.mining.lift_every, Game.state.mine.deepest, Balance.mining.max_floor_phase1], 7, K.INK_SOFT, true))
 	if here:
 		v.add_child(K.button("Surface (Ridge Path)", func():
 			close()
@@ -1407,8 +1407,10 @@ func _ov_lift() -> Control:
 	for f in floors:
 		if f == here: continue
 		var fl: int = f
-		v.add_child(K.button("Floor %d" % f, func():
+		v.add_child(K.button("Floor %d  (%s)" % [f, MapBuilder.mine_band(f).name], func():
 			close()
+			Sfx.play("thunder")       # the old cage rattles and rumbles down
+			Game.shake = 0.6
 			Game.change_map("mine", 0, 0, "down", {"floor": fl})))
 	v.add_child(_close_btn("Cancel"))
 	return pw[0]
