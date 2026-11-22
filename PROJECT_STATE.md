@@ -5,7 +5,7 @@ Godot 4.7 (GDScript), renderer GL Compatibility, 480x270 pixel viewport scaled 3
 ## Status (Nov 21, 2026)
 
 Phase 1 foundation ported from the earlier HTML prototype ("Quiet Fields") to Godot.
-Automated tests: 304 / 304 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
+Automated tests: 310 / 310 pass (`godot --headless --path . res://tests/test_runner.tscn`). Run one section with `-- --only=hordes` (any `run_` name); `REPEAT=8` repeats it to catch chance-based failures.
 
 Working: title screens, two modes (Survivor, Adventure), 3 save slots per mode, character creator,
 homestead naming, clock and seasons, bed saves, hunger and thirst, bite rollback, tools and upgrades,
@@ -537,6 +537,39 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   Walking straight into the edge of a wall or post slides round it (`World._slide`, up to 7 px). Neighbours re-plan
   when something is built on their path and wait about a second for the player before walking round
   (`MapBuilder.find_path` takes tiles to avoid). Standing neighbours don't step aside yet.
+
+### More from Nov 21 (roadmap items 19-26)
+- A town surviving together (item 19, `TownDress._survival`, Townsfolk roles tend, patrol, queue, server, drill,
+  instructor): watch fires and posted notices at the gates, a ration depot on the square with a queue, communal
+  garden beds being weeded, a militia drill yard (two targets, three volunteers and an instructor, on the open
+  grass nearest the Combat Guild), armed patrols walking the roads. Weathered car wrecks (faded paint, road dust,
+  a little rust) replace the sooty ones; an old camper (`van_wreck`) sits off a road. Screenshot mode `survival`.
+- Festivals (item 20, `scripts/world/festivals.gd`): on any festival date the square around the fountain gets
+  stalls, bunting and balloons (objects marked `fest`, cleared and rebuilt every morning by `Festivals.setup`),
+  every neighbour stands round the fountain (`Festivals.npc_entry`), a townsfolk crowd comes, and a visiting
+  merchant sells festival stock (`Data.shops.festival`). Seed and Sprout Fair (spring 10, 9 am to 6 pm): rare seeds,
+  saplings and a planting race (12 pots, 45 s; first prize under 30 s, once a year). Lantern Creek Gathering
+  (spring 24, 4 pm to 11 pm): evening market; after 8 pm wish lanterns rise from the river bank; letting your own
+  go from the lantern table gives +40 friendship with everyone once a year. Screenshot mode `festival`.
+- Picture map (item 21, `scripts/ui/picture_map.gd`): the Map tab draws each region from its real map on
+  parchment, paints regions with no map from their terrain, shades closed ones, and pins you, the shops, today's
+  festival and your tasks. Screenshot mode `maptab`.
+- Night lights, effects and settings (item 22): 64 lights, nearest first; fires flicker; gunshots light the
+  dark; dust, sparks, splashes, hit flashes and a bigger muzzle flash (Settings can turn them off). Every key can
+  be rebound (`scripts/ui/keys.gd`, `Game.settings.keys`); a controller works in play (menus still need the mouse).
+  People let you squeeze past after about a second of pushing.
+- Sound and music (item 23): waiting for a sound pack from Daniel.
+- Dialogic (item 24): Dialogic 2 from GitHub (the uploaded 1.5.1 is for Godot 3) in `addons/dialogic`.
+  `scripts/world/talk.gd` plays `res://dialogue/<name>.dtl` in a textbox styled like the game
+  (`dialogue/harvest_style.tres`), pauses play, and handles signal events (shop, give, gold, friend, flag, quest,
+  toast). The festival merchants Marguerite and Tobias talk with choices. Guide: `design/DIALOGUE_GUIDE.md`;
+  story draft: `design/STORY_OUTLINE.md` (questions for Daniel at the end).
+- Mine (items 25-26): 100 floors in five bands (`Data.mine_bands`; floors 21-100 have their own tiles `mfloor3-6`
+  / `mwall3-6` from `tools/mine_bands.py`, a `power` multiplier and a `tint` for the infected). Every floor has
+  its way down from the start (`DeepMine.add_stairs`: open, guarded, or under rubble). Loot boxes on the first
+  visit to a floor each day; a big chest every 10th floor and a legendary chest on 100, once each
+  (`DeepMine.add_loot`, `open_box`). Lifts on floor 1 and every 10th (`Balance.mining.lift_every` 10). The Lantern
+  Queen and still pool stay at floor 20. Screenshot mode `depths`.
 
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
