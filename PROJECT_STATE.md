@@ -571,6 +571,21 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   (`DeepMine.add_loot`, `open_box`). Lifts on floor 1 and every 10th (`Balance.mining.lift_every` 10). The Lantern
   Queen and still pool stay at floor 20. Screenshot mode `depths`.
 
+### End of day Nov 21 (stopping point)
+- Readable text fix (commit f0945b4): the title sign is dark wood again (the light Modern UI panel had made the
+  cream title unreadable); title letters at 28 with a drop shadow. Tiny5 is drawn on a 7 px grid, so
+  `UIKit.crisp_size` snaps every `K.label` size above 7 to 7, 14, 21 or 28 (8, 10, 12 had smeared letters).
+  `K.title` defaults to 14. `K.INK_SOFT` darkened to #5c3a1c. Sizes set directly with
+  `add_theme_font_size_override` (2 places at 9, 1 at 6) and the large-text theme (9) are not snapped yet.
+- Seen in screenshots, not fixed: stray `'` and `!` marks at the right edge of shop buy rows.
+- Known random test failure added: "Districts ... every door can be reached" (Riverlands layout); passes on rerun.
+- Next: roadmap item 27, the antique and oddities shop (plan under Next steps 9). Item 23 (sound) still waits for a
+  pack; item 32 is the tool animations. Relic icon picks from Item_Pack_16x16 not used yet: 652-655 books,
+  657 magnifier, 662 painting, 675 binoculars, 691-694 keys, 703 pipe, 715 music box, 765 baseball, 766 compass,
+  774 perfume, 784-790 chess pieces, 791-794 dice and cards, 810/811 cups, 832 dreamcatcher, 937 bell,
+  943 pocket watch, 962 RAM, 964 SIM, 977 handheld game, 1114 life ring, 1116 shell, 1157-1160 coins and banknote,
+  1167/1168 skulls, 1169 glass eye, 166-170 medals, 302-305 masks, 316 top hat.
+
 ### Pending (Nov 17)
 - Font: done Nov 17 (Tiny5 for UI, Jersey 10 for titles, `art/fonts/`, `UIKit.ui_font()`).
 - Aim crosshair: done Nov 17 (`WorldView._draw_crosshair`), now the Modern UI pack's corner brackets.
