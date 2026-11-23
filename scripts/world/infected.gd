@@ -78,6 +78,7 @@ func sight(e: Dictionary) -> float:
 func update(dt: float) -> void:
 	var p: Dictionary = Game.player
 	var C: Dictionary = Balance.combat
+	if Brains.count() > Game.enemies.size(): Brains.prune()
 	for e in Game.enemies.duplicate():
 		if not Game.enemies.has(e):
 			continue
@@ -105,6 +106,7 @@ func update(dt: float) -> void:
 		var mv := Vector2.ZERO
 		var speed_mult := 1.0
 		if float(e.get("slow", 0.0)) > 0: speed_mult *= 0.5
+		speed_mult *= float(e.get("bt_speed", 1.0))      # an angry boss (Brains)
 		if e.get("turned", 0.0) > 0:
 			_turned(e, dt)
 			continue
@@ -121,6 +123,12 @@ func update(dt: float) -> void:
 				var tg: Vector2 = e.lure - e.pos
 				mv = tg.normalized() * float(d.chase_speed) * 0.8 if tg.length() > 6 else Vector2.ZERO
 				_move(e, mv * speed_mult, dt)
+				continue
+		# raiders and bosses: their behaviour tree may take over this frame (Brains, LimboAI)
+		if e.state == "chase" and Brains.kind_of(d) != "" and (dist <= sight(e) * 1.7 or float(e.alert_t) > 0):
+			var bmv = Brains.tick(e, d, to, dist, dt, self)
+			if bmv != null:
+				_move(e, bmv * speed_mult, dt)
 				continue
 		match e.state:
 			"asleep":
@@ -254,10 +262,11 @@ func _gunner(e: Dictionary, d: Dictionary, to: Vector2, dist: float, dt: float) 
 		Sfx.play("shot")
 		w.cb.alert(e.pos, 8 * 16.0)
 		e.mag = int(e.mag) - 1
-		e.spit_cd = float(G.cd)
+		e.spit_cd = float(G.cd) * float(e.get("bt_cd", 1.0))
 		if int(e.mag) <= 0:
 			e.mag = int(G.mag)
 			e.spit_cd = float(G.reload)
+			e.reload_t = float(G.reload)
 			Game.floaters.append({"text": "Reloading", "pos": e.pos + Vector2(0, -32), "t": 0.8, "color": Color("#ffd0a0")})
 	e.strafe_t = float(e.get("strafe_t", 0.0)) - dt
 	if float(e.strafe_t) <= 0:
@@ -395,7 +404,7 @@ func _boss(e: Dictionary, d: Dictionary, dist: float, dt: float) -> void:
 		var S: Dictionary = d.summon
 		e.summon_t = float(e.get("summon_t", float(S.cd) * 0.5)) - dt
 		if float(e.summon_t) <= 0:
-			e.summon_t = float(S.cd)
+			e.summon_t = float(S.cd) * float(e.get("bt_cd", 1.0))
 			var helpers := Game.enemies.filter(func(o): return o.get("summoned_by", "") == e.type).size()
 			if helpers < int(S.max):
 				var made := 0

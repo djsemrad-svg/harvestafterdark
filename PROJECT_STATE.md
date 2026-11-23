@@ -363,9 +363,9 @@ Daniel asked for more colour and life, balanced against the run-down look.
 - Tilled soil: a Sunnyside World mound on dark dirt (`tiles/soil_dry.png`, `tiles/soil_wet.png`, used by `Art.get_soil`). Sand is paler and gets the grass lip too. The one-tile tooth at road crossings is removed after trimming.
 - `tests/screenshots.gd --only=scenes` takes daytime views of the farm, town, Residential and Riverlands plus a wreck next to the player, for colour checks.
 
-### Farm animals (added Nov 16, to revisit)
+### Farm animals (added Nov 16; replaced by Modern Farm art Nov 21 and 22, the notes below are the old setup)
 
-Daniel wants to revisit these later. `art/animals/<type>_<0|1>.png` are strips of walk frames; `art/animals/index.json` gives frame size, frame count, which row faces side / down / up and which way the side view faces (`Art.get_animal`). Cows and chickens from Farm RPG (cows have front and back views), pigs, sheep and ducks from Sunnyside World, quail from the Sunnyside bird, goats are the Farm RPG bull shrunk and recoloured (weakest). Animals walk with 4 frames. Rabbits, the guard dog and the barn cat are still code-drawn. `tests/screenshots.gd --only=animals` shows them on the farm.
+Daniel wanted to revisit these; done (see the Modern Farm and Nov 22 farm buildings notes). `art/animals/<type>_<0|1>.png` are strips of walk frames; `art/animals/index.json` gives frame size, frame count, which row faces side / down / up and which way the side view faces (`Art.get_animal`). Cows and chickens from Farm RPG (cows have front and back views), pigs, sheep and ducks from Sunnyside World, quail from the Sunnyside bird, goats are the Farm RPG bull shrunk and recoloured (weakest). Animals walk with 4 frames. Rabbits, the guard dog and the barn cat are still code-drawn. `tests/screenshots.gd --only=animals` shows them on the farm.
 
 ### The mine (added Nov 16)
 
@@ -522,9 +522,9 @@ over it. Scythe sweeps, blades and spears thrust, the watering can tips and pour
   recoloured). Fruit trees: a young tree, then a grown tree with 0 to 3 rounds of fruit, spring blossom, autumn
   leaves, winter snow (`objects/fruit_tree_<fruit>_<young|0-3>_<season>.png`, picked in `Art._draw_generic`). Animals:
   4-direction walk strips for chickens, rabbits, ducks, cows, goats, sheep, pigs, the guard dog and barn cat, and
-  their young (`animals/<type>_baby_<n>.png`, used by `Art.get_animal`); quail stays a recolour. Props: scarecrow,
-  tin scarecrow, troughs, hay hopper, pressure sprinkler. Not done: the coop, henhouse and barn pictures (they need
-  new building footprints and an old-save fix-up) and the tool animations (item 32).
+  their young (`animals/<type>_baby_<n>.png`, used by `Art.get_animal`); quail made from the brown hen (Nov 22).
+  Props: scarecrow, tin scarecrow, troughs, hay hopper, pressure sprinkler. The coop, henhouse and barn pictures and
+  the tool animations were done later on Nov 22 (see below).
 - Shop interiors (item 17, `tools/shop_furniture.py`, `MapBuilder.store/ranch/forge`, `ROOMS`): stocked shelves,
   drinks fridge and checkout; hay, feed sacks, eggs and milk cans; hospital beds, medical cart, doctor's desk,
   cabinets and waiting chairs; work tables and lumber; punching bags, weights, a shooting range. Nothing stands in
@@ -677,7 +677,7 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   - Districts get smaller rises (`SIZES` residential, industrial) and more tries, so they get some.
   - Tests in `run_terrain` (town banks, both ways up, every waterfall's pond, fall and pool, the pictures).
     Screenshot mode `terrain2`.
-- Still open: the Serene Village boulder plateau as another stone look; rises on the farm at level 2 are rare.
+- Boulder look: done Nov 22 (see below). Still open: rises on the farm at level 2 are rare.
 
 ### Nov 22: LimeZu Modern Office, Kitchen and more, Serene Village (order item 2; art `tools/limezu_more.py`)
 - Packs unzipped as `<packs>/Modern_Office_Revamped_v1.2`, `Kitchen_and_more_tileset_16x16`,
@@ -796,6 +796,47 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   `Bridges.lanterns`), snow on rails and curbs in winter. East-west bridges are the same picture turned. Pictures
   only. Test `run_bridges`; screenshot mode `bridge`.
 - Town banks: a third hand-placed bank west of the bridge (x 39), since the east ones made way for the camp.
+
+### Nov 22: farm buildings and animals (Daniel's "4 and 5", part 1; art `tools/farm_buildings.py`)
+- Coop, barn and hutch now use Modern Farm pictures, fitted to the same footprints (coop 6x4, barn 8x5, hutch 4x3),
+  so nothing about where they stand changed. Coop: the Chicken Coop with a fenced run on its right (straw floor,
+  posts, rails, chicken wire, drawn in the tool). Barn: Barn Small. Hutch: Henhouse. No name board painted on
+  (`"nosign"` in `art/buildings/index.json`).
+- Doors follow the pictures: `Livestock.DOOR_COL` (your door: coop 2, barn 1, hutch 1) and `Livestock.ANIMAL_COL`
+  (animal door: coop 4, which is the gate in the run fence; barn 6; hutch 0), used by `Game.build_building`,
+  `Game._attach_building` and `Game.animal_door_tile`. Older saves had the door in the middle: `_attach_building`
+  moves it when the save loads (kept in the middle if something you built stands in front of the new spot).
+- The animal door is drawn over the picture by `WorldView` (`Art.animal_hatch`: planks and latch shut, dark with a
+  ramp open; on the coop a wooden gate swung back against its post).
+- Doghouse: the Modern Farm doghouse (it was a wooden storage box). Quail: the Modern Farm brown hen, speckled,
+  no red comb, drawn a fifth smaller, two shades (`quail_0`, `quail_1`, made in `tools/modern_farm.py`); now 6
+  frames and 3 directions like the other birds. Every farm animal is now pack art.
+- Test `run_farmbld`; screenshot modes `farmbld` (shut, open, winter) and `animals` (now with a doghouse and quail).
+
+### Nov 22: boulder rises (Daniel's "4 and 5", part 2)
+- A fourth raised-ground look, `boulder`: Serene Village's boulder plateau (sheet columns 0-5, rows 7-10). A rim of
+  round boulders round the top, a one-tile face of big boulders (two kinds taking turns), the sheet's own dirt
+  landing and stairs; its flat grass cut out so the game's grass shows; boulders a little less pink. Snowy edges in
+  winter like the others. No trails and no waterfalls on boulder rises.
+- Where: the farm (a few tries), Riverlands and the mountain (`Terrain.PLANS`), sized like turf banks.
+- Older worlds: `state.terrain._boulder` marks worlds that have them. Without it, Riverlands and mountain plans are
+  made again once (the farm is left as it was). Tested in `run_terrain`; screenshot mode `boulder`.
+
+### Nov 22: behaviour trees for raiders and bosses (LimboAI, Daniel's "4 and 5", part 3)
+- LimboAI 1.8.1 (GDExtension, from Daniel's upload) is in `addons/limboai/`. Only the desktop libraries are kept
+  (Windows, Linux x86_64, macOS); the mobile and web ones were left out to keep the repo smaller. It loads in
+  Godot 4.7.2 (checked headless on Linux; Windows and macOS not checked here).
+- `scripts/world/brains.gd` (Brains) builds the trees in code from the tasks in `scripts/ai/` (`bt_*.gd`, no
+  class names), so LimboAI's editor isn't needed. `Infected.update` asks `Brains.tick` first for raiders and bosses
+  that are chasing you; the tree either moves the enemy itself or hands back to the old code.
+  - Raiders (anyone `human`): below 35% health they fall back (toward a friend if one is near) for 2 s, then stand
+    and patch up for 1.6 s ("Patching up...") and get 30% health back, once a fight. The first to see you shouts and
+    resting raiders within 12 tiles come running. Gunners back away (and a little sideways) while reloading.
+  - Bosses: at half health they get angry (25% faster, shots and summons 30% quicker, "X is furious!"). At a fifth,
+    a last stand: Dutch calls in up to one more raider than his usual limit at once; infected bosses roar, which
+    draws the infected from 14 tiles.
+  - If LimboAI can't load, `Brains.on()` is false and everyone fights the old way. `Brains.enabled` is the switch.
+- Test `run_brains`. Not playtested: how fair the patch-up window and the angry bosses feel is for Daniel to judge.
 
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).

@@ -1336,6 +1336,7 @@ func run_all() -> void:
 	run_refugees()
 	run_bridges()
 	run_farmbld()
+	run_brains()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4841,6 +4842,81 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_brains() -> void:
+	# Nov 22: LimboAI behaviour trees for raiders and bosses (Brains, scripts/ai/)
+	var G = Game
+	start("adventure", 2)
+	var loaded: bool = Brains.on()
+	var inf: Infected = W.inf
+	var p: Dictionary = G.player
+	var base := Vector2i(int(p.pos.x) / 16, int(p.pos.y) / 16)
+	var free_near := func(dx: int, dy: int) -> Vector2i:
+		for r in range(0, 8):
+			for yy in range(-r, r + 1):
+				for xx in range(-r, r + 1):
+					var t := base + Vector2i(dx + xx, dy + yy)
+					if G.map.tile_free(t.x, t.y): return t
+		return base + Vector2i(dx, dy)
+	G.enemies.clear()
+	# a hurt raider falls back, stands to patch up, and comes back with more health
+	var t1: Vector2i = free_near.call(3, 0)
+	var r: Dictionary = inf.spawn("raider", t1.x, t1.y)
+	r.state = "chase"; r.called = true
+	r.hp = float(r.max_hp) * 0.25
+	var d0: float = r.pos.distance_to(p.pos)
+	p.iframes = 99.0
+	for i in 20: inf.update(1.0 / 30.0)
+	var fled: bool = r.pos.distance_to(p.pos) > d0 + 4.0
+	for i in 120: inf.update(1.0 / 30.0)
+	var healed: bool = r.get("patched", false) and float(r.hp) > float(r.max_hp) * 0.4
+	# the first to see you shouts and a resting raider nearby comes running
+	G.enemies.clear()
+	var a: Dictionary = inf.spawn("raider_gunner", free_near.call(4, 0).x, free_near.call(4, 0).y)
+	var t2: Vector2i = free_near.call(-5, 2)
+	var b: Dictionary = inf.spawn("raider", t2.x, t2.y)
+	a.state = "chase"; b.state = "wander"
+	b.wt = 99.0; b.wander = Vector2.ZERO
+	inf.update(1.0 / 30.0)
+	var shouted: bool = a.get("called", false) and b.state not in ["wander", "asleep"]
+	# a gunner backs away while it reloads
+	G.enemies.clear()
+	var t3: Vector2i = free_near.call(4, 0)
+	var g: Dictionary = inf.spawn("raider_gunner", t3.x, t3.y)
+	g.state = "chase"; g.called = true; g.mag = 1; g.spit_cd = 0.0
+	for i in 3: inf.update(1.0 / 30.0)
+	var dg: float = g.pos.distance_to(p.pos)
+	var reloading: bool = float(g.get("reload_t", 0.0)) > 0
+	for i in 15: inf.update(1.0 / 30.0)
+	var backed: bool = reloading and g.pos.distance_to(p.pos) > dg + 2.0
+	# Dutch: angry at half health, calls his whole crew at a fifth
+	G.enemies.clear()
+	var t4: Vector2i = free_near.call(5, 0)
+	var dutch: Dictionary = inf.spawn("boss_dutch", t4.x, t4.y)
+	dutch.state = "chase"; dutch.called = true; dutch.summon_t = 999.0
+	dutch.hp = float(dutch.max_hp) * 0.45
+	inf.update(1.0 / 30.0)
+	var angry: bool = dutch.get("enraged", false) and is_equal_approx(float(dutch.get("bt_speed", 1.0)), 1.25)
+	dutch.hp = float(dutch.max_hp) * 0.15
+	inf.update(1.0 / 30.0)
+	var crew: int = G.enemies.filter(func(o): return o.get("summoned_by", "") == "boss_dutch").size()
+	# an infected boss roars instead
+	G.enemies.clear()
+	var t5: Vector2i = free_near.call(5, 0)
+	var gk: Dictionary = inf.spawn("boss_groundskeeper", t5.x, t5.y)
+	gk.state = "chase"; gk.hp = float(gk.max_hp) * 0.1
+	inf.update(1.0 / 30.0)
+	var roared: bool = gk.get("enraged", false) and gk.get("last_stand", false)
+	# switched off: plain shambler and old behaviour untouched
+	Brains.enabled = false
+	var off: bool = Brains.tick(dutch, Data.enemies.boss_dutch, Vector2.ONE, 10.0, 0.03, inf) == null
+	Brains.enabled = true
+	p.iframes = 0.0
+	G.enemies.clear()
+	check("Behaviour trees (LimboAI): a hurt raider falls back and patches up; the first raider to see you calls the crew; gunners back off to reload",
+		loaded and fled and healed and shouted and backed, "loaded=%s fled=%s healed=%s shouted=%s backed=%s" % [loaded, fled, healed, shouted, backed])
+	check("Behaviour trees (LimboAI): bosses get angry at half health and make a last stand (Dutch calls his crew, infected bosses roar); off switch falls back to the old fighting",
+		angry and crew >= 2 and roared and off and Brains.kind_of(Data.enemies.shambler) == "", "angry=%s crew=%d roared=%s off=%s" % [angry, crew, roared, off])
 
 func run_farmbld() -> void:
 	# Nov 22: Modern Farm pictures for the coop, barn and hutch; doors where the pictures have them
