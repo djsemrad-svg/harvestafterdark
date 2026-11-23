@@ -1333,6 +1333,7 @@ func run_all() -> void:
 	run_toolpose()
 	run_audio()
 	run_melee()
+	run_refugees()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4499,7 +4500,7 @@ func run_terrain() -> void:
 	check("Raised ground on 3 worlds: %d rises (%s); every way in, door and container still reachable, every rise reached by its steps" % [total, ", ".join(styles.keys())],
 		bad.is_empty() and total >= 12 and styles.size() == 3, str(bad.slice(0, 6)))
 	check("Terrain pass 2: town gets its hand-placed banks south of the river, and both steps and steep trails are used",
-		town_banks >= 6 and ways.has("steps") and ways.has("trail"), "town=%d ways=%s" % [town_banks, str(ways.keys())])
+		town_banks >= 3 and ways.has("steps") and ways.has("trail"), "town=%d ways=%s" % [town_banks, str(ways.keys())])
 	check("Terrain pass 2: every waterfall has a pond on top, the fall down the face and a pool at the foot", falls.all(func(x): return x), "falls=%s" % str(falls))
 	var art_ok := true
 	for pth in ["terrain/trail_earth_2_l.png", "terrain/trail_turf_1_r.png", "terrain/fall_stone_1_2_f3.png", "terrain/fall_earth_top_0_f0.png",
@@ -4738,3 +4739,95 @@ func run_melee() -> void:
 	G.player.swing = null
 	check("Melee: swords and clubs slash on the hit frames, knives and spears thrust on the stab frames, with the weapon on the hand in all 6",
 		stabs and keys_ok and slash == ["hit", 3] and thrust == ["stab", 3], "%s %s %s" % [stabs, slash, thrust])
+
+func run_refugees() -> void:
+	# Nov 22: the Voss family at the bridge, the camp on the south bank, its needs, the break-in and the meeting
+	var G = Game
+	start("adventure", 2)
+	G.state.day = Refugees.ARRIVE_DAY - 2
+	var rep: Dictionary = sleep()
+	var none_yet: bool = Refugees.stage() == 0
+	rep = sleep()
+	var lines := " ".join(rep.get("lines", []))
+	var arrived: bool = Refugees.stage() == 1 and "Strangers came up the river road" in lines
+	at("town", 30, 30, "down")
+	Townsfolk.map_id = ""
+	Townsfolk.refresh(G.map)
+	var lead = Townsfolk.folk.filter(func(f): return f.role == "arrival_lead")
+	check("Summer 5: the Voss family arrives and waits at the south end of the bridge with an officer", none_yet and arrived and lead.size() == 1 and Townsfolk.folk.any(func(f): return f.role == "officer"),
+		"stage=%d lead=%d" % [Refugees.stage(), lead.size()])
+	# speaking up for them: the camp opens the next morning, warmer
+	G.state.flags.refugees_vouched = true
+	rep = sleep()
+	var m: GameMap = G.maps.town
+	var count := func(t: String) -> int:
+		var n := 0
+		for kk in m.objects:
+			if m.objects[kk].type == t: n += 1
+		return n
+	var ok_camp: bool = Refugees.camp_up() and Refugees.goodwill() == 10 and count.call("camp_tarp") == 4 and count.call("camp_bonfire") == 1 and count.call("camp_board") == 1
+	# the camp can be walked to from the bridge, and its board and cook reached
+	var w0: Dictionary = m.warps[0]
+	var seen := reach(m, Vector2i(int(w0.x), int(w0.y) - 1))
+	var board = null
+	for kk in m.objects:
+		if m.objects[kk].type == "camp_board": board = m.objects[kk]
+	check("After you speak up, the camp opens on the south bank (shelters, fire, board) and you can walk to it", ok_camp and board != null and reachable(seen, board),
+		"up=%s gw=%d tarps=%d" % [Refugees.camp_up(), Refugees.goodwill(), count.call("camp_tarp")])
+	at("town", 30, 30, "down")
+	Townsfolk.map_id = ""
+	Townsfolk.refresh(G.map)
+	var grimy: bool = Townsfolk.folk.filter(func(f): return f.role == "refugee").all(func(f): return f.look.get("grimy", false))
+	check("The camp has tired, grimy refugees round the fire, a cook and two peace officers", grimy and Townsfolk.folk.any(func(f): return f.role == "camp_cook") and Townsfolk.folk.filter(func(f): return f.role == "officer").size() == 2)
+	# the camp's needs: twelve cooked dishes -> done next morning, seeds and goodwill
+	G.add_item("fried_egg" if Data.items.has("fried_egg") else "pumpkin_pie", 12)
+	var put := Refugees.give("meals", 0)
+	var seeds0: int = G.count_item("potato_seed")
+	sleep()
+	check("Bringing the camp what it needs: done the next morning, with goodwill and a thank-you", put == 12 and Refugees.need_state("meals").done and Refugees.goodwill() == 25 and G.count_item("potato_seed") >= seeds0 + 10,
+		"put=%d gw=%d" % [put, Refugees.goodwill()])
+	G.add_item("wood", 60); G.add_item("cloth", 15); G.add_item("rope", 4)
+	for i in 3: Refugees.give("shelter", i)
+	sleep()
+	check("Real Shelter: the tarps come down and tents go up", count.call("camp_tent") >= 4 and count.call("camp_tarp") == 0)
+	# the break-in: clues appear; with both, the meeting clears the camp
+	G.state.day = Refugees.THEFT_DAY - 1
+	rep = sleep()
+	var clue_p = null; var clue_b = null
+	for kk in m.objects:
+		if m.objects[kk].type == Refugees.CLUE_PATCH: clue_p = m.objects[kk]
+		if m.objects[kk].type == Refugees.CLUE_PRINTS: clue_b = m.objects[kk]
+	check("Autumn 10: Hal's store is broken into, and two clues turn up in town", int(Refugees.st().theft) == 1 and clue_p != null and clue_b != null and reachable(seen, clue_p) and reachable(seen, clue_b))
+	Refugees.interact(clue_p); Refugees.interact(clue_b)
+	U.close_all()
+	G.state.day = Refugees.MEETING_DAY - 1
+	sleep()
+	var money0: int = int(G.state.money)
+	var ev: bool = Refugees.has_evidence() and int(Refugees.st().theft) == 2
+	Refugees.decide("cleared")
+	check("With the patch and the prints, the meeting clears the camp: goodwill, Hal's thanks, and the camp stays", ev and Refugees.camp_up() and Refugees.goodwill() >= 55 and int(G.state.money) == money0 + 500 and str(Refugees.st().outcome) == "cleared")
+	G.write_save()
+	G.load_game(G.state.mode, 2)
+	check("The camp and its story are saved", Refugees.camp_up() and str(Refugees.st().outcome) == "cleared" and G.maps.town.objects.values().any(func(o): return o.type == "camp_bonfire"))
+	# another world: sending the camp away empties the bank
+	start("adventure", 3)
+	G.state.day = Refugees.ARRIVE_DAY
+	Refugees.st().stage = 2; Refugees.st().camp_day = G.state.day
+	Refugees.setup(G.maps)
+	Refugees.st().theft = 2
+	Refugees.decide("left")
+	var left_n := 0
+	for kk in G.maps.town.objects:
+		if G.maps.town.objects[kk].get("camp", false): left_n += 1
+	check("If the town sends the camp away, the south bank is empty again", not Refugees.camp_up() and left_n == 0)
+	# the conversations load and their choices reach the game
+	var plays := []
+	for tl in ["refugee_arrival", "camp_nell", "refugee_meeting", "refugee_meeting_evidence"]:
+		plays.append(Talk.play(tl))
+		var dlg = get_tree().root.get_node_or_null("Dialogic")
+		if dlg != null: dlg.end_timeline()
+		Talk._on_end()
+	start("adventure", 3)
+	Refugees.st().stage = 2; Refugees.st().theft = 2
+	Talk._on_signal("camp:curfew")
+	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))

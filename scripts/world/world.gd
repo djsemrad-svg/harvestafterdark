@@ -2003,6 +2003,7 @@ func interact(from_mouse: bool) -> void:
 func interact_object(o: Dictionary) -> void:
 	var st: Dictionary = Game.state
 	var def: Dictionary = Data.obj_defs.get(o.type, {})
+	if Refugees.interact(o): return
 	match o.type:
 		"bed", "big_bed":
 			Game.ui.confirm("Go to sleep and start the next day?", func(): Game.end_day("sleep"))
@@ -2064,7 +2065,7 @@ func interact_object(o: Dictionary) -> void:
 		"fest_sign":
 			Game.ui.say("", str(o.get("text", "")))
 		"town_ledger":
-			Game.ui.open("restoration")
+			if not Refugees.meeting(): Game.ui.open("restoration")
 		"museum_desk":
 			Game.ui.open("museum")
 		"curio_wall":

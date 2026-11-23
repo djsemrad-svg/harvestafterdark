@@ -1296,6 +1296,52 @@ func _ov_restoration() -> Control:
 	v.add_child(_close_btn())
 	return pw[0]
 
+# ---------------------------------------------------------------- the refugee camp's needs (Refugees, Nov 22)
+func _ov_camp() -> Control:
+	var pw := _window("What the camp needs", 380)
+	var v: VBoxContainer = pw[1]
+	var gw := Refugees.goodwill()
+	var mood := "wary of the town" if gw < 10 else ("settling in" if gw < 40 else ("part of the town" if gw < 70 else "glad they came"))
+	v.add_child(K.label("Nell's list, pinned to the camp board. Bring what you can; you'll see the difference the next morning. The camp is %s." % mood, 6, K.INK_SOFT, true))
+	if overlay.has("msg"): v.add_child(K.label(str(overlay.msg), 6, K.MOSS, true))
+	var list := K.vbox(3)
+	for n in Refugees.NEEDS:
+		var ns := Refugees.need_state(n.id)
+		var box := K.row_box(Color("#e8f0d8") if ns.done else Color("#fff6e4"))
+		var col := K.vbox(1)
+		var state_txt: String = "[color=#3f7a2c]Done[/color]" if ns.done else ("[color=#c87a1a]Tomorrow[/color]" if ns.ready else "")
+		col.add_child(K.rich("[b]%s[/b]  [color=#5c3a1c](%s)[/color]  %s" % [n.name, n.who, state_txt], 7))
+		col.add_child(K.label(n.desc + " When it's done: " + n.unlock, 6, K.INK_SOFT, true))
+		if not ns.done and not ns.ready:
+			var grid := GridContainer.new()
+			grid.columns = 3
+			for i in n.needs.size():
+				var nd: Array = n.needs[i]
+				var full: bool = int(ns.given[i]) >= int(nd[1])
+				var have: int = Restoration.matching(nd).reduce(func(acc, s): return acc + int(Game.state.inventory[s].qty), 0)
+				var lb := K.rich("%s%s: %d/%d[/color]" % ["[color=#3f7a2c]" if full else "[color=#4a2a12]", Restoration.need_name(nd), int(ns.given[i]), int(nd[1])], 6)
+				lb.custom_minimum_size.x = 120
+				grid.add_child(lb)
+				var hv := K.label("(you have %d)" % have if not full else "", 5, K.INK_SOFT)
+				hv.custom_minimum_size.x = 70
+				grid.add_child(hv)
+				var nid: String = n.id
+				var ii: int = i
+				var btn := K.button("Give", func():
+					var put := Refugees.give(nid, ii)
+					overlay.msg = ("Gave %d %s." % [put, Restoration.need_name(Refugees.need(nid).needs[ii])]) if put > 0 else "You don't have any of that."
+					render_overlay(), "small")
+				btn.disabled = full or have <= 0
+				grid.add_child(btn)
+			col.add_child(grid)
+		box.add_child(col)
+		list.add_child(box)
+	v.add_child(K.scroll(list, 190))
+	if Refugees.need_state("work").get("done", false):
+		v.add_child(K.button("Mara's swap blanket", func(): open("shop", {"shop": "camp_swap"}), "small"))
+	v.add_child(_close_btn())
+	return pw[0]
+
 func _ov_museum() -> Control:
 	var pw := _window("The Curio Cabinet: donations", 340)
 	var v: VBoxContainer = pw[1]

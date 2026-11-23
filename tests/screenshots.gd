@@ -394,6 +394,36 @@ func _ready() -> void:
 		Game.player.swing = null
 		get_tree().quit()
 		return
+	if only == "camp":
+		# the refugees: the family at the bridge, the camp by day and at dusk, Nell's list, a clue
+		main.ui.close_all()
+		Game.state.weather = "sun"; Game.state.time = 640
+		Game.state.day = Refugees.ARRIVE_DAY
+		Refugees.st().stage = 1; Refugees.st().arrived = Game.state.day
+		Refugees.setup(Game.maps)
+		Townsfolk.map_id = ""
+		Game.change_map("town", 57, 72, "down", {"silent": true})
+		Game.enemies.clear(); main.world.view.snap_camera()
+		main.ui.visible = false
+		await frames(20)
+		await shot("66_camp_arrival")
+		Game.state.day = Refugees.ARRIVE_DAY + 21
+		Refugees.st().stage = 2; Refugees.st().camp_day = Refugees.ARRIVE_DAY
+		Refugees.setup(Game.maps)
+		Townsfolk.map_id = ""
+		for t in [[640, "day"], [1180, "dusk"]]:
+			Game.state.time = t[0]
+			Game.change_map("town", 80, 72, "down", {"silent": true})
+			Game.enemies.clear(); main.world.view.snap_camera()
+			await frames(20)
+			await shot("66_camp_%s" % t[1])
+		main.ui.visible = true
+		main.ui.open("camp")
+		await frames(6)
+		await shot("66_camp_needs")
+		main.ui.close_all()
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

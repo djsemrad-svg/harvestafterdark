@@ -72,9 +72,10 @@ static func refresh(m: GameMap) -> void:
 	if m.id == "town" and not fest.is_empty():
 		plan["crowd"] = 10
 		plan["merchant"] = 1
+	var camp: bool = m.id == "town" and Game.state.has("day") and (Refugees.stage() == 1 or Refugees.camp_up())
 	if m.id == "archive" and Relics.open():
 		plan = {"curio_keeper": 1, "browse": 1}
-	if plan.is_empty():
+	if plan.is_empty() and not camp:
 		return
 	var r := RandomNumberGenerator.new()
 	r.seed = hash("%s|%d|%d" % [m.id, int(Game.state.seed), _day])
@@ -100,6 +101,8 @@ static func refresh(m: GameMap) -> void:
 			g.post = str(p[2])
 			g.gun = guns[r.randi() % guns.size()]
 			folk.append(g)
+	if camp:
+		_camp_folk(m, r, used)
 	for role in plan:
 		for i in int(plan[role]):
 			match role:
@@ -207,6 +210,52 @@ static func refresh(m: GameMap) -> void:
 					var dir := "right" if off.x < 0 else ("left" if off.x > 0 else ("up" if off.y > 0 else "down"))
 					folk.append(_make(r, "camp", spot, dir))
 
+## The refugees (Refugees): the Voss family waiting at the bridge, or the camp on the south bank with its cook,
+## people round the fire and by the shelters, and two peace officers walking its edge. Worn, faded, grimy clothes.
+static func _camp_folk(m: GameMap, r: RandomNumberGenerator, used: Dictionary) -> void:
+	if Refugees.stage() == 1:
+		for i in Refugees.BRIDGE.size():
+			var b: Array = Refugees.BRIDGE[i]
+			var f := _make(r, "arrival_lead" if i == 0 else "arrival", Vector2i(int(b[0]), int(b[1])), str(b[2]))
+			f.name = Refugees.FAMILY[i] + " Voss"
+			f.look.grimy = true
+			f.hours = [0, 1440]
+			used[Vector2i(int(b[0]), int(b[1]))] = true
+			folk.append(f)
+		var ob: Array = Refugees.BRIDGE_OFFICER
+		var o := _make(r, "officer", Vector2i(int(ob[0]), int(ob[1])), str(ob[2]))
+		o.name = Refugees.OFFICERS[0]
+		o.look.mi_acc = "06_Policeman_Hat_01"
+		o.hours = [0, 1440]
+		folk.append(o)
+		return
+	var curfew := str(Refugees.st().outcome) == "curfew"
+	var c := Refugees.BONFIRE
+	var ring := [Vector2i(-2, -1), Vector2i(2, -1), Vector2i(-2, 1), Vector2i(2, 1), Vector2i(0, -1), Vector2i(-3, 0), Vector2i(3, 0)]
+	var n := mini(ring.size(), 2 + Refugees.shelters() - (2 if curfew else 0))
+	for i in n:
+		var spot := _free_near(m, c.x + ring[i].x, c.y + ring[i].y, r, used)
+		if spot.x < 0: continue
+		var dir := "right" if spot.x < c.x else ("left" if spot.x > c.x else ("down" if spot.y < c.y else "up"))
+		var f := _make(r, "refugee", spot, dir)
+		f.look.grimy = true
+		if i == 0: f.name = "Mara"; f.mara = true
+		if curfew: f.hours = [360, 1260]
+		folk.append(f)
+	var ck := _make(r, "camp_cook", Refugees.COOKPOT + Vector2i(-1, 0), "right")
+	ck.name = Refugees.COOK
+	ck.look.grimy = true
+	folk.append(ck)
+	for i in 2:
+		var g := _make(r, "patrol", Vector2i(Refugees.CAMP.position.x + 1 + i * 20, Refugees.CAMP.position.y), "right")
+		g.role = "officer"
+		g.name = Refugees.OFFICERS[i]
+		g.look.mi_acc = "06_Policeman_Hat_0%d" % (1 + i)
+		g.gun = "pistol_9mm"
+		g.beat = [g.pos, g.pos + Vector2(16 * 18, 0)]
+		g.hours = [0, 1440]
+		folk.append(g)
+
 static func _make(r: RandomNumberGenerator, role: String, tile: Vector2i, dir: String) -> Dictionary:
 	var look := {"skin": SKIN[r.randi() % SKIN.size()]}
 	for part in ["body", "eyes", "outfit", "hair"]:
@@ -254,11 +303,13 @@ static func update(dt: float) -> void:
 		f.t = float(f.t) - dt
 		if f.role == "walk" or f.role == "browse":
 			_walk(m, f, dt)
-		elif f.role == "patrol":
+		elif f.role == "patrol" or (f.role == "officer" and f.has("beat")):
 			_patrol(f, dt)
 		elif float(f.t) <= 0:
 			f.t = 3.0 + float(f.seed % 5)
 			match f.role:
+				"refugee", "arrival":
+					Game.emote(f, ["dots", "sweat", "dots", "question"][(int(f.seed) + int(Game.state.time)) % 4], 1.6)
 				"chat", "camp", "crowd":
 					Game.emote(f, EMOTES[(int(f.seed) + int(Game.state.time)) % EMOTES.size()], 1.6)
 				"guard":
@@ -339,6 +390,22 @@ static func in_front(pos: Vector2, dirv: Vector2i) -> Variant:
 	return null
 
 static func talk(f: Dictionary) -> void:
+	if f.role == "arrival_lead":
+		if not Talk.play("refugee_arrival"):
+			Game.ui.say_as(f.name, f.look, Refugees.line("arrival", 0))
+		return
+	if f.role == "camp_cook":
+		if not Talk.play("camp_nell"): Game.ui.open("camp")
+		return
+	if f.role in ["refugee", "arrival", "officer", "camp_cook"]:
+		f.dir = {"up": "down", "down": "up", "left": "right", "right": "left"}[Game.player.dir]
+		f.t = 4.0
+		var k: int = int(f.line) + int(Game.state.day)
+		if f.get("mara", false) and Refugees.need_state("work").get("done", false):
+			Game.ui.say_as(f.name, f.look, "My blanket's out by the board when I'm not cooking. Salvage for cheap, and I'll take any forage you've got.")
+			return
+		Game.ui.say_as(f.name, f.look, Refugees.line(f.role if f.role != "arrival" else "arrival", k))
+		return
 	if f.role == "curio_keeper":
 		if not Talk.play("curio_mabel"):
 			Game.ui.open("shop", {"shop": Relics.SHOP_ID})
@@ -349,6 +416,8 @@ static func talk(f: Dictionary) -> void:
 			Game.ui.open("shop", {"shop": "festival"})
 		return
 	var lines: Array = LINES.get(f.role, LINES.walk)
+	if Refugees.camp_up() and f.role in ["chat", "walk", "queue"] and (int(f.seed) + int(Game.state.day)) % 2 == 0:
+		lines = Refugees.LINES.town_grumble
 	f.dir = {"up": "down", "down": "up", "left": "right", "right": "left"}[Game.player.dir]
 	f.t = 4.0
 	Game.ui.say_as(f.name, f.look, lines[(int(f.line) + int(Game.state.day)) % lines.size()])

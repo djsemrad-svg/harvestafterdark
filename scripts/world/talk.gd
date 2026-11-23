@@ -79,6 +79,11 @@ static func _on_signal(arg) -> void:
 			_after.append(func(): Game.ui.open(p[1]))
 		"costume":
 			_after.append(func(): Festivals.costume())
+		"camp":
+			Refugees.on_signal(str(arg))
+		"campshop":
+			if Refugees.need_state("work").get("done", false): _after.append(func(): Game.ui.open("shop", {"shop": "camp_swap"}))
+			else: Game.toast("Mara has nothing to trade yet. The camp needs tools to work first.", "", "warn")
 		"give":
 			if Data.items.has(p[1]): Game.add_item(p[1], int(p[2]) if p.size() > 2 else 1)
 		"gold":

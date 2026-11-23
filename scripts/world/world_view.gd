@@ -629,6 +629,9 @@ func _draw_folk_gun(f: Dictionary) -> void:
 ## Fences placed by the map makers that join up like the ones you build.
 const JOINED_FIXTURES := ["rail_fence", "salvage_wall"]
 
+## Objects with frames: [frame count, seconds a frame]
+const ANIMATED := {"camp_bonfire": [6, 0.12], "camp_cookpot": [6, 0.12], "laundry_line": [6, 0.2], "laundry_line_2": [6, 0.2]}
+
 func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 	var nb := 0
 	var is_bar: bool = Data.obj_defs.get(o.type, {}).get("barrier", false)
@@ -640,6 +643,14 @@ func _draw_obj(o: Dictionary, m: GameMap, e: Dictionary) -> void:
 				nb |= 1 << i
 			i += 1
 	var fr := (1 if is_night(e) else 0) if o.type == "window" else int(anim_t / 0.15) % 4
+	if ANIMATED.has(o.type):
+		# animated pack sprites (the refugee camp's fire, cookpot and washing): objects/<type>_f<n>.png
+		var an: Array = ANIMATED[o.type]
+		var at: Texture2D = Art.override("objects/%s_f%d.png" % [o.type, (int(anim_t / float(an[1])) + int(o.x)) % int(an[0])])
+		if at != null:
+			var fw: int = int(Data.obj_defs.get(o.type, {}).get("w", 1))
+			draw_texture(at, Vector2(int(o.x) * 16 + int((fw * 16 - at.get_width()) / 2), int(o.y) * 16 + 16 - at.get_height()))
+			return
 	var sp = Art.get_obj(o, e.season, fr, nb)
 	var sx := 0.0
 	if o.get("shake", 0.0) > 0:

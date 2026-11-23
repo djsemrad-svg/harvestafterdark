@@ -1,0 +1,12 @@
+Ruth: Thank you for coming. Hal's lost a week's takings, and half this town thinks the camp did it.
+Ruth: I need to know what we do now. What do you say?
+- Show them the torn patch and the boot prints.
+	Ruth: A Dry Creek patch. Biker boots heading out the east road. Hal, you see this?
+	Ruth: Then it wasn't the camp. And this town owes some people an apology.
+	[signal arg="camp:cleared"]
+- Let them stay, with a curfew.
+	Ruth: A curfew, then. Nine o'clock. It'll keep the peace, if nothing else.
+	[signal arg="camp:curfew"]
+- Ask the camp to move on.
+	Ruth: ...If that's what it takes. I'll tell Mara myself.
+	[signal arg="camp:left"]

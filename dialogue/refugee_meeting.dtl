@@ -1,0 +1,10 @@
+Ruth: Thank you for coming. Hal's lost a week's takings, and half this town thinks the camp did it.
+Ruth: I won't pretend I know who it was. But I need to know what we do now. What do you say?
+- Let them stay. Put a curfew on the camp until this blows over.
+	Ruth: A curfew, then. Nine o'clock. It isn't fair to most of them, but it'll keep the peace.
+	[signal arg="camp:curfew"]
+- Ask the camp to move on.
+	Ruth: ...If that's what it takes. I'll tell Mara myself. It shouldn't come from anyone else.
+	[signal arg="camp:left"]
+- Give me time to find out who really did it.
+	Ruth: Then look quickly. Behind the store, around the gates. I can hold them off a day or two, no more.

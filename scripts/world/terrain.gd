@@ -35,7 +35,7 @@ const SIZES := {"town": [4, 9, 3, 5], "mountain": [5, 11, 4, 8], "residential": 
 static var enabled := true      # the test runner turns terrain off except in the terrain tests
 ## Hand-placed rises tried before the random ones: [x, y, w, h, style] (town is too built up for random ones)
 ## Their trees and brush are cleared ("clear"), so the bank isn't walled in by the woods on the south bank.
-const FIXED := {"town": [[6, 74, 12, 3, "turf"], [24, 74, 12, 3, "turf"], [66, 74, 14, 3, "turf"], [88, 74, 14, 3, "turf"]]}
+const FIXED := {"town": [[6, 74, 12, 3, "turf"], [24, 74, 12, 3, "turf"]]}      # east of the bridge is the refugee camp
 ## How often the way up is a steep trail instead of steps, and how often a cliff gets a waterfall (one per map)
 const TRAIL := {"earth": 0.5, "turf": 0.5, "stone": 0.2}
 const FALL_CHANCE := 0.65
@@ -53,6 +53,8 @@ static func setup(maps: Dictionary) -> void:
 		var m: GameMap = maps[id]
 		if not Game.state.terrain.has(id):
 			Game.state.terrain[id] = plan(m, id)
+		if id == "town":      # the refugee camp's bank stays flat (older plans had banks there)
+			Game.state.terrain[id] = Game.state.terrain[id].filter(func(r): return not Rect2i(int(r.x), int(r.y), int(r.w), int(r.h) + 2).intersects(Refugees.CAMP))
 		for r in Game.state.terrain[id]:
 			apply(m, r)
 
@@ -216,6 +218,7 @@ static func _try2(m: GameMap, c: Dictionary, r: RandomNumberGenerator, reach0: D
 	var f: int = FACE[c.style]
 	var lv := int(c.lvl)
 	if x0 < 0 or y0 < 0 or x1 >= m.w or y1 + f + 2 >= m.h or c.w < 4 or c.h < 3: return _no("bounds")
+	if m.id == "town" and Rect2i(x0 - 1, y0, int(c.w) + 2, int(c.h) + f + 2).intersects(Refugees.CAMP): return _no("refugee camp")
 	for y in range(y0 - 1, y1 + f + 2):
 		for x in range(x0 - 1, x1 + 2):
 			if not m.in_bounds(x, y): continue

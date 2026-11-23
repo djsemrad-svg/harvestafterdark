@@ -767,6 +767,26 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Settings: new Ambience volume slider (`settings.ambience`, default 60). Music bus louder (0.7) for real tracks.
 - Tests `run_audio` (the test runner turns playback off: `Soundscape.enabled`).
 
+### Nov 22: the refugees (roadmap item 30, `scripts/world/refugees.gd`, art `tools/camp_art.py`)
+- Summer 5 (`ARRIVE_DAY` 35): the Voss family (Mara, Tomas, Ilse) waits at the south end of the bridge with Officer
+  Dunn. Mara's Dialogic conversation (`refugee_arrival`): speak up for them (flag `refugees_vouched`, +10 goodwill) or
+  keep out of it (`refugees_heard`). Either way the town lets them in the next morning (or after 3 days anyway).
+- The camp (`CAMP`, the south bank east of the bridge, town tiles 62-110 x 74-79; town banks there were dropped and
+  are filtered out of older plans): recoloured patched tarps (4, one more a week, up to 9), the Modern Exteriors
+  animated campfire, cookpot and laundry lines (`WorldView.ANIMATED`), the camp board. Objects marked `camp`, rebuilt
+  each morning and on load (`Refugees.setup`). People (`Townsfolk._camp_folk`): refugees round the fire in worn,
+  faded, smudged clothes (`look.grimy`, `MiChars._grime`), Nell the cook, two peace officers walking the camp's
+  edge. Town chatter now and then grumbles about the newcomers.
+- Nell's list (window `camp`, Dialogic `camp_nell`, the camp board): Warm Meals (12 cooked dishes: seeds), Real
+  Shelter (wood, cloth, rope: proper tents), Fever Medicine (bandages, antibiotics: a Rare Unusual Stone), Tools to
+  Work (iron bars, wood, nails: Mara's swap blanket shop `camp_swap`). Each raises goodwill, done the next morning.
+- Autumn 10 (`THEFT_DAY` 70): Hal's store is broken into; two clues appear in town: a torn Dry Creek MC patch behind
+  the store and boot prints by the east gate (quest items). Autumn 13 on: Ruth's ledger holds the town meeting
+  (`refugee_meeting` or, with both clues, `refugee_meeting_evidence`): cleared (+30 goodwill, 500 gold, Hal
+  apologises), curfew (camp smaller, out 6 am to 9 pm, sour lines) or left (the bank is emptied).
+- Tests `run_refugees`; screenshot mode `camp`. Not built: what happens to the camp after autumn (winter raid,
+  Long Night festival, refugees moving into town).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

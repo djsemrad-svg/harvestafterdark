@@ -1,0 +1,11 @@
+Nell: Hungry? You look it. Everyone does down here.
+- What does the camp need?
+	Nell: Here's the list. Anything helps, and people remember who helped.
+	[signal arg="open:camp"]
+- How's everyone holding up?
+	Nell: Better than last week. Worse than we let on.
+- Is Mara trading?
+	Nell: If her blanket's out, she is. Ask at the board.
+	[signal arg="campshop"]
+- Never mind.
+	Nell: Soup's at six.

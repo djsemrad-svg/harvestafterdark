@@ -211,6 +211,8 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk", n
 			fr = _tint(fr, eye_glow)
 		elif infected:
 			fr = _dead(fr)
+		elif look.get("grimy", false) and layer[0] in ["outfit", "hair", "acc", "wear"]:
+			fr = _grime(fr, layer[0] == "outfit")
 		if layer[0] == "hair" and hat != null:
 			fr = _under_hat(fr, hat, out)
 		out.blend_rect(fr, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
@@ -337,6 +339,18 @@ static func _tint(fr: Image, glow: Color) -> Image:
 			var c := fr.get_pixel(x, y)
 			if c.a > 0 and not _is_outline(c):
 				fr.set_pixel(x, y, Color(glow.r, glow.g, glow.b, c.a))
+	return fr
+
+## Refugees (Nov 22): clothes and hair worn thin on the road: faded, a little darker, with smudges of dirt.
+static func _grime(fr: Image, smudge: bool) -> Image:
+	for y in fr.get_height():
+		for x in fr.get_width():
+			var c := fr.get_pixel(x, y)
+			if c.a == 0 or _is_outline(c): continue
+			var g := c.get_luminance()
+			var k := 0.88
+			if smudge and y >= 20 and (x * 7 + y * 13) % 11 == 0: k = 0.62      # dirt
+			fr.set_pixel(x, y, Color(lerpf(c.r, g, 0.35) * k * 1.02, lerpf(c.g, g, 0.35) * k, lerpf(c.b, g, 0.35) * k * 0.92, c.a))
 	return fr
 
 ## Infected clothes and hair: faded, greyed and grimy.

@@ -2446,3 +2446,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "limezu_
 
 # ---------------------------------------------------------------- Modern Farm farmer poses for tools (Nov 22), after the character parts
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_poses.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- refugee camp pictures (Nov 22)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "camp_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

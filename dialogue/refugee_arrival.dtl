@@ -1,0 +1,12 @@
+Mara: Please, before you say anything. We're not sick. Nobody's been bitten. We walked from the coast.
+Mara: My father can't walk much further, and Ilse hasn't slept in two days. The officer says the town will decide.
+- You'll stay. I'll tell Ruth myself.
+	Mara: You'd do that? For people you don't know?
+	Mara: Thank you. I won't forget it. None of us will.
+	[signal arg="flag:refugees_vouched"]
+- It's not my call. The town will decide.
+	Mara: That's fair. It's more than most places gave us.
+	[signal arg="flag:refugees_heard"]
+- What happened on the coast?
+	Mara: The quiet came first. Then the boats stopped coming in. Then the people who went to see didn't come back.
+	Mara: We left the night the lighthouse went dark.

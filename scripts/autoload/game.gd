@@ -843,6 +843,7 @@ func build_persistent_maps() -> void:
 	sync_gates()
 	Terrain.setup(maps)
 	Festivals.setup(maps)
+	Refugees.setup(maps)
 	Relics.migrate()
 	Relics.daily()
 	# older saves: clear anything sitting where a newer building now stands
@@ -3678,6 +3679,7 @@ func end_day(reason: String) -> void:
 			overnight_object(maps[mid], o, rep)
 	Woodland.overnight(maps)
 	Restoration.overnight(rep)
+	Refugees.overnight(rep)
 	animals_overnight(rep)
 	conditions_overnight(rep)
 	if grew: rep.lines.append("Your crops grew overnight (%d plants watered)." % grew)

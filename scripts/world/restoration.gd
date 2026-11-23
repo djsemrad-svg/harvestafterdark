@@ -102,7 +102,7 @@ static func need_name(n: Array) -> String:
 	var k: String = n[0]
 	if k == "gold": return "Gold"
 	if k.begins_with("cat:"):
-		return "Any " + {"crop": "crops", "fish": "fish", "artifact": "artifacts", "weapon": "weapons"}.get(k.substr(4), k.substr(4))
+		return "Any " + {"crop": "crops", "fish": "fish", "artifact": "artifacts", "weapon": "weapons", "cooked": "cooked dishes"}.get(k.substr(4), k.substr(4))
 	return Data.items[k].name
 
 ## Items in your pack that can go toward a need, lowest quality first.
