@@ -946,6 +946,19 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
     grey and worn.
   - `Art.building_art` uses `buildings/<kind>_<condition>.png` as it is when it exists (snow still added in winter).
 
+### Nov 23: the Crawler crawls
+- Daniel: it looked like a zombie on its side, gliding around. Now `Infected.make_look` gives the Crawler
+  `look.crawl` (and no `lying`), and `Art.char_image` hands it to `Art.crawler_image(look, dir, frame)`, a 24 x 24
+  figure drawn in code from the look's skin, shirt, pants, hair and eyes, with the usual dark outline:
+  - side: flat on its belly, head lifted, legs dragging (one knee bends on the other stroke); left is right mirrored.
+  - toward you: face and hair low at the front, back and short legs behind, arms out like a swimmer.
+  - away: back of the head, arms reaching up the screen, legs and soles toward you.
+  - four frames: one arm reaches, it pulls (the body comes a pixel forward), the other arm reaches, it pulls.
+- `Infected._move`: a Crawler moves at 0.35x speed while an arm reaches and 1.65x while it pulls (one 0.8 s
+  cycle, matched to the frames), so it lurches instead of gliding. Its lunge is unchanged.
+- Knocked-down infected still use the rotated lying sprite. Test section `crawler`; screenshot mode `crawler`
+  (every direction and frame, plus four on the grass).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

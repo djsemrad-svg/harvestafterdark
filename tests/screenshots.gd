@@ -288,6 +288,37 @@ func _ready() -> void:
 				Art.char_image(lk, "down", 0).save_png(out + "zg_%s_%d.png" % [ty, i])
 		get_tree().quit()
 		return
+	if only == "crawler":
+		# the Crawler in every direction and frame, saved straight to the shots folder, then three on the grass
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 3
+		for i in 3:
+			var lk: Dictionary = Infected.make_look("crawler", rng)
+			for dir in ["down", "up", "left", "right"]:
+				for f in 4:
+					Art.char_image(lk, dir, f).save_png(out + "cr_%d_%s_%d.png" % [i, dir, f])
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("residential", 30, 22, "down", {"silent": true})
+		Townsfolk.folk = []
+		Game.enemies.clear()
+		var t := Vector2i(int(Game.player.pos.x) / 16, int(Game.player.pos.y) / 16)
+		# a row of Crawlers on the grass below you, one facing each way, mid-crawl
+		var crs := []
+		for k in 4:
+			var e: Dictionary = main.world.inf.spawn("crawler", t.x - 3 + k * 2, t.y + 3)
+			crs.append(e)
+		for n in 30:
+			for k in 4:
+				var e: Dictionary = crs[k]
+				e.state = "wander"; e.wt = 99.0; e.wander = Vector2.ZERO
+				e.dir = ["down", "up", "left", "right"][k]; e.frame = k
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out + "cr_scene.png")
+		get_tree().quit()
+		return
 	if only == "hud":
 		# the compact HUD (Nov 23): normal, goals opened, low health, minimal, full, and fading when you walk behind it
 		main.ui.close_all()

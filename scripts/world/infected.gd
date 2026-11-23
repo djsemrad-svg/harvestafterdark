@@ -42,6 +42,9 @@ static func make_look(type: String, rng: RandomNumberGenerator) -> Dictionary:
 		"hazmat": look.eyes = "#90f060"; look.face = "Plain"
 	look.scale = float(L.get("scale", 1.0))
 	look.lying = L.get("lying", false)
+	if d.get("ai", "") == "crawler":
+		look.crawl = true      # drawn crawling (Art.crawler_image), not lying on its side
+		look.lying = false
 	return look
 
 # ================================================================ spawning
@@ -219,6 +222,11 @@ func update(dt: float) -> void:
 		_move(e, mv * speed_mult, dt)
 
 func _move(e: Dictionary, mv: Vector2, dt: float) -> void:
+	# a Crawler moves in lurches: almost still while an arm reaches, a pull forward as it drags itself up
+	if mv != Vector2.ZERO and e.get("look", {}).get("crawl", false) and e.state != "lunge":
+		var ph := fmod(float(e.walk_t), 0.8) / 0.8      # one cycle: reach, pull, reach, pull (frames 0-3)
+		var half := fmod(ph * 2.0, 1.0)
+		mv *= 0.35 if half < 0.5 else 1.65
 	if mv != Vector2.ZERO:
 		var before: Vector2 = e.pos
 		w.move_entity(e, mv * dt, 4, 5)

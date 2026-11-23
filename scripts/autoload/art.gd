@@ -1424,11 +1424,14 @@ func look_key(l: Dictionary) -> String:
 	if l.get("grimy", false): parts.append("grimy")
 	parts.append(str(l.get("sprite", "")))
 	if l.has("wear"): parts.append("wear=" + str(l.wear))
-	for k in ["body", "extra", "scale", "lying", "raider", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc", "mi_hair_style", "mi_outfit_style", "mi_outfit_color", "mi_acc_style", "mi_acc_color"]:
+	for k in ["body", "extra", "scale", "lying", "crawl", "raider", "mi_body", "mi_eyes", "mi_outfit", "mi_hair", "mi_acc", "mi_hair_style", "mi_outfit_style", "mi_outfit_color", "mi_acc_style", "mi_acc_color"]:
 		if l.has(k): parts.append(k + "=" + str(l[k]))
 	return ",".join(parts)
 
 func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Image:
+	# Crawlers are drawn crawling (Nov 23), not as a person turned on its side
+	if look.get("crawl", false):
+		return crawler_image(look, dir, frame)
 	var ovr := char_override(look, dir, frame)
 	if ovr != null:
 		return ovr
@@ -1444,7 +1447,7 @@ func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Im
 	# the infected's hair and hats don't stand taller than a person's head (Nov 23)
 	if look.get("infected", false) and not look.get("lying", false):
 		im = _cap_height(im, 8)
-	# knocked-down infected and crawlers lie on the ground
+	# knocked-down infected lie on the ground
 	if look.get("lying", false):
 		var used := im.get_used_rect()
 		if used.size.x > 0:
@@ -1453,6 +1456,138 @@ func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Im
 	var sc: float = float(look.get("scale", 1.0))
 	if sc > 1.01:
 		im = grow_body(im, sc, look.get("lying", false))
+	return im
+
+## A Crawler in one of four directions (24 x 24, the ground at the bottom), coloured from its look. It pulls
+## itself along arm over arm on four frames: 0 the near arm reaches, 1 it pulls (the body comes forward a
+## pixel), 2 the other arm reaches, 3 it pulls. Legs drag behind. Infected.update moves it in lurches to match.
+func crawler_image(look: Dictionary, dir: String, frame: int) -> Image:
+	var im := Image.create(24, 24, false, Image.FORMAT_RGBA8)
+	var S := Color(str(look.get("skin", "#8fa58a")))
+	var Sd := S.darkened(0.25)
+	var C := Color(str(look.get("shirt", "#6a4a8a")))
+	var Cd := C.darkened(0.28)
+	var P := Color(str(look.get("pants", "#3a4a6a")))
+	var Pd := P.darkened(0.28)
+	var Hc := Color(str(look.get("hair", "#3a3a30")))
+	var E := Color(str(look.get("eyes", "#d8e070")))
+	var shoe := Color("#3a2a22")
+	var mouth := Color("#3a1a1a")
+	var f := frame % 4
+	var lift := 1 if f % 2 == 1 else 0          # frames 1 and 3: pulling, the body comes forward a pixel
+	var a_out := f < 2                            # frames 0-1: the near/left arm is out in front; 2-3: the other one
+	var put := func(x: int, y: int, c: Color) -> void:
+		if x >= 0 and y >= 0 and x < 24 and y < 24: im.set_pixel(x, y, c)
+	var rect := func(x0: int, y0: int, x1: int, y1: int, c: Color) -> void:
+		for y in range(y0, y1 + 1):
+			for x in range(x0, x1 + 1): put.call(x, y, c)
+	# a two-pixel-thick line, so arms and legs read at game size
+	var thick := func(a: Vector2i, b: Vector2i, c: Color) -> void:
+		var steps := maxi(absi(b.x - a.x), absi(b.y - a.y))
+		var side := Vector2i(0, 1) if absi(b.x - a.x) >= absi(b.y - a.y) else Vector2i(1, 0)
+		for i in steps + 1:
+			var t := float(i) / maxf(1.0, float(steps))
+			var p := Vector2i(roundi(lerpf(a.x, b.x, t)), roundi(lerpf(a.y, b.y, t)))
+			put.call(p.x, p.y, c)
+			put.call(p.x + side.x, p.y + side.y, c)
+	# shoulder to elbow in the shirt colour, elbow to hand bare, and a hand clawing the ground
+	var arm := func(sh: Vector2i, el: Vector2i, hand: Vector2i, sleeve: Color, skin: Color) -> void:
+		thick.call(sh, el, sleeve)
+		thick.call(el, hand, skin)
+		rect.call(hand.x, hand.y, hand.x + 1, hand.y + 1, skin.darkened(0.12))
+	if dir == "left" or dir == "right":
+		var b := lift
+		# far arm and far leg first, darker, behind the body
+		if a_out:
+			arm.call(Vector2i(13 + b, 16), Vector2i(15 + b, 13), Vector2i(17 + b, 19), Cd, Sd)
+		else:
+			arm.call(Vector2i(13 + b, 16), Vector2i(17 + b, 16), Vector2i(21, 18), Cd, Sd)
+		var far_knee := Vector2i(5 + b, 15) if not a_out else Vector2i(4 + b, 18)
+		thick.call(Vector2i(8 + b, 18), far_knee, Pd)
+		thick.call(far_knee, Vector2i(1 + b, 18), Pd)
+		rect.call(0 + b, 18, 1 + b, 19, shoe)
+		# near leg straight, dragging
+		thick.call(Vector2i(8 + b, 19), Vector2i(2 + b, 19), P)
+		rect.call(0 + b, 19, 1 + b, 20, shoe)
+		# torso flat on the ground, shoulders a little higher than the hips
+		rect.call(8 + b, 17, 11 + b, 20, C)
+		rect.call(12 + b, 16, 15 + b, 20, C)
+		rect.call(8 + b, 20, 15 + b, 20, Cd)
+		# head lifted, looking ahead
+		rect.call(15 + b, 11, 19 + b, 15, S)
+		rect.call(15 + b, 15, 18 + b, 15, Sd)
+		rect.call(15 + b, 10, 18 + b, 11, Hc)
+		rect.call(15 + b, 12, 15 + b, 13, Hc)
+		put.call(18 + b, 12, E)
+		put.call(19 + b, 14, mouth)
+		# near arm on top: reaching far ahead, or bent with the elbow up, pulling the body along
+		if a_out:
+			arm.call(Vector2i(13 + b, 17), Vector2i(17 + b, 17), Vector2i(21, 19), C, S)
+		else:
+			arm.call(Vector2i(13 + b, 17), Vector2i(15 + b, 14), Vector2i(17 + b, 19), C, S)
+	elif dir == "down":
+		var b := lift
+		# legs behind it (up the screen), short because they point away, splayed a little
+		var lk := 3 + (1 if a_out else 0)
+		var rk := 3 + (0 if a_out else 1)
+		thick.call(Vector2i(9, 9 + b), Vector2i(8, lk + b), Pd)
+		thick.call(Vector2i(13, 9 + b), Vector2i(14, rk + b), Pd)
+		rect.call(8, lk - 1 + b, 9, lk + b, shoe)
+		rect.call(14, rk - 1 + b, 15, rk + b, shoe)
+		# the back, seen from above, with the shoulders nearest you
+		rect.call(8, 8 + b, 15, 12 + b, C)
+		rect.call(7, 12 + b, 16, 14 + b, C)
+		rect.call(11, 8 + b, 12, 11 + b, Cd)      # spine shadow
+		# arms out to the sides like a swimmer: one reaching toward you, one bent and pulling
+		if a_out:
+			arm.call(Vector2i(7, 13 + b), Vector2i(4, 16 + b), Vector2i(4, 21), C, S)
+			arm.call(Vector2i(16, 13 + b), Vector2i(19, 12 + b), Vector2i(18, 17 + b), C, S)
+		else:
+			arm.call(Vector2i(7, 13 + b), Vector2i(4, 12 + b), Vector2i(4, 17 + b), C, S)
+			arm.call(Vector2i(16, 13 + b), Vector2i(19, 16 + b), Vector2i(18, 21), C, S)
+		# head low and lifted toward you: hair on top, the face below
+		rect.call(9, 14 + b, 14, 19 + b, S)
+		rect.call(9, 13 + b, 14, 15 + b, Hc)
+		rect.call(9, 19 + b, 14, 19 + b, Sd)
+		put.call(10, 17 + b, E)
+		put.call(13, 17 + b, E)
+		rect.call(11, 19 + b, 12, 19 + b, mouth)
+	else:
+		var b := -lift
+		# arms spread wide like a swimmer, reaching away up the screen one at a time
+		if a_out:
+			arm.call(Vector2i(7, 12 + b), Vector2i(6, 9 + b), Vector2i(6, 4), C, S)
+			arm.call(Vector2i(16, 12 + b), Vector2i(20, 14 + b), Vector2i(18, 10 + b), C, S)
+		else:
+			arm.call(Vector2i(7, 12 + b), Vector2i(3, 14 + b), Vector2i(4, 10 + b), C, S)
+			arm.call(Vector2i(16, 12 + b), Vector2i(16, 9 + b), Vector2i(16, 4), C, S)
+		# the back of the head, furthest away and low between the shoulders
+		rect.call(9, 7 + b, 14, 11 + b, Hc)
+		put.call(8, 9 + b, S)
+		put.call(15, 9 + b, S)
+		# the back, then the legs dragging toward you with the soles showing
+		rect.call(7, 12 + b, 16, 14 + b, C)
+		rect.call(8, 15 + b, 15, 17 + b, C)
+		rect.call(11, 12 + b, 12, 16 + b, Cd)      # spine shadow
+		var lk := 20 - (1 if a_out else 0)
+		var rk := 20 - (0 if a_out else 1)
+		thick.call(Vector2i(9, 17 + b), Vector2i(8, lk + b), P)
+		thick.call(Vector2i(13, 17 + b), Vector2i(14, rk + b), Pd)
+		rect.call(8, lk + 1 + b, 9, lk + 2 + b, shoe)
+		rect.call(14, rk + 1 + b, 15, rk + 2 + b, shoe)
+	# a dark outline round it all, like every other sprite
+	var src := im.duplicate()
+	var O := Color("#26242c")
+	for y in 24:
+		for x in 24:
+			if src.get_pixel(x, y).a > 0.5: continue
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q: Vector2i = Vector2i(x, y) + d
+				if q.x >= 0 and q.y >= 0 and q.x < 24 and q.y < 24 and src.get_pixel(q.x, q.y).a > 0.5:
+					im.set_pixel(x, y, O)
+					break
+	if dir == "left":
+		im.flip_x()
 	return im
 
 ## Takes rows out of the top of a sprite's hair or hat (just under its outline) until nothing stands above

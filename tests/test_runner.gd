@@ -1341,6 +1341,7 @@ func run_all() -> void:
 	run_homes()
 	run_hud()
 	run_infected_ai()
+	run_crawler()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4846,6 +4847,54 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_crawler() -> void:
+	# Nov 23: the Crawler is drawn crawling in four directions and moves in lurches, not a sideways body gliding
+	var G = Game
+	start("adventure", 2)
+	at("homestead", 30, 30, "down")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var lk: Dictionary = Infected.make_look("crawler", rng)
+	check("Crawler look is drawn crawling, not lying on its side", lk.get("crawl", false) and not lk.get("lying", false))
+	var sh: Dictionary = Infected.make_look("shambler", rng)
+	check("Other infected don't crawl", not sh.get("crawl", false))
+	var solid := func(im: Image) -> int:
+		var n := 0
+		for y in im.get_height():
+			for x in im.get_width():
+				if im.get_pixel(x, y).a > 0.5: n += 1
+		return n
+	var all_ok := true
+	var moves := true
+	for dir in ["down", "up", "left", "right"]:
+		var f0: Image = Art.char_image(lk, dir, 0)
+		var f2: Image = Art.char_image(lk, dir, 2)
+		if f0.get_width() != 24 or f0.get_height() != 24 or int(solid.call(f0)) < 60: all_ok = false
+		if f0.get_data() == f2.get_data(): moves = false
+	check("Crawler has a picture for every direction", all_ok)
+	check("Crawler's arms move between frames in every direction", moves)
+	var r: Image = Art.char_image(lk, "right", 1)
+	var l: Image = Art.char_image(lk, "left", 1)
+	r.flip_x()
+	check("Crawler facing left is the right-facing one mirrored", r.get_data() == l.get_data())
+	# lurching: slow while an arm reaches, quick while it pulls
+	G.enemies.clear()
+	var hm: GameMap = G.maps.homestead
+	var pt: Vector2i = W.player_tile()
+	for xx in range(pt.x - 2, pt.x + 12):
+		clear_tile(hm, xx, pt.y + 4)
+		if hm.structure_at(xx, pt.y + 4) == null: hm.set_tile(xx, pt.y + 4, "grass")
+	var e: Dictionary = W.inf.spawn("crawler", pt.x, pt.y + 4)
+	var steps := []
+	for i in 8:
+		var before: Vector2 = e.pos
+		W.inf._move(e, Vector2(20, 0), 0.1)
+		steps.append(e.pos.x - before.x)
+	var slow := float(steps[0]) + float(steps[1])
+	var quick := float(steps[2]) + float(steps[3])
+	check("Crawler moves in lurches (slow reach, quick pull)", quick > slow * 2.5 and slow > 0.0, str(steps))
+	check("Crawler is still drawn on the map", Art.get_char(e.look, e.dir, e.frame) != null)
 
 func run_infected_ai() -> void:
 	# Nov 23: LimboAI trees for the infected: noises, groans, ways round fences, loose packs
