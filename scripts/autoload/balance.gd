@@ -27,6 +27,7 @@ var player := {
 	"max_energy": 120,
 	"start_money": 500,
 	"swing_sec": 0.26,
+	"farm_swing_sec": 0.38,      # axe, pickaxe, hoe and watering can: the farmer poses need a little longer
 	"iframes_sec": 1.1,
 }
 

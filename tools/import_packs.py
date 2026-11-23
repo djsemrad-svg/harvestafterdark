@@ -2443,3 +2443,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "terrain
 # ---------------------------------------------------------------- LimeZu Modern Office, Kitchen and more, Serene Village (Nov 22)
 # last on purpose: its rocks, vending machines and mailboxes replace the earlier ones
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "limezu_more.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save, "mute": mute})
+
+# ---------------------------------------------------------------- Modern Farm farmer poses for tools (Nov 22), after the character parts
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_poses.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

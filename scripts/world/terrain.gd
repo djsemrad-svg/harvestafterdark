@@ -282,10 +282,10 @@ static func _try2(m: GameMap, c: Dictionary, r: RandomNumberGenerator, reach0: D
 			if not after.has(kk):
 				var t := GameMap.unk(kk)
 				var covered: bool = t.x >= x0 and t.x <= x1 and t.y >= y0 and t.y <= y1 + f
-				if int(c2.fall) >= 0 and t.x >= int(c2.fall) and t.x <= int(c2.fall) + 2 and t.y <= y1 + f + 2: covered = true      # the pool
+				if int(c2.fall) >= 0 and t.x >= int(c2.fall) and t.x <= int(c2.fall) + 2 and t.y <= y1 + f + 2 and _bare(m, t): covered = true      # the pool (unless it blocks the way to a sign or chest)
 				if not covered:
 					# a tile or two boxed in beside a waterfall pool is fine if nothing is there
-					if int(c2.fall) >= 0 and absi(t.y - (y1 + f + 1)) <= 2 and m.get_obj(t.x, t.y) == null: nook += 1
+					if int(c2.fall) >= 0 and absi(t.y - (y1 + f + 1)) <= 2 and _bare(m, t): nook += 1
 					else: lost += 1
 		if nook > 3: lost += nook
 		# and you can actually get to the steps (not walled in by trees)
@@ -299,6 +299,14 @@ static func _try2(m: GameMap, c: Dictionary, r: RandomNumberGenerator, reach0: D
 		m.objects.merge(keep.objects)
 		_no("cuts off %d" % mini(lost, 50) if lost < 50 else "cuts off 50+")
 	return {}
+
+## Nothing there or next to it (a sign or chest beside a boxed-in tile would be cut off too).
+static func _bare(m: GameMap, t: Vector2i) -> bool:
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var o = m.get_obj(t.x + dx, t.y + dy)
+			if o != null and not NATURAL.has(str(o.type)): return false
+	return true
 
 static func _type_at(m: GameMap, x: int, y: int) -> String:
 	var o = m.get_obj(x, y)

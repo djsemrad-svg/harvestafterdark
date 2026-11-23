@@ -420,8 +420,55 @@ func _swing_pose(keys: Array, pr: float) -> Array:
 ## Curved blades sweep low instead of chopping or thrusting.
 const SWEEPERS := ["scythe", "balanced_scythe", "gleaner", "last_harvest", "sickle"]
 
+## Axe, pickaxe, hoe and watering can use the farmer generator's chop, dig and water poses (see MiChars).
+func _farm_anim(sw: Dictionary) -> String:
+	if sw.has("weapon") or sw.get("shove", false): return ""
+	var a: String = MiChars.FARM_TOOLS.get(str(sw.get("tool", "")), "")
+	return a if a != "" and MiChars.farm_frames(a) > 0 and MiChars.available() else ""
+
+var _farm_tool_tex := {}
+## A tool strip (art/characters/farm/tool_<name>.png), its grey metal tinted to the tool's tier.
+func _farm_tool_strip(anim: String, tier: int) -> Texture2D:
+	var key := "%s|%d" % [anim, tier]
+	if _farm_tool_tex.has(key): return _farm_tool_tex[key]
+	var tex: Texture2D = Art.override("characters/farm/tool_%s.png" % anim)
+	if tex != null and tier > 0:
+		var im: Image = tex.get_image().duplicate()
+		if im.is_compressed(): im.decompress()
+		im.convert(Image.FORMAT_RGBA8)
+		var tc := Color(Data.tool_tiers[clampi(tier, 0, 5)].color)
+		for yy in im.get_height():
+			for xx in im.get_width():
+				var c := im.get_pixel(xx, yy)
+				if c.a > 0 and c.s < 0.22 and c.v > 0.3 and c.v < 0.9:
+					var k := c.v / 0.75
+					im.set_pixel(xx, yy, Color(minf(1.0, tc.r * k), minf(1.0, tc.g * k), minf(1.0, tc.b * k), c.a))
+		tex = ImageTexture.create_from_image(im)
+	_farm_tool_tex[key] = tex
+	return tex
+
+## The tool in a farmer pose: the pack's own axe and watering can pictures for each frame; the pickaxe and hoe are
+## the pack's axe and shovel with a new head (tools/farm_poses.py). Upgraded tools take their tier's colour.
+func _draw_farm_tool(p: Dictionary, anim: String, behind: bool) -> void:
+	if (p.dir == "up") != behind: return      # facing away, the tool is on the far side of you
+	var sw: Dictionary = p.swing
+	var P := MiChars.farm_poses()
+	var n := MiChars.farm_frames(anim)
+	var f := clampi(int(clampf(sw.t / maxf(sw.dur, 0.01), 0.0, 0.999) * n), 0, n - 1)
+	var d := int(MiChars.DIRS.get(p.dir, 3))
+	var tl: Vector2 = (p.pos + Vector2(-8, -31)).round()      # the character's top-left, as _draw_char places it
+	var off := Vector2(P.tool_off[0], P.tool_off[1])
+	var tool := str(sw.tool)
+	var strip := _farm_tool_strip({"axe": "chop", "watering_can": "water", "pickaxe": "pickaxe", "hoe": "hoe"}.get(tool, anim), int(sw.get("tier", 0)))
+	if strip != null:
+		draw_texture_rect_region(strip, Rect2(tl + off, Vector2(48, 48)), Rect2((d * n + f) * 48, 0, 48, 48))
+
 func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	if p.swing == null or p.swing.get("shove", false):
+		return
+	var fa := _farm_anim(p.swing)
+	if fa != "":
+		_draw_farm_tool(p, fa, behind)
 		return
 	var sw: Dictionary = p.swing
 	var wid: String = str(sw.get("weapon", sw.tool))
@@ -608,6 +655,29 @@ func _draw_char(look: Dictionary, pos: Vector2, dir: String, frame: int, alpha: 
 	var ct: Texture2D = Art.get_char(look, dir, frame, anim)
 	draw_texture(ct, (pos - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), Color(1, 1, 1, alpha))
 
+## Blended pose changes: when the player switches to a different kind of movement (standing, walking, a swing,
+## a tool pose, getting hurt) or turns, the last frame of the old pose fades out over the new one for a moment,
+## so poses ease into each other instead of snapping.
+const BLEND_SEC := 0.09
+var _pose_prev := {}
+
+func _blend_pose(p: Dictionary, pa: Array, lean: Vector2, alpha: float) -> void:
+	var kind := str(pa[0]) + "|" + str(p.dir)
+	var now := {"kind": kind, "anim": str(pa[0]), "frame": int(pa[1]), "dir": str(p.dir), "pos": p.pos + lean}
+	if _pose_prev.is_empty():
+		_pose_prev = {"cur": now, "old": null, "t": 0.0}
+	var cur: Dictionary = _pose_prev.cur
+	if cur.kind != kind and Game.settings.get("effects", true):
+		_pose_prev.old = cur
+		_pose_prev.t = BLEND_SEC
+	_pose_prev.cur = now
+	if _pose_prev.old != null and float(_pose_prev.t) > 0:
+		var o: Dictionary = _pose_prev.old
+		var ct: Texture2D = Art.get_char(Game.state.character.look, o.dir, int(o.frame), o.anim)
+		var k: float = float(_pose_prev.t) / BLEND_SEC
+		draw_texture(ct, (p.pos + lean - Vector2(ct.get_width() / 2, ct.get_height() - 1)).round(), Color(1, 1, 1, alpha * 0.55 * k))
+		_pose_prev.t = float(_pose_prev.t) - get_process_delta_time()
+
 var _lying_looks := {}
 
 func _draw_enemy(en: Dictionary) -> void:
@@ -782,6 +852,9 @@ func player_anim(p: Dictionary) -> Array:
 	if p.swing != null:
 		var sw: Dictionary = p.swing
 		var pr: float = clampf(sw.t / maxf(sw.dur, 0.01), 0.0, 0.999)
+		var fa := _farm_anim(sw)
+		if fa != "":
+			return [fa, int(pr * MiChars.farm_frames(fa))]
 		var kind := "hit"
 		if sw.get("shove", false): kind = "punch"
 		elif sw.has("weapon") and Data.weapons.has(sw.weapon):
@@ -898,6 +971,7 @@ func _draw_player() -> void:
 		if gun != null and gun_behind:
 			_draw_held_gun(p, gun)      # aiming up and away: the gun is on the far side of you
 		_draw_char(Game.state.character.look, p.pos + lean, p.dir, int(pa[1]), 0.35 if blink else 1.0, str(pa[0]))
+		_blend_pose(p, pa, lean, 0.35 if blink else 1.0)
 	if p.get("sprinting", false) and int(anim_t * 10) % 3 == 0 and Game.settings.get("effects", true):
 		Game.particles.append({"pos": p.pos + Vector2(randf_range(-3, 3), 0), "vel": Vector2(0, -8), "t": 0.3, "color": Color(0.8, 0.75, 0.6, 0.6), "g": 0.0})
 	# a held chainsaw points the way you face (guns and bows are drawn by _draw_held_gun, turned to your aim)

@@ -265,7 +265,11 @@ func use_tool(tool: String, level: int, t: Vector2i) -> void:
 	if tool == "hoe" or tool == "watering_can": tiles = area_tiles(t, level)
 	elif tool == "scythe": tiles = scythe_tiles(t)
 	else: tiles = [t]
-	Game.player.swing = {"t": 0.0, "dur": Balance.player.swing_sec, "tool": tool, "tier": tier, "applied": false, "apply": func(): apply_tool(tool, tier, tiles)}
+	# axe, pickaxe, hoe and watering can play the farmer's chop, dig and water poses (MiChars.compose_farm): a little
+	# longer, with the work done at the moment the tool lands
+	var farm: bool = MiChars.FARM_TOOLS.has(tool) and MiChars.farm_frames(MiChars.FARM_TOOLS[tool]) > 0 and MiChars.available()
+	Game.player.swing = {"t": 0.0, "dur": Balance.player.farm_swing_sec if farm else Balance.player.swing_sec, "at": MiChars.FARM_HIT.get(tool, 0.45) if farm else 0.45,
+		"tool": tool, "tier": tier, "applied": false, "apply": func(): apply_tool(tool, tier, tiles)}
 	Sfx.play("swing")
 
 ## The scythe's swing grows with its tier (item sheet: Copper wider, Iron 2 rows, Silver/Gold 3x3, Aurium 5x5).
@@ -741,7 +745,7 @@ func update_player(dt: float) -> void:
 			p.kb = Vector2.ZERO
 	if p.swing != null:
 		p.swing.t += dt
-		if not p.swing.applied and p.swing.t >= p.swing.dur * 0.45:
+		if not p.swing.applied and p.swing.t >= p.swing.dur * float(p.swing.get("at", 0.45)):
 			p.swing.applied = true
 			p.swing.apply.call()
 		if p.swing != null and p.swing.t >= p.swing.dur:

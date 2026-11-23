@@ -353,6 +353,27 @@ func _ready() -> void:
 				Game.paused = false
 		get_tree().quit()
 		return
+	if only == "toolpose":
+		# axe, pickaxe, hoe and watering can in the farmer poses, every direction, frozen at points through the swing
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("homestead", 20, 20, "down", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		for tool in ["axe", "pickaxe", "hoe", "watering_can"]:
+			for dir in ["down", "right", "up", "left"]:
+				for k in 6:
+					Game.player.dir = dir
+					Game.player.swing = {"t": 0.0, "dur": 1.0, "tool": tool, "tier": 2 if tool == "axe" else 0, "applied": true, "apply": func(): pass}
+					Game.player.swing.t = k / 6.0 + 0.05
+					Game.paused = true
+					await frames(2)
+					await shot("toolpose_%s_%s_%d" % [tool, dir, k])
+					Game.paused = false
+		Game.player.swing = null
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

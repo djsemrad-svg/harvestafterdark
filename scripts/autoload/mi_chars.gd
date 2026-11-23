@@ -168,9 +168,12 @@ static func complete(look: Dictionary) -> void:
 			look[k] = best
 
 ## One 16x32 frame, or null when the parts aren't installed.
-static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -> Image:
+static func compose(look: Dictionary, dir: String, frame: int, anim := "walk", no_body := false) -> Image:
 	if not available():
 		return null
+	if FARM_ANIMS.has(anim) and not no_body:
+		var fm := compose_farm(look, dir, frame, anim)
+		if fm != null: return fm
 	var p := parts(look)
 	var col: int = int(DIRS.get(dir, 3)) * 6 + STEP[frame % 4]
 	var row := 2
@@ -190,7 +193,7 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 	if str(wear.get("head", "")) != "":
 		var hs := sheet("wear", str(wear.head))
 		if hs != null and rect.end.y <= hs.get_height(): hat = hs.get_region(rect)
-	var layers := [["body", p.body], ["eyes", p.eyes], ["outfit", p.outfit]]
+	var layers := ([] if no_body else [["body", p.body]]) + [["eyes", p.eyes], ["outfit", p.outfit]]
 	for slot in ["legs", "feet", "chest"]:
 		if str(wear.get(slot, "")) != "": layers.append(["wear", str(wear[slot])])
 	layers.append(["hair", p.hair])
@@ -213,6 +216,77 @@ static func compose(look: Dictionary, dir: String, frame: int, anim := "walk") -
 		out.blend_rect(fr, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
 	if hat != null:
 		out.blend_rect(_dead(hat) if infected else hat, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
+	return out
+
+# ---------------------------------------------------------------- tool poses (Nov 22)
+# Digging, watering and chopping from LimeZu's Modern Farm farmer generator, rebuilt for any look. The farmer
+# body has the same shape as these people's body; tools/farm_poses.py works out, per frame, how far the head and
+# chest move, which of the person's own standing or walking frames has the matching legs, and the arm pixels.
+const FARM_ANIMS := ["chop", "dig", "water"]
+## Tools that use these poses, and when in the pose the tool lands (fraction of the swing)
+const FARM_TOOLS := {"axe": "chop", "pickaxe": "chop", "hoe": "dig", "watering_can": "water"}
+const FARM_HIT := {"axe": 0.7, "pickaxe": 0.7, "hoe": 0.45, "watering_can": 0.45}
+const HEAD_END := 22
+const LEGS_START := 28
+static var _poses = null
+static var _farm_body: Image = null
+
+static func farm_poses() -> Dictionary:
+	if _poses == null:
+		_poses = {}
+		var f := FileAccess.open("res://art/characters/farm/poses.json", FileAccess.READ)
+		if f != null:
+			var d = JSON.parse_string(f.get_as_text())
+			if d is Dictionary: _poses = d
+	return _poses
+
+static func farm_frames(anim: String) -> int:
+	var P := farm_poses()
+	return int(P.anims[anim].n) if P.has("anims") and P.anims.has(anim) else 0
+
+static func compose_farm(look: Dictionary, dir: String, frame: int, anim: String) -> Image:
+	var P := farm_poses()
+	if not P.has("anims") or not P.anims.has(anim) or look.get("infected", false):
+		return null
+	if _farm_body == null:
+		var tex: Texture2D = Art.override("characters/farm/body.png")
+		if tex == null: return null
+		_farm_body = tex.get_image()
+		if _farm_body.is_compressed(): _farm_body.decompress()
+		_farm_body.convert(Image.FORMAT_RGBA8)
+	var A: Dictionary = P.anims[anim]
+	var n := int(A.n)
+	var f := posmod(frame, n)
+	var fr: Dictionary = A.frames[dir][f]
+	var d := int(DIRS.get(dir, 3))
+	var skin := Color(str(look.get("skin", "#e8b48f")))
+	var body := _skin(_farm_body.get_region(Rect2i((d * n + f) * 16, int(P.rows[anim]) * 32, 16, 32)), skin, Color(str(P.skin_base)))
+	var out := Image.create(16, 32, false, Image.FORMAT_RGBA8)
+	out.blend_rect(body, Rect2i(0, 0, 16, 32), Vector2i.ZERO)
+	# the person's own clothes, hair, eyes and hat: head and chest moved with the farmer's, legs from a matching frame
+	var stand := compose(look, dir, 0, "idle", true)
+	var lg: Array = fr.legs
+	var legs := compose(look, dir, int(lg[1]) - d * 6, "idle" if int(lg[0]) == 1 else "walk6", true)
+	var hd: Array = fr.head
+	var ch: Array = fr.chest
+	out.blend_rect(stand, Rect2i(0, 0, 16, HEAD_END), Vector2i(int(hd[0]), int(hd[1])))
+	out.blend_rect(stand, Rect2i(0, HEAD_END, 16, LEGS_START - HEAD_END), Vector2i(int(ch[0]), HEAD_END + int(ch[1])))
+	out.blend_rect(legs, Rect2i(0, LEGS_START, 16, 32 - LEGS_START), Vector2i(0, LEGS_START))
+	# sleeves: the outfit's colour where the standing arm is
+	var sleeve := Color(0, 0, 0, 0)
+	for x in [2, 3, 12, 13, 1, 14]:
+		var c := stand.get_pixel(x, 23)
+		if c.a > 0.5 and not _is_outline(c):
+			sleeve = c
+			break
+	var bl := skin.get_luminance()
+	for a in fr.arms:
+		var x := int(a[0]); var y := int(a[1])
+		var c := body.get_pixel(x, y)
+		if str(a[2]) == "a" and sleeve.a > 0 and not _is_outline(c):
+			var k := c.get_luminance() / maxf(bl, 0.01)
+			c = Color(clampf(sleeve.r * k, 0, 1), clampf(sleeve.g * k, 0, 1), clampf(sleeve.b * k, 0, 1), 1.0)
+		out.set_pixel(x, y, c)
 	return out
 
 ## Hair under a hat: nothing pokes out above the top of the hat (buns, spikes, high pigtails); hair at the

@@ -1329,6 +1329,7 @@ func run_all() -> void:
 	run_terrain()
 	run_limezu()
 	run_aimfx()
+	run_toolpose()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4616,3 +4617,39 @@ func run_aimfx() -> void:
 		"hitstop=%.3f" % hs)
 	tick(200)
 	check("After the freeze the game carries on", G.hitstop <= 0.0)
+
+func run_toolpose() -> void:
+	# Nov 22: axe, pickaxe, hoe and watering can use the Modern Farm farmer poses, rebuilt for the player's look
+	var G = Game
+	start("adventure", 2)
+	var look: Dictionary = G.state.character.look
+	var ok := true
+	var why := []
+	for anim in MiChars.FARM_ANIMS:
+		var n := MiChars.farm_frames(anim)
+		if n < 8: ok = false; why.append("%s frames %d" % [anim, n])
+		for dir in ["right", "up", "left", "down"]:
+			for f in [0, n / 2, n - 1]:
+				var im: Image = MiChars.compose(look, dir, f, anim)
+				if im == null or im.get_used_rect().size.y < 18: ok = false; why.append("%s %s %d" % [anim, dir, f])
+	check("Tool poses: chop, dig and water frames are built for the player's own look in every direction", ok, str(why.slice(0, 4)))
+	# the clothes come along: the chest in a chopping frame has the outfit's colours, not bare skin
+	var still: Image = MiChars.compose(look, "down", 0, "idle")
+	var chop: Image = MiChars.compose(look, "down", 3, "chop")
+	var same := 0
+	for x in range(4, 12):
+		if chop.get_pixel(x, 30).is_equal_approx(still.get_pixel(x, 30)): same += 1
+	check("Tool poses keep the player's own trousers and outfit", same >= 4, "same=%d" % same)
+	for t in ["chop", "dig", "water", "pickaxe", "hoe"]:
+		if Art.override("characters/farm/tool_%s.png" % t) == null: ok = false; why.append(t)
+	check("Tool pictures for the poses (axe, shovel, watering can, pickaxe, hoe) are in the game", ok, str(why))
+	# using the axe plays the chop pose, lands at 70% of the swing and is done in under 0.4 s
+	at("homestead", 20, 20, "down")
+	select("axe")
+	W.use_selected(0, false)
+	var sw = G.player.swing
+	var pose: Array = main.world.view.player_anim(G.player) if main.world.get("view") != null else ["chop"]
+	check("The axe swing uses the chop pose and lands 70% of the way through", sw != null and float(sw.dur) == Balance.player.farm_swing_sec and float(sw.at) == 0.7 and str(pose[0]) == "chop",
+		"sw=%s pose=%s" % [str(sw.keys()) if sw != null else "null", str(pose)])
+	tick(400)
+	check("...and is over before 0.4 s", G.player.swing == null)

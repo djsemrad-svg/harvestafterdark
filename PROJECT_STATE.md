@@ -721,12 +721,31 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   sparks off the way you swung, a white impact flash, a small shake for heavy hits.
 - The chainsaw keeps its four-way pose. Tests `run_aimfx`; screenshot modes `aimturn`, `gunfx`.
 
+### Nov 22: animations, part 2: tool poses and blended pose changes
+- Axe, pickaxe, hoe and watering can play LimeZu Modern Farm farmer poses (chop 10, dig 9, water 14 frames per
+  direction), rebuilt for any look at runtime (`MiChars.compose_farm`, anims `chop`/`dig`/`water`). The farmer body
+  is pixel-for-pixel the same shape as the Modern Interiors body. `tools/farm_poses.py` (run last-but-one by the
+  importer) works out per frame how far the head and chest move, which of the person's own idle or walk frames has
+  matching legs, and the arm pixels (outside the standing silhouette, plus their outline across the chest); hands
+  stay skin, arms take the outfit's sleeve colour. Output: `art/characters/farm/body.png`, `poses.json`, and tool
+  strips `tool_chop` (axe), `tool_dig` (shovel), `tool_water` (can), plus `tool_pickaxe` and `tool_hoe` (the axe and
+  shovel with a new head drawn at the end of the handle). Upgraded tools tint the grey metal to the tier colour.
+- These swings last `Balance.player.farm_swing_sec` (0.38 s, was 0.26) and land at `MiChars.FARM_HIT` (axe and
+  pickaxe 70%, hoe and can 45%). Facing away, the tool is drawn behind you. Melee weapons and the scythe keep the
+  keyframed swing.
+- Blended pose changes (`WorldView._blend_pose`): when the kind of pose or the facing changes, the old frame fades
+  out over the new one for 0.09 s (off with effects off).
+- Terrain fix: a waterfall pool or nook may not box in the way to a sign or container (`Terrain._bare`).
+- Tests `run_toolpose`; screenshot mode `toolpose`.
+- Order item 4 (animations) is done apart from: melee weapons still use the keyframed swing over the generator's
+  hit/stab rows (not farmer poses).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).
 2. Daniel's new LimeZu packs: done Nov 22 (see above).
 3. Quick fixes (ammo count, muzzle flash): done Nov 22.
-4. Animations (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
+4. Animations: done Nov 22 (parts 1 and 2 above). Original plan (old item 32, expanded, about 9 to 11 hours): real tool poses rebuilt for any look (Modern Farm
    farmer rows), a grip point on every frame so items stop floating, weapon wind-up, strike and follow-through with
    hit-stop and sparks, gun aiming pose with recoil and casings, the body turning to face the aim with the gun
    rotating to the pointer (smoothed, slight lean), and blended pose changes.
