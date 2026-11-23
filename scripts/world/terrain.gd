@@ -5,6 +5,8 @@ extends RefCounted
 ##   earth: LimeZu's earth cliff, 2 tiles tall (farm edges, Riverlands, the Ridge path)
 ##   stone: the same cliff in grey rock, 2 tiles tall (districts, the quarry and mountain, Dry Creek)
 ##   turf:  a gentle grass bank, 1 tile tall (inside town and the farm)
+##   boulder: Serene Village's boulder plateau, a rim of boulders and a 1-tile face of big ones (the farm,
+##          Riverlands, the mountain; Nov 22. Older Riverlands and mountain plans are made again once to get them)
 ## A rise can sit on another (level 2). Plans are made once per world (seeded) and kept in state.terrain, so
 ## the land doesn't change between loads. A rise is only kept if it cuts nothing off: every tile you could
 ## reach before is still reachable (through the steps), and it covers no building, door, path, crop or
@@ -15,18 +17,18 @@ extends RefCounted
 ## turns snowy in winter (`_winter` pictures, picked in WorldView._terrain); town gets hand-placed banks (FIXED).
 
 const VERSION := 2      # 2: trails, waterfalls, town banks (older plans are made again)
-const FACE := {"earth": 2, "stone": 2, "turf": 1}
+const FACE := {"earth": 2, "stone": 2, "turf": 1, "boulder": 1}
 const NATURAL := ["tree", "pine", "bush", "weeds", "rock", "twig", "stump", "forage", "wild_bush", "flower", "grass_tuft", "fern"]
 const GROUND := ["grass", "dirt", "sand"]
 
 ## What each outdoor map gets: [style, how many tries, near an edge?]
 const PLANS := {
-	"homestead": [["earth", 30, true], ["turf", 30, false]],
+	"homestead": [["earth", 30, true], ["turf", 30, false], ["boulder", 12, false]],
 	"town": [["turf", 70, false]],
 	"residential": [["stone", 110, true], ["turf", 60, false]],
 	"industrial": [["stone", 90, true]],
-	"riverlands": [["earth", 50, true], ["turf", 25, false]],
-	"mountain": [["stone", 45, true], ["earth", 25, false]],
+	"riverlands": [["earth", 50, true], ["boulder", 30, false], ["turf", 20, false]],
+	"mountain": [["stone", 45, true], ["boulder", 30, false], ["earth", 20, false]],
 	"dry_creek": [["stone", 45, true]],
 	"halvorsen": [["stone", 30, true], ["turf", 25, false]],
 }
@@ -37,7 +39,7 @@ static var enabled := true      # the test runner turns terrain off except in th
 ## Their trees and brush are cleared ("clear"), so the bank isn't walled in by the woods on the south bank.
 const FIXED := {"town": [[6, 74, 12, 3, "turf"], [24, 74, 12, 3, "turf"], [39, 74, 10, 3, "turf"]]}      # east of the bridge is the refugee camp
 ## How often the way up is a steep trail instead of steps, and how often a cliff gets a waterfall (one per map)
-const TRAIL := {"earth": 0.5, "turf": 0.5, "stone": 0.2}
+const TRAIL := {"earth": 0.5, "turf": 0.5, "stone": 0.2, "boulder": 0.0}
 const FALL_CHANCE := 0.65
 const MAX_RISES := {"homestead": 3, "town": 4, "residential": 4, "industrial": 3, "riverlands": 5, "mountain": 5, "dry_creek": 3, "halvorsen": 3}
 
@@ -47,7 +49,10 @@ static func setup(maps: Dictionary) -> void:
 	if not enabled:
 		return
 	if not (Game.state.get("terrain") is Dictionary) or int(Game.state.terrain.get("_v", 0)) != VERSION:
-		Game.state.terrain = {"_v": VERSION}
+		Game.state.terrain = {"_v": VERSION, "_boulder": true}
+	if not Game.state.terrain.get("_boulder", false):     # boulder rises came later: wild maps get them once (not your farm)
+		Game.state.terrain.erase("riverlands"); Game.state.terrain.erase("mountain")
+		Game.state.terrain["_boulder"] = true
 	for id in PLANS:
 		if not maps.has(id): continue
 		var m: GameMap = maps[id]
@@ -112,7 +117,8 @@ static func apply(m: GameMap, r: Dictionary) -> void:
 		for x in range(x0, x1 + 1):
 			if x == sx or x == sx + 1: continue
 			var col := "w" if x == x0 else ("e" if x == x1 else "")
-			_ov(m, x, y1 + 1 + k, "terrain/%s_f%d%s.png" % [st, k + 1, ("_" + col) if col != "" else ""])
+			var vb := "_b" if st == "boulder" and col == "" and x % 2 == 1 else ""      # big boulders take turns
+			_ov(m, x, y1 + 1 + k, "terrain/%s_f%d%s%s.png" % [st, k + 1, ("_" + col) if col != "" else "", vb])
 	for x in range(x0, x1 + 1):
 		if m.in_bounds(x, y1 + f + 1): _ov(m, x, y1 + f + 1, "terrain/shadow.png")
 	# the afternoon shadow on the ground east of the rise (light from the west)
@@ -167,7 +173,7 @@ static func plan(m: GameMap, id: String) -> Array:
 		for i in int(p[1]):
 			if kept.size() >= int(MAX_RISES.get(id, 3)): break
 			var st: String = p[0]
-			var sz: Array = SIZES.get(id, [7, 16, 5, 10] if st != "turf" else [5, 11, 4, 7])
+			var sz: Array = SIZES.get(id, [7, 16, 5, 10] if st not in ["turf", "boulder"] else [5, 11, 4, 7])
 			var rw := r.randi_range(int(sz[0]), int(sz[1]))
 			var rh := r.randi_range(int(sz[2]), int(sz[3]))
 			var x := r.randi_range(1, maxi(1, m.w - rw - 1))
@@ -254,7 +260,7 @@ static func _try2(m: GameMap, c: Dictionary, r: RandomNumberGenerator, reach0: D
 	c2.stairs = opts[mini(opts.size() - 1, r.randi() % 3)]
 	c2["way"] = "trail" if r.randf() < float(TRAIL.get(c.style, 0.0)) else "steps"
 	c2["fall"] = -1
-	if c.style != "turf" and lv == 1 and int(c.h) >= 4 and r.randf() < FALL_CHANCE and not m.rises.any(func(q): return int(q.get("fall", -1)) >= 0):
+	if c.style in ["earth", "stone"] and lv == 1 and int(c.h) >= 4 and r.randf() < FALL_CHANCE and not m.rises.any(func(q): return int(q.get("fall", -1)) >= 0):
 		var falls := []
 		for fx in range(x0 + 1, x1 - 2):
 			if fx + 2 >= int(c2.stairs) - 1 and fx <= int(c2.stairs) + 2: continue      # keep the fall away from the way up

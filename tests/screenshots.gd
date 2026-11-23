@@ -1158,6 +1158,36 @@ func _ready() -> void:
 				await shot("63_terrain_%s_%d" % [id, i])
 		get_tree().quit()
 		return
+	if only == "boulder":
+		# the boulder rises (Serene Village look): up to two per map, then one in winter
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.weather = "sun"
+		Game.state.time = 720
+		var last := {}
+		for id in ["homestead", "riverlands", "mountain"]:
+			var rs: Array = Game.state.get("terrain", {}).get(id, []).filter(func(q): return q.style == "boulder")
+			print("BOULDER %s: %d" % [id, rs.size()])
+			for i in mini(2, rs.size()):
+				var r: Dictionary = rs[i]
+				last = {"id": id, "r": r}
+				var sx := int(r.stairs); var sy := int(r.y) + int(r.h) + 3
+				Game.change_map(id, sx, sy, "up", {"silent": true})
+				Game.player.pos = Vector2(sx * 16 + 16, sy * 16 + 12)
+				main.world.view.snap_camera()
+				Game.enemies.clear()
+				await frames(20)
+				await shot("66_boulder_%s_%d" % [id, i])
+		if not last.is_empty():
+			Game.state.day = 100
+			var rw: Dictionary = last.r
+			Game.change_map(last.id, int(rw.stairs), int(rw.y) + int(rw.h) + 3, "up", {"silent": true})
+			Game.player.pos = Vector2(int(rw.stairs) * 16 + 16, (int(rw.y) + int(rw.h) + 3) * 16 + 12)
+			main.world.view.snap_camera(); Game.enemies.clear()
+			await frames(20)
+			await shot("66_boulder_winter")
+		get_tree().quit()
+		return
 	if only == "terrain2":
 		# second terrain pass: town's banks, every waterfall, trails, and one cliff in winter
 		main.ui.close_all()

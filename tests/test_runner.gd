@@ -4500,13 +4500,21 @@ func run_terrain() -> void:
 	var total := 0
 	for id in counts: total += int(counts[id])
 	check("Raised ground on 3 worlds: %d rises (%s); every way in, door and container still reachable, every rise reached by its steps" % [total, ", ".join(styles.keys())],
-		bad.is_empty() and total >= 12 and styles.size() == 3, str(bad.slice(0, 6)))
+		bad.is_empty() and total >= 12 and styles.size() == 4 and styles.has("boulder"), str(bad.slice(0, 6)))
+	# an older world (no boulder rises yet): Riverlands and mountain plans are made again once, the farm is kept
+	var tz: Dictionary = G.state.terrain
+	tz.erase("_boulder")
+	var farm_before: String = JSON.stringify(tz.get("homestead", []))
+	Terrain.setup({})
+	check("Boulder rises: an older world makes its Riverlands and mountain rises again once and keeps the farm as it was",
+		G.state.terrain.get("_boulder", false) and not G.state.terrain.has("riverlands") and not G.state.terrain.has("mountain") and JSON.stringify(G.state.terrain.get("homestead", [])) == farm_before, "")
 	check("Terrain pass 2: town gets its hand-placed banks south of the river, and both steps and steep trails are used",
 		town_banks >= 3 and ways.has("steps") and ways.has("trail"), "town=%d ways=%s" % [town_banks, str(ways.keys())])
 	check("Terrain pass 2: every waterfall has a pond on top, the fall down the face and a pool at the foot", falls.all(func(x): return x), "falls=%s" % str(falls))
 	var art_ok := true
 	for pth in ["terrain/trail_earth_2_l.png", "terrain/trail_turf_1_r.png", "terrain/fall_stone_1_2_f3.png", "terrain/fall_earth_top_0_f0.png",
-			"terrain/fall_foam_2_f1.png", "terrain/shadow_e.png", "terrain/earth_n_winter.png", "terrain/turf_f1_winter.png"]:
+			"terrain/fall_foam_2_f1.png", "terrain/shadow_e.png", "terrain/earth_n_winter.png", "terrain/turf_f1_winter.png",
+			"terrain/boulder_f1_b.png", "terrain/boulder_n_w_winter.png", "terrain/steps_boulder_1_r.png"]:
 		if Art.override(pth) == null: art_ok = false
 	check("Terrain pass 2: trail, waterfall, east shadow and winter edge pictures are in the game", art_ok)
 	# walking: blocked at the face and the sides, up and down by the steps

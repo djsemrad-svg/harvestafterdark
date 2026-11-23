@@ -5,6 +5,7 @@ earth: LimeZu's earth cliff from Modern Exteriors (1_Terrains_and_Fences, the gr
        rows 42-46). Its flat grass is cut out so the game's own seasonal grass shows on top.
 stone: the same pieces with the brown rock turned to grey stone.
 turf:  drawn here: a sunlit lip, thin side rims and a one-tile bank of shaded grass, laid over the real ground.
+boulder: Serene Village's boulder plateau, a rim of boulders and a one-tile face of big ones.
 Pieces: <style>_n[_w|_e] (top row), _m_w/_m_e (sides), _s[_w|_e] (bottom row), _f1/_f2[_w|_e] (the face),
 steps_<style>_<row>_<l|r> (two tiles wide), shadow (the foot of a cliff)."""
 import colorsys
@@ -129,6 +130,46 @@ for y in range(9):
 save(sh, "terrain/shadow.png")
 n += 1
 
+
+# ---------------------------------------------------------------- boulder: Serene Village's boulder plateau (Nov 22)
+# A rim of round boulders round the top and a one-tile face of big boulders (cols 0-5, rows 7-10 of the sheet),
+# its flat grass cut out so the game's grass shows. Steps are the sheet's own dirt landing and stairs.
+SV = os.path.join(SRC, "Serene_Village_revamped_v1.9", "SERENE_VILLAGE_REVAMPED", "Serene_Village_16x16.png")
+if os.path.isfile(SV):
+    SVI = Image.open(SV).convert("RGBA")
+    GRASS = {(118, 197, 100), (123, 203, 105)}
+
+    def sv(c, r):
+        p = SVI.crop((c * 16, r * 16, c * 16 + 16, r * 16 + 16))
+        px = p.load()
+        for y in range(16):
+            for x in range(16):
+                q = px[x, y]
+                if q[3] and q[:3] in GRASS:
+                    px[x, y] = (0, 0, 0, 0)
+                elif q[3]:      # a little less pink, to sit beside the other rock
+                    h, l, s2 = colorsys.rgb_to_hls(q[0] / 255, q[1] / 255, q[2] / 255)
+                    if not (q[1] > q[0] + 8):
+                        r2, g2, b2 = colorsys.hls_to_rgb(h, l, s2 * 0.7)
+                        px[x, y] = (int(r2 * 255), int(g2 * 255), int(b2 * 255), q[3])
+        return p
+
+    BCOL = {"w": 0, "": 2, "e": 5}
+    for row, rr in {"n": 7, "m": 8, "s": 9}.items():
+        for col, cc in BCOL.items():
+            if row == "m" and col == "":
+                continue
+            save(sv(1 if (row == "s" and col == "") else cc, rr), "terrain/boulder_%s%s.png" % (row, ("_" + col) if col else ""))
+            n += 1
+    for col, cc in {"w": 0, "": 1, "e": 5}.items():
+        save(sv(cc, 10), "terrain/boulder_f1%s.png" % (("_" + col) if col else ""))
+        n += 1
+    save(sv(4, 10), "terrain/boulder_f1_b.png")       # a second big boulder, every other tile
+    n += 1
+    for k in range(2):
+        save(sv(2, 9 + k), "terrain/steps_boulder_%d_l.png" % k)
+        save(sv(3, 9 + k), "terrain/steps_boulder_%d_r.png" % k)
+        n += 2
 
 # ---------------------------------------------------------------- second pass (Nov 22)
 # east shadow: the ground just east of a rise, darkest against the face
@@ -256,7 +297,7 @@ def snowy(im):
 
 
 for f in sorted(os.listdir(os.path.join(OUT, "terrain"))):
-    if f.startswith(("earth_", "stone_", "turf_")) and f.endswith(".png") and "_winter" not in f:
+    if f.startswith(("earth_", "stone_", "turf_", "boulder_")) and f.endswith(".png") and "_winter" not in f:
         im = Image.open(os.path.join(OUT, "terrain", f)).convert("RGBA")
         w = snowy(im)
         if list(w.getdata()) != list(im.getdata()):
