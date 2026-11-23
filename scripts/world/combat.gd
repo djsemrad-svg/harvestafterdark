@@ -585,6 +585,14 @@ func alert(pos: Vector2, radius: float, lure := false) -> void:
 	for e in Game.enemies:
 		if e.get("turned", 0.0) > 0: continue
 		if e.pos.distance_to(pos) <= radius:
+			# the infected go to see what the noise was (Brains); people, and everyone without LimboAI, come at you
+			if Brains.on() and not lure and Brains.kind_of(Data.enemies.get(e.type, {})) == "infected" and e.state in ["wander", "asleep", "investigate"]:
+				e.heard = pos
+				e.heard_t = 12.0
+				if e.state != "investigate": Game.emote(e, "question", 1.0)
+				e.state = "investigate"
+				e.erase("search_t")
+				continue
 			if e.state in ["wander", "asleep"]:
 				e.state = "chase"
 			e.alert_t = 6.0

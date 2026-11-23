@@ -1,7 +1,7 @@
 extends BTAction
 ## Hurt: run from you for a couple of seconds, toward the nearest friend if there is one.
 
-var secs := 2.0
+@export var secs := 2.0
 
 func _enter() -> void:
 	blackboard.set_var(&"fb_t", secs)

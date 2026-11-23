@@ -897,6 +897,25 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   the known random failures (Survivor low meters, Residential gate, Maple Street walk, storm flash); the rerun
   passed 375 of 375.
 
+### Nov 23: smarter infected (LimboAI, `Brains` kind "infected", tasks in `scripts/ai/`)
+- Every infected that isn't a nest, a gunner or a boss gets a tree, run while wandering, investigating or chasing.
+  Without LimboAI everything works as before.
+  - Noises (`Combat.alert`, not lures): an infected that hears one walks to where the noise was (a "?" over it,
+    state `investigate`, `e.heard` for 12 s), looks about for 2.5 to 4 s, then goes back to wandering. It only
+    comes at you if it sees you on the way. Before, any noise sent everything in range straight at you. People
+    (raiders) still come at you.
+  - Packs: the first infected to start after you groans; wandering or investigating infected within 6 tiles join
+    the chase (`bt_groan`). Wanderers drift toward the middle of other infected within 7 tiles every few seconds,
+    so they end up in loose packs (`Brains.herd`).
+  - Ways round: chasing you, or heading for the farmhouse in a raid (`Infected._raider`), something solid ahead
+    (fence, wall, trees) makes them look for a way round (`Brains.way_round`: a path no longer than 3x the straight
+    line + 10 tiles, re-planned every 2 s). A gap in your fences gets found. No way round: raid infected claw
+    through as before.
+- Fix in the raider and boss trees: the task settings (`frac`, `flag`, `secs`...) weren't copied into each enemy's
+  copy of the tree, so every task ran on its defaults (a boss made its last stand at half health together with
+  getting angry; raiders shouted every frame). They are `@export` now; `run_brains` checks the last stand waits.
+- Test `run_infected_ai` (noise, chase on sight, groan, round a fence chasing and raiding, packs).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

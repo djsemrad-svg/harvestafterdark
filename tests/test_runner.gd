@@ -1340,6 +1340,7 @@ func run_all() -> void:
 	run_stepaside()
 	run_homes()
 	run_hud()
+	run_infected_ai()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -1465,7 +1466,7 @@ func run_arsenal() -> void:
 	far.wt = 99.0; far.wander = Vector2.ZERO
 	W.use_selected(0, false); tick(300)
 	var hit_ok: bool = float(e.hp) < 45.0
-	var heard: bool = far.state == "chase"
+	var heard: bool = far.state in ["chase", "investigate"]      # the infected come to see what the noise was (Nov 23)
 	var mag1: int = int(G.mag_of(gun))
 	gun.mag = 0
 	W.cb.start_reload(gun); tick(2000)
@@ -4846,6 +4847,99 @@ func run_refugees() -> void:
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
 
+func run_infected_ai() -> void:
+	# Nov 23: LimboAI trees for the infected: noises, groans, ways round fences, loose packs
+	var G = Game
+	start("adventure", 2)
+	at("homestead", 30, 30, "down")
+	var hm: GameMap = G.maps.homestead
+	var pt: Vector2i = W.player_tile()
+	var x0 := 12; var y0 := 16
+	for yy in range(y0, y0 + 18):
+		for xx in range(x0, x0 + 26):
+			clear_tile(hm, xx, yy)
+			if hm.structure_at(xx, yy) == null: hm.set_tile(xx, yy, "grass")
+	var inf: Infected = W.inf
+	var p: Dictionary = G.player
+	p.iframes = 999.0
+	var dt := 1.0 / 30.0
+	var tpos := func(x: int, y: int) -> Vector2: return Vector2(x * 16 + 8, y * 16 + 12)
+	# 1. a noise sends a wanderer to look, then it loses interest (you're far away, out of sight)
+	G.enemies.clear()
+	p.pos = tpos.call(x0 + 24, y0 + 1)
+	var a: Dictionary = inf.spawn("shambler", x0 + 2, y0 + 14)
+	a.state = "wander"
+	var noise: Vector2 = tpos.call(x0 + 8, y0 + 14)
+	W.cb.alert(noise, 10 * 16.0)
+	var went_to_look: bool = a.state == "investigate"
+	for i in 300:
+		inf.update(dt)
+		if a.pos.distance_to(noise) < 16.0: break
+	var near_noise: bool = a.pos.distance_to(noise) < 24.0
+	for i in 200: inf.update(dt)
+	var gave_up: bool = a.state == "wander"
+	# 2. investigating with you in sight: a chase
+	a.pos = tpos.call(x0 + 8, y0 + 14); a.state = "wander"
+	W.cb.alert(a.pos, 4 * 16.0)
+	p.pos = a.pos + Vector2(40, 0)
+	for i in 3: inf.update(dt)
+	var spotted: bool = a.state in ["chase", "telegraph", "lunge"]
+	# 3. the first to chase groans and a wandering one close by comes too
+	G.enemies.clear()
+	p.pos = tpos.call(x0 + 24, y0 + 1)
+	var b1: Dictionary = inf.spawn("shambler", x0 + 4, y0 + 10)
+	var b2: Dictionary = inf.spawn("shambler", x0 + 7, y0 + 12)
+	b1.state = "chase"; b1.alert_t = 5.0; b2.state = "wander"
+	inf.update(dt)
+	var groaned: bool = b1.get("groaned", false) and b2.state == "chase"
+	# 4. a fence in the way with a gap at one end: it goes round through the gap
+	G.enemies.clear()
+	var fy := y0 + 8
+	for xx in range(x0 + 2, x0 + 20): hm.add_obj(xx, fy, "wood_fence")
+	p.pos = tpos.call(x0 + 10, fy - 3)
+	var c: Dictionary = inf.spawn("shambler", x0 + 10, fy + 3)
+	c.state = "chase"; c.hunt = true; c.groaned = true
+	for i in 600:
+		inf.update(dt)
+		if c.pos.y < fy * 16: break
+	var round_ok: bool = c.pos.y < fy * 16
+	# 5. a raid on the farm finds the same gap instead of clawing through the fence
+	G.enemies.clear()
+	var r: Dictionary = inf.spawn("shambler", x0 + 10, fy + 3)
+	r.raider = true; r.goal = tpos.call(x0 + 10, fy - 4); r.state = "wander"
+	p.pos = tpos.call(x0 + 24, y0 + 16)
+	var hp0 := 0
+	for xx in range(x0 + 2, x0 + 20): hp0 += int(hm.get_obj(xx, fy).get("hp", 0))
+	for i in 600:
+		inf.update(dt)
+		if r.pos.y < fy * 16: break
+	var hp1 := 0
+	for xx in range(x0 + 2, x0 + 20): hp1 += int(hm.get_obj(xx, fy).get("hp", 0))
+	var raid_round: bool = r.pos.y < fy * 16 and hp1 == hp0
+	for xx in range(x0 + 2, x0 + 20): hm.remove_obj(xx, fy)
+	# 6. wanderers drift into loose packs
+	G.enemies.clear()
+	p.pos = tpos.call(x0 + 24, y0 + 1)
+	var pk := []
+	for k in 4: pk.append(inf.spawn("shambler", x0 + 4 + (k % 2) * 6, y0 + 5 + (k / 2) * 6))
+	for q in pk: q.state = "wander"
+	var spread := func() -> float:
+		var cc := Vector2.ZERO
+		for q in pk: cc += q.pos
+		cc /= pk.size()
+		var t := 0.0
+		for q in pk: t += q.pos.distance_to(cc)
+		return t / pk.size()
+	var s0: float = spread.call()
+	for i in 900: inf.update(dt)
+	var s1: float = spread.call()
+	G.enemies.clear()
+	p.iframes = 0.0
+	check("Infected (LimboAI): a noise sends them to look and they lose interest; seeing you on the way is a chase; the first to chase groans and others come",
+		Brains.on() and went_to_look and near_noise and gave_up and spotted and groaned, "look=%s near=%s gave_up=%s spotted=%s groaned=%s" % [went_to_look, near_noise, gave_up, spotted, groaned])
+	check("Infected (LimboAI): they find the gap round a fence, chasing you or raiding the farm, and wanderers drift into packs",
+		round_ok and raid_round and s1 < s0 * 0.8, "round=%s raid=%s (fence hp %d -> %d) spread %.0f -> %.0f" % [round_ok, raid_round, hp0, hp1, s0, s1])
+
 func run_hud() -> void:
 	# Nov 23: the compact HUD
 	var G = Game
@@ -5018,7 +5112,7 @@ func run_brains() -> void:
 	dutch.state = "chase"; dutch.called = true; dutch.summon_t = 999.0
 	dutch.hp = float(dutch.max_hp) * 0.45
 	inf.update(1.0 / 30.0)
-	var angry: bool = dutch.get("enraged", false) and is_equal_approx(float(dutch.get("bt_speed", 1.0)), 1.25)
+	var angry: bool = dutch.get("enraged", false) and is_equal_approx(float(dutch.get("bt_speed", 1.0)), 1.25) and not dutch.get("last_stand", false)
 	dutch.hp = float(dutch.max_hp) * 0.15
 	inf.update(1.0 / 30.0)
 	var crew: int = G.enemies.filter(func(o): return o.get("summoned_by", "") == "boss_dutch").size()
@@ -5038,7 +5132,7 @@ func run_brains() -> void:
 	check("Behaviour trees (LimboAI): a hurt raider falls back and patches up; the first raider to see you calls the crew; gunners back off to reload",
 		loaded and fled and healed and shouted and backed, "loaded=%s fled=%s healed=%s shouted=%s backed=%s" % [loaded, fled, healed, shouted, backed])
 	check("Behaviour trees (LimboAI): bosses get angry at half health and make a last stand (Dutch calls his crew, infected bosses roar); off switch falls back to the old fighting",
-		angry and crew >= 2 and roared and off and Brains.kind_of(Data.enemies.shambler) == "", "angry=%s crew=%d roared=%s off=%s" % [angry, crew, roared, off])
+		angry and crew >= 2 and roared and off and Brains.kind_of(Data.enemies.shambler) == "infected", "angry=%s crew=%d roared=%s off=%s" % [angry, crew, roared, off])
 
 func run_farmbld() -> void:
 	# Nov 22: Modern Farm pictures for the coop, barn and hutch; doors where the pictures have them

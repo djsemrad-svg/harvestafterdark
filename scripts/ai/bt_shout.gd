@@ -1,7 +1,7 @@
 extends BTAction
 ## Seen you: shouts, and the crew nearby come running.
 
-var radius := 12.0 * 16.0
+@export var radius := 12.0 * 16.0
 
 func _tick(_delta: float) -> Status:
 	var e: Dictionary = blackboard.get_var(&"e", {})

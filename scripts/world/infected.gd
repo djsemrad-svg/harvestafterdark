@@ -124,13 +124,21 @@ func update(dt: float) -> void:
 				mv = tg.normalized() * float(d.chase_speed) * 0.8 if tg.length() > 6 else Vector2.ZERO
 				_move(e, mv * speed_mult, dt)
 				continue
-		# raiders and bosses: their behaviour tree may take over this frame (Brains, LimboAI)
-		if e.state == "chase" and Brains.kind_of(d) != "" and (dist <= sight(e) * 1.7 or float(e.alert_t) > 0):
+		# raiders, bosses and the infected: their behaviour tree may take over this frame (Brains, LimboAI)
+		var bk := Brains.kind_of(d)
+		if bk == "infected" and e.state in ["wander", "chase", "investigate"] and not d.get("boss", false):
+			var imv = Brains.tick(e, d, to, dist, dt, self)
+			if imv != null:
+				_move(e, imv * speed_mult, dt)
+				continue
+		elif e.state == "chase" and bk != "" and (dist <= sight(e) * 1.7 or float(e.alert_t) > 0):
 			var bmv = Brains.tick(e, d, to, dist, dt, self)
 			if bmv != null:
 				_move(e, bmv * speed_mult, dt)
 				continue
 		match e.state:
+			"investigate":
+				e.state = "wander"      # only the behaviour tree investigates; without it, back to wandering
 			"asleep":
 				if dist < sight(e):
 					e.state = "chase"
@@ -237,6 +245,10 @@ func _raider(e: Dictionary, dt: float, d: Dictionary) -> void:
 	var goal: Vector2 = e.goal
 	var tg: Vector2 = goal - e.pos
 	var mv: Vector2 = tg.normalized() * float(d.wander_speed) * 1.3 if tg.length() > 6 else Vector2.ZERO
+	# something in the way: a gap in your fences gets found (Brains.way_round); no way round, it claws through
+	if Brains.on():
+		var rmv = Brains.way_round(e, goal, float(d.wander_speed) * 1.3)
+		if rmv != null: mv = rmv
 	var before: Vector2 = e.pos
 	if mv != Vector2.ZERO:
 		w.move_entity(e, mv * dt, 4, 5)

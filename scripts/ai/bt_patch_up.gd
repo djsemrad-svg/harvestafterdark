@@ -1,8 +1,8 @@
 extends BTAction
 ## Stops to patch up (your chance to rush in), then gets back some health. Once per fight.
 
-var secs := 1.6
-var heal := 0.3
+@export var secs := 1.6
+@export var heal := 0.3
 
 func _enter() -> void:
 	blackboard.set_var(&"pu_t", secs)
