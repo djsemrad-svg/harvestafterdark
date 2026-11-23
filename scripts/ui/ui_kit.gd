@@ -192,8 +192,8 @@ static func panel(min_w := 0.0, min_h := 0.0) -> WornPanel:
 		p.add_theme_stylebox_override("panel", tsb("window", 8, 9))
 	return p
 
-## The pixel font is drawn on a 7 px grid. Sizes in between (8, 10, 12...) stretch some
-## pixel columns and not others, which makes letters look smeared, so snap to 7, 14, 21 or 28.
+## Snaps label sizes to 7, 14, 21 or 28. Since ui_font() draws whole-pixel sizes only, every size under 16
+## (4 to 15) looks exactly the same and is crisp (checked Nov 23); this just keeps sizes tidy.
 static func crisp_size(size: int) -> int:
 	if size <= 7: return size
 	return clampi(int(round(size / 7.0)) * 7, 7, 28)

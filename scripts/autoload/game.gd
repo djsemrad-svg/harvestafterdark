@@ -815,6 +815,7 @@ func build_persistent_maps() -> void:
 	for sid in MapScale.SCALED:
 		if maps.has(sid): maps[sid] = MapScale.upscale(maps[sid])
 	MapScale.fix_arrivals(maps)
+	TownDress.home_rooms(maps)
 	_migrate_scale()
 	for b in state.get("buildings", []):
 		maps.homestead.add_structure(b)

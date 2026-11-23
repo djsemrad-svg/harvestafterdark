@@ -838,6 +838,28 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   - If LimboAI can't load, `Brains.on()` is false and everyone fights the old way. `Brains.enabled` is the switch.
 - Test `run_brains`. Not playtested: how fair the patch-up window and the angry bosses feel is for Daniel to judge.
 
+### Nov 23: small leftovers (Daniel: "start small and do 5")
+- Stepping aside (`World._ask_aside`, `update_aside`, `aside`): push into a neighbour or townsperson who is standing
+  still for 0.45 s and they walk 13-16 px to one side (the side they already lean toward, else the other), turn to
+  watch you, and walk back to their spot once you're 26 px clear for 1.2 s (waiting if you stand on it). Not for
+  people walking a path or a patrol, or anyone marked `blocking`. With no room either side, you still squeeze past,
+  now after 1.4 s (was 1.0). Test `run_stepaside`.
+- Town homes you can visit (`TownDress.RESIDENTS`, `home_rooms`): 10 of the 11 homes (one never fits its spot) open
+  9 am to 7 pm (`TownDress.OPEN`, `CLOSE`; the warp's `hours`, checked in `World`). Outside those hours the door
+  shows the old door line. Inside: one of the four district house layouts, warm look, no infected, maps `thome_<n>`
+  named "<resident>'s home". Cupboards, fridges and drawers are the family's (`owned`): "Those are X's things."
+  The resident potters about (`Townsfolk` role `resident`, three lines each). Townsfolk can now stand on every kind
+  of indoor floor. Older saves get the homes on load (town structures aren't saved). Test `run_homes`; screenshot
+  mode `homes`.
+- Two-level hills (`Terrain.HILL`, homestead and Riverlands): before the other rises, the map is searched on a grid
+  (and along its top, left and right edges) for one hill of 9-13 x 7-9 with a second level on top. Trees and brush
+  right round a candidate are cleared first (put back if it doesn't fit); boulders and big stumps may sit on top.
+  In 8 test worlds about 3 in 8 farms and 2 in 8 Riverlands got one (before: none on the farm). New worlds only for
+  the farm (saved plans are kept); Riverlands plans made before the boulder update get it too. Screenshot mode `hill`.
+- Text sizes: checked by rendering every size. `UIKit.ui_font` draws whole pixels only, so every size from 4 to 15
+  looks the same and is crisp; nothing was blurry (the old note was out of date). Side effect found: the "Larger
+  interface text" setting (size 9) makes no visible difference. Not changed; asked Daniel.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

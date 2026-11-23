@@ -17,6 +17,8 @@ extends RefCounted
 ## turns snowy in winter (`_winter` pictures, picked in WorldView._terrain); town gets hand-placed banks (FIXED).
 
 const VERSION := 2      # 2: trails, waterfalls, town banks (older plans are made again)
+## Maps that try for one big hill with a second level first: [style, tries].
+const HILL := {"homestead": ["earth", 40], "riverlands": ["earth", 40]}
 const FACE := {"earth": 2, "stone": 2, "turf": 1, "boulder": 1}
 const NATURAL := ["tree", "pine", "bush", "weeds", "rock", "twig", "stump", "forage", "wild_bush", "flower", "grass_tuft", "fern"]
 const GROUND := ["grass", "dirt", "sand"]
@@ -169,6 +171,69 @@ static func plan(m: GameMap, id: String) -> Array:
 		if not got0.is_empty():
 			kept.append(got0)
 			reach0 = _reach(m)
+	# one proper hill with a second level, where a map has room for it (Nov 23: the farm hardly ever got one)
+	if HILL.has(id):
+		var hz: Array = HILL[id]
+		# every spot on a coarse grid, in a seeded order, so a crowded map still finds its one hill
+		var spots := []
+		for yy in range(4, m.h - 14, 2):
+			for xx in range(4, m.w - 15, 2):
+				spots.append(Vector2i(xx, yy))
+		# or leaning on the top, left or right edge of the map (the land rising to the hills); -1 = right edge
+		for xx in range(2, m.w - 15, 2): spots.append(Vector2i(xx, 0))
+		for yy in range(2, m.h - 14, 2):
+			spots.append(Vector2i(0, yy))
+			spots.append(Vector2i(-1, yy))
+		for i in range(spots.size() - 1, 0, -1):
+			var j := r.randi_range(0, i)
+			var tmp: Vector2i = spots[i]; spots[i] = spots[j]; spots[j] = tmp
+		var tries := 0
+		for sp in spots:
+			if tries >= int(hz[1]) or kept.size() + 2 > int(MAX_RISES.get(id, 3)) + 1: break
+			var hw := r.randi_range(9, 13)
+			var hh := r.randi_range(7, 9)
+			if sp.x == -1: sp.x = m.w - hw
+			if not _quick_ok(m, sp.x, sp.y, hw, hh + FACE[hz[0]] + 1): continue
+			tries += 1
+			# thin the trees and brush right round it first, so it doesn't box in little pockets of ground
+			var snap_obj: Dictionary = m.objects.duplicate()
+			var snap_solid: PackedByteArray = m.solid_mask.duplicate()
+			var snap_tiles = m.tiles.duplicate()
+			for yy in range(sp.y - 2, sp.y + hh + FACE[hz[0]] + 3):
+				for xx in range(sp.x - 2, sp.x + hw + 2):
+					var o = m.get_obj(xx, yy) if m.in_bounds(xx, yy) else null
+					if o != null and NATURAL.has(str(o.type)): m.remove_obj(int(o.x), int(o.y))
+			var r0 := _reach(m)
+			var gh := _try(m, {"x": sp.x, "y": sp.y, "w": hw, "h": hh, "lvl": 1, "style": hz[0], "stairs": -1}, r, r0)
+			if gh.is_empty():
+				m.objects.clear()
+				m.objects.merge(snap_obj)
+				m.solid_mask = snap_solid
+				continue
+			reach0 = _reach(m)
+			var top := {}
+			for k in 6:
+				var tw := hw - r.randi_range(4, 6)
+				var tx: int = sp.x + r.randi_range(1, hw - tw - 1)
+				if sp.x == 0: tx = 0
+				elif sp.x + hw == m.w: tx = m.w - tw
+				var ty: int = 0 if sp.y == 0 else sp.y + 1
+				top = _try(m, {"x": tx, "y": ty, "w": tw, "h": hh - (3 if sp.y == 0 else 4), "lvl": 2, "style": hz[0], "stairs": -1}, r, reach0)
+				if not top.is_empty(): break
+			if top.is_empty():
+				# no room for the top: take the hill away again and look elsewhere
+				reset(m)
+				m.objects.clear()
+				m.objects.merge(snap_obj)
+				m.solid_mask = snap_solid
+				m.tiles = snap_tiles
+				for q in kept: apply(m, q)
+				reach0 = _reach(m)
+				continue
+			kept.append(gh)
+			kept.append(top)
+			reach0 = _reach(m)
+			break
 	for p in PLANS[id]:
 		for i in int(p[1]):
 			if kept.size() >= int(MAX_RISES.get(id, 3)): break
@@ -201,6 +266,15 @@ static func plan(m: GameMap, id: String) -> Array:
 	# leave the map as it was: setup() applies the kept rises again in order
 	reset(m)
 	return kept
+
+## A cheap first look for the hill search: nothing built, no soil, no water or road in the rectangle.
+static func _quick_ok(m: GameMap, x: int, y: int, w: int, h: int) -> bool:
+	if x < 0 or y < 0 or x + w > m.w or y + h >= m.h: return false
+	for yy in range(y, y + h):
+		for xx in range(x, x + w):
+			if m.is_clear(xx, yy) or m.structure_at(xx, yy) != null or m.soil.has(GameMap.k(xx, yy)): return false
+			if not str(m.tile_at(xx, yy)) in GROUND: return false
+	return true
 
 ## Check a candidate rise and pick its steps; on success it stays applied and is returned (with its steps).
 static var why := {}      # why candidates were turned down (for tuning)
@@ -235,7 +309,9 @@ static func _try2(m: GameMap, c: Dictionary, r: RandomNumberGenerator, reach0: D
 				if m.level(x, y) != lv - 1: return _no("level")
 				if m.soil.has(GameMap.k(x, y)) or m.structure_at(x, y) != null or m.is_clear(x, y): return _no("clear/structure/soil")
 				var o = m.get_obj(x, y)
-				if o != null and not NATURAL.has(str(o.type)): return _no("obj:" + str(o.type))
+				# big rocks and stumps may sit up on top, well in from the edges (you climb up to clear them)
+				var on_top: bool = x >= x0 + 1 and x <= x1 - 2 and y >= y0 + 1 and y <= y1 - 2
+				if o != null and not NATURAL.has(str(o.type)) and not (on_top and str(o.type) in ["boulder", "big_stump"]): return _no("obj:" + str(o.type))
 			elif m.structure_at(x, y) != null:
 				return _no("near structure")
 	if c.get("clear", false):

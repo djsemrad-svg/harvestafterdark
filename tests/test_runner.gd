@@ -1337,6 +1337,8 @@ func run_all() -> void:
 	run_bridges()
 	run_farmbld()
 	run_brains()
+	run_stepaside()
+	run_homes()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4842,6 +4844,96 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_homes() -> void:
+	# Nov 23: the neighbours' homes in town can be visited from 9 am to 7 pm
+	var G = Game
+	start("adventure", 2)
+	var tm: GameMap = G.maps.town
+	var homes: Array = tm.structures.filter(func(st): return st.get("home", false) and st.has("idx"))
+	var bad := []
+	for st in homes:
+		var id := "thome_%d" % int(st.idx)
+		if not G.maps.has(id): bad.append(id + " no room"); continue
+		var rm: GameMap = G.maps[id]
+		for kk in rm.objects:
+			if rm.objects[kk].has("loot"): bad.append(id + " searchable"); break
+		Townsfolk.refresh(rm)
+		if Townsfolk.folk.filter(func(f): return f.role == "resident").size() != 1: bad.append(id + " nobody home")
+		var out: Dictionary = rm.warps[0]
+		if out.to != "town" or tm.is_solid(int(out.tx), int(out.ty)): bad.append(id + " exit")
+	Townsfolk.refresh(null)
+	# walk in by day
+	var st0: Dictionary = homes[0]
+	G.state.time = 600
+	G.change_map("town", int(st0.door_x), int(st0.door_y) + 1, "up", {"silent": true})
+	W.test_input = Vector2(0, -1)
+	for i in 40:
+		W.step(1.0 / 60.0)
+		if G.map.id != "town": break
+	W.test_input = Vector2.ZERO
+	var went_in: bool = G.map.id == "thome_%d" % int(st0.idx)
+	Townsfolk.refresh(G.map)
+	var who: Array = Townsfolk.folk.filter(func(f): return f.role == "resident" and Townsfolk.present(f))
+	var greeted: bool = who.size() == 1 and who[0].name == TownDress.RESIDENTS[int(st0.idx)][0]
+	# their cupboards aren't yours
+	var owned: Dictionary = {}
+	for kk in G.map.objects:
+		if G.map.objects[kk].has("owned"): owned = G.map.objects[kk]; break
+	var kept := false
+	if not owned.is_empty():
+		var before: int = G.state.inventory.filter(func(x): return x != null).size()
+		W.interact_object(owned)
+		kept = not owned.has("searched") and G.state.inventory.filter(func(x): return x != null).size() == before
+	# shut at night
+	G.state.time = 1260
+	G.change_map("town", int(st0.door_x), int(st0.door_y) + 1, "up", {"silent": true})
+	W.test_input = Vector2(0, -1)
+	for i in 40: W.step(1.0 / 60.0)
+	W.test_input = Vector2.ZERO
+	var shut: bool = G.map.id == "town"
+	check("Town homes: %d of 11 open to visitors 9 am to 7 pm, each with its resident at home; nothing to search; shut at night" % homes.size(),
+		homes.size() >= 9 and bad.is_empty() and went_in and greeted and kept and shut, "homes=%d bad=%s in=%s greeted=%s kept=%s shut=%s" % [homes.size(), bad, went_in, greeted, kept, shut])
+
+func run_stepaside() -> void:
+	# Nov 23: someone standing in your way steps aside, then goes back to their spot
+	var G = Game
+	start("adventure", 2)
+	at("homestead", 30, 30, "up")
+	var tm: GameMap = G.maps.homestead
+	var pt: Vector2i = W.player_tile()
+	for yy in range(pt.y - 6, pt.y + 2):
+		for xx in range(pt.x - 4, pt.x + 5):
+			clear_tile(tm, xx, yy)
+			tm.set_tile(xx, yy, "grass")
+	Townsfolk.folk.clear()
+	for id in G.npcs:
+		if G.npcs[id].map == "homestead" and id != "ruth": G.npcs[id].map = ""
+	var r: Dictionary = G.npcs.ruth
+	var keep := [r.map, r.pos, r.path, r.entry]
+	var home: Vector2 = G.player.pos + Vector2(0, -16)
+	r.map = "homestead"; r.pos = home; r.path = null
+	r.entry = G.npc_entry_now("ruth")
+	var y0: float = G.player.pos.y
+	W.test_input = Vector2(0, -1)
+	for i in 70: W.step(1.0 / 60.0)
+	var moved_aside: bool = absf(r.pos.x - home.x) >= 12.0 and W.is_aside(r)
+	var past: bool = G.player.pos.y < home.y - 4
+	for i in 30: W.step(1.0 / 60.0)
+	W.test_input = Vector2.ZERO
+	for i in 200: W.step(1.0 / 60.0)
+	var back: bool = r.pos.distance_to(home) < 1.0 and not W.is_aside(r)
+	# someone an event wants in the way stays put; you squeeze past after a while instead
+	G.player.pos = Vector2(home.x, y0)
+	r.pos = home; r.blocking = true
+	W.test_input = Vector2(0, -1)
+	for i in 50: W.step(1.0 / 60.0)
+	var held: bool = r.pos == home and G.player.pos.y > home.y
+	W.test_input = Vector2.ZERO
+	r.erase("blocking")
+	r.map = keep[0]; r.pos = keep[1]; r.path = keep[2]; r.entry = keep[3]
+	check("People step aside: push into someone standing still and they step to one side, wait for you to pass, then go back; someone blocking on purpose stays put",
+		moved_aside and past and back and held, "aside=%s past=%s back=%s held=%s pos=%s home=%s" % [moved_aside, past, back, held, r.pos, home])
 
 func run_brains() -> void:
 	# Nov 22: LimboAI behaviour trees for raiders and bosses (Brains, scripts/ai/)

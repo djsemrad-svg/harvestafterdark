@@ -149,6 +149,7 @@ func step(dt: float) -> void:
 	if not mini:
 		Game.update_npcs(dt)
 		Townsfolk.update(dt)
+		update_aside(dt)
 		Festivals.update(dt)
 		Wildlife.update(dt)
 		Game.update_animals(dt)
@@ -684,24 +685,31 @@ func move_entity(e: Dictionary, delta: Vector2, hw: float, h: float) -> void:
 	var me := e == Game.player
 	var wall_x := false
 	var wall_y := false
-	# people are solid, but after about a second of pushing into someone they let you squeeze past
-	var polite: bool = me and float(e.get("push_t", 0.0)) < 1.0
+	# people are solid; push for a moment and they step aside, or if they can't, you squeeze past after 1.4 s
+	var polite: bool = me and float(e.get("push_t", 0.0)) < 1.4
 	var pushed := false
+	var who: Variant = null
 	var lvl := level_of(m, e.pos)
 	if delta.x != 0:
 		wall_x = box_blocked(m, e.pos + Vector2(delta.x, 0), hw, h, lvl)
-		var px: bool = me and person_blocked(e.pos, e.pos + Vector2(delta.x, 0))
+		var qx: Variant = person_in_way(e.pos, e.pos + Vector2(delta.x, 0)) if me else null
+		var px: bool = qx != null
+		if px: who = qx
 		pushed = pushed or px
 		if not wall_x and not (px and polite):
 			e.pos.x += delta.x
 	if delta.y != 0:
 		wall_y = box_blocked(m, e.pos + Vector2(0, delta.y), hw, h, lvl)
-		var py: bool = me and person_blocked(e.pos, e.pos + Vector2(0, delta.y))
+		var qy: Variant = person_in_way(e.pos, e.pos + Vector2(0, delta.y)) if me else null
+		var py: bool = qy != null
+		if py: who = qy
 		pushed = pushed or py
 		if not wall_y and not (py and polite):
 			e.pos.y += delta.y
 	if me:
 		e.push_t = float(e.get("push_t", 0.0)) + 1.0 / 60.0 if pushed else 0.0
+		if who != null and float(e.push_t) >= ASIDE_AFTER:
+			_ask_aside(who, delta)
 	# corner sliding: walking straight into the edge of a wall or post slips round it (not round people)
 	if me and delta.x != 0 and delta.y == 0 and wall_x:
 		_slide(m, e, Vector2(delta.x, 0), Vector2(0, 1), hw, h, lvl)
@@ -720,17 +728,105 @@ func _slide(m: GameMap, e: Dictionary, step: Vector2, side: Vector2, hw: float, 
 
 ## Neighbours and townsfolk are solid to the player (moving away from someone you overlap is always allowed).
 func person_blocked(from: Vector2, to: Vector2) -> bool:
+	return person_in_way(from, to) != null
+
+## Neighbours and townsfolk on this map.
+func people_here() -> Array:
 	var who := []
 	for id in Game.npcs:
 		var n: Dictionary = Game.npcs[id]
-		if n.map == Game.map.id: who.append(n.pos)
+		if n.map == Game.map.id: who.append(n)
 	if Townsfolk.map_id == Game.map.id:
 		for f in Townsfolk.folk:
-			if Townsfolk.present(f): who.append(f.pos)
-	for q in who:
-		var d1: Vector2 = to - q
-		if absf(d1.x) < 9.0 and absf(d1.y) < 6.0 and d1.length() < (from - q).length():
-			return true
+			if Townsfolk.present(f): who.append(f)
+	return who
+
+## The person the player would walk into going from `from` to `to`, or null.
+func person_in_way(from: Vector2, to: Vector2) -> Variant:
+	for q in people_here():
+		var d1: Vector2 = to - q.pos
+		if absf(d1.x) < 9.0 and absf(d1.y) < 6.0 and d1.length() < (from - q.pos).length():
+			return q
+	return null
+
+# ---------------------------------------------------------------- stepping aside (Nov 23)
+## Push into someone who is standing still for about half a second and they step to one side, wait until you're
+## past, then go back to their spot. Someone marked `blocking` (an event that wants them in the way) stays put.
+## With no room either side, the old rule still applies: after a moment of pushing you squeeze past.
+const ASIDE_AFTER := 0.45
+const ASIDE_SPEED := 44.0
+var aside: Array = []     # {"who", "map", "home", "spot", "phase": out / wait / back, "t"}
+
+func _ask_aside(q: Dictionary, push: Vector2) -> void:
+	if q.get("blocking", false) or q.get("moving", false) or (q.get("path") != null and not q.path.is_empty()):
+		return
+	if q.get("goal") != null or q.get("role", "") == "patrol":
+		return
+	for a in aside:
+		if is_same(a.who, q): return
+	var m: GameMap = Game.map
+	var fwd := push.normalized()
+	var side := Vector2(-fwd.y, fwd.x)
+	# step to the side they're already leaning toward, away from the line you're walking
+	if (q.pos - Game.player.pos).dot(side) < 0: side = -side
+	var lvl := level_of(m, q.pos)
+	for s in [side, -side]:
+		for dist in [16.0, 13.0]:
+			var spot: Vector2 = q.pos + s * dist
+			if box_blocked(m, spot, 5, 6, lvl) or m.is_ramp(int(spot.x) / 16, int(spot.y - 4) / 16): continue
+			if not box_blocked(m, q.pos + s * dist * 0.5, 5, 6, lvl):
+				var crowded := false
+				for o in people_here():
+					if not is_same(o, q) and o.pos.distance_to(spot) < 10.0: crowded = true
+				if crowded: continue
+				aside.append({"who": q, "map": m.id, "home": q.pos, "spot": spot, "phase": "out", "t": 0.0})
+				return
+
+func update_aside(dt: float) -> void:
+	var p: Dictionary = Game.player
+	for a in aside.duplicate():
+		var q: Dictionary = a.who
+		# gone, or off about their own business again: let them be
+		if a.map != Game.map.id or (q.has("map") and q.map != a.map) or (q.get("path") != null and not q.path.is_empty()) or q.get("goal") != null:
+			if a.map != Game.map.id and a.phase != "back": q.pos = a.home
+			aside.erase(a)
+			continue
+		var goal: Vector2 = a.spot if a.phase != "back" else a.home
+		if a.phase == "wait":
+			q.moving = false
+			q.frame = 0
+			var dv: Vector2 = p.pos - q.pos
+			q.dir = ("left" if dv.x < 0 else "right") if absf(dv.x) > absf(dv.y) else ("up" if dv.y < 0 else "down")
+			a.t = float(a.t) + dt if p.pos.distance_to(a.home) > 26.0 else 0.0
+			if float(a.t) > 1.2:
+				a.phase = "back"
+			continue
+		# walking back: wait if you're standing on their spot
+		if a.phase == "back" and p.pos.distance_to(a.home) < 12.0:
+			q.moving = false
+			continue
+		var d: Vector2 = goal - q.pos
+		var sp := ASIDE_SPEED * dt
+		if d.length() <= sp:
+			q.pos = goal
+			q.moving = false
+			q.frame = 0
+			if a.phase == "out":
+				a.phase = "wait"
+			else:
+				if q.has("entry") and q.entry is Array and q.entry.size() > 4: q.dir = q.entry[4]
+				aside.erase(a)
+			continue
+		q.pos += d.normalized() * sp
+		q.dir = ("left" if d.x < 0 else "right") if absf(d.x) > absf(d.y) else ("up" if d.y < 0 else "down")
+		q.walk_t = float(q.get("walk_t", 0.0)) + dt
+		q.frame = int(q.walk_t / 0.11) % 6
+		q.moving = true
+
+## Someone stepping aside right now (for tests and drawing).
+func is_aside(q: Dictionary) -> bool:
+	for a in aside:
+		if is_same(a.who, q): return true
 	return false
 
 func update_player(dt: float) -> void:
@@ -825,6 +921,10 @@ func update_player(dt: float) -> void:
 					var st = Game.map.structure_at(w.x, w.y)
 					Game.ui.say("", st.get("locked_text", "It's locked.") if st != null else "It's locked.")
 					break
+				if w.has("hours") and (int(Game.state.time) < int(w.hours[0]) or int(Game.state.time) >= int(w.hours[1])):
+					Game.last_warp_tile = tk
+					Game.ui.say("", str(w.get("closed_text", "The door's locked.")))
+					return
 				if w.has("shop") and not Game.shop_door_open(w.shop):
 					Game.last_warp_tile = tk
 					Game.ui.say("", Game.shop_closed_text(w.shop))
@@ -2004,6 +2104,9 @@ func interact_object(o: Dictionary) -> void:
 	var st: Dictionary = Game.state
 	var def: Dictionary = Data.obj_defs.get(o.type, {})
 	if Refugees.interact(o): return
+	if o.has("owned"):      # a neighbour's cupboards and drawers (TownDress.home_rooms)
+		Game.ui.say("", "Those are %s's things. Best leave them be." % str(o.owned))
+		return
 	match o.type:
 		"bed", "big_bed":
 			Game.ui.confirm("Go to sleep and start the next day?", func(): Game.end_day("sleep"))

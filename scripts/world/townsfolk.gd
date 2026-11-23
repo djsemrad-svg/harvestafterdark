@@ -50,7 +50,7 @@ const LINES := {
 }
 const EMOTES := ["dots", "music", "question", "heart", "dots", "sweat"]
 const SKIN := ["#f2c9a6", "#e8b48f", "#d39a72", "#b57a52", "#8d5a3a", "#6a4028"]
-const WALKABLE := ["grass", "road", "pave", "dirt", "sand", "bridge", "floor"]
+const WALKABLE := ["grass", "road", "pave", "dirt", "sand", "bridge", "floor", "floor_oak", "floor_tile", "floor_carpet", "floor_concrete"]
 
 static var folk: Array = []
 static var map_id := ""
@@ -75,6 +75,8 @@ static func refresh(m: GameMap) -> void:
 	var camp: bool = m.id == "town" and Game.state.has("day") and (Refugees.stage() == 1 or Refugees.camp_up())
 	if m.id == "archive" and Relics.open():
 		plan = {"curio_keeper": 1, "browse": 1}
+	if m.id.begins_with("thome_"):
+		plan = {"resident": 1}
 	if plan.is_empty() and not camp:
 		return
 	var r := RandomNumberGenerator.new()
@@ -179,6 +181,16 @@ static func refresh(m: GameMap) -> void:
 							if Data.shops.has("festival"): Data.shops.festival.look = mc.look
 							folk.append(mc)
 							break
+				"resident":
+					# whoever lives here, pottering about at home while the door is open (TownDress.RESIDENTS)
+					var idx := int(m.id.substr(6))
+					var spot := _free_near(m, 6, 6, r, used)
+					if spot.x < 0: continue
+					var rs := _make(r, "resident", spot, "down")
+					rs.name = str(TownDress.resident(idx)[0])
+					rs.lines = TownDress.resident(idx)[1]
+					rs.hours = [TownDress.OPEN, TownDress.CLOSE]
+					folk.append(rs)
 				"curio_keeper":
 					# Mabel behind her counter during shop hours
 					var mk := _make(r, "curio_keeper", Vector2i(6, 3), "down")
@@ -301,7 +313,7 @@ static func update(dt: float) -> void:
 	refresh(m)
 	for f in folk:
 		f.t = float(f.t) - dt
-		if f.role == "walk" or f.role == "browse":
+		if f.role == "walk" or f.role == "browse" or f.role == "resident":
 			_walk(m, f, dt)
 		elif f.role == "patrol" or (f.role == "officer" and f.has("beat")):
 			_patrol(f, dt)
@@ -350,7 +362,7 @@ static func _walk(m: GameMap, f: Dictionary, dt: float) -> void:
 		# pick somewhere nearby that can be walked to in a straight line
 		for tries in 20:
 			var reach := 120.0 if tries < 10 else 60.0
-			if f.role == "browse": reach = 40.0
+			if f.role == "browse" or f.role == "resident": reach = 40.0
 			var g: Vector2 = f.home + Vector2(randf_range(-reach, reach), randf_range(-reach * 0.75, reach * 0.75))
 			var ok: bool = not (f.role == "browse" and int(g.y / 16) < SHOP_FLOOR_Y)
 			var lv := m.level(int(f.pos.x / 16), int(f.pos.y / 16))
@@ -415,7 +427,7 @@ static func talk(f: Dictionary) -> void:
 		if not Talk.play(str(Festivals.today().get("talk", ""))):
 			Game.ui.open("shop", {"shop": "festival"})
 		return
-	var lines: Array = LINES.get(f.role, LINES.walk)
+	var lines: Array = f.lines if f.has("lines") else LINES.get(f.role, LINES.walk)
 	if Refugees.camp_up() and f.role in ["chat", "walk", "queue"] and (int(f.seed) + int(Game.state.day)) % 2 == 0:
 		lines = Refugees.LINES.town_grumble
 	f.dir = {"up": "down", "down": "up", "left": "right", "right": "left"}[Game.player.dir]

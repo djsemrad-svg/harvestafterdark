@@ -29,6 +29,24 @@ const HOMES := [
 const POSTS := [[3, 37, "left"], [3, 40, "left"], [4, 63, "left"], [55, 4, "up"], [58, 4, "up"],
 	[108, 37, "right"], [108, 40, "right"], [55, 64, "down"], [58, 64, "down"]]
 
+## Who lives in each home (same order as HOMES), and what they say when you visit (Nov 23). Homes are open to
+## visitors from 9 am to 7 pm; outside those hours the door is shut and you get the line in HOMES.
+const RESIDENTS := [
+	["Dale Pruitt", ["Come in, come in. Ignore the radio, it's mostly static and my brother's opinions.", "Wiped my boots? Good. Last fella tracked half the Ridge in here.", "If you hear anything on the radio that isn't static, you come tell me."]],
+	["Vi Hollis", ["Mind the tomato cans. Coffee grounds, that's the secret.", "Sit if you like. I'd offer coffee, but that's what the tomatoes got.", "My son's on wall duty tonight. I don't sleep much when he is."]],
+	["Ama Okafor", ["Chimes keep me company when the others are on the wall.", "Spoons from every house on our old street. Every one of them.", "Kwame's teaching the little ones to tie knots. Rope's the new reading, he says."]],
+	["Mrs. Albee", ["You may come in. You may not touch anything.", "Forty years I taught third grade. You'd be surprised what that prepares you for.", "Shoes. Off. Thank you."]],
+	["Tobi Reyes", ["We just got in from the fields. Sorry about the boots.", "Marisol's my cousin. Don't tell her I said she's bossy. She is, though.", "Muddy work, but it's work that feeds people."]],
+	["Wynn Abara", ["Oh! Hello. Sorry, I don't get many visitors.", "I painted the mat. Is it too much? It's too much.", "Welcome. Really. I mean it, it's on the mat."]],
+	["Sven Lindqvist", ["You heard that, didn't you. I'm getting better. I think.", "My grandfather played. I'm keeping it alive, badly.", "Pick a song. I'll butcher it for you."]],
+	["Lucia Castellano", ["Watch your step, there's chalk everywhere.", "The kids drew the wall so they'd feel safe. It worked on me too.", "Three kids, one bathroom, no running water. Ask me anything about patience."]],
+	["Mick Doyle", ["Car battery runs the porch light. Two nights a charge, if you're curious.", "Back from a supply run. Nothing worth the walk, as usual.", "Make yourself at home. Not too at home."]],
+	["Peg Aldana", ["Beans by the door, squash round back. Lawns are for people who aren't hungry.", "That's Biscuit in the window. She runs the place.", "Take a bean on your way out. Take two."]],
+	["Grandpa Yusuf", ["Seven letters, 'what keeps us going'. Any ideas?", "Sit, sit. My knees and I are glad of company.", "In my day we complained about the weather. Now I miss complaining about the weather."]],
+]
+const OPEN := 540      # 9 am
+const CLOSE := 1140    # 7 pm
+
 static var _spots := {}
 
 static func dress(m: GameMap) -> void:
@@ -40,8 +58,9 @@ static func dress(m: GameMap) -> void:
 	r.seed = 0x7a11d5
 	_walls(m)
 	var homes := []
-	for h in HOMES:
-		var st := _home(m, str(h[0]), int(h[1]), int(h[2]), str(h[3]))
+	for i in HOMES.size():
+		var h: Array = HOMES[i]
+		var st := _home(m, str(h[0]), int(h[1]), int(h[2]), str(h[3]), i)
 		if not st.is_empty(): homes.append(st)
 	_walks(m)
 	for st in homes:
@@ -77,7 +96,7 @@ static func _wall_line(m: GameMap, a: Vector2i, b: Vector2i) -> void:
 		p += d
 
 ## ---------------------------------------------------------------- homes
-static func _home(m: GameMap, kind: String, dx: int, by: int, text: String) -> Dictionary:
+static func _home(m: GameMap, kind: String, dx: int, by: int, text: String, idx := -1) -> Dictionary:
 	var meta: Dictionary = MapScale.building_meta().get(kind, {})
 	if meta.is_empty():
 		return {}
@@ -91,8 +110,44 @@ static func _home(m: GameMap, kind: String, dx: int, by: int, text: String) -> D
 		return {}
 	_clear(m, x - 1, y, w + 2, h + 1, true)
 	var st := {"kind": kind, "x": x, "y": y, "w": w, "h": h, "door_x": dx, "door_y": by, "art_x": left, "text": text, "home": true}
+	if idx >= 0:
+		# you can walk in while someone's home (World checks "hours"); the room is built by home_rooms
+		st.idx = idx
+		st.warp = {"to": "thome_%d" % idx, "tx": 6, "ty": 9, "dir": "up", "hours": [OPEN, CLOSE], "closed_text": text}
 	m.add_structure(st)
 	return st
+
+## The inside of every home in town, built from the district house layouts but lived in: nothing to search
+## (the cupboards and drawers are the family's: World.interact_object), no infected, a warm look, and the
+## resident at home during the day (Townsfolk role "resident"). Called once the town is built.
+static func home_rooms(maps: Dictionary) -> void:
+	var town: GameMap = maps.get("town")
+	if town == null: return
+	for st in town.structures:
+		if not st.get("home", false) or not st.has("idx"): continue
+		var id := "thome_%d" % int(st.idx)
+		var b := {"id": id, "room": "home", "x": int(st.x), "y": int(st.y), "w": int(st.w), "h": int(st.h), "tags": ["home"], "q": 0.0,
+			"foes": [], "spot_chance": 0.0}
+		var lay := Districts.pick_layout(b)
+		var m := Districts.interior_rows("town", b, Districts.ROOMS[lay])
+		m.layout = "thome_" + lay
+		m.mood = ""
+		m.district = ""
+		m.foes = {}
+		for wp in m.warps:
+			wp.tx = int(st.door_x)
+			wp.ty = int(st.door_y) + 1
+			wp.scaled_tx = true
+		for kk in m.objects:
+			var o: Dictionary = m.objects[kk]
+			if o.has("loot"):
+				o.erase("loot")
+				o.owned = RESIDENTS[int(st.idx)][0]
+		maps[id] = m
+		Data.location_names[id] = "%s's home" % str(RESIDENTS[int(st.idx)][0])
+
+static func resident(idx: int) -> Array:
+	return RESIDENTS[idx] if idx >= 0 and idx < RESIDENTS.size() else ["Someone", ["Hello."]]
 
 static func _yard(m: GameMap, st: Dictionary, r: RandomNumberGenerator) -> void:
 	var x := int(st.x); var w := int(st.w); var dx := int(st.door_x); var by := int(st.door_y)

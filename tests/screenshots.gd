@@ -424,6 +424,41 @@ func _ready() -> void:
 		main.ui.close_all()
 		get_tree().quit()
 		return
+	if only == "homes":
+		# inside two neighbours' homes by day, with whoever lives there
+		main.ui.close_all()
+		Game.state.time = 640
+		var homes: Array = Game.maps.town.structures.filter(func(st): return st.get("home", false) and st.has("idx"))
+		for i in mini(2, homes.size()):
+			Game.change_map("thome_%d" % int(homes[i].idx), 6, 8, "up", {"silent": true})
+			await frames(30)
+			await shot("67_home_%d" % i)
+		Game.change_map("town", int(homes[0].door_x), int(homes[0].door_y) + 2, "up", {"silent": true})
+		await frames(30)
+		await shot("67_home_door")
+		get_tree().quit()
+		return
+	if only == "hill":
+		# the farm's hill with a second level, if this world got one
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720
+		for id in ["homestead", "riverlands"]:
+			var top: Array = Game.state.get("terrain", {}).get(id, []).filter(func(q): return int(q.lvl) == 2)
+			print("HILL %s: %d" % [id, top.size()])
+			if top.is_empty(): continue
+			var t: Dictionary = top[0]
+			var lo: Array = Game.state.terrain[id].filter(func(q): return int(q.lvl) == 1 and int(q.x) <= int(t.x) and int(q.x) + int(q.w) >= int(t.x) + int(t.w))
+			var base: Dictionary = lo[0] if not lo.is_empty() else t
+			var sx := int(base.stairs); var sy := int(base.y) + int(base.h) + 3
+			Game.change_map(id, sx, sy, "up", {"silent": true})
+			Game.player.pos = Vector2(sx * 16 + 16, sy * 16 + 12)
+			main.world.view.snap_camera()
+			Game.enemies.clear()
+			await frames(20)
+			await shot("68_hill_%s" % id)
+		get_tree().quit()
+		return
 	if only == "farmbld":
 		# the coop, barn and hutch pictures, doors shut then open, and in winter
 		main.ui.close_all()
