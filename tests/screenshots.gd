@@ -297,6 +297,9 @@ func _ready() -> void:
 			for dir in ["down", "up", "left", "right"]:
 				for f in 4:
 					Art.char_image(lk, dir, f).save_png(out + "cr_%d_%s_%d.png" % [i, dir, f])
+					var lf: Dictionary = lk.duplicate()
+					lf.erase("crawl")
+					Art.char_image(lf, dir, f).save_png(out + "full_%d_%s_%d.png" % [i, dir, f])
 		main.ui.close_all()
 		main.ui.visible = false
 		Game.state.time = 720; Game.state.weather = "sun"

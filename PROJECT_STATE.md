@@ -947,17 +947,20 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   - `Art.building_art` uses `buildings/<kind>_<condition>.png` as it is when it exists (snow still added in winter).
 
 ### Nov 23: the Crawler crawls
-- Daniel: it looked like a zombie on its side, gliding around. Now `Infected.make_look` gives the Crawler
-  `look.crawl` (and no `lying`), and `Art.char_image` hands it to `Art.crawler_image(look, dir, frame)`, a 24 x 24
-  figure drawn in code from the look's skin, shirt, pants, hair and eyes, with the usual dark outline:
-  - side: flat on its belly, head lifted, legs dragging (one knee bends on the other stroke); left is right mirrored.
-  - toward you: face and hair low at the front, back and short legs behind, arms out like a swimmer.
-  - away: back of the head, arms reaching up the screen, legs and soles toward you.
-  - four frames: one arm reaches, it pulls (the body comes a pixel forward), the other arm reaches, it pulls.
+- Daniel: it looked like a zombie on its side, gliding around. A first try drew a whole new crawling figure in code;
+  Daniel said it no longer looked like the other infected and asked for the ordinary zombie cut in half instead.
+- Now: `Infected.make_look` gives the Crawler `look.crawl` (and no `lying`), and `Art.char_image` hands it to
+  `Art.crawler_image(look, dir, frame)`. That takes the ordinary infected picture for the same look and direction
+  (standing frame), keeps the head and chest (drops about the bottom 30%: legs and belly), and sets it down with its
+  hem on the ground. The cut edge is a torn hem of rags in its own shirt colour with an outline. Side on, the body
+  leans forward a little. Arms are drawn on top (shirt sleeve, skin forearm, a hand on the ground, outlined), four
+  frames: one arm reaches ahead, it pulls (body a pixel forward), the other reaches, it pulls. Side on there is one
+  arm, reaching or bent with the elbow up; going away the arms are behind the head. A faint dirt scrape lies behind
+  it. 24 wide, empty rows trimmed off the top so the health bar sits just above the head.
 - `Infected._move`: a Crawler moves at 0.35x speed while an arm reaches and 1.65x while it pulls (one 0.8 s
   cycle, matched to the frames), so it lurches instead of gliding. Its lunge is unchanged.
 - Knocked-down infected still use the rotated lying sprite. Test section `crawler`; screenshot mode `crawler`
-  (every direction and frame, plus four on the grass).
+  (every direction and frame, the whole infected for comparison, plus four on the grass).
 
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).

@@ -4849,7 +4849,8 @@ func run_refugees() -> void:
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
 
 func run_crawler() -> void:
-	# Nov 23: the Crawler is drawn crawling in four directions and moves in lurches, not a sideways body gliding
+	# Nov 23: the Crawler is the ordinary infected cut off at the waist, pulling itself along in four directions,
+	# and moves in lurches, not a sideways body gliding
 	var G = Game
 	start("adventure", 2)
 	at("homestead", 30, 30, "down")
@@ -4870,14 +4871,40 @@ func run_crawler() -> void:
 	for dir in ["down", "up", "left", "right"]:
 		var f0: Image = Art.char_image(lk, dir, 0)
 		var f2: Image = Art.char_image(lk, dir, 2)
-		if f0.get_width() != 24 or f0.get_height() != 24 or int(solid.call(f0)) < 60: all_ok = false
+		if f0.get_width() != 24 or int(solid.call(f0)) < 60: all_ok = false
 		if f0.get_data() == f2.get_data(): moves = false
 	check("Crawler has a picture for every direction", all_ok)
+	# it is the ordinary infected cut in half: shorter, and the head is the same picture
+	var whole_lk: Dictionary = lk.duplicate()
+	whole_lk.erase("crawl")
+	var whole: Image = Art.char_image(whole_lk, "right", 0)
+	var half: Image = Art.char_image(lk, "right", 0)
+	var wu := whole.get_used_rect()
+	var hu := half.get_used_rect()
+	check("Crawler is the infected without its legs (shorter)", hu.size.y <= wu.size.y - 3 and hu.size.y > wu.size.y / 2, "%d vs %d" % [hu.size.y, wu.size.y])
+	var same := 0
+	var cols := {}
+	for y in wu.size.y / 2:
+		for x in wu.size.x:
+			var c := whole.get_pixel(wu.position.x + x, wu.position.y + y)
+			if c.a > 0.5: cols[c.to_html()] = true
+	for y in hu.size.y:
+		for x in hu.size.x:
+			var c := half.get_pixel(hu.position.x + x, hu.position.y + y)
+			if c.a > 0.5 and cols.has(c.to_html()): same += 1
+	check("Crawler keeps the infected's own colours", same > 60, str(same))
 	check("Crawler's arms move between frames in every direction", moves)
-	var r: Image = Art.char_image(lk, "right", 1)
-	var l: Image = Art.char_image(lk, "left", 1)
-	r.flip_x()
-	check("Crawler facing left is the right-facing one mirrored", r.get_data() == l.get_data())
+	# side on, the reaching hand is out ahead of the body: on the right facing right, on the left facing left
+	var reach_side := func(im: Image) -> int:
+		var u := im.get_used_rect()
+		var ground_row := u.position.y + u.size.y - 2
+		var lx := 99; var rx := -1
+		for x in im.get_width():
+			var c := im.get_pixel(x, ground_row)
+			if c.a > 0.9:
+				lx = mini(lx, x); rx = maxi(rx, x)
+		return rx - 12 - (12 - lx)      # > 0: reaches further right than left
+	check("Crawler reaches ahead the way it faces", int(reach_side.call(Art.char_image(lk, "right", 0))) > 0 and int(reach_side.call(Art.char_image(lk, "left", 0))) < 0)
 	# lurching: slow while an arm reaches, quick while it pulls
 	G.enemies.clear()
 	var hm: GameMap = G.maps.homestead

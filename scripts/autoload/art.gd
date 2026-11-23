@@ -1458,136 +1458,141 @@ func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Im
 		im = grow_body(im, sc, look.get("lying", false))
 	return im
 
-## A Crawler in one of four directions (24 x 24, the ground at the bottom), coloured from its look. It pulls
-## itself along arm over arm on four frames: 0 the near arm reaches, 1 it pulls (the body comes forward a
-## pixel), 2 the other arm reaches, 3 it pulls. Legs drag behind. Infected.update moves it in lurches to match.
+## A Crawler (Nov 23, Daniel's idea): the ordinary infected, in its own clothes and its own four directions, cut
+## off at the waist with a torn hem, pulling itself along the ground arm over arm. Frames: 0 one arm reaches out
+## ahead, 1 it pulls (the body comes forward a pixel), 2 the other arm reaches, 3 it pulls. A faint scrape on the
+## ground shows where it dragged itself. Infected._move moves it in lurches to match.
 func crawler_image(look: Dictionary, dir: String, frame: int) -> Image:
-	var im := Image.create(24, 24, false, Image.FORMAT_RGBA8)
-	var S := Color(str(look.get("skin", "#8fa58a")))
-	var Sd := S.darkened(0.25)
-	var C := Color(str(look.get("shirt", "#6a4a8a")))
-	var Cd := C.darkened(0.28)
-	var P := Color(str(look.get("pants", "#3a4a6a")))
-	var Pd := P.darkened(0.28)
-	var Hc := Color(str(look.get("hair", "#3a3a30")))
-	var E := Color(str(look.get("eyes", "#d8e070")))
-	var shoe := Color("#3a2a22")
-	var mouth := Color("#3a1a1a")
+	var l2: Dictionary = look.duplicate()
+	l2.erase("crawl")
+	l2.lying = false
+	l2.scale = 1.0
+	var full: Image = char_image(l2, dir, 0)      # standing frame: its own swinging arms would fight ours
+	var used := full.get_used_rect()
+	var W := 24
+	var H := full.get_height()
+	var im := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	if used.size.x == 0:
+		return im
 	var f := frame % 4
-	var lift := 1 if f % 2 == 1 else 0          # frames 1 and 3: pulling, the body comes forward a pixel
-	var a_out := f < 2                            # frames 0-1: the near/left arm is out in front; 2-3: the other one
-	var put := func(x: int, y: int, c: Color) -> void:
-		if x >= 0 and y >= 0 and x < 24 and y < 24: im.set_pixel(x, y, c)
-	var rect := func(x0: int, y0: int, x1: int, y1: int, c: Color) -> void:
-		for y in range(y0, y1 + 1):
-			for x in range(x0, x1 + 1): put.call(x, y, c)
-	# a two-pixel-thick line, so arms and legs read at game size
-	var thick := func(a: Vector2i, b: Vector2i, c: Color) -> void:
-		var steps := maxi(absi(b.x - a.x), absi(b.y - a.y))
-		var side := Vector2i(0, 1) if absi(b.x - a.x) >= absi(b.y - a.y) else Vector2i(1, 0)
-		for i in steps + 1:
-			var t := float(i) / maxf(1.0, float(steps))
-			var p := Vector2i(roundi(lerpf(a.x, b.x, t)), roundi(lerpf(a.y, b.y, t)))
-			put.call(p.x, p.y, c)
-			put.call(p.x + side.x, p.y + side.y, c)
-	# shoulder to elbow in the shirt colour, elbow to hand bare, and a hand clawing the ground
-	var arm := func(sh: Vector2i, el: Vector2i, hand: Vector2i, sleeve: Color, skin: Color) -> void:
-		thick.call(sh, el, sleeve)
-		thick.call(el, hand, skin)
-		rect.call(hand.x, hand.y, hand.x + 1, hand.y + 1, skin.darkened(0.12))
-	if dir == "left" or dir == "right":
-		var b := lift
-		# far arm and far leg first, darker, behind the body
-		if a_out:
-			arm.call(Vector2i(13 + b, 16), Vector2i(15 + b, 13), Vector2i(17 + b, 19), Cd, Sd)
-		else:
-			arm.call(Vector2i(13 + b, 16), Vector2i(17 + b, 16), Vector2i(21, 18), Cd, Sd)
-		var far_knee := Vector2i(5 + b, 15) if not a_out else Vector2i(4 + b, 18)
-		thick.call(Vector2i(8 + b, 18), far_knee, Pd)
-		thick.call(far_knee, Vector2i(1 + b, 18), Pd)
-		rect.call(0 + b, 18, 1 + b, 19, shoe)
-		# near leg straight, dragging
-		thick.call(Vector2i(8 + b, 19), Vector2i(2 + b, 19), P)
-		rect.call(0 + b, 19, 1 + b, 20, shoe)
-		# torso flat on the ground, shoulders a little higher than the hips
-		rect.call(8 + b, 17, 11 + b, 20, C)
-		rect.call(12 + b, 16, 15 + b, 20, C)
-		rect.call(8 + b, 20, 15 + b, 20, Cd)
-		# head lifted, looking ahead
-		rect.call(15 + b, 11, 19 + b, 15, S)
-		rect.call(15 + b, 15, 18 + b, 15, Sd)
-		rect.call(15 + b, 10, 18 + b, 11, Hc)
-		rect.call(15 + b, 12, 15 + b, 13, Hc)
-		put.call(18 + b, 12, E)
-		put.call(19 + b, 14, mouth)
-		# near arm on top: reaching far ahead, or bent with the elbow up, pulling the body along
-		if a_out:
-			arm.call(Vector2i(13 + b, 17), Vector2i(17 + b, 17), Vector2i(21, 19), C, S)
-		else:
-			arm.call(Vector2i(13 + b, 17), Vector2i(15 + b, 14), Vector2i(17 + b, 19), C, S)
-	elif dir == "down":
-		var b := lift
-		# legs behind it (up the screen), short because they point away, splayed a little
-		var lk := 3 + (1 if a_out else 0)
-		var rk := 3 + (0 if a_out else 1)
-		thick.call(Vector2i(9, 9 + b), Vector2i(8, lk + b), Pd)
-		thick.call(Vector2i(13, 9 + b), Vector2i(14, rk + b), Pd)
-		rect.call(8, lk - 1 + b, 9, lk + b, shoe)
-		rect.call(14, rk - 1 + b, 15, rk + b, shoe)
-		# the back, seen from above, with the shoulders nearest you
-		rect.call(8, 8 + b, 15, 12 + b, C)
-		rect.call(7, 12 + b, 16, 14 + b, C)
-		rect.call(11, 8 + b, 12, 11 + b, Cd)      # spine shadow
-		# arms out to the sides like a swimmer: one reaching toward you, one bent and pulling
-		if a_out:
-			arm.call(Vector2i(7, 13 + b), Vector2i(4, 16 + b), Vector2i(4, 21), C, S)
-			arm.call(Vector2i(16, 13 + b), Vector2i(19, 12 + b), Vector2i(18, 17 + b), C, S)
-		else:
-			arm.call(Vector2i(7, 13 + b), Vector2i(4, 12 + b), Vector2i(4, 17 + b), C, S)
-			arm.call(Vector2i(16, 13 + b), Vector2i(19, 16 + b), Vector2i(18, 21), C, S)
-		# head low and lifted toward you: hair on top, the face below
-		rect.call(9, 14 + b, 14, 19 + b, S)
-		rect.call(9, 13 + b, 14, 15 + b, Hc)
-		rect.call(9, 19 + b, 14, 19 + b, Sd)
-		put.call(10, 17 + b, E)
-		put.call(13, 17 + b, E)
-		rect.call(11, 19 + b, 12, 19 + b, mouth)
-	else:
-		var b := -lift
-		# arms spread wide like a swimmer, reaching away up the screen one at a time
-		if a_out:
-			arm.call(Vector2i(7, 12 + b), Vector2i(6, 9 + b), Vector2i(6, 4), C, S)
-			arm.call(Vector2i(16, 12 + b), Vector2i(20, 14 + b), Vector2i(18, 10 + b), C, S)
-		else:
-			arm.call(Vector2i(7, 12 + b), Vector2i(3, 14 + b), Vector2i(4, 10 + b), C, S)
-			arm.call(Vector2i(16, 12 + b), Vector2i(16, 9 + b), Vector2i(16, 4), C, S)
-		# the back of the head, furthest away and low between the shoulders
-		rect.call(9, 7 + b, 14, 11 + b, Hc)
-		put.call(8, 9 + b, S)
-		put.call(15, 9 + b, S)
-		# the back, then the legs dragging toward you with the soles showing
-		rect.call(7, 12 + b, 16, 14 + b, C)
-		rect.call(8, 15 + b, 15, 17 + b, C)
-		rect.call(11, 12 + b, 12, 16 + b, Cd)      # spine shadow
-		var lk := 20 - (1 if a_out else 0)
-		var rk := 20 - (0 if a_out else 1)
-		thick.call(Vector2i(9, 17 + b), Vector2i(8, lk + b), P)
-		thick.call(Vector2i(13, 17 + b), Vector2i(14, rk + b), Pd)
-		rect.call(8, lk + 1 + b, 9, lk + 2 + b, shoe)
-		rect.call(14, rk + 1 + b, 15, rk + 2 + b, shoe)
-	# a dark outline round it all, like every other sprite
-	var src := im.duplicate()
+	var pull := 1 if f % 2 == 1 else 0
+	var first := f < 2
+	var S := Color(str(look.get("skin", "#8fa58a")))
+	var C := Color(str(look.get("shirt", "#4a4a5a")))
 	var O := Color("#26242c")
-	for y in 24:
-		for x in 24:
-			if src.get_pixel(x, y).a > 0.5: continue
+	# cut: keep the head and chest, lose the legs (the bottom fifth of the figure, plus one row for the hem)
+	var bottom := used.position.y + used.size.y      # first empty row under the feet
+	var cut := bottom - maxi(6, used.size.y * 3 / 10)  # first row that is gone (legs and belly)
+	var ground := H - 2                               # where the hem rests
+	var side := dir == "left" or dir == "right"
+	var fwd := (1 if dir == "right" else -1) if side else 0
+	# where the upper body goes: hem on the ground; facing you it sits a little higher so the hands reach past it
+	var dy := ground - cut
+	if dir == "down": dy -= 4
+	var dx := (W - full.get_width()) / 2 + fwd * pull
+	if dir == "up": dy -= pull
+	if dir == "down": dy += pull
+	# the scrape it leaves behind (dirt, faint)
+	var scrape := Color(0.24, 0.2, 0.16, 0.35)
+	var cx := used.position.x + used.size.x / 2 + dx
+	if side:
+		for k in 6:
+			var x := cx - fwd * (4 + k)
+			for y in [ground - 1, ground]:
+				if x >= 0 and x < W and (k < 4 or y == ground): im.set_pixel(x, y, Color(scrape, scrape.a * (1.0 - k * 0.12)))
+	elif dir == "up":
+		for y in range(cut + dy + 1, H):
+			for x in [cx - 2, cx - 1, cx, cx + 1]:
+				im.set_pixel(x, y, Color(scrape, scrape.a * (1.0 - float(y - cut - dy) * 0.25)))
+	# arms on their own layer: shoulder to elbow in the shirt colour, then the forearm and a clawing hand
+	var arms := Image.create(W, H, false, Image.FORMAT_RGBA8)
+	var line := func(a: Vector2i, b: Vector2i, c: Color) -> void:
+		var steps := maxi(absi(b.x - a.x), absi(b.y - a.y))
+		for k in steps + 1:
+			var t := float(k) / maxf(1.0, float(steps))
+			var q := Vector2i(roundi(lerpf(a.x, b.x, t)), roundi(lerpf(a.y, b.y, t)))
+			if q.x >= 0 and q.y >= 0 and q.x < W and q.y < H: arms.set_pixel(q.x, q.y, c)
+	var sleeve := C if C.get_luminance() > 0.12 else C.lightened(0.15)
+	var arm := func(sh: Vector2i, el: Vector2i, hand: Vector2i) -> void:
+		# two pixels thick all the way, so it reads as an arm and not a thread
+		for o: Vector2i in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)]:
+			line.call(sh + o, el + o, sleeve.darkened(0.2 if o.y == 1 else 0.0))
+		for o: Vector2i in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)]:
+			line.call(el + o, hand + o, S.darkened(0.18 if o.y == 1 else 0.0))
+		for q: Vector2i in [hand, hand + Vector2i(1, 0), hand + Vector2i(0, 1), hand + Vector2i(1, 1)]:
+			if q.x >= 0 and q.x < W and q.y < H: arms.set_pixel(q.x, q.y, S.darkened(0.08))
+	var sy := cut + dy - 5        # shoulder height on the canvas
+	var L := cx - used.size.x / 2 + 1
+	var R := cx + used.size.x / 2 - 2
+	var hy := H - 1               # the hands are on the ground
+	if dir == "down":
+		# reaching toward you, one hand planted ahead, the other drawn in by the chest
+		if first:
+			arm.call(Vector2i(L, sy + 2), Vector2i(L - 2, sy + 4), Vector2i(L - 1, hy - 1))
+			arm.call(Vector2i(R - 1, sy + 2), Vector2i(R + 1, sy + 3), Vector2i(R, sy + 5))
+		else:
+			arm.call(Vector2i(L, sy + 2), Vector2i(L - 2, sy + 3), Vector2i(L - 1, sy + 5))
+			arm.call(Vector2i(R - 1, sy + 2), Vector2i(R + 1, sy + 4), Vector2i(R, hy - 1))
+	elif dir == "up":
+		# reaching away up the screen, out beside the head
+		if first:
+			arm.call(Vector2i(L, sy), Vector2i(L - 2, sy - 2), Vector2i(L - 2, sy - 6))
+			arm.call(Vector2i(R - 1, sy), Vector2i(R + 1, sy - 1), Vector2i(R + 1, sy - 2))
+		else:
+			arm.call(Vector2i(L, sy), Vector2i(L - 2, sy - 1), Vector2i(L - 2, sy - 2))
+			arm.call(Vector2i(R - 1, sy), Vector2i(R + 1, sy - 2), Vector2i(R + 1, sy - 6))
+	else:
+		# side on: the arm reaches out ahead to the ground, or is bent with the elbow up, pulling
+		var shx := cx + fwd * 2
+		if first:
+			arm.call(Vector2i(shx, sy + 1), Vector2i(cx + fwd * 5, sy + 3), Vector2i(cx + fwd * 8 - (1 if fwd > 0 else 0), hy - 1))
+		else:
+			arm.call(Vector2i(shx, sy + 1), Vector2i(cx + fwd * 5, sy), Vector2i(cx + fwd * 5 - (1 if fwd > 0 else 0), hy - 1))
+	# outline the arms (only where they don't already touch something solid)
+	var arms_o := arms.duplicate()
+	for y in H:
+		for x in W:
+			if arms.get_pixel(x, y).a > 0.5: continue
 			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				var q: Vector2i = Vector2i(x, y) + d
-				if q.x >= 0 and q.y >= 0 and q.x < 24 and q.y < 24 and src.get_pixel(q.x, q.y).a > 0.5:
-					im.set_pixel(x, y, O)
+				if q.x >= 0 and q.y >= 0 and q.x < W and q.y < H and arms.get_pixel(q.x, q.y).a > 0.5:
+					arms_o.set_pixel(x, y, O)
 					break
-	if dir == "left":
-		im.flip_x()
+	# up: arms go behind the head; otherwise in front of the body
+	if dir == "up":
+		im.blend_rect(arms_o, Rect2i(0, 0, W, H), Vector2i.ZERO)
+	# the upper body, cut at the waist with a ragged hem
+	for y in range(used.position.y, cut):
+		# side on, the body leans forward over its arms: higher rows sit further ahead
+		var lean := fwd * ((cut - y) / 6)
+		for x in range(used.position.x, used.position.x + used.size.x):
+			var c := full.get_pixel(x, y)
+			if c.a < 0.5: continue
+			var tx := x + dx + lean
+			var ty := y + dy
+			if tx < 0 or tx >= W or ty < 0 or ty >= H: continue
+			im.set_pixel(tx, ty, c)
+	# torn hem: under each column of the body, a strip of rag hanging one or two pixels, then the outline
+	for x in range(used.position.x, used.position.x + used.size.x):
+		var y := cut - 1
+		if full.get_pixel(x, y).a < 0.5: continue
+		var tx := x + dx
+		if tx < 0 or tx >= W: continue
+		var hang := 1 + int(hash(Vector2i(x, int(look.get("seed", 0)))) % 3 == 0)
+		var rag: Color = full.get_pixel(x, y).darkened(0.25)
+		if rag.get_luminance() < 0.08: rag = C.darkened(0.35)
+		var ty := y + dy
+		if x == used.position.x or x == used.position.x + used.size.x - 1 or full.get_pixel(x - 1, y).a < 0.5 or full.get_pixel(x + 1, y).a < 0.5:
+			hang = 0
+		for k in hang:
+			if ty + 1 + k < H: im.set_pixel(tx, ty + 1 + k, rag)
+		if ty + 1 + hang < H: im.set_pixel(tx, ty + 1 + hang, O)
+	if dir != "up":
+		im.blend_rect(arms_o, Rect2i(0, 0, W, H), Vector2i.ZERO)
+	# trim empty rows at the top so the health bar sits just above the head
+	var u2 := im.get_used_rect()
+	if u2.size.y > 0 and u2.position.y > 0:
+		im = im.get_region(Rect2i(0, u2.position.y, W, H - u2.position.y))
 	return im
 
 ## Takes rows out of the top of a sprite's hair or hat (just under its outline) until nothing stands above
