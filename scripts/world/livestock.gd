@@ -10,6 +10,10 @@ const BUILDINGS := {
 	"barn": {"name": "Barn", "size": [8, 5], "cap": 8, "kit": "barn_kit"},
 	"hutch": {"name": "Hutch", "size": [4, 3], "cap": 6, "kit": "hutch_kit"},
 }
+## Where the doors are on the bottom row, counted from the left (Nov 22, to match the Modern Farm pictures:
+## tools/farm_buildings.py): your door and the animal door.
+const DOOR_COL := {"coop": 2, "barn": 1, "hutch": 1}
+const ANIMAL_COL := {"coop": 4, "barn": 6, "hutch": 0}   # the coop's is the gate in its run fence
 
 ## New animals. "homes": where they can live (the first with room is used).
 ## "tool": collected with that tool instead of left on the floor. "big": drawn larger.

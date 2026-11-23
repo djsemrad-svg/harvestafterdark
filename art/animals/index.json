@@ -134,18 +134,22 @@
  "quail_0": {
   "fw": 16,
   "fh": 16,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },
  "quail_1": {
   "fw": 16,
   "fh": 16,
-  "n": 4,
+  "n": 6,
   "rows": {
-   "side": 0
+   "side": 0,
+   "down": 1,
+   "up": 2
   },
   "face": "left"
  },

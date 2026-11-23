@@ -2449,3 +2449,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_po
 
 # ---------------------------------------------------------------- refugee camp pictures (Nov 22)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "camp_art.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- Modern Farm coop, barn and hutch pictures (Nov 22)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_buildings.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

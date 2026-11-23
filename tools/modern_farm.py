@@ -335,6 +335,47 @@ if os.path.isdir(ANIM):
             save(mute(got[0], 0.1), "animals/%s.png" % nm)
             idx[nm] = got[1]
             n_anim += 1
+    # quail (Nov 22): the brown hen, speckled brown, no red comb, drawn a fifth smaller; _1 a darker bird
+    hen_p = os.path.join(OUT, "animals", "chicken_1.png")
+    if os.path.isfile(hen_p):
+        OUTL = {(58, 58, 78), (70, 70, 91), (93, 80, 81), (105, 80, 82)}
+        RAMPS = [[(70, 52, 38), (112, 84, 58), (150, 118, 80), (190, 160, 114), (226, 210, 172)],
+                 [(48, 38, 32), (78, 62, 48), (112, 90, 66), (150, 124, 92), (196, 178, 146)]]
+        for qi, ramp in enumerate(RAMPS):
+            hen = Image.open(hen_p).convert("RGBA")
+            q = hen.load()
+            for y in range(hen.height):
+                for x in range(hen.width):
+                    r, g, b, a = q[x, y]
+                    if a == 0 or (r, g, b) in OUTL:
+                        continue
+                    if r > 180 and g < 110 and b < 90:
+                        q[x, y] = (84, 60, 42, a)
+                        continue
+                    if r > 200 and g > 120 and b < 70:
+                        q[x, y] = (150, 120, 90, a) if b < 50 and g < 160 else (r, g, b, a)
+                        continue
+                    lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255
+                    i = max(0, min(4, int((lum - 0.2) / 0.12))) if lum > 0.2 else 0
+                    c = ramp[i]
+                    if (x * 7 + y * 13) % 17 == 0 and i >= 2:
+                        c = ramp[0]
+                    elif (x * 5 + y * 3) % 19 == 0 and i >= 1:
+                        c = ramp[4]
+                    q[x, y] = c + (a,)
+            small = Image.new("RGBA", hen.size)
+            for rr in range(hen.height // 16):
+                for cc in range(hen.width // 16):
+                    f = hen.crop((cc * 16, rr * 16, cc * 16 + 16, rr * 16 + 16))
+                    bb = f.getbbox()
+                    if not bb:
+                        continue
+                    f = f.crop(bb)
+                    f = f.resize((max(1, round(f.width * 0.8)), max(1, round(f.height * 0.8))), Image.NEAREST)
+                    small.alpha_composite(f, (cc * 16 + (16 - f.width) // 2, rr * 16 + bb[3] - f.height))
+            save(small, "animals/quail_%d.png" % qi)
+            idx["quail_%d" % qi] = dict(idx["chicken_1"])
+            n_anim += 1
     json.dump(idx, open(ANI_INDEX, "w"), indent=1)
 
 # ---------------------------------------------------------------- farm props

@@ -1389,6 +1389,13 @@ func build_building(kind: String, r: Rect2i) -> void:
 	_attach_building(b)
 
 func _attach_building(b: Dictionary) -> void:
+	# the door where the building's picture has it (older saves had it in the middle); kept in the middle if
+	# something you placed now stands in front of the new spot
+	if Livestock.DOOR_COL.has(b.kind) and Art.override("buildings/%s.png" % b.kind) != null:
+		var nx: int = int(b.x) + int(Livestock.DOOR_COL[b.kind])
+		var front = maps.homestead.get_obj(nx, int(b.door_y) + 1)
+		if front == null or Data.obj_defs.get(front.type, {}).get("natural", false) or not Data.obj_defs.get(front.type, {}).get("solid", false):
+			b.door_x = nx
 	maps.homestead.add_structure(b)
 	var inner := Livestock.interior(b)
 	maps[b.kind] = inner
@@ -1399,7 +1406,9 @@ func _attach_building(b: Dictionary) -> void:
 		state.maps_dyn[b.kind] = {"objects": inner.objects, "soil": inner.soil}
 
 func animal_door_tile(b: Dictionary) -> Vector2i:
-	return Vector2i(int(b.x) + 1, int(b.y) + int(b.h) - 1)
+	var col := 1
+	if Livestock.ANIMAL_COL.has(b.kind) and Art.override("buildings/%s.png" % b.kind) != null: col = int(Livestock.ANIMAL_COL[b.kind])
+	return Vector2i(int(b.x) + col, int(b.y) + int(b.h) - 1)
 
 ## How much hay and feed a building's feeder holds (more with Feed Troughs inside).
 func feeder_cap(b: Dictionary) -> int:

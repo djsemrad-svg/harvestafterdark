@@ -1335,6 +1335,7 @@ func run_all() -> void:
 	run_melee()
 	run_refugees()
 	run_bridges()
+	run_farmbld()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4832,6 +4833,33 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_farmbld() -> void:
+	# Nov 22: Modern Farm pictures for the coop, barn and hutch; doors where the pictures have them
+	var G = Game
+	start("adventure", 2)
+	var hm: GameMap = G.maps.homestead
+	for xx in range(8, 34):
+		for yy in range(18, 30):
+			if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
+	var sizes := true
+	for kd in ["coop", "barn", "hutch"]:
+		var t: Texture2D = Art.override("buildings/%s.png" % kd)
+		if t == null or t.get_width() != int(Livestock.BUILDINGS[kd].size[0]) * 16: sizes = false
+	G.build_building("coop", Rect2i(10, 21, 6, 4))
+	var c: Dictionary = G.get_building_rec("coop")
+	var door_ok: bool = int(c.door_x) == 12 and G.animal_door_tile(c) == Vector2i(14, 24)
+	var warp_ok := false
+	for w in hm.warps:
+		if int(w.x) == 12 and int(w.y) == 24 and w.get("to", "") == "coop": warp_ok = true
+	# an older save: the door in the middle of the barn, moved to the picture's door when loaded
+	var old := {"kind": "barn", "x": 18, "y": 20, "w": 8, "h": 5, "door_x": 22, "door_y": 24, "door_open": false, "hay": 0, "feed": 0,
+		"warp": {"to": "barn", "tx": 6, "ty": 8, "dir": "up"}}
+	G.state.buildings.append(old)
+	G._attach_building(old)
+	var back_ok: bool = int(G.maps.barn.warps[0].tx) == 19
+	check("Farm buildings: coop, barn and hutch pictures fit their footprints; doors sit where the pictures have them, also for older saves",
+		sizes and door_ok and warp_ok and int(old.door_x) == 19 and back_ok and not hm.is_solid(19, 24), "sizes=%s coop=%d warp=%s barn=%d" % [sizes, int(c.door_x), warp_ok, int(old.door_x)])
 
 func run_bridges() -> void:
 	# Nov 22: bridges drawn in detail over their tiles

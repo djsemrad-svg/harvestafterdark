@@ -424,6 +424,37 @@ func _ready() -> void:
 		main.ui.close_all()
 		get_tree().quit()
 		return
+	if only == "farmbld":
+		# the coop, barn and hutch pictures, doors shut then open, and in winter
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.mode = "adventure"
+		Game.state.weather = "sun"
+		Game.state.time = 640
+		var hm: GameMap = Game.maps.homestead
+		for xx in range(8, 40):
+			for yy in range(16, 32):
+				if hm.get_obj(xx, yy) != null: hm.remove_obj(xx, yy)
+				hm.soil.erase(GameMap.k(xx, yy))
+		Game.build_building("coop", Rect2i(10, 21, 6, 4))
+		Game.build_building("barn", Rect2i(18, 20, 8, 5))
+		Game.build_building("hutch", Rect2i(28, 22, 4, 3))
+		for k in [["chicken", "Hen"], ["duck", "Puddles"], ["cow", "Bessie"], ["goat", "Gruff"], ["rabbit", "Thumper"]]:
+			var a: Dictionary = Game.adopt_animal(k[0], k[1])
+			a.born = int(Game.state.day) - 10
+		Game.sync_animals(true)
+		Game.change_map("homestead", 21, 28, "up", {"silent": true})
+		await frames(30)
+		await shot("fb1_shut")
+		for kd in ["coop", "barn", "hutch"]: Game.get_building_rec(kd).door_open = true
+		Game.sync_animals(true)
+		await frames(30)
+		await shot("fb2_open")
+		Game.state.day = 100
+		await frames(30)
+		await shot("fb3_winter")
+		get_tree().quit()
+		return
 	if only == "bridge":
 		# the town bridge by day, at night and in winter; a Riverlands bridge
 		main.ui.close_all()
@@ -632,7 +663,8 @@ func _ready() -> void:
 				hm2.soil.erase(GameMap.k(xx, yy))
 		Game.build_building("coop", Rect2i(6, 11, 6, 4))
 		Game.build_building("barn", Rect2i(20, 10, 8, 5))
-		var kinds := ["chicken", "chicken", "duck", "quail", "rabbit", "rabbit", "cow", "cow", "goat", "goat", "sheep", "sheep", "pig", "pig", "chicken", "cow", "sheep", "pig"]
+		hm2.add_obj(14, 19, "doghouse")
+		var kinds := ["chicken", "chicken", "duck", "quail", "quail", "quail", "rabbit", "rabbit", "cow", "cow", "goat", "goat", "sheep", "sheep", "pig", "pig", "chicken", "cow", "sheep", "pig"]
 		for i in kinds.size():
 			Game.adopt_animal(kinds[i], "A%d" % i)
 		for a in Game.state.animals:

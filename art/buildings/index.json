@@ -317,5 +317,26 @@
   "door": 32,
   "h": 144,
   "w": 128
+ },
+ "coop": {
+  "door": 38,
+  "w": 96,
+  "h": 80,
+  "base": 80,
+  "nosign": true
+ },
+ "barn": {
+  "door": 31,
+  "w": 128,
+  "h": 160,
+  "base": 160,
+  "nosign": true
+ },
+ "hutch": {
+  "door": 27,
+  "w": 64,
+  "h": 48,
+  "base": 48,
+  "nosign": true
  }
 }

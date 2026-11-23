@@ -252,6 +252,9 @@ func _draw() -> void:
 				var bx: float = float(bst.art_x) if bst.has("art_x") and Art.building_override(bst) != null else bst.x * 16 + (bst.w * 16 - bt.get_width()) / 2
 				var drop: int = int(bst.get("art_drop", 0)) if bst.has("art_x") and Art.building_override(bst) != null else 0
 				draw_texture(bt, Vector2(bx, (bst.y + bst.h) * 16 - bt.get_height() + drop))
+				if Livestock.ANIMAL_COL.has(bst.kind) and Art.building_override(bst) != null:
+					var at: Vector2i = Game.animal_door_tile(bst)
+					draw_texture(Art.animal_hatch(bst.kind, bool(bst.get("door_open", false))), Vector2(at.x * 16 + 2, at.y * 16 + 4))
 			3:
 				var nn: Dictionary = it[2]
 				if nn.get("moving", false):

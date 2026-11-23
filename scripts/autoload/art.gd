@@ -2403,7 +2403,7 @@ func building_art(s: Dictionary, season: String) -> Texture2D:
 				if c2.a > 0.5: im.set_pixel(px, py, c2.darkened(0.35))
 		# the building's name on a wooden board over its door, as on the drawn buildings
 		var B: Dictionary = Data.buildings.get(s.kind, {})
-		if B.has("sign"):
+		if B.has("sign") and not MapScale.building_meta().get(str(s.kind), {}).get("nosign", false):
 			var meta: Dictionary = MapScale.building_meta().get(str(s.kind), {})
 			var tw := text_px_width(B.sign) + 6
 			var sx: int = clampi(int(meta.get("door", W / 2)) - tw / 2, 1, maxi(1, W - tw - 1))
@@ -2419,6 +2419,29 @@ func building_art(s: Dictionary, season: String) -> Texture2D:
 					if c3.a > 0.5 and up.a < 0.5:
 						im.set_pixel(x, y, Color("#eef3f8"))
 						if y + 1 < H and src.get_pixel(x, y + 1).a > 0.5: im.set_pixel(x, y + 1, Color("#d6dee8"))
+		return im)
+
+## The little animal door drawn over a farm building picture (12 x 12): planks with a latch when shut, dark with a
+## ramp when open. On the coop it is a gate in the run fence.
+func animal_hatch(kind: String, open: bool) -> Texture2D:
+	return cached("hatch|%s|%s" % [kind, open], func():
+		var im := Image.create(12, 12, false, Image.FORMAT_RGBA8)
+		if kind == "coop":   # a wooden gate in the run fence, swung back against the post when open
+			if open:
+				R(im, 11, 0, 1, 11, "#8a5e36"); R(im, 10, 1, 1, 10, "#b28050")
+			else:
+				R(im, 0, 1, 12, 1, "#b28050"); R(im, 0, 2, 12, 1, "#8a5e36")
+				R(im, 0, 9, 12, 1, "#b28050"); R(im, 0, 10, 12, 1, "#8a5e36")
+				for i in 8: P(im, 1 + i, 9 - i, "#9a6a3e"); P(im, 2 + i, 9 - i, "#b28050")
+				P(im, 10, 6, "#4a4a52")
+			return im
+		R(im, 0, 1, 12, 11, "#5a3a22")
+		if open:
+			R(im, 1, 2, 10, 9, "#1a1210")
+			R(im, 0, 10, 12, 2, "#a8865a")
+		else:
+			R(im, 1, 2, 10, 9, "#a8865a"); R(im, 1, 5, 10, 1, "#8a6a40"); R(im, 1, 8, 10, 1, "#8a6a40")
+			P(im, 9, 6, "#4a4a52")
 		return im)
 
 func get_building(s: Dictionary, season: String, night: bool) -> Texture2D:
