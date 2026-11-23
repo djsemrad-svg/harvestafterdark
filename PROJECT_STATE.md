@@ -935,6 +935,17 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   above a person's head (rows under the top outline are taken out until the top is at row 8). Screenshot mode
   `zgallery` saves every infected look.
 
+### Nov 23: a fresh coat of paint for repaired buildings (`tools/paint_buildings.py`, run last by the importer)
+- Daniel: the second or third upgrade should look repainted, to match the town. Each part (roof, walls) is picked
+  out by place and colour, and every pixel in it gets one of four shades of the new paint by how light it was
+  (split at that part's quartiles), so the corrugation, slates and planks stay and the rust and grime go.
+  - Farmhouse (Hal's repairs, `flags.house_condition`): stage 3 (second repair) `buildings/farmhouse_3.png`, the
+    rusty roof painted barn red; stage 4 (third repair) `farmhouse_4.png`, roof red and plank walls cream. Windows,
+    awning, door, mailbox, vent and lamp keep their colours (`KEEP` boxes). Stages 0 to 2 keep the drawn wear.
+  - The Lantern Post once restored (`tavern_open`): slate roof red, grey metal walls warm brown. Unrestored it stays
+    grey and worn.
+  - `Art.building_art` uses `buildings/<kind>_<condition>.png` as it is when it exists (snow still added in winter).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

@@ -270,6 +270,7 @@ func _ready() -> void:
 		var kinds := OS.get_environment("BKINDS").split(",") if OS.get_environment("BKINDS") != "" else PackedStringArray(["tavern", "farmhouse", "archive", "workshop"])
 		for k in kinds:
 			for c in [0, 1, 2, 3, 4]:
+				if k == "farmhouse": Game.state.flags["house_condition"] = c
 				var t: Texture2D = Art.building_art({"kind": k, "condition": c}, "spring")
 				if t != null: t.get_image().save_png(out + "bg_%s_%d.png" % [k, c])
 		get_tree().quit()

@@ -2455,3 +2455,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_bu
 
 # ---------------------------------------------------------------- guns from the Starbound "Realistic Weapons" sheet (Nov 23)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "starbound_guns.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- a fresh coat of paint for repaired buildings (Nov 23)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "paint_buildings.py"), init_globals={"OUT": OUT, "save": save})
