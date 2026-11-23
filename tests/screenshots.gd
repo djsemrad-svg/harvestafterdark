@@ -265,6 +265,28 @@ func _ready() -> void:
 		await shot("repairs")
 		get_tree().quit()
 		return
+	if only == "bgallery":
+		# building pictures at every condition (Nov 23 weathering), saved straight to the shots folder
+		var kinds := OS.get_environment("BKINDS").split(",") if OS.get_environment("BKINDS") != "" else PackedStringArray(["tavern", "farmhouse", "archive", "workshop"])
+		for k in kinds:
+			for c in [0, 1, 2, 3, 4]:
+				var t: Texture2D = Art.building_art({"kind": k, "condition": c}, "spring")
+				if t != null: t.get_image().save_png(out + "bg_%s_%d.png" % [k, c])
+		get_tree().quit()
+		return
+	if only == "zgallery":
+		# every infected type's look, three samples each, plus you, saved straight to the shots folder (Nov 23)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		Art.char_image(Game.state.character.look, "down", 0).save_png(out + "zg_player.png")
+		for ty in Data.enemies:
+			var d: Dictionary = Data.enemies[ty]
+			if d.get("human", false) or d.get("ai", "") == "nest": continue
+			for i in 3:
+				var lk: Dictionary = Infected.make_look(ty, rng)
+				Art.char_image(lk, "down", 0).save_png(out + "zg_%s_%d.png" % [ty, i])
+		get_tree().quit()
+		return
 	if only == "hud":
 		# the compact HUD (Nov 23): normal, goals opened, low health, minimal, full, and fading when you walk behind it
 		main.ui.close_all()

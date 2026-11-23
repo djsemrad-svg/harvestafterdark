@@ -1309,8 +1309,8 @@ func infected_variant(look: Dictionary, dir: String, frame: int) -> Image:
 	if flip:
 		im.flip_x()
 	var sc: float = float(look.get("scale", 1.0))
-	if abs(sc - 1.0) > 0.01:
-		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	if sc > 1.01:
+		im = grow_body(im, sc, false)
 	return im
 
 func recolor_infected(src: Image, look: Dictionary) -> Image:
@@ -1441,6 +1441,9 @@ func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Im
 		im.flip_x()
 	else:
 		im = _draw_character(look, dir, frame)
+	# the infected's hair and hats don't stand taller than a person's head (Nov 23)
+	if look.get("infected", false) and not look.get("lying", false):
+		im = _cap_height(im, 8)
 	# knocked-down infected and crawlers lie on the ground
 	if look.get("lying", false):
 		var used := im.get_used_rect()
@@ -1448,9 +1451,80 @@ func char_image(look: Dictionary, dir: String, frame: int, anim := "walk") -> Im
 			im = im.get_region(used)
 		im.rotate_90(CLOCKWISE if dir != "right" else COUNTERCLOCKWISE)
 	var sc: float = float(look.get("scale", 1.0))
-	if abs(sc - 1.0) > 0.01:
-		im.resize(max(1, int(round(im.get_width() * sc))), max(1, int(round(im.get_height() * sc))), Image.INTERPOLATE_NEAREST)
+	if sc > 1.01:
+		im = grow_body(im, sc, look.get("lying", false))
 	return im
+
+## Takes rows out of the top of a sprite's hair or hat (just under its outline) until nothing stands above
+## `top`, so a tall hairdo or helmet doesn't make the wearer look taller. The feet stay where they are.
+func _cap_height(im: Image, top: int) -> Image:
+	var used := im.get_used_rect()
+	var k := top - used.position.y
+	if k <= 0 or used.size.y < 12: return im
+	var out := Image.create(im.get_width(), im.get_height(), false, Image.FORMAT_RGBA8)
+	var y0 := used.position.y
+	# the outline row on top moves down k rows; the k rows under it are dropped
+	out.blit_rect(im, Rect2i(0, y0, im.get_width(), 1), Vector2i(0, y0 + k))
+	out.blit_rect(im, Rect2i(0, y0 + 1 + k, im.get_width(), im.get_height() - y0 - 1 - k), Vector2i(0, y0 + 1 + k))
+	return out
+
+## Big infected (Brutes, bosses) are made bigger the pixel-art way (Nov 23): instead of stretching the whole
+## sprite by an odd factor (which doubles some pixels and not others, eyes and all), columns through the middle
+## of the body are repeated to make it broader and rows through the chest and legs to make it taller, and the
+## head grows only a little. Every pixel stays one pixel.
+func grow_body(im: Image, sc: float, lying := false) -> Image:
+	if lying:
+		# lying down: broader across the body, the other way round
+		im.rotate_90(CLOCKWISE)
+		var r := grow_body(im, sc, false)
+		r.rotate_90(COUNTERCLOCKWISE)
+		return r
+	var used := im.get_used_rect()
+	if used.size.x < 4 or used.size.y < 8: return im
+	var ew := int(round(used.size.x * (sc - 1.0)))
+	var eh := int(round(used.size.y * (sc - 1.0) * 0.6))
+	var head_end := used.position.y + int(used.size.y * 0.4)
+	var ehead := int(round(ew * 0.25))
+	var W := im.get_width()
+	var H := im.get_height()
+	# which columns to repeat: spread through the middle half of the figure
+	var cols := func(n: int) -> Dictionary:
+		var dd := {}
+		var a := used.position.x + int(used.size.x * 0.25)
+		var b := used.position.x + int(used.size.x * 0.75)
+		for i in n:
+			var c := a + int((b - a) * (i + 0.5) / maxf(1.0, float(n)))
+			dd[c] = int(dd.get(c, 0)) + 1
+		return dd
+	var body_cols: Dictionary = cols.call(ew)
+	var head_cols: Dictionary = cols.call(ehead)
+	var wide := Image.create(W + ew, H, false, Image.FORMAT_RGBA8)
+	for y in H:
+		var head := y < head_end
+		var dup: Dictionary = head_cols if head else body_cols
+		var x2 := (ew - ehead) / 2 if head else 0
+		for x in W:
+			var c := im.get_pixel(x, y)
+			for rep in 1 + int(dup.get(x, 0)):
+				if x2 < W + ew: wide.set_pixel(x2, y, c)
+				x2 += 1
+	# which rows to repeat: most through the chest, the rest through the legs
+	var rows := {}
+	var et := int(round(eh * 0.6))
+	var bands := [[0.45, 0.7, et], [0.74, 0.9, eh - et]]
+	for bnd in bands:
+		var a := used.position.y + int(used.size.y * float(bnd[0]))
+		var b := used.position.y + int(used.size.y * float(bnd[1]))
+		for i in int(bnd[2]):
+			var r := a + int((b - a) * (i + 0.5) / maxf(1.0, float(bnd[2])))
+			rows[r] = int(rows.get(r, 0)) + 1
+	var out := Image.create(W + ew, H + eh, false, Image.FORMAT_RGBA8)
+	var y2 := 0
+	for y in H:
+		for rep in 1 + int(rows.get(y, 0)):
+			out.blit_rect(wide, Rect2i(0, y, W + ew, 1), Vector2i(0, y2))
+			y2 += 1
+	return out
 
 func get_char(look: Dictionary, dir: String, frame: int, anim := "walk") -> ImageTexture:
 	return cached("ch|%s|%s|%d|%s" % [look_key(look), dir, frame, anim], func(): return shade_pass(char_image(look, dir, frame, anim), 0.7) if detail else char_image(look, dir, frame, anim))
@@ -2398,21 +2472,7 @@ func building_art(s: Dictionary, season: String) -> Texture2D:
 		var W := im.get_width()
 		var H := im.get_height()
 		if exact == null and cond < 4:
-			var grey: float = [0.5, 0.36, 0.22, 0.1][cond]
-			var dark: float = [0.72, 0.82, 0.9, 0.96][cond]
-			for y in H:
-				for x in W:
-					var c := im.get_pixel(x, y)
-					if c.a == 0: continue
-					var g := c.get_luminance()
-					im.set_pixel(x, y, Color(lerpf(c.r, g, grey) * dark, lerpf(c.g, g, grey) * dark, lerpf(c.b, g, grey) * dark * 0.97, c.a))
-			# grime and damage: dark specks, more the worse the building is
-			var specks := int(W * H / 180.0) * (4 - cond)
-			for i in specks:
-				var px := int(hash2(i, cond, 91) * W)
-				var py := int(hash2(i, cond, 92) * H)
-				var c2 := im.get_pixel(px, py)
-				if c2.a > 0.5: im.set_pixel(px, py, c2.darkened(0.35))
+			_wear(im, cond, hash(str(s.kind)))
 		# the building's name on a wooden board over its door, as on the drawn buildings
 		var B: Dictionary = Data.buildings.get(s.kind, {})
 		if B.has("sign") and not MapScale.building_meta().get(str(s.kind), {}).get("nosign", false):
@@ -2432,6 +2492,133 @@ func building_art(s: Dictionary, season: String) -> Texture2D:
 						im.set_pixel(x, y, Color("#eef3f8"))
 						if y + 1 < H and src.get_pixel(x, y + 1).a > 0.5: im.set_pixel(x, y + 1, Color("#d6dee8"))
 		return im)
+
+## Disrepair drawn onto a pack building picture by condition (Nov 23; it used to be greyed and darkened, which
+## made run-down buildings look like they came from another game). The building keeps its own colours and gets:
+## boarded and broken windows, rain stains running down from ledges, cracks, moss along the bottom and vines
+## climbing the walls, and a touch of fading on the worst. 3 patched: a little grime; 2 weathered: stains, some
+## cracks and moss, the odd boarded window; 1 abandoned: half the windows boarded, vines; 0 ruined: most boarded
+## or broken, more of everything.
+func _wear(im: Image, cond: int, seed: int) -> void:
+	var W := im.get_width()
+	var H := im.get_height()
+	var rnd := RandomNumberGenerator.new()
+	rnd.seed = seed * 31 + cond
+	var fade: float = [0.12, 0.06, 0.02, 0.0][cond]
+	if fade > 0.0:
+		for y in H:
+			for x in W:
+				var c := im.get_pixel(x, y)
+				if c.a == 0: continue
+				var g := c.get_luminance()
+				im.set_pixel(x, y, Color(lerpf(c.r, g, fade), lerpf(c.g, g, fade), lerpf(c.b, g, fade), c.a))
+	var src := im.duplicate()
+	var solid := func(x: int, y: int) -> bool: return x >= 0 and y >= 0 and x < W and y < H and src.get_pixel(x, y).a > 0.9
+	# windows: patches of light glass
+	var glass := func(c: Color) -> bool: return c.a > 0.9 and c.b > c.r + 0.1 and c.b >= c.g and c.get_luminance() > 0.55
+	var seen := {}
+	var wins := []
+	for y in H:
+		for x in W:
+			if seen.has(y * W + x) or not glass.call(src.get_pixel(x, y)): continue
+			var q := [Vector2i(x, y)]
+			seen[y * W + x] = true
+			var r := Rect2i(x, y, 1, 1)
+			var n := 0
+			while not q.is_empty():
+				var p: Vector2i = q.pop_back()
+				n += 1
+				r = r.expand(p)
+				for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var np: Vector2i = p + dd
+					if np.x < 0 or np.y < 0 or np.x >= W or np.y >= H or seen.has(np.y * W + np.x): continue
+					if glass.call(src.get_pixel(np.x, np.y)):
+						seen[np.y * W + np.x] = true
+						q.append(np)
+			# a window is a small, mostly filled patch (roof slates and long glass strips are not)
+			var box := r.size + Vector2i(1, 1)
+			if n >= 6 and box.x >= 3 and box.y >= 3 and box.x <= 22 and box.y <= 18 and float(n) / float(box.x * box.y) > 0.3:
+				wins.append(Rect2i(r.position, box))
+	var board_p: float = [0.75, 0.5, 0.18, 0.0][cond]
+	var broke_p: float = [0.2, 0.15, 0.05, 0.0][cond]
+	var plank := [Color("#a8804e"), Color("#8a6438"), Color("#6a4a28")]
+	for wr in wins:
+		var roll := rnd.randf()
+		if roll < board_p:
+			# two planks across, one a little crooked, nail heads at the ends
+			for k in 2:
+				var py: int = wr.position.y + int(wr.size.y * (0.3 if k == 0 else 0.68)) - 1
+				var tilt := 1 if (k == 1 and rnd.randf() < 0.6) else 0
+				for x in range(wr.position.x - 1, wr.end.x + 1):
+					var yy: int = py + (tilt if x > wr.position.x + wr.size.x / 2 else 0)
+					if x < 0 or x >= W: continue
+					if yy >= 0 and yy < H: im.set_pixel(x, yy, plank[0])
+					if yy + 1 >= 0 and yy + 1 < H: im.set_pixel(x, yy + 1, plank[1])
+					if yy + 2 >= 0 and yy + 2 < H and not glass.call(src.get_pixel(x, yy + 2)): im.set_pixel(x, yy + 2, plank[2].darkened(0.2))
+				for nx in [wr.position.x, wr.end.x - 1]:
+					if nx >= 0 and nx < W and py >= 0 and py < H: im.set_pixel(nx, py, Color("#4a4a50"))
+		elif roll < board_p + broke_p:
+			# broken: dark inside, a few shards left in the corners
+			for y in range(wr.position.y, wr.end.y):
+				for x in range(wr.position.x, wr.end.x):
+					if glass.call(src.get_pixel(x, y)):
+						var corner: bool = (x - wr.position.x) + (y - wr.position.y) < 2 or (wr.end.x - 1 - x) + (y - wr.position.y) < 2
+						im.set_pixel(x, y, src.get_pixel(x, y) if corner else Color("#26242c"))
+	if cond >= 3:
+		# patched: just a little grime
+		for i in int(W * H / 400.0):
+			var gx := rnd.randi_range(0, W - 1); var gy := rnd.randi_range(0, H - 1)
+			if solid.call(gx, gy): im.set_pixel(gx, gy, im.get_pixel(gx, gy).darkened(0.12))
+		return
+	var lvl := 3 - cond      # 1 weathered, 2 abandoned, 3 ruined
+	# rain stains under ledges: soft darker streaks running down
+	for i in int(W / 14.0) * lvl:
+		var sx := rnd.randi_range(1, W - 2)
+		var sy := rnd.randi_range(int(H * 0.25), int(H * 0.75))
+		var ln := rnd.randi_range(4, 10)
+		for k in ln:
+			if solid.call(sx, sy + k) and not glass.call(src.get_pixel(sx, sy + k)):
+				im.set_pixel(sx, sy + k, im.get_pixel(sx, sy + k).darkened(0.1 * (1.0 - float(k) / ln) + 0.04))
+	# cracks: short jagged dark lines in the walls
+	for i in int(W * H / 1600.0) * lvl:
+		var cx := rnd.randi_range(2, W - 3)
+		var cy := rnd.randi_range(int(H * 0.3), H - 4)
+		for k in rnd.randi_range(3, 7):
+			if not solid.call(cx, cy) or glass.call(src.get_pixel(cx, cy)): break
+			im.set_pixel(cx, cy, src.get_pixel(cx, cy).darkened(0.45))
+			cx += rnd.randi_range(-1, 1); cy += 1
+	# moss along the bottom, vines up the walls
+	var greens := [Color("#4e6e34"), Color("#5e8240"), Color("#3e5a2a"), Color("#6e9448")]
+	var foot := PackedInt32Array()
+	foot.resize(W)
+	for x in W:
+		foot[x] = -1
+		for y in range(H - 1, -1, -1):
+			if src.get_pixel(x, y).a > 0.9:
+				foot[x] = y
+				break
+	for i in int(W / 9.0) * lvl:
+		var mx := rnd.randi_range(0, W - 1)
+		if foot[mx] < 0: continue
+		var tall := rnd.randi_range(1, 2 + lvl)
+		for dx in range(-1, 2):
+			var xx := mx + dx
+			if xx < 0 or xx >= W or foot[xx] < 0: continue
+			for k in tall - absi(dx):
+				var yy: int = foot[xx] - k
+				if solid.call(xx, yy): im.set_pixel(xx, yy, greens[rnd.randi() % greens.size()])
+	if cond <= 1:
+		for i in int(W / 28.0) * lvl:
+			var vx := rnd.randi_range(1, W - 2)
+			if foot[vx] < 0: continue
+			var vy: int = foot[vx]
+			for k in rnd.randi_range(8, 10 + 8 * lvl):
+				if not solid.call(vx, vy): break
+				im.set_pixel(vx, vy, greens[2])
+				if k % 3 == 1 and solid.call(vx + (1 if k % 2 == 0 else -1), vy):
+					im.set_pixel(vx + (1 if k % 2 == 0 else -1), vy, greens[3])
+				vy -= 1
+				if rnd.randf() < 0.25: vx = clampi(vx + rnd.randi_range(-1, 1), 0, W - 1)
 
 ## The little animal door drawn over a farm building picture (12 x 12): planks with a latch when shut, dark with a
 ## ramp when open. On the coop it is a gate in the run fence.

@@ -916,6 +916,25 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   getting angry; raiders shouted every frame). They are `@export` now; `run_brains` checks the last stand waits.
 - Test `run_infected_ai` (noise, chase on sight, groan, round a fence chasing and raiding, packs).
 
+### Nov 23: run-down buildings that still belong, and infected sizes
+- Daniel: the run-down buildings looked like they didn't belong. They were greyed and darkened by condition
+  (`Art.building_art`). Now `Art._wear` keeps the pack picture's own colours (only the worst fade a few percent)
+  and draws the disrepair instead: windows (small, mostly filled patches of light blue glass) boarded with two
+  planks and nail heads or broken (dark, shards in the corners), rain stains under ledges, short cracks, moss along
+  the foot of the walls and, for abandoned and ruined ones, vines climbing up. Amount by condition: 3 patched a
+  little grime; 2 weathered stains, some cracks and moss, the odd boarded window; 1 abandoned half the windows
+  boarded or broken, vines; 0 ruined most of them. Screenshot mode `bgallery` (env `BKINDS`) saves every building
+  at every condition. The Lantern Post picture (Modern Exteriors Japanese House) is grey metal even when kept up.
+- Daniel tried the "basic asset pack" (15 tiny 16x16 undead, one facing, 4 frames) for the infected: not used
+  (half a person's height, no directions or attacks; unzipped in `<packs>/basic_asset_pack/`). A dark red outline
+  round the infected was tried and turned down.
+- Infected sizes (`Art.grow_body`, `Art._cap_height`): Brutes, Spitter Brutes and bosses were stretched by 1.3 to
+  1.7, which doubled some pixels and not others. Now repeated columns through the middle of the body make them
+  broader and repeated rows through the chest and legs a little taller; the head grows only slightly; every pixel
+  stays one pixel. Scales under 1 (the Runner) are no longer shrunk. Hair and hats on the infected no longer stand
+  above a person's head (rows under the top outline are taken out until the top is at row 8). Screenshot mode
+  `zgallery` saves every infected look.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).
