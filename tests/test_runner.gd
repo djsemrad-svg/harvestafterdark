@@ -138,7 +138,7 @@ func run_all() -> void:
 	var text: String = U.overlay.lines[0] if ov() == "dialogue" else ""
 	close_all()
 	tick(16)
-	check("Property name is stored and shown on the homestead sign and location label", G.state.property_name == "Testfield Acres" and text.contains("Testfield Acres") and U.clock_lbl.text.contains("Testfield Acres"), text)
+	check("Property name is stored and shown on the homestead sign and location label", G.state.property_name == "Testfield Acres" and text.contains("Testfield Acres") and (U.clock_lbl.text.contains("Testfield Acres") or (U.hud_style() != "full" and G.location_name() == "Testfield Acres")), text)
 
 	var d = G.read_slot("survivor", 1)
 	check("Initial checkpoint saved on new game (Spring 1)", d != null and not d.get("corrupt", false) and int(d.day) == 1 and d.mode == "survivor")
@@ -1339,6 +1339,7 @@ func run_all() -> void:
 	run_brains()
 	run_stepaside()
 	run_homes()
+	run_hud()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4844,6 +4845,35 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_hud() -> void:
+	# Nov 23: the compact HUD
+	var G = Game
+	start("adventure", 2)
+	G.settings.hud = "compact"
+	U.build_hud()
+	W.step(0.02); U.update_hud(0.02)
+	var compact_ok: bool = U.meters != null and U.top_box != null and U.clock_lbl.text.contains("g[/color]") and not U.bars_box.visible
+	# the same pickup twice: one line that counts up
+	for t in U.toasts: t.node.queue_free()
+	U.toasts.clear()
+	G.add_item("wood", 2)
+	G.add_item("wood", 3)
+	var wood_lines: Array = U.toasts.filter(func(t): return str(t.text).ends_with("Wood"))
+	var merged: bool = wood_lines.size() == 1 and wood_lines[0].text == "+5 Wood"
+	# goals: one line, H opens the list
+	var one_line: bool = not U.guide_lbl.text.contains("\n")
+	U.toggle_goals(); U.update_hud(0.02)
+	var opened: bool = U.guide_lbl.text.contains("\n")
+	U.toggle_goals(); U.update_hud(0.02)
+	# full layout still builds and shows the old panels
+	G.settings.hud = "full"
+	U.build_hud(); U.update_hud(0.02)
+	var full_ok: bool = U.meters == null and U.bars_box.get_child_count() > 0
+	G.settings.hud = "compact"
+	U.build_hud()
+	check("Compact HUD: clock strip, meters by the toolbar, one-line goals that open, pickups counted on one line; the full layout still works",
+		compact_ok and merged and one_line and opened and full_ok, "compact=%s merged=%s (%s) one_line=%s opened=%s full=%s" % [compact_ok, merged, toast_texts(), one_line, opened, full_ok])
 
 func run_homes() -> void:
 	# Nov 23: the neighbours' homes in town can be visited from 9 am to 7 pm

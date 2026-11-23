@@ -491,3 +491,62 @@ class HudBar extends Control:
 		var fw := roundf((tw - 4) * frac)
 		if fill != null and fw > 0:
 			draw_texture_rect(fill, Rect2(17, 4, fw, 4), false)
+
+## The compact HUD's four meters (Nov 23): slim upright bars side by side, each with its icon underneath
+## (art/ui/icon_<kind>.png). They fade back while nothing is wrong, wake for a few seconds when a value
+## changes, and a bar under a quarter pulses. Hover a bar for its name and numbers.
+class Meters extends Control:
+	const COL := 14
+	const BAR_H := 26
+	const COLOURS := {"health": Color("#d8453a"), "energy": Color("#e8c03a"), "hunger": Color("#d8823a"), "thirst": Color("#3a90d8")}
+	var rows: Array = []      # [kind, value, max]
+	var wake := 0.0
+	var _prev := {}
+	var t := 0.0
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_PASS
+	func set_rows(r: Array) -> void:
+		for b in r:
+			var k: String = b[0]
+			if _prev.has(k) and absf(float(_prev[k]) - float(b[1])) >= 1.0: wake = 3.0
+			_prev[k] = float(b[1])
+		rows = r
+		custom_minimum_size = Vector2(COL * rows.size(), BAR_H + 14)
+		queue_redraw()
+	func needs_attention() -> bool:
+		for b in rows:
+			if float(b[1]) / maxf(1.0, float(b[2])) < 0.5: return true
+		return wake > 0.0
+	func tick(dt: float) -> void:
+		t += dt
+		wake = maxf(0.0, wake - dt)
+		for b in rows:
+			if float(b[1]) / maxf(1.0, float(b[2])) <= 0.25:
+				queue_redraw()
+				break
+	func _get_tooltip(at: Vector2) -> String:
+		var i := int(at.x / COL)
+		if i < 0 or i >= rows.size(): return ""
+		var b: Array = rows[i]
+		return "%s %d / %d" % [String(b[0]).capitalize(), int(ceil(float(b[1]))), int(b[2])]
+	func _draw() -> void:
+		for i in rows.size():
+			var b: Array = rows[i]
+			var k: String = b[0]
+			var frac := clampf(float(b[1]) / maxf(1.0, float(b[2])), 0.0, 1.0)
+			var x := i * COL
+			var low := frac <= 0.25
+			var pulse := 0.5 + 0.5 * sin(t * 7.0) if low else 1.0
+			# track: a dark slot with a light rim
+			var tr := Rect2(x + 4, 0, 6, BAR_H)
+			draw_rect(tr, Color(0.08, 0.06, 0.05, 0.85))
+			draw_rect(tr, Color(0.55, 0.42, 0.28, 0.9), false, 1.0)
+			var fh := roundf((BAR_H - 2) * frac)
+			if fh > 0:
+				var c: Color = COLOURS.get(k, Color.WHITE)
+				if low: c = c.lerp(Color.WHITE, 0.45 * (1.0 - pulse))
+				draw_rect(Rect2(x + 5, 1 + BAR_H - 2 - fh, 4, fh), c)
+				draw_rect(Rect2(x + 5, 1 + BAR_H - 2 - fh, 1, fh), c.lightened(0.35))
+			var ic := UIKit.ui_tex("icon_" + k)
+			if ic != null:
+				draw_texture(ic, Vector2(x + (COL - ic.get_width()) / 2.0, BAR_H + 1), Color(1, 1, 1, 0.6 + 0.4 * pulse) if low else Color.WHITE)

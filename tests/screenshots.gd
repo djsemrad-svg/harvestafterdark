@@ -265,6 +265,37 @@ func _ready() -> void:
 		await shot("repairs")
 		get_tree().quit()
 		return
+	if only == "hud":
+		# the compact HUD (Nov 23): normal, goals opened, low health, minimal, full, and fading when you walk behind it
+		main.ui.close_all()
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.enemies.clear()
+		Game.settings.hud = "compact"; main.ui.build_hud()
+		await frames(20)
+		await shot("hud_1_compact")
+		main.ui.toggle_goals()
+		await frames(5)
+		await shot("hud_2_goals")
+		main.ui.toggle_goals()
+		Game.state.health = 18; Game.state.thirst = 30
+		await frames(20)
+		await shot("hud_3_low")
+		Game.state.health = Game.max_health()
+		Game.settings.hud = "minimal"; main.ui.build_hud()
+		await frames(10)
+		await shot("hud_4_minimal")
+		Game.settings.hud = "full"; main.ui.build_hud()
+		await frames(10)
+		await shot("hud_5_full")
+		Game.settings.hud = "compact"; main.ui.build_hud()
+		var tm: GameMap = Game.maps.town
+		Game.change_map("town", tm.w - 3, 2, "down", {"silent": true})
+		main.world.view.snap_camera()
+		await frames(40)
+		await shot("hud_6_behind")
+		get_tree().quit()
+		return
 	if only == "guns":
 		# every gun in your hands, aiming right, left and up (Nov 23, the Starbound sheet)
 		main.ui.close_all()

@@ -27,6 +27,28 @@ var toolbar: HBoxContainer
 var tb_name: Label
 var _last := {}
 var banner_t := 0.0
+# compact HUD (Nov 23, Settings "Screen layout": compact, full or minimal)
+var meters: UIKit.Meters = null
+var top_box: Control = null       # the clock strip and goal line, top right
+var corner_box: Control = null    # the meters and the two small buttons, bottom right
+var guide_open := false
+var guide_pop_t := 0.0
+var _goals_done := -1
+
+## "compact" (the default), "full" (the old big panels) or "minimal" (meters and time only).
+func hud_style() -> String:
+	return str(Game.settings.get("hud", "compact"))
+
+func _dark_sb(alpha := 0.72) -> StyleBox:
+	var s := K.sb(Color(0.11, 0.085, 0.07, alpha), Color(0.42, 0.32, 0.22, minf(1.0, alpha + 0.1)), 1, 3, Color(0, 0, 0, 0), 0, 2)
+	s.content_margin_left = 4; s.content_margin_right = 4; s.content_margin_top = 1; s.content_margin_bottom = 1
+	return s
+
+## Opens or closes the full list of today's goals (H, or a click on the goal line).
+func toggle_goals() -> void:
+	guide_open = not guide_open
+	guide_pop_t = 0.0
+	_last.erase("guide")
 
 const TABS := {"inventory": "Inventory", "skills": "Skills", "map": "Map", "quests": "Journal", "social": "Social", "crafting": "Crafting", "collections": "Collections", "calendar": "Calendar", "settings": "Settings"}
 
@@ -476,6 +498,55 @@ func enter_game() -> void:
 func build_hud() -> void:
 	_clear(hud)
 	_last = {}
+	meters = null; top_box = null; corner_box = null
+	if hud_style() != "full":
+		_build_compact_top()
+	else:
+		_build_full_top()
+	_build_common()
+
+## The compact HUD: a thin clock strip and a one-line goal tracker in the top right corner.
+func _build_compact_top() -> void:
+	var box := K.vbox(1)
+	box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	box.position = Vector2(-4, 3)
+	box.alignment = BoxContainer.ALIGNMENT_BEGIN
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cp := PanelContainer.new()
+	cp.add_theme_stylebox_override("panel", _dark_sb())
+	cp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cp.size_flags_horizontal = Control.SIZE_SHRINK_END
+	clock_lbl = K.rich("", 7)
+	clock_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	clock_lbl.add_theme_color_override("default_color", Color("#f4e8cc"))
+	cp.add_child(clock_lbl)
+	box.add_child(cp)
+	var gp := PanelContainer.new()
+	gp.add_theme_stylebox_override("panel", _dark_sb(0.6))
+	gp.size_flags_horizontal = Control.SIZE_SHRINK_END
+	gp.mouse_filter = Control.MOUSE_FILTER_STOP
+	gp.tooltip_text = "Today's goals. Click or press H to show them all."
+	gp.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT: toggle_goals())
+	guide_lbl = K.rich("", 6)
+	guide_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	guide_lbl.add_theme_color_override("default_color", Color("#f4e8cc"))
+	gp.add_child(guide_lbl)
+	box.add_child(gp)
+	guide_panel = gp
+	gp.visible = false
+	hud.add_child(box)
+	top_box = box
+	# effect badges (top left, only while something is on you)
+	status_box = K.hbox(2)
+	status_box.position = Vector2(3, 3)
+	hud.add_child(status_box)
+	bars_box = K.vbox(1)      # unused in compact; kept so older code paths have somewhere to put things
+	bars_box.visible = false
+	hud.add_child(bars_box)
+
+func _build_full_top() -> void:
 	# clock (top right)
 	var cp := K.panel(84)
 	cp.tape = false
@@ -509,6 +580,8 @@ func build_hud() -> void:
 	status_box = K.hbox(2)
 	status_box.position = Vector2(98, 5)
 	hud.add_child(status_box)
+
+func _build_common() -> void:
 	# toasts (bottom left)
 	toast_box = K.vbox(2)
 	toast_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -541,15 +614,38 @@ func build_hud() -> void:
 	cc.add_child(tbp)
 	bottom.add_child(cc)
 	hud.add_child(bottom)
-	# buttons (bottom right)
-	var br := K.vbox(2)
-	br.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	br.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	br.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	br.position = Vector2(-4, -4)
-	br.add_child(K.with_glyph(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"), "list"))
-	br.add_child(K.with_glyph(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"), "pause"))
-	hud.add_child(br)
+	# buttons (bottom right); in the compact HUD the meters sit beside two small icon buttons
+	if hud_style() == "full":
+		var br := K.vbox(2)
+		br.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		br.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		br.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		br.position = Vector2(-4, -4)
+		br.add_child(K.with_glyph(K.button("Journal", func(): if not overlay_open(): open("journal", {"tab": "inventory"}), "small"), "list"))
+		br.add_child(K.with_glyph(K.button("Pause", func(): if not overlay_open(): open_pause(), "small"), "pause"))
+		hud.add_child(br)
+	else:
+		var cr := K.hbox(3)
+		cr.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		cr.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		cr.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		cr.position = Vector2(-4, -4)
+		cr.alignment = BoxContainer.ALIGNMENT_END
+		cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		meters = K.Meters.new()
+		meters.size_flags_vertical = Control.SIZE_SHRINK_END
+		cr.add_child(meters)
+		var bv := K.vbox(2)
+		bv.size_flags_vertical = Control.SIZE_SHRINK_END
+		for bt in [["list", "Journal (Tab)", func(): if not overlay_open(): open("journal", {"tab": "inventory"})], ["pause", "Pause (Esc)", func(): if not overlay_open(): open_pause()]]:
+			var b := K.button("", bt[2], "small")
+			b = K.with_glyph(b, bt[0])
+			b.tooltip_text = bt[1]
+			b.custom_minimum_size = Vector2(14, 14)
+			bv.add_child(b)
+		cr.add_child(bv)
+		hud.add_child(cr)
+		corner_box = cr
 	# boss health (top centre, only while a boss is on the map)
 	boss_box = K.vbox(0)
 	boss_box.anchor_left = 0.5; boss_box.anchor_right = 0.5
@@ -599,6 +695,85 @@ func update_hud(dt: float) -> void:
 		return
 	var st: Dictionary = Game.state
 	var late: bool = st.time >= Balance.time.midnight
+	if hud_style() != "full":
+		_update_compact(dt)
+	else:
+		_update_full_top(late)
+	_update_common(dt)
+
+func _update_compact(dt: float) -> void:
+	var st: Dictionary = Game.state
+	var late: bool = st.time >= Balance.time.midnight
+	var minimal := hud_style() == "minimal"
+	var tcol := "#ff8a70" if late else "#fff4dc"
+	var clock := ""
+	if minimal:
+		clock = "%s %d · [color=%s]%s[/color]" % [Game.weekday(), Game.day_of_season(), tcol, Game.fmt_time(int(st.time))]
+	else:
+		clock = "%s %d %s · [color=%s]%s[/color] · %s · [color=#ffd76a]%s g[/color]" % [Game.weekday(), Game.day_of_season(), Game.season().capitalize(),
+			tcol, Game.fmt_time(int(st.time)), Data.weather_info[st.weather].name, _num(int(st.money))]
+	if Game.paused: clock += "  [color=#ff8a70]PAUSED[/color]"
+	if _last.get("clock") != clock:
+		clock_lbl.text = clock
+		_last.clock = clock
+	# the place name shows for a moment when you arrive, instead of staying on screen
+	var loc := Game.location_name()
+	if _last.get("loc") != loc:
+		if _last.has("loc"): banner(loc)
+		_last.loc = loc
+	# today's goals: one line, the full list on H or a click, and briefly whenever one gets done
+	var goals := FirstWeek.today()
+	var done := goals.filter(func(g): return g[1]).size()
+	if _goals_done >= 0 and done > _goals_done: guide_pop_t = 5.0
+	_goals_done = done
+	var was_pop := guide_pop_t > 0.0
+	guide_pop_t = maxf(0.0, guide_pop_t - dt)
+	var show_all: bool = guide_open or guide_pop_t > 0.0
+	var gkey := str(goals) + str(show_all)
+	if _last.get("guide") != gkey or (was_pop and guide_pop_t <= 0.0):
+		_last.guide = gkey
+		guide_panel.visible = not goals.is_empty() and (not minimal or show_all)
+		var head := "[color=#ffd98a]Today %d/%d[/color]" % [done, goals.size()]
+		if show_all:
+			var lines := [head + " [color=#b8a888](day %d of 7)[/color]" % int(st.day)]
+			for g in goals:
+				lines.append(("[color=#8ac86a]✓ %s[/color]" if g[1] else "• %s") % g[0])
+			guide_lbl.text = "\n".join(lines)
+		else:
+			var next := ""
+			for g in goals:
+				if not g[1]:
+					next = str(g[0])
+					break
+			if next.length() > 34: next = next.substr(0, 32) + "..."
+			guide_lbl.text = head + ("  › " + next if next != "" else "  [color=#8ac86a]all done[/color]")
+	# meters (bottom right, beside the two small buttons)
+	if meters != null:
+		var rows := [["health", st.health, Game.max_health()], ["energy", st.energy, Game.max_energy()]]
+		if Game.is_survivor():
+			rows.append(["hunger", st.hunger, Balance.survival.hunger_max])
+			rows.append(["thirst", st.thirst, Balance.survival.thirst_max])
+		var mkey := str(rows.map(func(b): return int(ceil(float(b[1])))))
+		if _last.get("bars") != mkey:
+			_last.bars = mkey
+			meters.set_rows(rows)
+		meters.tick(dt)
+	_fade_behind(dt)
+
+## Whatever part of the HUD you (or the fight in front of you) walk behind fades, so it never hides you.
+func _fade_behind(dt: float) -> void:
+	if Game.world == null or Game.world.view == null: return
+	var sp: Vector2 = Game.player.pos - Game.world.view.cam.position
+	var me := Rect2(sp.x - 12, sp.y - 36, 24, 40)
+	for c in [top_box, corner_box, toast_box, status_box]:
+		if c == null or not is_instance_valid(c): continue
+		var want := 1.0
+		if c.get_global_rect().intersects(me): want = 0.3
+		elif c == corner_box and meters != null and not meters.needs_attention(): want = 0.75
+		c.modulate.a = move_toward(c.modulate.a, want, dt * 4.0)
+
+func _update_full_top(late: bool) -> void:
+	var st: Dictionary = Game.state
 	var clock := "[right][b]%s. %s %d[/b] [color=#5c3a1c]Y%d[/color]\n[font_size=11][color=%s]%s[/color][/font_size]\n[color=#5c3a1c]%s · %s[/color]\n[b][color=#6a4a10]%s gold[/color][/b]%s[/right]" % [
 		Game.weekday(), Game.season().capitalize(), Game.day_of_season(), Game.year(), "#b3392e" if late else "#5a2c0e", Game.fmt_time(int(st.time)),
 		Data.weather_info[st.weather].name, Game.location_name(), _num(int(st.money)), "\n[color=#b3392e][b]PAUSED[/b][/color]" if Game.paused else ""]
@@ -651,6 +826,10 @@ func update_hud(dt: float) -> void:
 		tagp.add_theme_stylebox_override("panel", K.tsb("badge_bad" if st.mode == "survivor" else "badge_good", 3, 2) if K.textured else K.sb(Color("#8a3a2a") if st.mode == "survivor" else Color("#3f7a2c"), Color(0, 0, 0, 0), 0, 1, Color(0, 0, 0, 0), 0, 1))
 		tagp.add_child(tag)
 		bars_box.add_child(tagp)
+
+func _update_common(dt: float) -> void:
+	var st: Dictionary = Game.state
+	if meters == null: _fade_behind(dt)
 	var effs := Game.status_effects()
 	var ekey := str(effs.map(func(e): return e.id))
 	if _last.get("eff") != ekey:
@@ -731,20 +910,45 @@ static func _num(n: int) -> String:
 func toast(text: String, icon := "", style := "") -> void:
 	if toast_box == null or Game.screen != "game":
 		return
+	var compact := hud_style() != "full"
+	# the same pickup again while its message is up: count it on that line ("+3 Wood") instead of a new one
+	var rx := RegEx.create_from_string("^\\+(\\d+) (.+)$")
+	var mt := rx.search(text)
+	if mt != null and icon != "":
+		for tt in toasts:
+			if tt.get("icon", "") == icon and tt.get("rest", "") == mt.get_string(2) and is_instance_valid(tt.node):
+				tt.count = int(tt.count) + int(mt.get_string(1))
+				tt.text = "+%d %s" % [int(tt.count), tt.rest]
+				tt.label.text = tt.text
+				tt.t = 4.2
+				return
 	var colors := {"": [Color(0.97, 0.89, 0.72, 0.95), K.WOOD], "gold": [Color("#fff0b8"), Color("#a87a10")], "warn": [Color("#f8dcb8"), K.EMBER], "bad": [Color("#f4c4bc"), K.DANGER]}
 	var c: Array = colors.get(style, colors[""])
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", (K.tsb("tooltip", 3, 3) if style == "" else K.tinted("row", 3, 3, c[0])) if K.textured else K.sb(c[0], c[1], 1, 2, Color(0, 0, 0, 0.3), 1, 2))
+	if compact:
+		p.add_theme_stylebox_override("panel", _dark_sb(0.7))
+	else:
+		p.add_theme_stylebox_override("panel", (K.tsb("tooltip", 3, 3) if style == "" else K.tinted("row", 3, 3, c[0])) if K.textured else K.sb(c[0], c[1], 1, 2, Color(0, 0, 0, 0.3), 1, 2))
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var h := K.hbox(3)
 	if icon != "" and Data.items.has(icon):
 		h.add_child(K.icon(Art.get_icon(icon), 10))
-	var l := K.label(text, 6, null, true)
-	l.custom_minimum_size.x = min(200, 5 * text.length())
+	var tcol = null
+	if compact: tcol = {"": Color("#f4e8cc"), "gold": Color("#ffd76a"), "warn": Color("#ffb070"), "bad": Color("#ff8a70")}.get(style, Color("#f4e8cc"))
+	var l := K.label(text, 6, tcol, true)
+	l.custom_minimum_size.x = min(200 if not compact else 150, 5 * text.length())
 	h.add_child(l)
 	p.add_child(h)
 	toast_box.add_child(p)
-	toasts.append({"node": p, "t": 4.2, "text": text})
+	var entry := {"node": p, "t": 4.2, "text": text, "icon": icon, "label": l}
+	if mt != null:
+		entry.count = int(mt.get_string(1))
+		entry.rest = mt.get_string(2)
+	toasts.append(entry)
+	# compact shows the newest three (minimal two); older ones stay listed a moment, just not shown
+	var most := 6 if not compact else (3 if hud_style() == "compact" else 2)
+	for i in toasts.size():
+		toasts[i].node.visible = i >= toasts.size() - most
 	while toasts.size() > 6:
 		toasts[0].node.queue_free()
 		toasts.remove_at(0)
@@ -1035,6 +1239,8 @@ func _ov_pause() -> Control:
 	var pw := _window("Paused", 160)
 	var v: VBoxContainer = pw[1]
 	v.add_child(K.label("The clock is stopped.", 7, K.INK_SOFT))
+	if hud_style() != "full" and not Game.state.is_empty():
+		v.add_child(K.label("WEAPONS SANDBOX" if Game.sandbox_on() else Balance.modes[Game.state.mode].label, 7, K.EMBER if Game.state.mode == "survivor" else K.MOSS))
 	v.add_child(K.button("Resume", close, "big"))
 	v.add_child(K.with_glyph(K.button("Journal", func(): Game.paused = false; open("journal", {"tab": "inventory"})), "list"))
 	v.add_child(K.with_glyph(K.button("Settings", func(): Game.paused = false; open("journal", {"tab": "settings"})), "gear"))
@@ -2818,6 +3024,19 @@ func _settings_box(in_game: bool) -> Control:
 		h.add_child(val)
 		v.add_child(h)
 	v.add_child(K.label("Display and controls", 8, K.WOOD_DARK))
+	# how much of the screen the HUD takes (Nov 23)
+	var lay := K.hbox(3)
+	lay.add_child(K.label("Screen layout:", 7))
+	for opt in [["compact", "Compact"], ["full", "Full"], ["minimal", "Minimal"]]:
+		var key2: String = opt[0]
+		var b2 := K.button(("> " if str(s.get("hud", "compact")) == key2 else "") + str(opt[1]), func():
+			Game.settings.hud = key2
+			Game.save_settings()
+			build_hud()
+			render_overlay(), "small")
+		lay.add_child(b2)
+	v.add_child(lay)
+	v.add_child(K.label("Compact: small clock and goals, meters by the toolbar. Full: the big panels. Minimal: meters and time only.", 6, K.INK_SOFT, true))
 	for pair in [["large_text", "Larger interface text"], ["high_contrast", "High-contrast interface"], ["show_target", "Show tool target outline"], ["pause_on_blur", "Pause when the window loses focus"], ["detail_art", "Detailed art (preview)"]]:
 		var key: String = pair[0]
 		var cb := CheckBox.new()

@@ -61,6 +61,7 @@ func handle_event(e: InputEvent) -> void:
 			"journal": Game.ui.open("journal", {"tab": "inventory"}); return
 			"map": Game.ui.open("journal", {"tab": "map"}); return
 			"tasks": Game.ui.open("journal", {"tab": "quests"}); return
+			"goals": Game.ui.toggle_goals(); return
 			"crafting": Game.ui.open("journal", {"tab": "crafting"}); return
 			"next_slot": Game.state.selected = (int(Game.state.selected) + 1) % Balance.inventory.toolbar_size; return
 			"prev_slot": Game.state.selected = (int(Game.state.selected) - 1 + Balance.inventory.toolbar_size) % Balance.inventory.toolbar_size; return

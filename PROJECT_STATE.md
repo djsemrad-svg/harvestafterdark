@@ -877,6 +877,26 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Icons: pistols as they are; long guns turned 45 degrees, shrunk and outlined.
 - Screenshot mode `guns` (every gun aiming right, left and up). Bows, slingshots and melee weapons unchanged.
 
+### Nov 23: compact HUD (Daniel: the panels "block a lot of the screen")
+- Settings, Display and controls, "Screen layout": Compact (default), Full (the old panels) or Minimal (meters and
+  time only). `Game.settings.hud`, `UI.hud_style()`; `build_hud` splits into `_build_compact_top` /
+  `_build_full_top` and `_build_common`, `update_hud` into `_update_compact` / `_update_full_top` and
+  `_update_common`.
+- Meters (`UIKit.Meters`): four slim upright bars beside the toolbar, bottom right, each with its icon underneath
+  (Daniel asked for the icons). They sit at 75% while everything is above half and nothing changed in the last
+  3 s, come up fully otherwise; a bar under a quarter pulses. Hover a bar for "Health 85 / 100".
+- Top right: one thin dark strip (day, season, time, weather, gold; time turns red after midnight; PAUSED) and
+  one line of today's goals ("Today 1/3 > next goal"). H (new rebindable key "goals") or a click opens the full
+  list; it also opens for 5 s whenever a goal is done. The place name no longer sits in the clock: it shows as the
+  banner for a moment when you arrive.
+- Pickup messages: dark and small, the newest three shown (minimal: two), and the same pickup while its line is up
+  counts on that line ("+5 Wood"; in every layout). The Survivor / Adventure badge moved to the pause menu; Journal
+  and Pause are two small icon buttons. Effect badges sit top left.
+- Any part of the HUD you walk behind fades to 30% (`UI._fade_behind`).
+- Test `run_hud`; screenshot mode `hud` (compact, goals open, low health, minimal, full, behind). One full run had
+  the known random failures (Survivor low meters, Residential gate, Maple Street walk, storm flash); the rerun
+  passed 375 of 375.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

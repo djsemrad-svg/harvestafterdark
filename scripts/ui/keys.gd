@@ -10,7 +10,7 @@ const ACTIONS := [
 	["up", "Move up", KEY_W], ["down", "Move down", KEY_S], ["left", "Move left", KEY_A], ["right", "Move right", KEY_D],
 	["use", "Use tool or item", KEY_SPACE], ["interact", "Interact, talk, harvest", KEY_E], ["eat", "Eat selected item", KEY_F],
 	["reload", "Reload", KEY_R], ["shove", "Shove", KEY_V], ["sprint", "Sprint (double-tap to dash)", KEY_SHIFT], ["crouch", "Crouch", KEY_CTRL],
-	["next_slot", "Next toolbar slot", KEY_Q], ["journal", "Journal", KEY_TAB], ["map", "Map", KEY_M], ["tasks", "Tasks", KEY_J],
+	["next_slot", "Next toolbar slot", KEY_Q], ["journal", "Journal", KEY_TAB], ["map", "Map", KEY_M], ["tasks", "Tasks", KEY_J], ["goals", "Today's goals (show all)", KEY_H],
 	["crafting", "Crafting", KEY_C], ["pause", "Pause", KEY_ESCAPE],
 ]
 const JOY := {JOY_BUTTON_A: "interact", JOY_BUTTON_X: "use", JOY_BUTTON_Y: "eat", JOY_BUTTON_B: "shove", JOY_BUTTON_START: "pause",

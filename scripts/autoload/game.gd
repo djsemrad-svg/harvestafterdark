@@ -40,7 +40,7 @@ var shake := 0.0
 var hitstop := 0.0      # a melee hit freezes the action for a few hundredths of a second, so it lands with weight
 var rng := RandomNumberGenerator.new()
 
-var settings := {"sfx": 70, "music": 45, "ambience": 60, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false, "effects": true, "keys": {}}
+var settings := {"sfx": 70, "music": 45, "ambience": 60, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false, "effects": true, "keys": {}, "hud": "compact"}
 
 func _ready() -> void:
 	rng.randomize()
