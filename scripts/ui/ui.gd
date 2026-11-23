@@ -848,6 +848,7 @@ func overlay_type() -> String:
 	return overlay.get("type", "")
 
 func open(type: String, data := {}) -> void:
+	if type == "journal" and overlay_type() != "journal": Sfx.play("pages")
 	overlay = {"type": type}
 	overlay.merge(data, true)
 	Game.charge = null
@@ -1664,6 +1665,7 @@ func _ask_discard(i: int, n: int) -> void:
 			var cur = Game.state.inventory[i]
 			if cur != null and cur.id == id:
 				Game.remove_from_slot(i, min(n, int(cur.qty)))
+				Sfx.play("drop")
 				toast("Threw away %s." % ("1 " + nm if n == 1 else "%d %s" % [n, nm]), id)
 			overlay = saved
 			overlay.erase("pick")
@@ -2081,7 +2083,7 @@ func _craft(r: Dictionary) -> void:
 	if r.station == "stove":
 		Game.add_xp("cooking", 12)
 		Game.state.stats.meals = int(Game.state.stats.get("meals", 0)) + int(r.qty)
-	Sfx.play("eat" if r.station == "stove" else "pick")
+	Sfx.play("boiling" if r.station in ["stove", "cookstove", "campfire"] else "pick")
 	overlay.err = ""
 	render_overlay()
 
@@ -2749,7 +2751,7 @@ func _settings_box(in_game: bool) -> Control:
 	var v := K.vbox(3)
 	var s: Dictionary = Game.settings
 	v.add_child(K.label("Audio", 8, K.WOOD_DARK))
-	for pair in [["music", "Music volume"], ["sfx", "Sound effects volume"]]:
+	for pair in [["music", "Music volume"], ["sfx", "Sound effects volume"], ["ambience", "Ambience volume"]]:
 		var key: String = pair[0]
 		var h := K.hbox()
 		var l := K.label(pair[1], 7)
@@ -2758,10 +2760,10 @@ func _settings_box(in_game: bool) -> Control:
 		var sl := HSlider.new()
 		sl.min_value = 0
 		sl.max_value = 100
-		sl.value = s[key]
+		sl.value = s.get(key, 60)
 		sl.custom_minimum_size.x = 120
 		sl.focus_mode = Control.FOCUS_NONE
-		var val := K.label(str(s[key]), 7)
+		var val := K.label(str(s.get(key, 60)), 7)
 		sl.value_changed.connect(func(x):
 			Game.settings[key] = int(x)
 			val.text = str(int(x))

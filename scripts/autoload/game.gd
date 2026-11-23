@@ -40,7 +40,7 @@ var shake := 0.0
 var hitstop := 0.0      # a melee hit freezes the action for a few hundredths of a second, so it lands with weight
 var rng := RandomNumberGenerator.new()
 
-var settings := {"sfx": 70, "music": 45, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false, "effects": true, "keys": {}}
+var settings := {"sfx": 70, "music": 45, "ambience": 60, "pause_on_blur": true, "large_text": false, "show_target": true, "high_contrast": false, "detail_art": false, "effects": true, "keys": {}}
 
 func _ready() -> void:
 	rng.randomize()
@@ -62,6 +62,7 @@ func save_settings() -> void:
 
 func apply_settings() -> void:
 	Sfx.set_volumes(settings.sfx, settings.music)
+	Soundscape.set_volume(float(settings.get("ambience", 60)))
 	Art.set_detail(settings.get("detail_art", false))
 	if ui:
 		ui.apply_settings()
@@ -2362,7 +2363,7 @@ func take_contract(id: String) -> void:
 	cs.active.append(id)
 	var c := Contracts.get_def(id)
 	toast("Contract taken: " + c.title, "", "gold")
-	Sfx.play("coin")
+	Sfx.play("writing")      # your name on the board
 	check_contracts()
 
 ## [have, need] for the journal and the board.

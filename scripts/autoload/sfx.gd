@@ -47,6 +47,15 @@ const EFFECTS := {
 	"thunder": [["rumble", 0, 2.2, "", 0.55, 1.0, 0.0], ["rumble", 0, 1.4, "", 0.35, 1.0, 0.35], ["tone", 42, 1.6, "sine", 0.25, 0.7, 0.05]],
 }
 
+## Recorded sounds (Daniel's Home Sound Effects, res://audio/sfx) used instead of the synth where they fit:
+## effect -> [file, seconds to play (0 = all), where to start]
+const FILES := {
+	"water": ["pour", 0.9, 0.4], "drawer": ["drawer", 0.0, 0.0], "pages": ["pages", 0.0, 0.0], "drop": ["drop", 0.0, 0.0],
+	"drag": ["drag", 0.0, 0.0], "boiling": ["boiling", 1.6, 1.0], "zipper": ["zipper", 1.0, 0.0], "writing": ["writing", 1.2, 0.0],
+	"drip": ["drip", 0.0, 0.0], "slosh": ["slosh", 0.0, 0.0],
+}
+var _file_cache := {}
+
 var _cache := {}
 var _players: Array[AudioStreamPlayer] = []
 var _music: AudioStreamPlayer
@@ -69,7 +78,7 @@ func _ready() -> void:
 
 func set_volumes(sfx_pct: float, music_pct: float) -> void:
 	_set_bus("SFX", sfx_pct / 100.0 * 0.6)
-	_set_bus("Music", music_pct / 100.0 * 0.35)
+	_set_bus("Music", music_pct / 100.0 * (0.7 if ResourceLoader.exists("res://audio/music/joyful.ogg") else 0.35))
 
 func _set_bus(bus_name: String, linear: float) -> void:
 	var i := AudioServer.get_bus_index(bus_name)
@@ -79,6 +88,19 @@ func _set_bus(bus_name: String, linear: float) -> void:
 	AudioServer.set_bus_volume_db(i, linear_to_db(max(linear, 0.001)))
 
 func play(effect: String) -> void:
+	if FILES.has(effect):
+		var fd: Array = FILES[effect]
+		var path := "res://audio/sfx/%s.ogg" % fd[0]
+		if not _file_cache.has(path): _file_cache[path] = load(path) if ResourceLoader.exists(path) else null
+		if _file_cache[path] != null:
+			for p in _players:
+				if not p.playing:
+					p.stream = _file_cache[path]
+					p.play(float(fd[2]))
+					if float(fd[1]) > 0.0:
+						get_tree().create_timer(float(fd[1])).timeout.connect(func(): if p.stream == _file_cache[path]: p.stop())
+					return
+			return
 	if not EFFECTS.has(effect):
 		return
 	if not _cache.has(effect):
@@ -144,6 +166,8 @@ func _to_wav(buf: PackedFloat32Array, rate: int, loop := false) -> AudioStreamWA
 
 ## Gentle generative loop per season (built once, then cached).
 func play_music(season: String) -> void:
+	if ResourceLoader.exists("res://audio/music/joyful.ogg"):
+		return      # Daniel's music packs are in: Soundscape picks the music (this synth music is the fallback)
 	if _track == season and _music.playing:
 		return
 	_track = season

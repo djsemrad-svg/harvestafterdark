@@ -22,6 +22,7 @@ Balance="*res://scripts/autoload/balance.gd"
 Data="*res://scripts/autoload/data.gd"
 Art="*res://scripts/autoload/art.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
+Soundscape="*res://scripts/autoload/soundscape.gd"
 Game="*res://scripts/autoload/game.gd"
 Dialogic="*uid://ds2q0uclmolvu"
 

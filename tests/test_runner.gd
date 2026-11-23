@@ -60,6 +60,7 @@ func tick(ms: float) -> void:
 var terrain_on := false
 
 func start(mode: String, slot: int) -> void:
+	Soundscape.enabled = false      # the tests check the choices directly (run_audio), nothing plays
 	Terrain.enabled = terrain_on      # flat maps unless a test asks for raised ground (seeds differ every run)
 	Game.new_game({"mode": mode, "slot": slot, "name": "Tester", "look": LOOK.duplicate(), "property_name": "Testfield Acres"})
 	U.close_all()
@@ -1330,6 +1331,7 @@ func run_all() -> void:
 	run_limezu()
 	run_aimfx()
 	run_toolpose()
+	run_audio()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4653,3 +4655,68 @@ func run_toolpose() -> void:
 		"sw=%s pose=%s" % [str(sw.keys()) if sw != null else "null", str(pose)])
 	tick(400)
 	check("...and is over before 0.4 s", G.player.swing == null)
+
+
+func run_audio() -> void:
+	# Nov 22: music by place, time and fights; ambience by weather, time, water, fires and caves
+	var G = Game
+	start("adventure", 2)
+	var S = Soundscape
+	var files := 0
+	for d in ["music", "ambience", "sfx"]:
+		var da := DirAccess.open("res://audio/" + d)
+		if da != null:
+			for f in da.get_files():
+				if f.ends_with(".ogg"): files += 1
+	var missing := []
+	for lst in S.PLAYLISTS:
+		for n in S.PLAYLISTS[lst]:
+			if not ResourceLoader.exists("res://audio/music/%s.ogg" % n): missing.append(n)
+	check("Audio: the music, ambience loops and sound effects are in the game, and every playlist track exists", files >= 39 + 18 + 10 and missing.is_empty(), "files=%d missing=%s" % [files, str(missing)])
+	G.state.time = 600; G.state.weather = "sun"
+	at("homestead", 20, 20, "down"); G.enemies.clear()
+	var farm_day: String = S.pick_list()
+	G.state.time = 22 * 60
+	var farm_night: String = S.pick_list()
+	G.state.time = 600
+	at("residential", 30, 20, "down"); G.enemies.clear()
+	var district: String = S.pick_list()
+	check("Music fits the place and time: farm by day, night music at night, district music in the districts",
+		farm_day in ["farm", "farm_winter"] and farm_night == "night" and district == "district", "%s %s %s" % [farm_day, farm_night, district])
+	# an infected coming for you brings in the fight music, and it stays a moment after
+	var e: Dictionary = W.spawn_enemy("shambler", int(G.player.pos.x / 16) + 3, int(G.player.pos.y / 16))
+	e.state = "chase"
+	S.enabled = true
+	S._process(0.1)
+	var fight: String = S.last_list
+	G.enemies.clear()
+	S._process(1.0)
+	var held: String = S.last_list
+	S._process(5.0)
+	var after: String = S.last_list
+	S.enabled = false
+	S.stop_all()
+	check("A fight fades in combat music, which holds a few seconds after the last attacker", fight == "combat" and held == "combat" and after == "district", "%s %s %s" % [fight, held, after])
+	# ambience: rain, birds by day, the night loop, the river near water
+	at("town", 30, 40, "down"); G.enemies.clear()
+	G.state.weather = "rain"; G.state.time = 700
+	var rainy: Dictionary = S.ambience_targets()
+	G.state.weather = "sun"; G.state.time = 22 * 60
+	var night_amb: Dictionary = S.ambience_targets()
+	var wpos := Vector2i(-1, -1)
+	var m: GameMap = G.map
+	for y in m.h:
+		for x in m.w:
+			if wpos.x < 0 and m.tile_at(x, y) == "water" and not m.is_solid(x, y - 2): wpos = Vector2i(x, y - 2)
+	G.player.pos = Vector2(wpos.x * 16 + 8, wpos.y * 16 + 12)
+	G.state.time = 700
+	var by_river: Dictionary = S.ambience_targets()
+	var season_ok: bool = G.season() == "winter" or rainy.has("rain_calm")
+	check("Ambience: rain when it rains, the night loop at night, the river louder beside it", season_ok and night_amb.has("night") and float(by_river.get("river_moderate", 0.0)) > 0.5,
+		"rain=%s night=%s river=%s" % [str(rainy.keys()), str(night_amb.keys()), str(by_river)])
+	G.settings.ambience = 0
+	G.apply_settings()
+	var muted: bool = AudioServer.is_bus_mute(AudioServer.get_bus_index("Ambience"))
+	G.settings.ambience = 60
+	G.apply_settings()
+	check("The ambience volume setting turns the background sounds down to nothing", muted)

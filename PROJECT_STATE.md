@@ -740,6 +740,29 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Order item 4 (animations) is done apart from: melee weapons still use the keyframed swing over the generator's
   hit/stab rows (not farmer poses).
 
+### Nov 22: audio (order item 5)
+- Files (`tools/import_audio.py <uploads> <project>`): `audio/music/` 39 tracks from the Mystery 1-2, Action 1-2 and
+  Adventure 1-2 packs (19 sci-fi ones left out: cyber, mech, mega-bot, space, synthwave, neon, chibi robot, dark
+  space), all at -16 LUFS by a fixed gain; `audio/ambience/` the 18 loops at -24 LUFS; `audio/sfx/` 15 of the Home
+  Sound Effects. About 39 MB.
+- `scripts/autoload/soundscape.gd` (autoload `Soundscape`, before Game): playlists by place and time (`PLAYLISTS`:
+  title, farm, farm_winter, evening, town, night, wild, district, danger_night, lab, mine, festival, combat, boss),
+  Stardew-style quiet gaps between tracks (25-70 s; none in fights), 2.5 s crossfades when the playlist changes.
+  Fight music when an awake attacker within 9 tiles is after you (boss music near a boss), held 5 s after.
+  Track choices were made from names and loudness only, not by listening: Daniel should listen and move tracks
+  between lists.
+- Ambience (`Soundscape.ambience_targets`, eased every 0.4 s): rain calm or strong (storms), wind in winter, birds
+  by day outside winter, cicadas on summer afternoons, the night loop, wind in the forest on the Ridge and in the
+  Riverlands, river (town and Riverlands) or calm stream (ponds, lakes) by distance to water, waterfall calm or strong
+  by distance to a terrain waterfall, campfire or watch fire within 8 tiles (bigger at festivals), big fire near
+  burning ground, cave drips / dark / deep by mine depth (1-20, 21-60, 61-100). Indoors: rain faint, fires only.
+  The sea loop waits for the Coastal Region.
+- Sound effects (`Sfx.FILES`): watering pours, searching drawers, desks, cabinets, lockers and fridges pulls a
+  drawer, tents and bags zip, the journal turns pages, throwing away drops, placing furniture indoors drags, cooking
+  boils, taking a contract writes. The synth music is now only a fallback.
+- Settings: new Ambience volume slider (`settings.ambience`, default 60). Music bus louder (0.7) for real tracks.
+- Tests `run_audio` (the test runner turns playback off: `Soundscape.enabled`).
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).
@@ -749,7 +772,7 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
    farmer rows), a grip point on every frame so items stop floating, weapon wind-up, strike and follow-through with
    hit-stop and sparks, gun aiming pose with recoil and casings, the body turning to face the aim with the gun
    rotating to the pointer (smoothed, slight lean), and blended pose changes.
-5. Audio (old item 23, about 5 to 6.5 hours): Daniel's music packs (Mystery 1 and 2, Action 1 and 2, Adventure 1
+5. Audio: done Nov 22 (see above). Original plan (old item 23, about 5 to 6.5 hours): Daniel's music packs (Mystery 1 and 2, Action 1 and 2, Adventure 1
    and 2: 63 tracks, leaving out the sci-fi ones), Home Sound Effects (18) and 18 ambience loops (weather, birds,
    cicadas, night, water and fires by distance, caves), converted to OGG. Playlists per place and time with fades,
    combat music, volume sliders for music, sound and ambience. Uploads are in /mnt/user-data/uploads/.

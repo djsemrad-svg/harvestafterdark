@@ -562,7 +562,7 @@ func place_at(t: Vector2i, id: String) -> void:
 			return
 	Game.remove_item(id, 1)
 	m.add_obj(t.x, t.y, it.place, extra)
-	Sfx.play("pick")
+	Sfx.play("drag" if m.indoor or not m.outdoor else "pick")      # furniture scrapes into place indoors
 
 # ================================================================ drops and particles
 func spawn_drop(id: String, qty: int, at: Vector2) -> void:
@@ -861,6 +861,12 @@ func search(o: Dictionary, tags: Array, what: String, quality := 0.0, rolls := [
 			Game.toast("You already searched %s. Maybe in a few days." % what, "", "warn")
 		return
 	o.searched = day
+	var ty := str(o.type)
+	for word in ["desk", "dresser", "cabinet", "drawer", "locker", "filing", "medicine", "toolbox", "fridge", "shelf"]:
+		if word in ty:
+			Sfx.play("drawer")      # a drawer or door pulled open
+			break
+	if ty in ["tent", "army_tent", "medical_tent", "loot_bag", "suitcase", "backpack"]: Sfx.play("zipper")
 	if o.type in ["car_wreck", "police_car"]:
 		if not (Game.state.stats.get("wrecks") is Dictionary): Game.state.stats.wrecks = {}
 		Game.state.stats.wrecks["%s:%d,%d" % [Game.map.id, int(o.x), int(o.y)]] = true
