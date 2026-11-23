@@ -2452,3 +2452,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "camp_ar
 
 # ---------------------------------------------------------------- Modern Farm coop, barn and hutch pictures (Nov 22)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "farm_buildings.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- guns from the Starbound "Realistic Weapons" sheet (Nov 23)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "starbound_guns.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})

@@ -1,0 +1,501 @@
+{
+ "pistol_22": {
+  "grip": [
+   1,
+   5
+  ],
+  "fore": null,
+  "muzzle": [
+   11,
+   0
+  ]
+ },
+ "pistol_9mm": {
+  "grip": [
+   1,
+   5
+  ],
+  "fore": null,
+  "muzzle": [
+   10,
+   1
+  ]
+ },
+ "match_grade_9mm_pistol": {
+  "grip": [
+   0,
+   6
+  ],
+  "fore": null,
+  "muzzle": [
+   10,
+   1
+  ]
+ },
+ "pistol_45": {
+  "grip": [
+   1,
+   6
+  ],
+  "fore": null,
+  "muzzle": [
+   13,
+   0
+  ]
+ },
+ "revolver_357": {
+  "grip": [
+   1,
+   8
+  ],
+  "fore": null,
+  "muzzle": [
+   16,
+   2
+  ]
+ },
+ "tuned_357_revolver": {
+  "grip": [
+   1,
+   7
+  ],
+  "fore": null,
+  "muzzle": [
+   11,
+   1
+  ]
+ },
+ "twin_hammer_revolver": {
+  "grip": [
+   0,
+   7
+  ],
+  "fore": null,
+  "muzzle": [
+   19,
+   1
+  ]
+ },
+ "dead_mans_hand": {
+  "grip": [
+   1,
+   8
+  ],
+  "fore": null,
+  "muzzle": [
+   16,
+   2
+  ]
+ },
+ "flare_gun": {
+  "grip": [
+   6,
+   5
+  ],
+  "fore": [
+   17,
+   6
+  ],
+  "muzzle": [
+   24,
+   3
+  ]
+ },
+ "cinderheart": {
+  "grip": [
+   8,
+   7
+  ],
+  "fore": [
+   15,
+   7
+  ],
+  "muzzle": [
+   22,
+   3
+  ]
+ },
+ "compact_smg": {
+  "grip": [
+   8,
+   9
+  ],
+  "fore": null,
+  "muzzle": [
+   14,
+   2
+  ]
+ },
+ "extended_compact_smg": {
+  "grip": [
+   7,
+   7
+  ],
+  "fore": [
+   18,
+   3
+  ],
+  "muzzle": [
+   26,
+   2
+  ]
+ },
+ "smg_45": {
+  "grip": [
+   4,
+   5
+  ],
+  "fore": [
+   19,
+   2
+  ],
+  "muzzle": [
+   27,
+   2
+  ]
+ },
+ "shock_trooper_smg": {
+  "grip": [
+   4,
+   8
+  ],
+  "fore": null,
+  "muzzle": [
+   17,
+   5
+  ]
+ },
+ "sawed_off_shotgun": {
+  "grip": [
+   1,
+   4
+  ],
+  "fore": null,
+  "muzzle": [
+   19,
+   1
+  ]
+ },
+ "double_barrel_shotgun": {
+  "grip": [
+   5,
+   4
+  ],
+  "fore": [
+   19,
+   2
+  ],
+  "muzzle": [
+   28,
+   1
+  ]
+ },
+ "polished_double_barrel": {
+  "grip": [
+   5,
+   4
+  ],
+  "fore": [
+   19,
+   2
+  ],
+  "muzzle": [
+   28,
+   1
+  ]
+ },
+ "last_rites": {
+  "grip": [
+   5,
+   4
+  ],
+  "fore": [
+   19,
+   2
+  ],
+  "muzzle": [
+   28,
+   1
+  ]
+ },
+ "pump_shotgun": {
+  "grip": [
+   5,
+   6
+  ],
+  "fore": [
+   19,
+   4
+  ],
+  "muzzle": [
+   28,
+   3
+  ]
+ },
+ "ported_pump_shotgun": {
+  "grip": [
+   6,
+   8
+  ],
+  "fore": [
+   20,
+   5
+  ],
+  "muzzle": [
+   29,
+   3
+  ]
+ },
+ "dragons_breath_pump": {
+  "grip": [
+   6,
+   8
+  ],
+  "fore": [
+   20,
+   5
+  ],
+  "muzzle": [
+   29,
+   3
+  ]
+ },
+ "rifle_22": {
+  "grip": [
+   6,
+   4
+  ],
+  "fore": [
+   18,
+   2
+  ],
+  "muzzle": [
+   26,
+   2
+  ]
+ },
+ "match_grade_22_rifle": {
+  "grip": [
+   6,
+   7
+  ],
+  "fore": [
+   18,
+   5
+  ],
+  "muzzle": [
+   26,
+   5
+  ]
+ },
+ "lever_action_rifle": {
+  "grip": [
+   5,
+   6
+  ],
+  "fore": [
+   21,
+   2
+  ],
+  "muzzle": [
+   30,
+   0
+  ]
+ },
+ "smooth_lever_action": {
+  "grip": [
+   5,
+   6
+  ],
+  "fore": [
+   21,
+   2
+  ],
+  "muzzle": [
+   30,
+   0
+  ]
+ },
+ "bolt_action_rifle": {
+  "grip": [
+   4,
+   4
+  ],
+  "fore": [
+   21,
+   1
+  ],
+  "muzzle": [
+   30,
+   1
+  ]
+ },
+ "scoped_bolt_action_rifle": {
+  "grip": [
+   4,
+   7
+  ],
+  "fore": [
+   21,
+   4
+  ],
+  "muzzle": [
+   30,
+   4
+  ]
+ },
+ "deadeye_bolt_action": {
+  "grip": [
+   6,
+   8
+  ],
+  "fore": [
+   23,
+   5
+  ],
+  "muzzle": [
+   33,
+   4
+  ]
+ },
+ "carbine": {
+  "grip": [
+   6,
+   7
+  ],
+  "fore": [
+   15,
+   8
+  ],
+  "muzzle": [
+   22,
+   3
+  ]
+ },
+ "battle_rifle": {
+  "grip": [
+   7,
+   6
+  ],
+  "fore": [
+   19,
+   2
+  ],
+  "muzzle": [
+   28,
+   2
+  ]
+ },
+ "assault_rifle": {
+  "grip": [
+   6,
+   7
+  ],
+  "fore": [
+   19,
+   3
+  ],
+  "muzzle": [
+   27,
+   3
+  ]
+ },
+ "custom_assault_rifle": {
+  "grip": [
+   7,
+   6
+  ],
+  "fore": [
+   17,
+   2
+  ],
+  "muzzle": [
+   24,
+   2
+  ]
+ },
+ "acid_etched_assault_rifle": {
+  "grip": [
+   6,
+   7
+  ],
+  "fore": [
+   19,
+   3
+  ],
+  "muzzle": [
+   27,
+   3
+  ]
+ },
+ "light_machine_gun": {
+  "grip": [
+   7,
+   8
+  ],
+  "fore": [
+   21,
+   5
+  ],
+  "muzzle": [
+   30,
+   3
+  ]
+ },
+ "tuned_light_machine_gun": {
+  "grip": [
+   7,
+   8
+  ],
+  "fore": [
+   21,
+   5
+  ],
+  "muzzle": [
+   30,
+   3
+  ]
+ },
+ "turncoat": {
+  "grip": [
+   7,
+   8
+  ],
+  "fore": [
+   21,
+   5
+  ],
+  "muzzle": [
+   30,
+   3
+  ]
+ },
+ "sniper_50": {
+  "grip": [
+   6,
+   9
+  ],
+  "fore": [
+   21,
+   6
+  ],
+  "muzzle": [
+   30,
+   4
+  ]
+ },
+ "long_goodbye": {
+  "grip": [
+   7,
+   10
+  ],
+  "fore": [
+   21,
+   8
+  ],
+  "muzzle": [
+   31,
+   5
+  ]
+ }
+}

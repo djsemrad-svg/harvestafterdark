@@ -860,6 +860,23 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   looks the same and is crisp; nothing was blurry (the old note was out of date). Side effect found: the "Larger
   interface text" setting (size 9) makes no visible difference. Not changed; asked Daniel.
 
+### Nov 23: new guns from the Starbound "Realistic Weapons" sheet (Daniel: "still not really happy with the guns")
+- Daniel sent four fan-made gun sheets; tried in game (screenshot mode `guncmp`, any folder in `GUNSET`). He picked
+  the Starbound one: right size for the people (pistols about 14 px, rifles about 30), one clean style, about 75
+  real models. Copied to `<packs>/Starbound_Realistic_Weapons/realistic_weapons_2x.png` (drawn at 2x).
+- `tools/starbound_guns.py` (run last by the importer, so it wins over Weapons v14 for these): every one of the 38
+  guns gets a real model (`GUNS`, boxes in `M`): Luger, Glock, FN 5-7, M1911, .357, .38, Colt SAA, M79 (flare gun),
+  MGL (Cinderheart), MP5K, MP5SD6, Thompson, P90, sawn-off, double barrel, 870, M3, M1014, M1 Carbine, SKS (lever
+  actions, with a lever loop drawn on), Mosin, M14, G36C, FAL, AK-47, HK416, AEK-971, M60, MSG1, WA-2000. Better
+  versions are recoloured (blued, polished, ivory grip, silver, flare orange, blackened brass, steel-blue, dragon
+  red, acid green, white and orange, desert tan); scoped ones get the sheet's 7x scope.
+- Held pictures are cropped tight (no more 24 x 16 canvas). `art/held/index.json` gives each gun's grip, front
+  hand and muzzle (`Art.held_points`): the grip sits in your hand and the stock reaches back past it, hands are
+  drawn on the grip and the forend, the muzzle flash and the shots start at the real muzzle (`WorldView
+  ._draw_held_gun`, `Combat`). Guns not in the file (bows, slingshots, nail guns, speargun) work as before.
+- Icons: pistols as they are; long guns turned 45 degrees, shrunk and outlined.
+- Screenshot mode `guns` (every gun aiming right, left and up). Bows, slingshots and melee weapons unchanged.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

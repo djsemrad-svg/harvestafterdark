@@ -1014,9 +1014,19 @@ func _draw_held_gun(p: Dictionary, hs: Dictionary) -> void:
 	var tex: Texture2D = held if held != null else Art.get_icon(hs.id)
 	var sc := Vector2(1, -1) if left else Vector2.ONE
 	var top := Vector2(-3, -roundf(tex.get_height() / 2.0)) if held != null else Vector2(-4, -8)
+	var pts: Dictionary = Art.held_points(hs.id) if held != null else {}
+	if not pts.is_empty():
+		top = -Vector2(pts.grip[0], pts.grip[1])      # the grip sits in your hand, the stock reaches back past it
 	draw_set_transform(hand.round(), ang, sc * (1.0 if held != null else 0.7))
 	draw_texture(tex, top)
-	if held != null:
+	if not pts.is_empty():
+		var skin0 := Color(str(Game.state.character.look.get("skin", "#e8b48f")))
+		for k in ["grip", "fore"]:
+			if pts.get(k) == null: continue
+			var hp0: Vector2 = top + Vector2(pts[k][0], pts[k][1]) + Vector2(-1, -1)
+			draw_rect(Rect2(hp0 + Vector2(0, 2), Vector2(3, 1)), skin0.darkened(0.45))
+			draw_rect(Rect2(hp0, Vector2(3, 2)), skin0)
+	elif held != null:
 		var skin := Color(str(Game.state.character.look.get("skin", "#e8b48f")))
 		var gr := _gun_grips(hs.id, held)
 		for g in gr:
@@ -1031,6 +1041,9 @@ func _draw_held_gun(p: Dictionary, hs: Dictionary) -> void:
 		var reach: float = (tex.get_width() - 3.0) if held != null else 10.0
 		var fd := Vector2.from_angle(ang)
 		var mz: Vector2 = hand + fd * (reach - 1.0)
+		if not pts.is_empty():
+			var loc := Vector2(float(pts.muzzle[0]) - float(pts.grip[0]) + 1.0, (float(pts.muzzle[1]) - float(pts.grip[1])) * sc.y)
+			mz = hand + loc.rotated(ang)
 		var life: float = clampf(float(p.flash) / Combat.FLASH_TIME, 0.0, 1.0)
 		var sz: float = float(p.get("flash_size", 1.0)) * (0.55 + 0.45 * life)
 		fd = fd.rotated(float(p.get("flash_rot", 0.0)) * 0.3)

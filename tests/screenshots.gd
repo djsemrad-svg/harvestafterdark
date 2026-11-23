@@ -265,6 +265,56 @@ func _ready() -> void:
 		await shot("repairs")
 		get_tree().quit()
 		return
+	if only == "guns":
+		# every gun in your hands, aiming right, left and up (Nov 23, the Starbound sheet)
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "right", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		var ids: Array = JSON.parse_string(FileAccess.get_file_as_string("res://art/held/index.json")).keys()
+		for wid in ids:
+			if not Data.items.has(wid): print("NO ITEM ", wid); continue
+			Game.state.inventory[0] = null
+			Game.add_item(wid, 1)
+			for i in Game.state.inventory.size():
+				var st = Game.state.inventory[i]
+				if st != null and st.id == wid: Game.state.selected = i
+			for aim in [["right", 0.0], ["left", PI], ["up", -PI / 2]]:
+				Game.player.dir = aim[0]
+				main.world.mouse_aim_t = 99.0
+				Game.player.aim_a = aim[1]
+				await frames(12)
+				Game.player.flash = Combat.FLASH_TIME * 0.6 if aim[0] == "right" else 0.0
+				await frames(1)
+				await shot("gun_%s_%s" % [wid, aim[0]])
+		get_tree().quit()
+		return
+	if only == "guncmp":
+		# Nov 23: try other held gun pictures (folder in GUNSET) on the player, aiming right
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 20, 22, "right", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		var dir_in := OS.get_environment("GUNSET")
+		for wid in ["pistol_9mm", "compact_smg", "pump_shotgun", "assault_rifle", "sniper_50"]:
+			var f: String = dir_in + "/" + wid + ".png"
+			if dir_in != "" and FileAccess.file_exists(f):
+				Art._ov["held/%s.png" % wid] = ImageTexture.create_from_image(Image.load_from_file(f))
+			Game.state.inventory[0] = null
+			Game.add_item(wid, 1)
+			for i in Game.state.inventory.size():
+				var st = Game.state.inventory[i]
+				if st != null and st.id == wid: Game.state.selected = i
+			for dir in ["right", "down"]:
+				Game.player.dir = dir
+				await frames(4)
+				await shot("cmp_%s_%s" % [wid, dir])
+		get_tree().quit()
+		return
 	if only == "aim":
 		# held pictures of guns, bows, slingshots and the chainsaw in each direction
 		main.ui.close_all()

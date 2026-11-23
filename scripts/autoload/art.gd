@@ -919,6 +919,18 @@ func override(path: String) -> Texture2D:
 func has_override(path: String) -> bool:
 	return override(path) != null
 
+## Where the hands and muzzle are on a gun's held picture (art/held/index.json, written by
+## tools/starbound_guns.py): {"grip": [x, y], "fore": [x, y] or null, "muzzle": [x, y]}, or {} if not listed.
+var _held_pts = null
+func held_points(wid: String) -> Dictionary:
+	if _held_pts == null:
+		_held_pts = {}
+		var f := ART_DIR + "held/index.json"
+		if FileAccess.file_exists(f):
+			var d = JSON.parse_string(FileAccess.get_file_as_string(f))
+			if d is Dictionary: _held_pts = d
+	return _held_pts.get(wid, {})
+
 ## A weapon's held picture (pointing right, grip on the left) with where the grip is and the angle from the
 ## grip to the tip, so a swing can line the grip up with the hand and turn the weapon to the swing's angle.
 ## Returns {} when the weapon has no held picture.

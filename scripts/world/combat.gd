@@ -259,7 +259,9 @@ func shoot(s: Dictionary, wd: Dictionary, dir: Vector2, repeat: bool) -> bool:
 	var hp := Art.override("held/%s.png" % s.id)
 	var muzzle: Vector2 = p.pos + Vector2(0, -11) + dir * 7.0
 	if hp != null:
-		var far: Vector2 = p.pos + Vector2(0, -11) + dir * clampf(hp.get_width() + 1.0, 7.0, 16.0)
+		var pts: Dictionary = Art.held_points(s.id)
+		var reach: float = (float(pts.muzzle[0]) - float(pts.grip[0]) + 5.0) if not pts.is_empty() else hp.get_width() + 1.0
+		var far: Vector2 = p.pos + Vector2(0, -11) + dir * clampf(reach, 7.0, 30.0)
 		if not Game.map.is_solid(int(far.x) / 16, int(far.y + 11) / 16): muzzle = far
 	var speed := shot_speed(kind)
 	var life: float = minf(float(wd.range), Balance.weapons.max_range_tiles) * 16.0 / speed
