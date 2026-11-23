@@ -424,6 +424,27 @@ func _ready() -> void:
 		main.ui.close_all()
 		get_tree().quit()
 		return
+	if only == "bridge":
+		# the town bridge by day, at night and in winter; a Riverlands bridge
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.weather = "sun"
+		for v in [["town", 57, 70, 720, 1, "day"], ["town", 57, 70, 1290, 1, "night"], ["town", 57, 70, 720, 100, "winter"], ["riverlands", 0, 0, 720, 1, "riverlands"]]:
+			Game.state.time = int(v[3]); Game.state.day = int(v[4])
+			var tx: int = int(v[1]); var ty: int = int(v[2])
+			if v[0] == "riverlands":
+				var bs: Array = Bridges.spans(Game.maps.riverlands)
+				if bs.is_empty(): continue
+				var r: Rect2i = bs[0][0]
+				tx = r.position.x + r.size.x / 2; ty = r.position.y + r.size.y / 2
+			Game.change_map(str(v[0]), tx, ty, "down", {"silent": true})
+			Game.player.pos = Vector2(tx * 16 + 8, ty * 16 + 12)
+			Game.enemies.clear(); main.world.view.snap_camera()
+			Townsfolk.folk = []
+			await frames(20)
+			await shot("67_bridge_%s" % v[5])
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

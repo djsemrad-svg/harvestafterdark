@@ -787,6 +787,16 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Tests `run_refugees`; screenshot mode `camp`. Not built: what happens to the camp after autumn (winter raid,
   Long Night festival, refugees moving into town).
 
+### Nov 22: detailed bridges (`scripts/world/bridges.gd`, Daniel: "it looks so basic")
+- Every block of bridge tiles is drawn as one picture over the tiles (`Bridges.spans`, `Bridges.picture`, drawn
+  after the water in `WorldView`): planks across the way you walk, two or three boards each in their own shade, grain,
+  lit and shadowed edges, nail heads over the beams, a worn path down the middle, the odd fresh replacement plank,
+  dark gaps; curb beams and a rail on posts each side, pilings in the water with ripples, the bridge's shadow on the
+  water to the east, stone footings where it meets land, lanterns on the four corner posts (lit at night,
+  `Bridges.lanterns`), snow on rails and curbs in winter. East-west bridges are the same picture turned. Pictures
+  only. Test `run_bridges`; screenshot mode `bridge`.
+- Town banks: a third hand-placed bank west of the bridge (x 39), since the east ones made way for the camp.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

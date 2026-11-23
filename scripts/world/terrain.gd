@@ -35,7 +35,7 @@ const SIZES := {"town": [4, 9, 3, 5], "mountain": [5, 11, 4, 8], "residential": 
 static var enabled := true      # the test runner turns terrain off except in the terrain tests
 ## Hand-placed rises tried before the random ones: [x, y, w, h, style] (town is too built up for random ones)
 ## Their trees and brush are cleared ("clear"), so the bank isn't walled in by the woods on the south bank.
-const FIXED := {"town": [[6, 74, 12, 3, "turf"], [24, 74, 12, 3, "turf"]]}      # east of the bridge is the refugee camp
+const FIXED := {"town": [[6, 74, 12, 3, "turf"], [24, 74, 12, 3, "turf"], [39, 74, 10, 3, "turf"]]}      # east of the bridge is the refugee camp
 ## How often the way up is a steep trail instead of steps, and how often a cliff gets a waterfall (one per map)
 const TRAIL := {"earth": 0.5, "turf": 0.5, "stone": 0.2}
 const FALL_CHANCE := 0.65

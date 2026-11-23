@@ -184,6 +184,9 @@ func _draw() -> void:
 				_terrain(m, x, y, pos, season)
 	for w in wd:
 		_water_detail(m, w.x, w.y, Vector2(w.x * 16, w.y * 16), season)
+	for bs in Bridges.spans(m):      # bridges drawn as one detailed picture over their tiles
+		var bp: Array = Bridges.picture(bs, season)
+		draw_texture(bp[0], bp[1])
 	if bd != null:
 		for kk in m.soil:
 			var tt := GameMap.unk(kk)
@@ -1275,6 +1278,8 @@ func update_lighting(m: GameMap) -> void:
 			srcs.append([Vector2((st.door_x + 0.5) * 16, (st.y + st.h * 0.7) * 16), 44, true])
 		for l in m.lights:
 			srcs.append([Vector2(l.x * 16 + 8, l.y * 16 + 8), l.r, true])
+		for lp in Bridges.lanterns(m):
+			srcs.append([lp, 40, true])
 		if Game.screen == "game" and m == Game.map:
 			var pr: int = 100 if m.mine else (30 if m.outdoor else 20)
 			var hs = Game.selected_stack()

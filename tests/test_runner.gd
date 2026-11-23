@@ -1334,6 +1334,7 @@ func run_all() -> void:
 	run_audio()
 	run_melee()
 	run_refugees()
+	run_bridges()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4831,3 +4832,20 @@ func run_refugees() -> void:
 	Refugees.st().stage = 2; Refugees.st().theft = 2
 	Talk._on_signal("camp:curfew")
 	check("The refugee conversations play, and a meeting choice (camp:curfew) decides the outcome", plays.all(func(x): return x) and str(Refugees.st().outcome) == "curfew", str(plays))
+
+func run_bridges() -> void:
+	# Nov 22: bridges drawn in detail over their tiles
+	var G = Game
+	start("adventure", 2)
+	var town: Array = Bridges.spans(G.maps.town)
+	var ok: bool = town.size() == 1 and town[0][1] == true and town[0][2] and town[0][3]
+	var pic: Array = Bridges.picture(town[0], "summer") if ok else []
+	var r: Rect2i = town[0][0] if ok else Rect2i()
+	var sized: bool = ok and (pic[0] as Texture2D).get_width() == r.size.x * 16 + Bridges.M * 2 and (pic[0] as Texture2D).get_height() == r.size.y * 16
+	var rv: Array = Bridges.spans(G.maps.riverlands)
+	var built := true
+	for s in rv:
+		var p2: Array = Bridges.picture(s, "winter")
+		if p2[0] == null: built = false
+	check("Bridges: the town bridge is found (north to south, land at both ends) and drawn as one detailed picture; Riverlands bridges too",
+		sized and not rv.is_empty() and built and Bridges.lanterns(G.maps.town).size() == 4, "town=%s rv=%d" % [str(town), rv.size()])
