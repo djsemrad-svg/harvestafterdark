@@ -463,6 +463,80 @@ func _draw_farm_tool(p: Dictionary, anim: String, behind: bool) -> void:
 	if strip != null:
 		draw_texture_rect_region(strip, Rect2(tl + off, Vector2(48, 48)), Rect2((d * n + f) * 48, 0, 48, 48))
 
+# ---------------------------------------------------------------- melee weapons on the body's own frames (Nov 22)
+## Melee swings play the character generator's (LimeZu) hit row for slashes and clubs and its stab row for knives
+## and spears, 6 frames each. The weapon's grip sits on the hand in every one of those frames (found from the
+## body's arm pixels) and points where these keys say: [hand x, hand y in the 16 x 32 cell, angle in degrees from
+## grip to tip (0 right, -90 up)]. A slash winds up behind, strikes forward with a smear and follows through low.
+const SLASH_KEYS := {
+	"right": [[9, 24, -115], [8, 22, -140], [2, 20, -165], [15, 25, -15], [15, 24, 35], [11, 28, 75]],
+	"left": [[6, 24, -65], [7, 22, -40], [13, 20, -15], [0, 25, -165], [0, 24, 145], [4, 28, 105]],
+	"down": [[12, 25, -70], [15, 23, -60], [9, 27, 30], [2, 25, 120], [1, 24, 140], [4, 26, 110]],
+	"up": [[12, 24, -60], [15, 23, -45], [8, 21, -95], [1, 24, -140], [0, 24, -160], [13, 24, -70]],
+}
+const STAB_KEYS := {
+	"right": [[9, 25, 15], [7, 24, 5], [3, 23, 0], [15, 24, 0], [15, 24, 0], [11, 26, 15]],
+	"left": [[6, 25, 165], [8, 24, 175], [12, 23, 180], [0, 24, 180], [0, 24, 180], [4, 26, 165]],
+	"down": [[12, 24, 90], [12, 22, 90], [12, 21, 90], [12, 29, 90], [12, 28, 90], [12, 25, 90]],
+	"up": [[12, 24, -90], [12, 25, -90], [12, 26, -90], [12, 17, -90], [12, 18, -90], [12, 22, -90]],
+}
+
+## Knives, the bayonet and spears thrust; swords, machetes, axes and clubs slash.
+func is_stab(wid: String) -> bool:
+	var wt: String = str(Data.weapons.get(wid, {}).get("type", ""))
+	return wt == "Polearm" or (wt == "Blade" and ("knife" in wid or wid in ["bayonet", "hush"]))
+
+func _draw_melee(p: Dictionary, wid: String, stab: bool, behind: bool) -> void:
+	var sw: Dictionary = p.swing
+	var keys: Array = (STAB_KEYS if stab else SLASH_KEYS)[p.dir]
+	var pr: float = clampf(float(sw.t) / maxf(float(sw.dur), 0.01), 0.0, 0.999)
+	var f := int(pr * 6)
+	# facing away, the weapon is beyond you; facing you, it's raised behind your head only in the wind-up
+	var back: bool = p.dir == "up" or (p.dir == "down" and not stab and f <= 1)
+	if back != behind: return
+	var ha: Dictionary = Art.held_axis(wid)
+	var tex: Texture2D = ha.get("tex", Art.get_icon(wid, int(sw.get("tier", 0))))
+	var grip: Vector2 = ha.grip if not ha.is_empty() else Vector2(2, 14)
+	var base: float = float(ha.angle) if not ha.is_empty() else -PI / 4
+	var tl: Vector2 = (p.pos + Vector2(-8, -31)).round()
+	var k: Array = keys[f]
+	var ang := deg_to_rad(float(k[2]))
+	# a picture pointing left would be upside down: mirror it across its own axis instead
+	var flip: bool = cos(ang) < -0.05
+	var hand := tl + Vector2(float(k[0]), float(k[1]))
+	# the smear: a pale arc swept by the head of the weapon from the last frame to this one, while striking
+	if not stab and f in [3, 4] and Game.settings.get("effects", true):
+		var pk: Array = keys[f - 1]
+		var reach := maxf(8.0, tex.get_width() - grip.x - 1.0)
+		var a0 := deg_to_rad(float(pk[2]))
+		var h0 := tl + Vector2(float(pk[0]), float(pk[1]))
+		var outer := PackedVector2Array(); var inner := PackedVector2Array()
+		for i in 9:
+			var q := i / 8.0
+			var ga := lerp_angle(a0, ang, q)
+			var gh := h0.lerp(hand, q)
+			outer.append(gh + Vector2.from_angle(ga) * reach)
+			inner.append(gh + Vector2.from_angle(ga) * reach * 0.55)
+		var al := 0.5 if f == 3 else 0.25
+		for i in 8:
+			var fade := al * (i + 1) / 8.0
+			draw_colored_polygon(PackedVector2Array([outer[i], outer[i + 1], inner[i + 1], inner[i]]), Color(1, 1, 1, fade * 0.5))
+			draw_line(outer[i], outer[i + 1], Color(1, 1, 1, fade), 1.0)
+	_draw_weapon_at(tex, grip, base, hand, ang, flip, Color.WHITE)
+	var skin := Color(str(Game.state.character.look.get("skin", "#e8b48f")))
+	var hp: Vector2 = hand.round() + Vector2(-1, -1)
+	draw_rect(Rect2(hp + Vector2(0, 2), Vector2(3, 1)), skin.darkened(0.45))
+	draw_rect(Rect2(hp, Vector2(3, 2)), skin)
+	draw_rect(Rect2(hp, Vector2(1, 1)), skin.lightened(0.15))
+
+func _draw_weapon_at(tex: Texture2D, grip: Vector2, base: float, at: Vector2, ang: float, flip: bool, col: Color) -> void:
+	var t := Transform2D(ang, at.round())
+	if flip: t = t * Transform2D(0.0, Vector2(1, -1), 0.0, Vector2.ZERO)
+	t = t * Transform2D(-base, Vector2.ZERO)
+	draw_set_transform_matrix(t)
+	draw_texture(tex, -grip, col)
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+
 func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	if p.swing == null or p.swing.get("shove", false):
 		return
@@ -470,6 +544,13 @@ func _draw_tool_swing(p: Dictionary, behind: bool) -> void:
 	if fa != "":
 		_draw_farm_tool(p, fa, behind)
 		return
+	var sw0: Dictionary = p.swing
+	if sw0.has("weapon") and Data.weapons.has(sw0.weapon):
+		var wid0: String = sw0.weapon
+		var wt0: String = str(Data.weapons[wid0].get("type", ""))
+		if wt0 != "Fist" and not SWEEPERS.has(wid0):
+			_draw_melee(p, wid0, is_stab(wid0), behind)
+			return
 	var sw: Dictionary = p.swing
 	var wid: String = str(sw.get("weapon", sw.tool))
 	var wt: String = str(Data.weapons.get(wid, {}).get("type", "")) if sw.has("weapon") else ""
@@ -859,7 +940,7 @@ func player_anim(p: Dictionary) -> Array:
 		if sw.get("shove", false): kind = "punch"
 		elif sw.has("weapon") and Data.weapons.has(sw.weapon):
 			var wt: String = str(Data.weapons[sw.weapon].get("type", ""))
-			if wt in ["Blade", "Polearm"]: kind = "stab"
+			if is_stab(sw.weapon): kind = "stab"
 			elif wt == "Fist": kind = "punch"
 		return [kind, int(pr * 6)]
 	if p.get("pick_t", 9.0) < 0.6:

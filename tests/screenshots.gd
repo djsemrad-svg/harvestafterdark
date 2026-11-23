@@ -374,6 +374,26 @@ func _ready() -> void:
 		Game.player.swing = null
 		get_tree().quit()
 		return
+	if only == "melee":
+		# melee weapons on the body's hit and stab frames, each direction, every frame
+		main.ui.close_all()
+		main.ui.visible = false
+		Game.state.time = 720; Game.state.weather = "sun"
+		Game.change_map("town", 34, 44, "down", {"silent": true})
+		Game.enemies.clear()
+		Townsfolk.folk = []
+		for wid in ["kitchen_knife", "katana", "baseball_bat", "fire_axe", "sledgehammer", "makeshift_spear"]:
+			for dir in ["down", "right", "up", "left"]:
+				for k in 6:
+					Game.player.dir = dir
+					Game.player.swing = {"t": (k + 0.5) / 6.0, "dur": 1.0, "tool": wid, "weapon": wid, "tier": 0, "applied": true, "apply": func(): pass}
+					Game.paused = true
+					await frames(2)
+					await shot("melee_%s_%s_%d" % [wid, dir, k])
+					Game.paused = false
+		Game.player.swing = null
+		get_tree().quit()
+		return
 	if only == "crosshair":
 		main.ui.close_all()
 		Game.state.time = 720; Game.state.weather = "sun"

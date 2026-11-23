@@ -737,8 +737,12 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
   out over the new one for 0.09 s (off with effects off).
 - Terrain fix: a waterfall pool or nook may not box in the way to a sign or container (`Terrain._bare`).
 - Tests `run_toolpose`; screenshot mode `toolpose`.
-- Order item 4 (animations) is done apart from: melee weapons still use the keyframed swing over the generator's
-  hit/stab rows (not farmer poses).
+- Melee weapons (done later on Nov 22, `WorldView._draw_melee`): swords, machetes, axes and clubs slash on the
+  generator's own hit row, knives, the bayonet and spears thrust on its stab row (`is_stab`), 6 frames. The grip is
+  on the body's hand in every frame and the weapon points where `SLASH_KEYS` / `STAB_KEYS` say ([hand x, hand y,
+  angle]; hand positions found from the body's arm pixels): wind-up behind, strike with a pale swept arc, follow-
+  through low. Pictures pointing left are mirrored across their own axis so they're never upside down. The scythe
+  family keeps its sweep. Screenshot mode `melee`; test `run_melee`.
 
 ### Nov 22: audio (order item 5)
 - Files (`tools/import_audio.py <uploads> <project>`): `audio/music/` 39 tracks from the Mystery 1-2, Action 1-2 and

@@ -1332,6 +1332,7 @@ func run_all() -> void:
 	run_aimfx()
 	run_toolpose()
 	run_audio()
+	run_melee()
 	run_picture_map()
 	run_keys_and_fx()
 	run_dialogic()
@@ -4720,3 +4721,20 @@ func run_audio() -> void:
 	G.settings.ambience = 60
 	G.apply_settings()
 	check("The ambience volume setting turns the background sounds down to nothing", muted)
+
+func run_melee() -> void:
+	# melee weapons: knives and spears thrust, the rest slash, on the body's own 6 hit or stab frames
+	var G = Game
+	start("adventure", 2)
+	var V = main.world.view
+	var stabs: bool = V.is_stab("kitchen_knife") and V.is_stab("makeshift_spear") and not V.is_stab("katana") and not V.is_stab("baseball_bat")
+	var keys_ok := true
+	for d in ["right", "up", "left", "down"]:
+		if V.SLASH_KEYS[d].size() != 6 or V.STAB_KEYS[d].size() != 6: keys_ok = false
+	G.player.swing = {"t": 0.5, "dur": 1.0, "tool": "club", "weapon": "katana", "tier": 0, "applied": true, "apply": func(): pass}
+	var slash: Array = V.player_anim(G.player)
+	G.player.swing.weapon = "kitchen_knife"
+	var thrust: Array = V.player_anim(G.player)
+	G.player.swing = null
+	check("Melee: swords and clubs slash on the hit frames, knives and spears thrust on the stab frames, with the weapon on the hand in all 6",
+		stabs and keys_ok and slash == ["hit", 3] and thrust == ["stab", 3], "%s %s %s" % [stabs, slash, thrust])
