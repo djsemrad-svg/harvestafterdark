@@ -4743,6 +4743,21 @@ func run_melee() -> void:
 	# melee weapons: knives and spears thrust, the rest slash, on the body's own 6 hit or stab frames
 	var G = Game
 	start("adventure", 2)
+	# Nov 23: item pack pictures. Every melee weapon has a held picture with its grip near the bottom left and
+	# its tip up and to the right; every bow has hand points on its grip and an arrow tip ahead of it
+	var axis_ok := true
+	var bad := []
+	for w in Arsenal.DB.WEAPONS:
+		if str(w.get("category", "")) != "Melee" or str(w.get("type", "")) in ["Fist", "Shield", "Power Tool"]: continue
+		var ax: Dictionary = Art.held_axis(w.id)
+		if ax.is_empty() or absf(float(ax.angle)) > 1.75:
+			axis_ok = false; bad.append(w.id)
+	check("Every melee weapon has a held picture pointing away from its grip", axis_ok, str(bad))
+	var bows_ok := true
+	for bid in ["hunting_bow", "recurve_bow", "compound_bow", "laminated_recurve_bow", "tuned_compound_bow", "hunters_compound_bow", "ash_hunting_bow", "whisper"]:
+		var pts: Dictionary = Art.held_points(bid)
+		if pts.is_empty() or pts.get("fore") != null or int(pts.muzzle[0]) <= int(pts.grip[0]) + 10: bows_ok = false
+	check("Bows are held by their grip with the arrow pointing ahead", bows_ok)
 	var V = main.world.view
 	var stabs: bool = V.is_stab("kitchen_knife") and V.is_stab("makeshift_spear") and not V.is_stab("katana") and not V.is_stab("baseball_bat")
 	var keys_ok := true

@@ -470,10 +470,12 @@ func _ready() -> void:
 		main.ui.close_all()
 		main.ui.visible = false
 		Game.state.time = 720; Game.state.weather = "sun"
-		Game.change_map("town", 20, 22, "down", {"silent": true})
+		Game.change_map("residential", 30, 22, "down", {"silent": true})
 		Game.enemies.clear()
 		Townsfolk.folk = []
-		for wid in ["pistol_9mm", "carbine", "pump_shotgun", "recurve_bow"]:
+		var aw := ["pistol_9mm", "carbine", "pump_shotgun", "recurve_bow"]
+		if OS.get_environment("AIM_WEAPONS") != "": aw = Array(OS.get_environment("AIM_WEAPONS").split(","))
+		for wid in aw:
 			Game.state.inventory[0] = null
 			Game.add_item(wid, 1)
 			for i in Game.state.inventory.size():
@@ -484,7 +486,7 @@ func _ready() -> void:
 				Game.player.aim_a = a
 				Game.player.dir = (("right" if cos(a) > 0 else "left") if absf(cos(a)) >= absf(sin(a)) - 0.01 else ("down" if sin(a) > 0 else "up"))
 				Game.player.recoil = 1.0 if k == 0 else 0.0
-				Game.player.flash = Combat.FLASH_TIME if k == 0 and wid != "recurve_bow" else 0.0
+				Game.player.flash = Combat.FLASH_TIME if k == 0 and not wid.ends_with("bow") and wid != "whisper" else 0.0
 				Game.paused = true
 				await frames(2)
 				await shot("aimturn_%s_%d" % [wid, k])
@@ -517,10 +519,12 @@ func _ready() -> void:
 		main.ui.close_all()
 		main.ui.visible = false
 		Game.state.time = 720; Game.state.weather = "sun"
-		Game.change_map("town", 34, 44, "down", {"silent": true})
+		Game.change_map("residential", 30, 22, "down", {"silent": true})
 		Game.enemies.clear()
 		Townsfolk.folk = []
-		for wid in ["kitchen_knife", "katana", "baseball_bat", "fire_axe", "sledgehammer", "makeshift_spear"]:
+		var mw := ["kitchen_knife", "katana", "baseball_bat", "fire_axe", "sledgehammer", "makeshift_spear"]
+		if OS.get_environment("MELEE_WEAPONS") != "": mw = Array(OS.get_environment("MELEE_WEAPONS").split(","))
+		for wid in mw:
 			for dir in ["down", "right", "up", "left"]:
 				for k in 6:
 					Game.player.dir = dir

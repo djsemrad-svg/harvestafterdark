@@ -962,6 +962,27 @@ changed on the calendar: summer 23 is now the Militia Trials, autumn 25 is Hollo
 - Knocked-down infected still use the rotated lying sprite. Test section `crawler`; screenshot mode `crawler`
   (every direction and frame, the whole infected for comparison, plus four on the grass).
 
+### Nov 23: melee weapons and bows from the 16x16 item pack (`tools/item_pack_weapons.py`, run last by the importer)
+- Daniel: "still not loving our melee and bow sprites". His upload was the same Item Pack 16x16 already in
+  `<packs>/Item_Pack_16x16/` (identical files; a copy is in `<packs>/items_nov23/`), but its weapons had never been used.
+- Melee (33 weapons): the pack picture is both the icon and the held picture (handle bottom left, on the diagonal);
+  swings already turn it to each swing angle (`Art.held_axis`). Picks by pack number: kitchen knife 799, cleaver
+  800, machete 2 (black blade), combat knife 2 with the blade shortened (`shorten`), hatchet 47, fire axe 42,
+  Headsman's Axe 41, bat 841, claw hammer 43, sledgehammer 62, Thunderclap 64, Shieldbreaker 65, spear 116,
+  pitchfork 171, fishing spear 173, maul 60, ice axe 45, sickle 108 (Daniel: the old one looked like a scimitar),
+  bayonet 924, nail bat 137, rebar club 134, kukri 923, frying pan 805 (darkened). Better versions are recoloured
+  (`RAMP`: polished, dark, tempered, walnut, purple...; barbed wire wound on the bat).
+- Kept: katanas, crowbars, lead pipes, shovel, Grave Digger, chainsaws, golf club, baton, tire iron, pipe wrench,
+  hockey stick, brass knuckles, riot shield, garden rake, the scythes, the Splintered Club and all crossbows (the
+  pack's clubs read as torches, its crossbows as a wheel and a pickaxe).
+- Bows: Daniel said the pack's fancy bows (186-190) look like fishing rods, so all eight use the two plain ones
+  (147 recurve, 148 straight) recoloured: charcoal, steel blue and olive compounds with pulley wheels, striped
+  laminated, pale ash, white Whisper. Searched every pack: Kyrise has 15 chunkier bows, the sword pack the upright
+  ones, nothing else. Held bows are drawn by the tool (24 x 16, upright, shaded and outlined, grip wrap, arrow
+  nocked) in the same colours; their grip and arrow tip go in `held/index.json`, so the hand sits on the grip.
+- Tests in `run_melee`; screenshot modes `melee` (env `MELEE_WEAPONS`) and `aimturn` (env `AIM_WEAPONS`), now on
+  open ground in the Residential District.
+
 ### Agreed with Daniel on Nov 22 (the order after item 29)
 - Standing rule: every future map and world-building idea includes height (hills, cliffs, slopes, steps).
 1. Terrain with height: done Nov 22 (two passes, see above).

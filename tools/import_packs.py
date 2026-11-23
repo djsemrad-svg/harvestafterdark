@@ -2458,3 +2458,6 @@ runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "starbou
 
 # ---------------------------------------------------------------- a fresh coat of paint for repaired buildings (Nov 23)
 runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "paint_buildings.py"), init_globals={"OUT": OUT, "save": save})
+
+# ---------------------------------------------------------------- melee weapons, bows and crossbow icons from the 16x16 item pack (Nov 23)
+runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "item_pack_weapons.py"), init_globals={"SRC": SRC, "OUT": OUT, "save": save})
